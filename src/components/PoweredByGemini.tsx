@@ -31,13 +31,10 @@ export const PoweredByGemini = () => {
   const row = [...capabilities, ...capabilities];
 
   return (
-    <section className="relative py-24 md:py-32 overflow-hidden bg-foreground text-background">
-      {/* Ambient gradient mesh */}
-      <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div className="absolute -top-40 left-1/4 w-[500px] h-[500px] rounded-full bg-google-blue/30 blur-3xl" />
-        <div className="absolute -bottom-40 right-1/4 w-[500px] h-[500px] rounded-full bg-primary/30 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-google-purple/20 blur-3xl" />
-      </div>
+    <section className="relative py-24 md:py-32 overflow-hidden bg-hero-mesh text-foreground">
+      {/* Soft floating orbs to match hero */}
+      <div className="pointer-events-none absolute -top-20 -left-20 w-96 h-96 rounded-full bg-primary/20 blur-3xl animate-float" />
+      <div className="pointer-events-none absolute top-40 -right-20 w-96 h-96 rounded-full bg-accent/20 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
 
       <div className="relative mx-auto max-w-6xl px-6 text-center">
         <div className="inline-flex items-center gap-2 rounded-full bg-background/10 ring-1 ring-background/20 backdrop-blur px-3 py-1.5 text-xs font-medium text-background/80 mb-8">
