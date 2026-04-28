@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* SquadGo — Google meets Apple, minimal, premium.
+/* MySquadGo — Google meets Apple, minimal, premium.
    All colors HSL. All design tokens live here. */
 
 @layer base {
@@ -19,7 +19,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 18% 11%;
 
-    /* Brand — SquadGo coral orange */
+    /* Brand — MySquadGo coral orange */
     --primary: 16 100% 60%;
     --primary-foreground: 0 0% 100%;
     --primary-soft: 16 100% 96%;

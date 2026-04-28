@@ -42,9 +42,9 @@ export const Footer = () => (
         <span className="grid place-items-center w-7 h-7 rounded-lg bg-gradient-primary text-primary-foreground">
           <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" /></svg>
         </span>
-        SquadGo
+        MySquadGo
       </div>
-      <p className="text-xs text-muted-foreground">© 2026 SquadGo. Made for Naija squads. 🇳🇬</p>
+      <p className="text-xs text-muted-foreground">© 2026 MySquadGo. Made for Naija squads. 🇳🇬</p>
       <div className="flex gap-5 text-xs text-muted-foreground">
         <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
         <a href="#" className="hover:text-foreground transition-colors">Terms</a>

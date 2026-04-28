@@ -38,7 +38,7 @@ export const Nav = () => {
                 <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
               </svg>
             </span>
-            <span>SquadGo</span>
+            <span>MySquadGo</span>
           </a>
 
           <nav className="hidden md:flex items-center gap-1">
