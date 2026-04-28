@@ -13,8 +13,10 @@ export const Hero = () => {
 
         <h1 className="animate-rise font-display text-5xl sm:text-6xl md:text-7xl lg:text-[88px] font-semibold leading-[1.02] tracking-tight text-gradient max-w-4xl mx-auto">
           Group trips,{" "}
-          <span className="relative inline-block">
-            <span className="bg-gradient-primary bg-clip-text text-transparent">planned in minutes.</span>
+          <span className="relative inline-block align-baseline">
+            <span className="relative z-10 inline-block bg-gradient-primary px-3 py-1 rounded-xl text-primary-foreground">
+              <span className="typewriter">planned in minutes.</span>
+            </span>
           </span>
         </h1>
 
