@@ -37,19 +37,19 @@ export const PoweredByGemini = () => {
       <div className="pointer-events-none absolute top-40 -right-20 w-96 h-96 rounded-full bg-accent/20 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
 
       <div className="relative mx-auto max-w-6xl px-6 text-center">
-        <div className="inline-flex items-center gap-2 rounded-full bg-background/10 ring-1 ring-background/20 backdrop-blur px-3 py-1.5 text-xs font-medium text-background/80 mb-8">
+        <div className="inline-flex items-center gap-2 rounded-full glass ring-hairline px-3 py-1.5 text-xs font-medium text-muted-foreground mb-8">
           <GeminiLogo />
           Powered by Google Gemini
         </div>
 
-        <h2 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.05] tracking-tight max-w-4xl mx-auto">
+        <h2 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.05] tracking-tight text-foreground max-w-4xl mx-auto">
           Every trip, thought through by{" "}
           <span className="bg-gradient-to-r from-google-blue via-google-purple to-primary bg-clip-text text-transparent">
             Gemini.
           </span>
         </h2>
 
-        <p className="mt-6 max-w-2xl mx-auto text-lg text-background/70 leading-relaxed">
+        <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground leading-relaxed">
           We don't just send messages. Gemini reads your group, crunches the
           numbers, and engineers the perfect plan — in the time it takes to
           send a voice note.
@@ -59,14 +59,14 @@ export const PoweredByGemini = () => {
       {/* Marquee */}
       <div className="relative mt-16 group">
         {/* Edge fades */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-32 z-10 bg-gradient-to-r from-foreground to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-32 z-10 bg-gradient-to-l from-foreground to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-32 z-10 bg-gradient-to-r from-background to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-32 z-10 bg-gradient-to-l from-background to-transparent" />
 
         <div className="flex gap-3 marquee whitespace-nowrap">
           {row.map((c, i) => (
             <div
               key={i}
-              className="shrink-0 inline-flex items-center gap-2.5 rounded-full bg-background/5 ring-1 ring-background/15 backdrop-blur px-5 py-3 text-sm font-medium text-background/90 hover:bg-background/10 transition-colors"
+              className="shrink-0 inline-flex items-center gap-2.5 rounded-full bg-card ring-hairline px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
             >
               <GeminiLogo />
               <span>{c.label}</span>
