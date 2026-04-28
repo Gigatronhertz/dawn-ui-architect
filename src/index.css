@@ -178,3 +178,15 @@
     50% { border-color: transparent; }
   }
 }
+
+@layer utilities {
+  .marquee {
+    animation: marquee 38s linear infinite;
+    width: max-content;
+  }
+  .group:hover .marquee { animation-play-state: paused; }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+}
