@@ -21,7 +21,7 @@ export const Hero = () => {
         </h1>
 
         <p className="animate-rise mt-7 max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground leading-relaxed" style={{ animationDelay: "0.1s" }}>
-          From the first idea to the last contribution paid — SquadGo handles the
+          From the first idea to the last contribution paid — MySquadGo handles the
           itinerary, the hotels, the WhatsApp updates, and the money. So your
           squad can just show up.
         </p>

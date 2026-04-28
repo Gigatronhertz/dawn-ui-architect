@@ -9,11 +9,11 @@ import { useEffect } from "react";
 
 const Index = () => {
   useEffect(() => {
-    document.title = "SquadGo — Group trips, planned in minutes";
+    document.title = "MySquadGo — Group trips, planned in minutes";
     const meta = document.querySelector('meta[name="description"]') ||
       Object.assign(document.createElement("meta"), { name: "description" });
     (meta as HTMLMetaElement).content =
-      "SquadGo plans your Nigerian group trip end-to-end — itinerary, hotels, WhatsApp updates, and contributions. No app download. No spreadsheet.";
+      "MySquadGo plans your Nigerian group trip end-to-end — itinerary, hotels, WhatsApp updates, and contributions. No app download. No spreadsheet.";
     if (!meta.parentNode) document.head.appendChild(meta);
   }, []);
 

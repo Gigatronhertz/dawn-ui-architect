@@ -1,5 +1,5 @@
 const messages = [
-  { from: "bot", text: "👋 SquadGo here! Lagos → Ibadan plan is ready.\n💰 Est. ₦18,500/person", time: "10:42" },
+  { from: "bot", text: "👋 MySquadGo here! Lagos → Ibadan plan is ready.\n💰 Est. ₦18,500/person", time: "10:42" },
   { from: "user", text: "Let's gooo 🔥", who: "Tunde", time: "10:43" },
   { from: "bot", text: "📅 Vote your dates:\n· Aug 9–11\n· Aug 16–18  ← winning\n· Aug 23–25", time: "10:44" },
   { from: "bot", text: "✅ 8 of 12 paid. 4 to go — deadline Aug 3rd.", time: "11:20", highlight: true },
@@ -14,7 +14,7 @@ export const BotPreview = () => (
           Where your squad already lives.
         </h2>
         <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
-          No new app to download. No accounts to create. SquadGo runs the trip
+          No new app to download. No accounts to create. MySquadGo runs the trip
           right inside the WhatsApp group you're already chatting in.
         </p>
 
@@ -44,7 +44,7 @@ export const BotPreview = () => (
               <div className="font-display font-semibold text-sm">Ibadan Squad 🚌</div>
               <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-whatsapp" />
-                SquadGo Bot · 12 members
+                MySquadGo Bot · 12 members
               </div>
             </div>
           </div>
