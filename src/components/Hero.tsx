@@ -7,7 +7,13 @@ export const Hero = () => {
 
       <div className="relative mx-auto max-w-6xl px-6 text-center">
         <div className="animate-rise inline-flex items-center gap-2 rounded-full glass ring-hairline px-3 py-1.5 text-xs font-medium text-muted-foreground mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" />
+          <span className="inline-flex items-center gap-1 text-foreground font-semibold">
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2l1.8 4.6L18.5 8l-3.7 3.2L16 16l-4-2.6L8 16l1.2-4.8L5.5 8l4.7-1.4L12 2z" />
+            </svg>
+            AI-powered insights
+          </span>
+          <span className="w-1 h-1 rounded-full bg-border" />
           Now in private beta · Lagos · Abuja · Calabar
         </div>
 
