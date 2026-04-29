@@ -261,7 +261,7 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 1 of 4 · Intake" title="Tell us about the trip." sub={`${STEP1_QUESTIONS} quick questions. Under two minutes.`} />
+      <StepHeader eyebrow="Step 2 of 5 · Intake" title="Tell us about the trip." sub={`${STEP1_QUESTIONS} quick questions. Under two minutes. The bot is asking — answer for the squad.`} />
       <div className="grid md:grid-cols-2 gap-5">
         <Field n={1} label="Where from?"><input className={inputCls} value={intake.origin} onChange={(e) => set("origin", e.target.value)} /></Field>
         <Field n={2} label="Where to?"><input className={inputCls} value={intake.destination} onChange={(e) => set("destination", e.target.value)} /></Field>
