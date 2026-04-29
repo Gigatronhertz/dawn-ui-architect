@@ -311,7 +311,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   if (phase === 0) {
     return (
       <Section>
-        <StepHeader eyebrow="Step 2 of 4 · AI Planning" title="Gemini is cooking…" />
+        <StepHeader eyebrow="Step 3 of 5 · AI Planning" title="Gemini is cooking…" />
         <div className="rounded-2xl bg-secondary/60 p-8 text-center">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow animate-float">
             <svg viewBox="0 0 24 24" className="w-7 h-7 text-primary-foreground" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" /></svg>
