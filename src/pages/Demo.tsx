@@ -354,9 +354,45 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
           ))}
         </div>
 
+        {/* Interactive route map */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Route map · {intake.origin} → {intake.destination}</div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">Live</span>
+          </div>
+          <div className="relative rounded-2xl overflow-hidden ring-hairline shadow-card bg-card">
+            <iframe
+              title="Trip route map"
+              className="w-full h-72 md:h-80 block"
+              loading="lazy"
+              src="https://www.openstreetmap.org/export/embed.html?bbox=2.95%2C6.30%2C4.10%2C7.55&layer=mapnik&marker=7.3775%2C3.9470"
+            />
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute left-[18%] top-[68%] flex flex-col items-center">
+                <div className="px-2.5 py-1 rounded-full bg-foreground text-background text-[10px] font-semibold shadow-card whitespace-nowrap">🚌 {intake.origin}</div>
+                <div className="w-2 h-2 rounded-full bg-foreground mt-1 ring-4 ring-background" />
+              </div>
+              <div className="absolute left-[66%] top-[26%] flex flex-col items-center">
+                <div className="px-2.5 py-1 rounded-full bg-gradient-primary text-primary-foreground text-[10px] font-semibold shadow-glow whitespace-nowrap">📍 {intake.destination}</div>
+                <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1 ring-4 ring-background animate-pulse" />
+              </div>
+              <div className="absolute left-[60%] top-[38%]">
+                <div className="px-2 py-0.5 rounded-full bg-card ring-hairline text-[10px] font-semibold text-foreground shadow-soft whitespace-nowrap">🏨 {plan.hotel.name.split(" ")[0]}</div>
+              </div>
+            </div>
+            <div className="absolute bottom-0 inset-x-0 flex flex-wrap items-center justify-between gap-2 bg-card/85 backdrop-blur px-4 py-2 text-xs">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-foreground" />Pickup</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" />Destination</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-google-purple" />Hotel</span>
+              </div>
+              <div className="font-display font-semibold text-foreground">~128 km · 2h 10m drive</div>
+            </div>
+          </div>
+          <div className="mt-2 text-[11px] text-muted-foreground">Drag the map to explore. Pins refresh as the squad votes on hotels.</div>
+        </div>
+
         <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">Itinerary</div>
             <ol className="space-y-3">
               {itinerary.map((d) => (
                 <li key={d.day} className="rounded-2xl bg-card ring-hairline p-4">
