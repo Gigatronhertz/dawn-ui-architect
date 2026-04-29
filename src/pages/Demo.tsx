@@ -83,7 +83,150 @@ const GhostBtn = ({ children, onClick }: { children: React.ReactNode; onClick?: 
   </button>
 );
 
-/* ---------------- step 1: intake ---------------- */
+/* ---------------- step 1: WhatsApp group + bot joins ---------------- */
+type ChatMsg = {
+  from: "user" | "bot" | "system";
+  who?: string;
+  text: string;
+  time: string;
+  highlight?: boolean;
+};
+
+const INITIAL_CHAT: ChatMsg[] = [
+  { from: "user", who: "Tunde 🦁", text: "Squad, we said Ibadan trip in August. Are we still doing this or nah 😅", time: "10:38" },
+  { from: "user", who: "Ada 🌶️", text: "I'm in! But who's planning this time? Last time was chaos 💀", time: "10:39" },
+  { from: "user", who: "Kemi 🎧", text: "Not me again abeg. Spreadsheet almost killed me last December 🥲", time: "10:40" },
+  { from: "user", who: "Femi 🚀", text: "Wait — let me add the MySquadGo bot. My cousin used it for her Calabar trip, sorted everything in 5 mins.", time: "10:41" },
+];
+
+const BOT_SEQUENCE: ChatMsg[] = [
+  { from: "system", text: "Femi 🚀 added MySquadGo Bot to the group", time: "10:41" },
+  { from: "bot", text: "👋 Hey Ibadan Squad! I'm MySquadGo — powered by Google Gemini.\nI'll plan the trip, run the votes, split costs, and collect payments — all here in this chat.", time: "10:41" },
+  { from: "bot", text: "I just need 9 quick answers from one of you to get started. Ready?", time: "10:42", highlight: true },
+];
+
+function WhatsAppView({ onNext }: { onNext: () => void }) {
+  const [messages, setMessages] = useState<ChatMsg[]>(INITIAL_CHAT);
+  const [typing, setTyping] = useState(false);
+  const [step, setStep] = useState(0); // 0 = before add, 1..3 = bot sequence, 4 = ready
+
+  useEffect(() => {
+    if (step >= BOT_SEQUENCE.length) return;
+    const isBot = BOT_SEQUENCE[step].from === "bot";
+    const delay = step === 0 ? 1600 : isBot ? 1400 : 800;
+    const typingDelay = isBot ? 700 : 0;
+
+    const t1 = setTimeout(() => isBot && setTyping(true), 200);
+    const t2 = setTimeout(() => {
+      setTyping(false);
+      setMessages((m) => [...m, BOT_SEQUENCE[step]]);
+      setStep((s) => s + 1);
+    }, delay + typingDelay);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [step]);
+
+  return (
+    <Section>
+      <StepHeader
+        eyebrow="Step 1 of 5 · WhatsApp"
+        title="It starts where your squad already chats."
+        sub="Watch what happens the moment someone adds the MySquadGo bot to a group."
+      />
+
+      <div className="grid lg:grid-cols-[1fr,auto] gap-8 items-start">
+        <div className="relative mx-auto w-full max-w-md">
+          <div className="absolute -inset-6 bg-whatsapp/10 rounded-[2.5rem] blur-2xl" />
+          <div className="relative rounded-[2rem] bg-card ring-hairline shadow-card overflow-hidden">
+            {/* chat header */}
+            <div className="flex items-center gap-3 p-4 border-b border-border bg-secondary/50">
+              <div className="w-10 h-10 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-display font-semibold">IB</div>
+              <div className="flex-1">
+                <div className="font-display font-semibold text-sm">Ibadan Squad 🚌</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-whatsapp" />
+                  {step >= 1 ? "12 members · MySquadGo Bot" : "11 members"}
+                </div>
+              </div>
+            </div>
+
+            {/* messages */}
+            <div className="p-4 space-y-2.5 max-h-[28rem] overflow-y-auto bg-[hsl(38_33%_99%)]">
+              {messages.map((m, i) => {
+                if (m.from === "system") {
+                  return (
+                    <div key={i} className="flex justify-center">
+                      <div className="text-[11px] text-muted-foreground bg-secondary/80 rounded-full px-3 py-1">
+                        {m.text}
+                      </div>
+                    </div>
+                  );
+                }
+                const isUser = m.from === "user";
+                return (
+                  <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"} animate-rise`}>
+                    <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-line leading-snug ${
+                      isUser
+                        ? "bg-whatsapp/15 text-foreground rounded-br-sm"
+                        : m.highlight
+                        ? "bg-gradient-primary text-primary-foreground rounded-bl-sm shadow-glow"
+                        : "bg-secondary text-foreground rounded-bl-sm"
+                    }`}>
+                      {m.who && <div className="text-[11px] font-semibold text-google-blue mb-0.5">{m.who}</div>}
+                      {!m.who && m.from === "bot" && <div className="text-[11px] font-semibold text-primary mb-0.5 flex items-center gap-1">🤖 MySquadGo Bot</div>}
+                      {m.text}
+                      <div className={`text-[10px] mt-1 ${isUser || m.highlight ? "opacity-70" : "text-muted-foreground"}`}>{m.time}</div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {typing && (
+                <div className="flex justify-start">
+                  <div className="bg-secondary rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-pulse" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-pulse" style={{ animationDelay: "300ms" }} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* input bar */}
+            <div className="p-3 border-t border-border bg-card flex items-center gap-2">
+              <div className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm text-muted-foreground">Message</div>
+              <div className="w-9 h-9 rounded-full bg-whatsapp grid place-items-center text-primary-foreground">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z" /></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:max-w-xs space-y-4">
+          <div className="rounded-2xl bg-secondary/60 p-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-2">What just happened</div>
+            <ul className="space-y-2.5 text-sm text-foreground/90">
+              <li className="flex gap-2"><span className="text-primary">①</span> Squad started chatting about a trip</li>
+              <li className="flex gap-2"><span className="text-primary">②</span> Femi added <strong>MySquadGo Bot</strong> to the group</li>
+              <li className="flex gap-2"><span className="text-primary">③</span> Bot greets the squad and asks 9 questions</li>
+              <li className="flex gap-2"><span className="text-primary">④</span> From here, it plans, votes, and collects — automatically</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl bg-card ring-hairline p-4 text-xs text-muted-foreground">
+            <strong className="text-foreground">No app to download.</strong> No new logins. The bot lives in the group your squad already uses every day.
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex justify-end">
+        <PrimaryBtn onClick={onNext} disabled={step < BOT_SEQUENCE.length}>
+          {step < BOT_SEQUENCE.length ? "Bot is talking…" : "Answer the bot's 9 questions"}
+        </PrimaryBtn>
+      </div>
+    </Section>
+  );
+}
+
+/* ---------------- step 2: intake ---------------- */
 const STEP1_QUESTIONS = 9;
 function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
   const [intake, setIntake] = useState<Intake>({
