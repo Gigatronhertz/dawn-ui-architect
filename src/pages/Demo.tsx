@@ -623,7 +623,7 @@ function ContributionsView({ intake, onRestart }: { intake: Intake; onRestart: (
 }
 
 /* ---------------- shell ---------------- */
-const STEPS = ["Intake", "AI Plan", "Vote", "Pay"];
+const STEPS = ["WhatsApp", "Intake", "AI Plan", "Vote", "Pay"];
 
 const Demo = () => {
   const [step, setStep] = useState(0);
