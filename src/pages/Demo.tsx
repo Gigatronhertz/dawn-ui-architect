@@ -393,6 +393,8 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">Itinerary</div>
             <ol className="space-y-3">
               {itinerary.map((d) => (
                 <li key={d.day} className="rounded-2xl bg-card ring-hairline p-4">
