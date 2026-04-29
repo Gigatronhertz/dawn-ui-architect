@@ -678,10 +678,11 @@ const Demo = () => {
       </div>
 
       <div className="relative mx-auto max-w-4xl px-6 pb-24">
-        {step === 0 && <IntakeForm onSubmit={(i) => { setIntake(i); setStep(1); }} />}
-        {step === 1 && intake && <PlanView intake={intake} onNext={() => setStep(2)} />}
-        {step === 2 && intake && <VoteView intake={intake} onNext={() => setStep(3)} />}
-        {step === 3 && intake && <ContributionsView intake={intake} onRestart={reset} />}
+        {step === 0 && <WhatsAppView onNext={() => setStep(1)} />}
+        {step === 1 && <IntakeForm onSubmit={(i) => { setIntake(i); setStep(2); }} />}
+        {step === 2 && intake && <PlanView intake={intake} onNext={() => setStep(3)} />}
+        {step === 3 && intake && <VoteView intake={intake} onNext={() => setStep(4)} />}
+        {step === 4 && intake && <ContributionsView intake={intake} onRestart={reset} />}
       </div>
     </main>
   );
