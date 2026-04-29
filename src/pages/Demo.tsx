@@ -530,7 +530,7 @@ function ContributionsView({ intake, onRestart }: { intake: Intake; onRestart: (
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 4 of 4 · Contributions" title="Live payment tracker." sub="Each member gets their own Paystack link via DM. No spreadsheet, no chasing." />
+      <StepHeader eyebrow="Step 5 of 5 · Contributions" title="Live payment tracker." sub="The bot DMs each member their own Paystack link. No spreadsheet, no chasing." />
 
       <div className="rounded-2xl bg-gradient-primary text-primary-foreground p-6 md:p-8 mb-6 shadow-glow">
         <div className="flex flex-wrap items-end justify-between gap-4">
