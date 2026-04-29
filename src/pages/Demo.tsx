@@ -433,7 +433,7 @@ function VoteView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 3 of 4 · Vote" title="Squad picks the details." sub={`${intake.squadSize} members are voting in real time. Tap to cast yours.`} />
+      <StepHeader eyebrow="Step 4 of 5 · Vote" title="Squad picks the details." sub={`${intake.squadSize} members are voting in real time. Tap to cast yours.`} />
 
       <div className="grid md:grid-cols-2 gap-8">
         <div>
