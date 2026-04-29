@@ -83,7 +83,150 @@ const GhostBtn = ({ children, onClick }: { children: React.ReactNode; onClick?: 
   </button>
 );
 
-/* ---------------- step 1: intake ---------------- */
+/* ---------------- step 1: WhatsApp group + bot joins ---------------- */
+type ChatMsg = {
+  from: "user" | "bot" | "system";
+  who?: string;
+  text: string;
+  time: string;
+  highlight?: boolean;
+};
+
+const INITIAL_CHAT: ChatMsg[] = [
+  { from: "user", who: "Tunde 🦁", text: "Squad, we said Ibadan trip in August. Are we still doing this or nah 😅", time: "10:38" },
+  { from: "user", who: "Ada 🌶️", text: "I'm in! But who's planning this time? Last time was chaos 💀", time: "10:39" },
+  { from: "user", who: "Kemi 🎧", text: "Not me again abeg. Spreadsheet almost killed me last December 🥲", time: "10:40" },
+  { from: "user", who: "Femi 🚀", text: "Wait — let me add the MySquadGo bot. My cousin used it for her Calabar trip, sorted everything in 5 mins.", time: "10:41" },
+];
+
+const BOT_SEQUENCE: ChatMsg[] = [
+  { from: "system", text: "Femi 🚀 added MySquadGo Bot to the group", time: "10:41" },
+  { from: "bot", text: "👋 Hey Ibadan Squad! I'm MySquadGo — powered by Google Gemini.\nI'll plan the trip, run the votes, split costs, and collect payments — all here in this chat.", time: "10:41" },
+  { from: "bot", text: "I just need 9 quick answers from one of you to get started. Ready?", time: "10:42", highlight: true },
+];
+
+function WhatsAppView({ onNext }: { onNext: () => void }) {
+  const [messages, setMessages] = useState<ChatMsg[]>(INITIAL_CHAT);
+  const [typing, setTyping] = useState(false);
+  const [step, setStep] = useState(0); // 0 = before add, 1..3 = bot sequence, 4 = ready
+
+  useEffect(() => {
+    if (step >= BOT_SEQUENCE.length) return;
+    const isBot = BOT_SEQUENCE[step].from === "bot";
+    const delay = step === 0 ? 1600 : isBot ? 1400 : 800;
+    const typingDelay = isBot ? 700 : 0;
+
+    const t1 = setTimeout(() => isBot && setTyping(true), 200);
+    const t2 = setTimeout(() => {
+      setTyping(false);
+      setMessages((m) => [...m, BOT_SEQUENCE[step]]);
+      setStep((s) => s + 1);
+    }, delay + typingDelay);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [step]);
+
+  return (
+    <Section>
+      <StepHeader
+        eyebrow="Step 1 of 5 · WhatsApp"
+        title="It starts where your squad already chats."
+        sub="Watch what happens the moment someone adds the MySquadGo bot to a group."
+      />
+
+      <div className="grid lg:grid-cols-[1fr,auto] gap-8 items-start">
+        <div className="relative mx-auto w-full max-w-md">
+          <div className="absolute -inset-6 bg-whatsapp/10 rounded-[2.5rem] blur-2xl" />
+          <div className="relative rounded-[2rem] bg-card ring-hairline shadow-card overflow-hidden">
+            {/* chat header */}
+            <div className="flex items-center gap-3 p-4 border-b border-border bg-secondary/50">
+              <div className="w-10 h-10 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-display font-semibold">IB</div>
+              <div className="flex-1">
+                <div className="font-display font-semibold text-sm">Ibadan Squad 🚌</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-whatsapp" />
+                  {step >= 1 ? "12 members · MySquadGo Bot" : "11 members"}
+                </div>
+              </div>
+            </div>
+
+            {/* messages */}
+            <div className="p-4 space-y-2.5 max-h-[28rem] overflow-y-auto bg-[hsl(38_33%_99%)]">
+              {messages.map((m, i) => {
+                if (m.from === "system") {
+                  return (
+                    <div key={i} className="flex justify-center">
+                      <div className="text-[11px] text-muted-foreground bg-secondary/80 rounded-full px-3 py-1">
+                        {m.text}
+                      </div>
+                    </div>
+                  );
+                }
+                const isUser = m.from === "user";
+                return (
+                  <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"} animate-rise`}>
+                    <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-line leading-snug ${
+                      isUser
+                        ? "bg-whatsapp/15 text-foreground rounded-br-sm"
+                        : m.highlight
+                        ? "bg-gradient-primary text-primary-foreground rounded-bl-sm shadow-glow"
+                        : "bg-secondary text-foreground rounded-bl-sm"
+                    }`}>
+                      {m.who && <div className="text-[11px] font-semibold text-google-blue mb-0.5">{m.who}</div>}
+                      {!m.who && m.from === "bot" && <div className="text-[11px] font-semibold text-primary mb-0.5 flex items-center gap-1">🤖 MySquadGo Bot</div>}
+                      {m.text}
+                      <div className={`text-[10px] mt-1 ${isUser || m.highlight ? "opacity-70" : "text-muted-foreground"}`}>{m.time}</div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {typing && (
+                <div className="flex justify-start">
+                  <div className="bg-secondary rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-pulse" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-pulse" style={{ animationDelay: "300ms" }} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* input bar */}
+            <div className="p-3 border-t border-border bg-card flex items-center gap-2">
+              <div className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm text-muted-foreground">Message</div>
+              <div className="w-9 h-9 rounded-full bg-whatsapp grid place-items-center text-primary-foreground">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z" /></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:max-w-xs space-y-4">
+          <div className="rounded-2xl bg-secondary/60 p-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-2">What just happened</div>
+            <ul className="space-y-2.5 text-sm text-foreground/90">
+              <li className="flex gap-2"><span className="text-primary">①</span> Squad started chatting about a trip</li>
+              <li className="flex gap-2"><span className="text-primary">②</span> Femi added <strong>MySquadGo Bot</strong> to the group</li>
+              <li className="flex gap-2"><span className="text-primary">③</span> Bot greets the squad and asks 9 questions</li>
+              <li className="flex gap-2"><span className="text-primary">④</span> From here, it plans, votes, and collects — automatically</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl bg-card ring-hairline p-4 text-xs text-muted-foreground">
+            <strong className="text-foreground">No app to download.</strong> No new logins. The bot lives in the group your squad already uses every day.
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex justify-end">
+        <PrimaryBtn onClick={onNext} disabled={step < BOT_SEQUENCE.length}>
+          {step < BOT_SEQUENCE.length ? "Bot is talking…" : "Answer the bot's 9 questions"}
+        </PrimaryBtn>
+      </div>
+    </Section>
+  );
+}
+
+/* ---------------- step 2: intake ---------------- */
 const STEP1_QUESTIONS = 9;
 function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
   const [intake, setIntake] = useState<Intake>({
@@ -118,7 +261,7 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 1 of 4 · Intake" title="Tell us about the trip." sub={`${STEP1_QUESTIONS} quick questions. Under two minutes.`} />
+      <StepHeader eyebrow="Step 2 of 5 · Intake" title="Tell us about the trip." sub={`${STEP1_QUESTIONS} quick questions. Under two minutes. The bot is asking — answer for the squad.`} />
       <div className="grid md:grid-cols-2 gap-5">
         <Field n={1} label="Where from?"><input className={inputCls} value={intake.origin} onChange={(e) => set("origin", e.target.value)} /></Field>
         <Field n={2} label="Where to?"><input className={inputCls} value={intake.destination} onChange={(e) => set("destination", e.target.value)} /></Field>
@@ -168,7 +311,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   if (phase === 0) {
     return (
       <Section>
-        <StepHeader eyebrow="Step 2 of 4 · AI Planning" title="Gemini is cooking…" />
+        <StepHeader eyebrow="Step 3 of 5 · AI Planning" title="Gemini is cooking…" />
         <div className="rounded-2xl bg-secondary/60 p-8 text-center">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow animate-float">
             <svg viewBox="0 0 24 24" className="w-7 h-7 text-primary-foreground" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" /></svg>
@@ -195,7 +338,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   return (
     <div className="space-y-4">
       <Section>
-        <StepHeader eyebrow="Step 2 of 4 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
+        <StepHeader eyebrow="Step 3 of 5 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
 
         <div className="grid md:grid-cols-3 gap-3 mb-8">
           {[
@@ -209,6 +352,44 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
               <div className="text-xs text-muted-foreground mt-0.5">{c.sub}</div>
             </div>
           ))}
+        </div>
+
+        {/* Interactive route map */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Route map · {intake.origin} → {intake.destination}</div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">Live</span>
+          </div>
+          <div className="relative rounded-2xl overflow-hidden ring-hairline shadow-card bg-card">
+            <iframe
+              title="Trip route map"
+              className="w-full h-72 md:h-80 block"
+              loading="lazy"
+              src="https://www.openstreetmap.org/export/embed.html?bbox=2.95%2C6.30%2C4.10%2C7.55&layer=mapnik&marker=7.3775%2C3.9470"
+            />
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute left-[18%] top-[68%] flex flex-col items-center">
+                <div className="px-2.5 py-1 rounded-full bg-foreground text-background text-[10px] font-semibold shadow-card whitespace-nowrap">🚌 {intake.origin}</div>
+                <div className="w-2 h-2 rounded-full bg-foreground mt-1 ring-4 ring-background" />
+              </div>
+              <div className="absolute left-[66%] top-[26%] flex flex-col items-center">
+                <div className="px-2.5 py-1 rounded-full bg-gradient-primary text-primary-foreground text-[10px] font-semibold shadow-glow whitespace-nowrap">📍 {intake.destination}</div>
+                <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1 ring-4 ring-background animate-pulse" />
+              </div>
+              <div className="absolute left-[60%] top-[38%]">
+                <div className="px-2 py-0.5 rounded-full bg-card ring-hairline text-[10px] font-semibold text-foreground shadow-soft whitespace-nowrap">🏨 {plan.hotel.name.split(" ")[0]}</div>
+              </div>
+            </div>
+            <div className="absolute bottom-0 inset-x-0 flex flex-wrap items-center justify-between gap-2 bg-card/85 backdrop-blur px-4 py-2 text-xs">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-foreground" />Pickup</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" />Destination</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-google-purple" />Hotel</span>
+              </div>
+              <div className="font-display font-semibold text-foreground">~128 km · 2h 10m drive</div>
+            </div>
+          </div>
+          <div className="mt-2 text-[11px] text-muted-foreground">Drag the map to explore. Pins refresh as the squad votes on hotels.</div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -290,7 +471,7 @@ function VoteView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 3 of 4 · Vote" title="Squad picks the details." sub={`${intake.squadSize} members are voting in real time. Tap to cast yours.`} />
+      <StepHeader eyebrow="Step 4 of 5 · Vote" title="Squad picks the details." sub={`${intake.squadSize} members are voting in real time. Tap to cast yours.`} />
 
       <div className="grid md:grid-cols-2 gap-8">
         <div>
@@ -387,7 +568,7 @@ function ContributionsView({ intake, onRestart }: { intake: Intake; onRestart: (
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 4 of 4 · Contributions" title="Live payment tracker." sub="Each member gets their own Paystack link via DM. No spreadsheet, no chasing." />
+      <StepHeader eyebrow="Step 5 of 5 · Contributions" title="Live payment tracker." sub="The bot DMs each member their own Paystack link. No spreadsheet, no chasing." />
 
       <div className="rounded-2xl bg-gradient-primary text-primary-foreground p-6 md:p-8 mb-6 shadow-glow">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -442,7 +623,7 @@ function ContributionsView({ intake, onRestart }: { intake: Intake; onRestart: (
 }
 
 /* ---------------- shell ---------------- */
-const STEPS = ["Intake", "AI Plan", "Vote", "Pay"];
+const STEPS = ["WhatsApp", "Intake", "AI Plan", "Vote", "Pay"];
 
 const Demo = () => {
   const [step, setStep] = useState(0);
@@ -497,10 +678,11 @@ const Demo = () => {
       </div>
 
       <div className="relative mx-auto max-w-4xl px-6 pb-24">
-        {step === 0 && <IntakeForm onSubmit={(i) => { setIntake(i); setStep(1); }} />}
-        {step === 1 && intake && <PlanView intake={intake} onNext={() => setStep(2)} />}
-        {step === 2 && intake && <VoteView intake={intake} onNext={() => setStep(3)} />}
-        {step === 3 && intake && <ContributionsView intake={intake} onRestart={reset} />}
+        {step === 0 && <WhatsAppView onNext={() => setStep(1)} />}
+        {step === 1 && <IntakeForm onSubmit={(i) => { setIntake(i); setStep(2); }} />}
+        {step === 2 && intake && <PlanView intake={intake} onNext={() => setStep(3)} />}
+        {step === 3 && intake && <VoteView intake={intake} onNext={() => setStep(4)} />}
+        {step === 4 && intake && <ContributionsView intake={intake} onRestart={reset} />}
       </div>
     </main>
   );
