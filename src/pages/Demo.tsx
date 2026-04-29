@@ -338,7 +338,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   return (
     <div className="space-y-4">
       <Section>
-        <StepHeader eyebrow="Step 2 of 4 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
+        <StepHeader eyebrow="Step 3 of 5 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
 
         <div className="grid md:grid-cols-3 gap-3 mb-8">
           {[
