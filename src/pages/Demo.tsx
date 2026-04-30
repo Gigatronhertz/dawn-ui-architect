@@ -17,6 +17,9 @@ type Intake = {
 type Hotel = { id: string; name: string; area: string; pricePerNight: number; rating: number; perks: string[] };
 type DateOption = { id: string; label: string; sub: string };
 type Member = { name: string; emoji: string; paid: boolean; share: number };
+type Operator = { id: string; brand: string; logo: string; class: string; depart: string; arrive: string; duration: string; pricePerSeat: number; rating: number; note?: string };
+type ItineraryItem = { id: string; time: string; title: string; cost: number };
+type Suggestion = { id: string; title: string; tag: string; cost: number; emoji: string; blurb: string };
 
 /* ---------------- mock generator ---------------- */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
