@@ -128,7 +128,7 @@ function WhatsAppView({ onNext }: { onNext: () => void }) {
   return (
     <Section>
       <StepHeader
-        eyebrow="Step 1 of 5 · WhatsApp"
+        eyebrow="Step 1 of 7 · WhatsApp"
         title="It starts where your squad already chats."
         sub="Watch what happens the moment someone adds the MySquadGo bot to a group."
       />
@@ -261,7 +261,7 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 2 of 5 · Intake" title="Tell us about the trip." sub={`${STEP1_QUESTIONS} quick questions. Under two minutes. The bot is asking — answer for the squad.`} />
+      <StepHeader eyebrow="Step 2 of 7 · Intake" title="Tell us about the trip." sub={`${STEP1_QUESTIONS} quick questions. Under two minutes. The bot is asking — answer for the squad.`} />
       <div className="grid md:grid-cols-2 gap-5">
         <Field n={1} label="Where from?"><input className={inputCls} value={intake.origin} onChange={(e) => set("origin", e.target.value)} /></Field>
         <Field n={2} label="Where to?"><input className={inputCls} value={intake.destination} onChange={(e) => set("destination", e.target.value)} /></Field>
@@ -311,7 +311,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   if (phase === 0) {
     return (
       <Section>
-        <StepHeader eyebrow="Step 3 of 5 · AI Planning" title="Gemini is cooking…" />
+        <StepHeader eyebrow="Step 3 of 7 · AI Planning" title="Gemini is cooking…" />
         <div className="rounded-2xl bg-secondary/60 p-8 text-center">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow animate-float">
             <svg viewBox="0 0 24 24" className="w-7 h-7 text-primary-foreground" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" /></svg>
@@ -338,7 +338,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   return (
     <div className="space-y-4">
       <Section>
-        <StepHeader eyebrow="Step 3 of 5 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
+        <StepHeader eyebrow="Step 3 of 7 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
 
         <div className="grid md:grid-cols-3 gap-3 mb-8">
           {[
@@ -471,7 +471,7 @@ function VoteView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 4 of 5 · Vote" title="Squad picks the details." sub={`${intake.squadSize} members are voting in real time. Tap to cast yours.`} />
+      <StepHeader eyebrow="Step 4 of 7 · Vote" title="Squad picks the details." sub={`${intake.squadSize} members are voting in real time. Tap to cast yours.`} />
 
       <div className="grid md:grid-cols-2 gap-8">
         <div>
@@ -568,7 +568,7 @@ function ContributionsView({ intake, onNext }: { intake: Intake; onNext: () => v
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 5 of 5 · Contributions" title="Live payment tracker." sub="The bot DMs each member their own Paystack link. No spreadsheet, no chasing." />
+      <StepHeader eyebrow="Step 5 of 7 · Contributions" title="Live payment tracker." sub="The bot DMs each member their own Paystack link. No spreadsheet, no chasing." />
 
       <div className="rounded-2xl bg-gradient-primary text-primary-foreground p-6 md:p-8 mb-6 shadow-glow">
         <div className="flex flex-wrap items-end justify-between gap-4">
