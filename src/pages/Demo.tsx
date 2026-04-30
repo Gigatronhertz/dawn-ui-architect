@@ -385,8 +385,9 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
         </div>
 
       </div>
-      <div className="mt-8 flex justify-end">
-        <PrimaryBtn onClick={() => onSubmit(intake)}>Generate plan with AI</PrimaryBtn>
+      <div className="mt-8 flex items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">{intake.operatorId ? `✓ ${operatorsFor(intake.transport).find(o => o.id === intake.operatorId)!.brand} selected` : "Pick an operator above to lock the price."}</div>
+        <PrimaryBtn onClick={() => onSubmit({ ...intake, seats: intake.seats ?? intake.squadSize })} disabled={!intake.operatorId}>Generate plan with AI</PrimaryBtn>
       </div>
     </Section>
   );
