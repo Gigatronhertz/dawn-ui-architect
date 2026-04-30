@@ -1006,7 +1006,9 @@ const Demo = () => {
         {step === 1 && <IntakeForm onSubmit={(i) => { setIntake(i); setStep(2); }} />}
         {step === 2 && intake && <PlanView intake={intake} onNext={() => setStep(3)} />}
         {step === 3 && intake && <VoteView intake={intake} onNext={() => setStep(4)} />}
-        {step === 4 && intake && <ContributionsView intake={intake} onRestart={reset} />}
+        {step === 4 && intake && <ContributionsView intake={intake} onNext={() => setStep(5)} />}
+        {step === 5 && intake && <DuringTripView intake={intake} onNext={() => setStep(6)} />}
+        {step === 6 && intake && <AfterTripView intake={intake} onRestart={reset} />}
       </div>
     </main>
   );
