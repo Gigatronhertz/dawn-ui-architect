@@ -12,6 +12,8 @@ type Intake = {
   startWindow: string;
   transport: string;
   extras: string[];
+  operatorId?: string;
+  seats?: number;
 };
 
 type Hotel = { id: string; name: string; area: string; pricePerNight: number; rating: number; perks: string[] };
