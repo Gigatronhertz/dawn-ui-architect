@@ -309,13 +309,81 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
         </Field>
         <Field n={7} label="Start window"><input className={inputCls} value={intake.startWindow} onChange={(e) => set("startWindow", e.target.value)} /></Field>
         <Field n={8} label="Transport">
-          <div className="flex flex-wrap gap-2">{["Charter bus", "Public transport", "Flights"].map((t) => <button key={t} type="button" onClick={() => set("transport", t)} className={chipCls(intake.transport === t)}>{t}</button>)}</div>
+          <div className="flex flex-wrap gap-2">{["Charter bus", "Public transport", "Flights"].map((t) => <button key={t} type="button" onClick={() => { set("transport", t); set("operatorId", undefined); }} className={chipCls(intake.transport === t)}>{t}</button>)}</div>
         </Field>
         <div className="md:col-span-2">
           <Field n={9} label="Add-ons (pick any)">
             <div className="flex flex-wrap gap-2">{EXTRAS_ALL.map((x) => <button key={x} type="button" onClick={() => toggleExtra(x)} className={chipCls(intake.extras.includes(x))}>{x}</button>)}</div>
           </Field>
         </div>
+
+        {/* operator picker — appears inline based on transport choice */}
+        <div className="md:col-span-2">
+          <div className="rounded-2xl bg-secondary/40 ring-hairline p-4 md:p-5">
+            <div className="flex items-baseline justify-between mb-1">
+              <div className="font-display text-sm font-semibold flex items-center gap-2">
+                🔎 Live {intake.transport.toLowerCase()} options
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-blue/15 text-google-blue">Pulled by Gemini</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">{intake.origin} → {intake.destination}</div>
+            </div>
+            <div className="text-[11px] text-muted-foreground mb-3">Pick the operator + how many seats. Price locks in after this.</div>
+
+            <div className="grid sm:grid-cols-2 gap-2.5">
+              {operatorsFor(intake.transport).map((op) => {
+                const active = intake.operatorId === op.id;
+                return (
+                  <button
+                    key={op.id}
+                    type="button"
+                    onClick={() => set("operatorId", op.id)}
+                    className={`text-left rounded-xl p-3 ring-hairline transition ${active ? "bg-primary-soft ring-primary/40" : "bg-card hover:bg-secondary"}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-display text-sm font-semibold flex items-center gap-1.5">
+                          <span className="text-base leading-none">{op.logo}</span>
+                          <span className="truncate">{op.brand}</span>
+                          {active && <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">Picked</span>}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{op.class}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-display text-sm font-semibold tabular-nums">{fmtNGN(op.pricePerSeat)}</div>
+                        <div className="text-[10px] text-muted-foreground">per seat</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                      <span className="px-1.5 py-0.5 rounded bg-secondary">🕒 {op.depart} → {op.arrive}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-secondary">⏱ {op.duration}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-secondary">⭐ {op.rating}</span>
+                      {op.note && <span className="px-1.5 py-0.5 rounded bg-secondary">{op.note}</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* seat counter */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card ring-hairline p-3">
+              <div className="text-sm">
+                <div className="font-medium">Seats / tickets</div>
+                <div className="text-[11px] text-muted-foreground">Default = squad size ({intake.squadSize}). Adjust if some are joining later.</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => set("seats", Math.max(1, (intake.seats ?? intake.squadSize) - 1))} className="w-8 h-8 rounded-full ring-hairline bg-card hover:bg-secondary font-display text-base">−</button>
+                <div className="w-10 text-center font-display font-semibold tabular-nums">{intake.seats ?? intake.squadSize}</div>
+                <button type="button" onClick={() => set("seats", Math.min(30, (intake.seats ?? intake.squadSize) + 1))} className="w-8 h-8 rounded-full ring-hairline bg-card hover:bg-secondary font-display text-base">+</button>
+                {intake.operatorId && (
+                  <div className="ml-3 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold tabular-nums">
+                    Locks at {fmtNGN((operatorsFor(intake.transport).find(o => o.id === intake.operatorId)!.pricePerSeat) * (intake.seats ?? intake.squadSize))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
       <div className="mt-8 flex justify-end">
         <PrimaryBtn onClick={() => onSubmit(intake)}>Generate plan with AI</PrimaryBtn>
