@@ -827,37 +827,26 @@ function ContributionsView({ intake, onNext }: { intake: Intake; onNext: () => v
 
 /* ---------------- step 6: during the trip ---------------- */
 type TripPing = {
-  kind: "packing" | "depart" | "safety" | "expense" | "photo" | "update";
+  kind: "depart" | "uber" | "stop" | "expense" | "photo" | "update" | "packup";
   who: string;
   emoji: string;
   text: string;
   time: string;
 };
 
-const PACKING_LIST = [
-  "Phone charger + power bank",
-  "ID card / driver's license",
-  "Toothbrush & toiletries",
-  "2 outfits + sleepwear",
-  "Slippers + sneakers",
-  "Sunglasses & sunscreen",
-  "Small cash (₦5k for tips)",
-  "Meds you actually need",
-];
-
 function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
-  const [packed, setPacked] = useState<Record<string, boolean>>({});
-  const packedCount = Object.values(packed).filter(Boolean).length;
-  const packPct = Math.round((packedCount / PACKING_LIST.length) * 100);
+  const opName = operatorsFor(intake.transport).find(o => o.id === intake.operatorId)?.brand ?? intake.transport;
 
   const FEED_SEQ: TripPing[] = useMemo(() => [
-    { kind: "packing", who: "MySquadGo Bot", emoji: "🤖", text: `🎒 T-12 hours! Packing reminder for ${intake.squadSize} squad members.\nDon't forget: chargers, ID, meds, slippers. Tap the checklist 👉`, time: "Yesterday · 19:00" },
-    { kind: "depart", who: "MySquadGo Bot", emoji: "🤖", text: `🌅 Good morning squad! Day 1 — Depart 7:00am sharp from GIGM Jibowu.\nFirst stop: Agodi Gardens · 11:00am.\nFull itinerary 👉 [link]`, time: "Today · 06:00" },
-    { kind: "safety", who: "MySquadGo Bot", emoji: "🛡️", text: `🛡️ Safety check-in: tap "I'm good" so the squad knows you're safe. (Auto every 4 hours)`, time: "Today · 10:00" },
-    { kind: "photo", who: "MySquadGo Bot", emoji: "📸", text: `📸 Photo drop time! Send your best shots from Cocoa House to the group — I'll save them for the trip collage 🎬`, time: "Today · 16:30" },
-    { kind: "expense", who: "Tunde 🦁", emoji: "💸", text: `Logged ₦5,000 for lunch — split 12 ways = ₦417 each. Settled at end of trip ✅`, time: "Today · 13:42" },
-    { kind: "update", who: "MySquadGo Bot", emoji: "🔁", text: `🔁 Itinerary update: 8pm Amala spot moved to Amala Skye (better reviews ⭐ 4.7). Map pin updated.`, time: "Today · 15:10" },
-  ], [intake.squadSize]);
+    { kind: "depart", who: "MySquadGo Bot", emoji: "🚌", text: `🌅 Good morning squad! Day 1 — ${opName} departs 7:00am sharp.\nFirst stop: Agodi Gardens · 11:00am.\nFull itinerary 👉 [link]`, time: "Day 1 · 06:00" },
+    { kind: "uber", who: "MySquadGo Bot", emoji: "🚖", text: `🚖 Heading to Agodi Gardens? When you book your Uber, drop the trip-share link here so loved ones can follow along.`, time: "Day 1 · 10:42" },
+    { kind: "stop", who: "MySquadGo Bot", emoji: "📍", text: `📍 Stop reached: Agodi Gardens. Quick tap when you've all linked up — that's it, no spam.`, time: "Day 1 · 11:08" },
+    { kind: "photo", who: "MySquadGo Bot", emoji: "📸", text: `📸 Cocoa House looks 🔥 — drop a few shots for the recap reel whenever.`, time: "Day 1 · 16:35" },
+    { kind: "expense", who: "Tunde 🦁", emoji: "💸", text: `Logged ₦5,000 for lunch — split 12 ways = ₦417 each. Settled at end of trip ✅`, time: "Day 1 · 13:42" },
+    { kind: "uber", who: "MySquadGo Bot", emoji: "🚖", text: `🚖 Night move to Amala Skye — share your Uber trip ID so the squad knows you're rolling.`, time: "Day 1 · 19:50" },
+    { kind: "update", who: "MySquadGo Bot", emoji: "🔁", text: `🔁 Itinerary update: tomorrow's brunch pushed to 10am (chef's request). Map pin refreshed.`, time: "Day 1 · 22:10" },
+    { kind: "packup", who: "MySquadGo Bot", emoji: "🎒", text: `🎒 Last morning! Quick reminder before you check out — sweep the room, grab everything you came with: chargers, ID, that one slipper under the bed 👀`, time: "Day 2 · 09:30" },
+  ], [opName]);
 
   const [shown, setShown] = useState(1);
   useEffect(() => {
@@ -866,21 +855,23 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
     return () => clearTimeout(t);
   }, [shown, FEED_SEQ.length]);
 
-  const [checkedIn, setCheckedIn] = useState(false);
   const [photosSent, setPhotosSent] = useState(0);
+  const [uberShared, setUberShared] = useState<Record<number, boolean>>({});
+  const [stopOk, setStopOk] = useState<Record<number, boolean>>({});
 
   const kindStyles: Record<TripPing["kind"], string> = {
-    packing: "bg-google-yellow/15 text-google-yellow",
     depart: "bg-google-blue/15 text-google-blue",
-    safety: "bg-google-green/15 text-google-green",
+    uber: "bg-foreground/10 text-foreground",
+    stop: "bg-google-green/15 text-google-green",
     expense: "bg-primary/15 text-primary",
     photo: "bg-google-pink/15 text-google-pink",
     update: "bg-google-purple/15 text-google-purple",
+    packup: "bg-google-yellow/20 text-google-yellow",
   };
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 6 of 7 · During the trip" title="The bot rides shotgun." sub="Day-of reminders, safety check-ins, expense logging, and photo prompts — all in your group chat." />
+      <StepHeader eyebrow="Step 6 of 7 · During the trip" title="The bot rides shotgun." sub="Stop-based check-ins, Uber trip-share, and quiet reminders — never every-4-hours nagging." />
 
       <div className="grid lg:grid-cols-[1.1fr,1fr] gap-6">
         {/* live trip feed */}
@@ -888,10 +879,10 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Live trip feed</div>
             <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Day 1 active
+              <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Trip live
             </span>
           </div>
-          <div className="space-y-2.5 max-h-[28rem] overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-[32rem] overflow-y-auto pr-1">
             {FEED_SEQ.slice(0, shown).map((p, i) => (
               <div key={i} className="rounded-2xl bg-card ring-hairline p-4 animate-rise">
                 <div className="flex items-start gap-3">
@@ -903,13 +894,22 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
                     </div>
                     <div className="text-sm text-foreground/90 whitespace-pre-line mt-0.5">{p.text}</div>
 
-                    {p.kind === "safety" && (
+                    {p.kind === "uber" && (
                       <button
-                        onClick={() => setCheckedIn(true)}
-                        disabled={checkedIn}
-                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${checkedIn ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
+                        onClick={() => setUberShared((u) => ({ ...u, [i]: true }))}
+                        disabled={uberShared[i]}
+                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${uberShared[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
                       >
-                        {checkedIn ? "✓ Checked in safely" : "I'm good ✋"}
+                        {uberShared[i] ? "✓ Trip ID shared with squad" : "🔗 Share Uber trip ID"}
+                      </button>
+                    )}
+                    {p.kind === "stop" && (
+                      <button
+                        onClick={() => setStopOk((s) => ({ ...s, [i]: true }))}
+                        disabled={stopOk[i]}
+                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${stopOk[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
+                      >
+                        {stopOk[i] ? "✓ Squad linked up" : "👍 We're all here"}
                       </button>
                     )}
                     {p.kind === "photo" && (
@@ -930,37 +930,12 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
           </div>
         </div>
 
-        {/* right column: packing + map + safety */}
+        {/* right column: today's stops + check-in summary + pack-up */}
         <div className="space-y-4">
-          {/* packing */}
-          <div className="rounded-2xl bg-secondary/60 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-display font-semibold flex items-center gap-2">🎒 Packing checklist</div>
-              <div className="text-xs font-semibold tabular-nums text-muted-foreground">{packedCount}/{PACKING_LIST.length}</div>
-            </div>
-            <div className="h-1.5 rounded-full bg-card overflow-hidden mb-3">
-              <div className="h-full bg-gradient-primary transition-all duration-500" style={{ width: `${packPct}%` }} />
-            </div>
-            <ul className="space-y-1.5">
-              {PACKING_LIST.map((item) => (
-                <li key={item}>
-                  <button
-                    onClick={() => setPacked((p) => ({ ...p, [item]: !p[item] }))}
-                    className="w-full flex items-center gap-2.5 text-sm text-left py-1 hover:text-foreground transition-colors"
-                  >
-                    <span className={`grid place-items-center w-4 h-4 rounded ring-1 transition ${packed[item] ? "bg-primary ring-primary text-primary-foreground" : "ring-border bg-card"}`}>
-                      {packed[item] && <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
-                    </span>
-                    <span className={packed[item] ? "line-through text-muted-foreground" : ""}>{item}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* in-city stops mini-map */}
           <div className="rounded-2xl bg-card ring-hairline p-5">
-            <div className="font-display font-semibold mb-3 flex items-center gap-2">🗺️ Today's stops</div>
+            <div className="font-display font-semibold mb-1 flex items-center gap-2">🗺️ Today's stops</div>
+            <div className="text-[11px] text-muted-foreground mb-3">Each Uber ride prompts a trip-share — non-invasive, one tap.</div>
             <ol className="space-y-2.5">
               {[
                 { time: "11:00", stop: "Agodi Gardens", uber: "₦1,800" },
@@ -970,17 +945,25 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
                 <li key={s.stop} className="flex items-center gap-3 text-sm">
                   <span className="font-display text-xs font-semibold tabular-nums text-muted-foreground w-12">{s.time}</span>
                   <span className="flex-1 truncate">{s.stop}</span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-blue/10 text-google-blue">Uber {s.uber}</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-blue/10 text-google-blue">Uber ~{s.uber}</span>
                 </li>
               ))}
             </ol>
           </div>
 
-          {/* safety summary */}
+          {/* squad check-ins */}
           <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 p-5">
-            <div className="font-display font-semibold flex items-center gap-2 mb-2">🛡️ Squad safety</div>
+            <div className="font-display font-semibold flex items-center gap-2 mb-2">🛡️ Squad check-ins</div>
             <div className="text-sm text-foreground/80">
-              {checkedIn ? "11/12" : "10/12"} squad members checked in. Next auto check-in in 4 hours.
+              {Object.keys(stopOk).length + Object.keys(uberShared).length} taps logged so far. Bot only pings at stops & Uber rides — no 4-hour spam.
+            </div>
+          </div>
+
+          {/* pack-up reminder (replaces packing checklist) */}
+          <div className="rounded-2xl bg-google-yellow/15 ring-1 ring-google-yellow/30 p-5">
+            <div className="font-display font-semibold flex items-center gap-2 mb-1.5">🎒 Pack-up reminder</div>
+            <div className="text-sm text-foreground/80">
+              On the last morning the bot sends a single nudge: <em>"Sweep the room — grab everything you came with."</em> No checklists, no chasing.
             </div>
           </div>
         </div>
@@ -992,6 +975,7 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
     </Section>
   );
 }
+
 
 /* ---------------- step 7: after the trip ---------------- */
 function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () => void }) {
