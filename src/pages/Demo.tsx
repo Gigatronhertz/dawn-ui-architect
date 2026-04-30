@@ -12,11 +12,16 @@ type Intake = {
   startWindow: string;
   transport: string;
   extras: string[];
+  operatorId?: string;
+  seats?: number;
 };
 
 type Hotel = { id: string; name: string; area: string; pricePerNight: number; rating: number; perks: string[] };
 type DateOption = { id: string; label: string; sub: string };
 type Member = { name: string; emoji: string; paid: boolean; share: number };
+type Operator = { id: string; brand: string; logo: string; class: string; depart: string; arrive: string; duration: string; pricePerSeat: number; rating: number; note?: string };
+type ItineraryItem = { id: string; time: string; title: string; cost: number };
+type Suggestion = { id: string; title: string; tag: string; cost: number; emoji: string; blurb: string };
 
 /* ---------------- mock generator ---------------- */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
@@ -37,20 +42,45 @@ const DATE_OPTIONS: DateOption[] = [
 const SQUAD_NAMES = ["Tunde", "Ada", "Kemi", "Bisi", "Femi", "Zara", "Chinedu", "Yemi", "Tola", "Amaka", "Kunle", "Lola"];
 const EMOJIS = ["🦁", "🌶️", "🎧", "🍍", "🚀", "🌊", "🎬", "⚡", "🎨", "🍓", "🪩", "🛹"];
 
+const BUS_OPERATORS: Operator[] = [
+  { id: "gigm", brand: "GIGM", logo: "🟧", class: "Executive · Jibowu → Iwo Rd", depart: "07:00", arrive: "09:30", duration: "2h 30m", pricePerSeat: 8500, rating: 4.6, note: "AC · USB ports · WiFi" },
+  { id: "guo", brand: "GUO Transport", logo: "🟦", class: "Standard · Jibowu → Challenge", depart: "06:30", arrive: "09:15", duration: "2h 45m", pricePerSeat: 7000, rating: 4.3, note: "AC · Most frequent" },
+  { id: "abc", brand: "ABC Transport", logo: "🟥", class: "Luxury Coach · Amuwo → Iwo Rd", depart: "08:00", arrive: "10:45", duration: "2h 45m", pricePerSeat: 9500, rating: 4.7, note: "Reclining seats · Snacks" },
+  { id: "chisco", brand: "Chisco", logo: "🟨", class: "Standard · Jibowu", depart: "07:30", arrive: "10:30", duration: "3h", pricePerSeat: 6500, rating: 4.0 },
+];
+
+const FLIGHT_OPERATORS: Operator[] = [
+  { id: "air-peace", brand: "Air Peace", logo: "✈️", class: "Economy · LOS → IBA", depart: "07:25", arrive: "08:10", duration: "45m", pricePerSeat: 78000, rating: 4.4, note: "1 carry-on · 15kg checked" },
+  { id: "ibom", brand: "Ibom Air", logo: "🛫", class: "Economy · LOS → IBA", depart: "10:50", arrive: "11:35", duration: "45m", pricePerSeat: 92000, rating: 4.7, note: "On-time leader" },
+  { id: "green-africa", brand: "Green Africa", logo: "🟢", class: "Saver · LOS → IBA", depart: "14:15", arrive: "15:05", duration: "50m", pricePerSeat: 64000, rating: 4.1, note: "Cheapest · No bag included" },
+  { id: "emirates", brand: "Emirates (connect)", logo: "🔴", class: "Business connect · LOS → DXB → IBA", depart: "22:10", arrive: "+1d 18:30", duration: "20h", pricePerSeat: 480000, rating: 4.9, note: "For the lavish squad 💎" },
+];
+
+const PUBLIC_OPERATORS: Operator[] = [
+  { id: "danfo", brand: "Danfo + Keke combo", logo: "🚐", class: "Jibowu → Iwo Rd park → Keke", depart: "Anytime", arrive: "~3h later", duration: "3h", pricePerSeat: 4500, rating: 3.6, note: "Cheapest · Less comfy" },
+  { id: "shared-cab", brand: "Shared Sienna", logo: "🚙", class: "Park-to-park share (4-6 pax)", depart: "When full", arrive: "~2h 30m", duration: "2h 30m", pricePerSeat: 6000, rating: 4.0, note: "Faster than buses" },
+];
+
+const operatorsFor = (transport: string): Operator[] =>
+  transport === "Flights" ? FLIGHT_OPERATORS : transport === "Public transport" ? PUBLIC_OPERATORS : BUS_OPERATORS;
+
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
 
-function buildPlan(intake: Intake) {
-  const transport = intake.transport === "Charter bus" ? 7500 : intake.transport === "Flights" ? 95000 : 4500;
-  const transportTotal = transport * intake.squadSize;
+function buildPlan(intake: Intake, extraItineraryCost = 0) {
+  const ops = operatorsFor(intake.transport);
+  const op = ops.find((o) => o.id === intake.operatorId) || ops[0];
+  const seats = intake.seats ?? intake.squadSize;
+  const transport = op.pricePerSeat;
+  const transportTotal = transport * seats;
   const hotel = HOTELS[1]; // recommended
   const lodgingTotal = hotel.pricePerNight * intake.days * Math.ceil(intake.squadSize / 2);
   const food = 6500 * intake.days * intake.squadSize;
-  const activities = 9000 * intake.squadSize;
+  const activities = 9000 * intake.squadSize + extraItineraryCost;
   const buffer = Math.round((transportTotal + lodgingTotal + food + activities) * 0.07);
   const total = transportTotal + lodgingTotal + food + activities + buffer;
   const perPerson = Math.round(total / intake.squadSize);
-  return { transport, transportTotal, hotel, lodgingTotal, food, activities, buffer, total, perPerson };
+  return { transport, transportTotal, hotel, lodgingTotal, food, activities, buffer, total, perPerson, operator: op, seats };
 }
 
 /* ---------------- shared UI ---------------- */
@@ -279,27 +309,146 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
         </Field>
         <Field n={7} label="Start window"><input className={inputCls} value={intake.startWindow} onChange={(e) => set("startWindow", e.target.value)} /></Field>
         <Field n={8} label="Transport">
-          <div className="flex flex-wrap gap-2">{["Charter bus", "Public transport", "Flights"].map((t) => <button key={t} type="button" onClick={() => set("transport", t)} className={chipCls(intake.transport === t)}>{t}</button>)}</div>
+          <div className="flex flex-wrap gap-2">{["Charter bus", "Public transport", "Flights"].map((t) => <button key={t} type="button" onClick={() => { set("transport", t); set("operatorId", undefined); }} className={chipCls(intake.transport === t)}>{t}</button>)}</div>
         </Field>
         <div className="md:col-span-2">
           <Field n={9} label="Add-ons (pick any)">
             <div className="flex flex-wrap gap-2">{EXTRAS_ALL.map((x) => <button key={x} type="button" onClick={() => toggleExtra(x)} className={chipCls(intake.extras.includes(x))}>{x}</button>)}</div>
           </Field>
         </div>
+
+        {/* operator picker — appears inline based on transport choice */}
+        <div className="md:col-span-2">
+          <div className="rounded-2xl bg-secondary/40 ring-hairline p-4 md:p-5">
+            <div className="flex items-baseline justify-between mb-1">
+              <div className="font-display text-sm font-semibold flex items-center gap-2">
+                🔎 Live {intake.transport.toLowerCase()} options
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-blue/15 text-google-blue">Pulled by Gemini</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">{intake.origin} → {intake.destination}</div>
+            </div>
+            <div className="text-[11px] text-muted-foreground mb-3">Pick the operator + how many seats. Price locks in after this.</div>
+
+            <div className="grid sm:grid-cols-2 gap-2.5">
+              {operatorsFor(intake.transport).map((op) => {
+                const active = intake.operatorId === op.id;
+                return (
+                  <button
+                    key={op.id}
+                    type="button"
+                    onClick={() => set("operatorId", op.id)}
+                    className={`text-left rounded-xl p-3 ring-hairline transition ${active ? "bg-primary-soft ring-primary/40" : "bg-card hover:bg-secondary"}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-display text-sm font-semibold flex items-center gap-1.5">
+                          <span className="text-base leading-none">{op.logo}</span>
+                          <span className="truncate">{op.brand}</span>
+                          {active && <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">Picked</span>}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{op.class}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-display text-sm font-semibold tabular-nums">{fmtNGN(op.pricePerSeat)}</div>
+                        <div className="text-[10px] text-muted-foreground">per seat</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                      <span className="px-1.5 py-0.5 rounded bg-secondary">🕒 {op.depart} → {op.arrive}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-secondary">⏱ {op.duration}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-secondary">⭐ {op.rating}</span>
+                      {op.note && <span className="px-1.5 py-0.5 rounded bg-secondary">{op.note}</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* seat counter */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card ring-hairline p-3">
+              <div className="text-sm">
+                <div className="font-medium">Seats / tickets</div>
+                <div className="text-[11px] text-muted-foreground">Default = squad size ({intake.squadSize}). Adjust if some are joining later.</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => set("seats", Math.max(1, (intake.seats ?? intake.squadSize) - 1))} className="w-8 h-8 rounded-full ring-hairline bg-card hover:bg-secondary font-display text-base">−</button>
+                <div className="w-10 text-center font-display font-semibold tabular-nums">{intake.seats ?? intake.squadSize}</div>
+                <button type="button" onClick={() => set("seats", Math.min(30, (intake.seats ?? intake.squadSize) + 1))} className="w-8 h-8 rounded-full ring-hairline bg-card hover:bg-secondary font-display text-base">+</button>
+                {intake.operatorId && (
+                  <div className="ml-3 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold tabular-nums">
+                    Locks at {fmtNGN((operatorsFor(intake.transport).find(o => o.id === intake.operatorId)!.pricePerSeat) * (intake.seats ?? intake.squadSize))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
-      <div className="mt-8 flex justify-end">
-        <PrimaryBtn onClick={() => onSubmit(intake)}>Generate plan with AI</PrimaryBtn>
+      <div className="mt-8 flex items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">{intake.operatorId ? `✓ ${operatorsFor(intake.transport).find(o => o.id === intake.operatorId)!.brand} selected` : "Pick an operator above to lock the price."}</div>
+        <PrimaryBtn onClick={() => onSubmit({ ...intake, seats: intake.seats ?? intake.squadSize })} disabled={!intake.operatorId}>Generate plan with AI</PrimaryBtn>
       </div>
     </Section>
   );
 }
 
 /* ---------------- step 2: AI plan ---------------- */
+const SUGGESTIONS_BY_DAY: Record<number, Suggestion[]> = {
+  0: [
+    { id: "s-cocoa2", title: "Bower's Tower sunset", tag: "Viewpoint", cost: 1500, emoji: "🌇", blurb: "360° view of Ibadan rooftops, best at golden hour." },
+    { id: "s-iya", title: "Iya Oyo amala detour", tag: "Foodie", cost: 2500, emoji: "🍲", blurb: "Legendary spot — locals queue out the door." },
+    { id: "s-mall", title: "Ventura Mall hangout", tag: "Chill", cost: 3500, emoji: "🛍️", blurb: "Cinema, food court, AC reset before night out." },
+  ],
+  1: [
+    { id: "s-iitm", title: "IITA Forest Reserve walk", tag: "Adventure", cost: 4000, emoji: "🌳", blurb: "Quiet trails, monkey sightings, perfect group photos." },
+    { id: "s-trans", title: "Trans Wonderland park", tag: "Family fun", cost: 3500, emoji: "🎢", blurb: "Rides + go-karts, a chaotic squad favourite." },
+    { id: "s-jazz", title: "Bay Lounge jazz night", tag: "Nightlife", cost: 5500, emoji: "🎷", blurb: "Live band Fridays, ₦5k cover includes one drink." },
+  ],
+  2: [
+    { id: "s-mapo", title: "Mapo Hall heritage tour", tag: "Cultural", cost: 2000, emoji: "🏛️", blurb: "Colonial architecture + city history in 90 mins." },
+    { id: "s-bodija", title: "Bodija market run", tag: "Souvenirs", cost: 4000, emoji: "🧺", blurb: "Adire fabric, palm oil, dried herbs — bargain hard." },
+  ],
+};
+const fallbackSuggestions: Suggestion[] = SUGGESTIONS_BY_DAY[1];
+
 function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
-  const plan = useMemo(() => buildPlan(intake), [intake]);
   const [phase, setPhase] = useState(0); // 0 = generating, 1 = done
   const phases = ["Analyzing route…", "Pricing 14 hotels with Gemini…", "Building daily itinerary…", "Calculating costs & buffer…"];
   const [pIdx, setPIdx] = useState(0);
+
+  // editable itinerary state
+  const [days, setDays] = useState<{ day: number; title: string; items: ItineraryItem[] }[]>(() =>
+    Array.from({ length: intake.days }, (_, i) => ({
+      day: i + 1,
+      title: i === 0 ? "Arrival & city pulse" : i === intake.days - 1 ? "Brunch & departure" : "Cultural day + nightlife",
+      items: i === 0
+        ? [
+            { id: `d${i}-1`, time: "08:00", title: `${operatorsFor(intake.transport).find(o => o.id === intake.operatorId)?.brand ?? "Departure"} — pickup`, cost: 0 },
+            { id: `d${i}-2`, time: "13:00", title: "Check-in at hotel", cost: 0 },
+            { id: `d${i}-3`, time: "16:00", title: "Cocoa House rooftop", cost: 2000 },
+            { id: `d${i}-4`, time: "20:00", title: "Amala spot at Amala Skye", cost: 4500 },
+          ]
+        : i === intake.days - 1
+        ? [
+            { id: `d${i}-1`, time: "09:00", title: "Brunch at Kakanfo", cost: 5500 },
+            { id: `d${i}-2`, time: "12:00", title: "Souvenirs at Bodija", cost: 4000 },
+            { id: `d${i}-3`, time: "15:00", title: "Bus back to Lagos", cost: 0 },
+          ]
+        : [
+            { id: `d${i}-1`, time: "10:00", title: "University of Ibadan tour", cost: 2500 },
+            { id: `d${i}-2`, time: "14:00", title: "Agodi Gardens", cost: 3000 },
+            { id: `d${i}-3`, time: "19:00", title: "Live music at Bay Lounge", cost: 5500 },
+          ],
+    }))
+  );
+  const [openDay, setOpenDay] = useState<number | null>(0);
+
+  const extraItineraryCost = useMemo(
+    () => days.reduce((sum, d) => sum + d.items.reduce((s, it) => s + it.cost, 0), 0) * intake.squadSize,
+    [days, intake.squadSize]
+  );
+  const plan = useMemo(() => buildPlan(intake, extraItineraryCost), [intake, extraItineraryCost]);
 
   useEffect(() => {
     if (phase === 1) return;
@@ -307,6 +456,24 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
     const done = setTimeout(() => setPhase(1), 2800);
     return () => { clearInterval(t); clearTimeout(done); };
   }, [phase]);
+
+  const addSuggestion = (dayIdx: number, s: Suggestion) => {
+    setDays((ds) => ds.map((d, i) => i === dayIdx
+      ? { ...d, items: [...d.items, { id: `${s.id}-${Date.now()}`, time: "—:—", title: s.title, cost: s.cost }] }
+      : d));
+  };
+  const removeItem = (dayIdx: number, itemId: string) => {
+    setDays((ds) => ds.map((d, i) => i === dayIdx ? { ...d, items: d.items.filter(it => it.id !== itemId) } : d));
+  };
+  const addCustom = (dayIdx: number) => {
+    const title = window.prompt("What's the new stop?")?.trim();
+    if (!title) return;
+    const costStr = window.prompt("Estimated cost per person (₦)? Leave blank for 0.")?.trim();
+    const cost = costStr ? Math.max(0, parseInt(costStr, 10) || 0) : 0;
+    setDays((ds) => ds.map((d, i) => i === dayIdx
+      ? { ...d, items: [...d.items, { id: `custom-${Date.now()}`, time: "—:—", title, cost }] }
+      : d));
+  };
 
   if (phase === 0) {
     return (
@@ -325,16 +492,6 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
     );
   }
 
-  const itinerary = Array.from({ length: intake.days }, (_, i) => ({
-    day: i + 1,
-    title: i === 0 ? "Arrival & city pulse" : i === intake.days - 1 ? "Brunch & departure" : "Cultural day + nightlife",
-    items: i === 0
-      ? ["08:00 · GIGM bus, Jibowu", "13:00 · Check-in at hotel", "16:00 · Cocoa House rooftop", "20:00 · Amala spot at Amala Skye"]
-      : i === intake.days - 1
-      ? ["09:00 · Brunch at Kakanfo", "12:00 · Souvenirs at Bodija", "15:00 · Bus back to Lagos"]
-      : ["10:00 · University of Ibadan tour", "14:00 · Agodi Gardens", "19:00 · Live music at Bay Lounge"],
-  }));
-
   return (
     <div className="space-y-4">
       <Section>
@@ -342,9 +499,9 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
 
         <div className="grid md:grid-cols-3 gap-3 mb-8">
           {[
-            { tag: "Transport", val: fmtNGN(plan.transportTotal), sub: `${intake.transport} · ${fmtNGN(plan.transport)}/p`, color: "bg-google-blue/10 text-google-blue" },
+            { tag: "Transport", val: fmtNGN(plan.transportTotal), sub: `${plan.operator.brand} · ${plan.seats} × ${fmtNGN(plan.transport)}`, color: "bg-google-blue/10 text-google-blue" },
             { tag: "Lodging", val: fmtNGN(plan.lodgingTotal), sub: `${plan.hotel.name} · ${intake.days} nights`, color: "bg-google-purple/10 text-google-purple" },
-            { tag: "Per person", val: fmtNGN(plan.perPerson), sub: "All-in, locked", color: "bg-primary-soft text-primary" },
+            { tag: "Per person", val: fmtNGN(plan.perPerson), sub: "All-in · live recalc", color: "bg-primary-soft text-primary" },
           ].map((c) => (
             <div key={c.tag} className="rounded-2xl bg-secondary/60 p-4">
               <span className={`inline-flex text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${c.color}`}>{c.tag}</span>
@@ -394,17 +551,68 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">Itinerary</div>
+            <div className="flex items-baseline justify-between mb-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Itinerary <span className="text-google-blue normal-case tracking-normal ml-1">· editable</span></div>
+              <div className="text-[11px] text-muted-foreground">Tap a day to expand</div>
+            </div>
             <ol className="space-y-3">
-              {itinerary.map((d) => (
-                <li key={d.day} className="rounded-2xl bg-card ring-hairline p-4">
-                  <div className="flex items-baseline gap-3">
-                    <span className="font-display text-xs font-semibold text-muted-foreground">DAY {d.day}</span>
-                    <span className="font-display text-base font-semibold">{d.title}</span>
-                  </div>
-                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">{d.items.map((it) => <li key={it}>· {it}</li>)}</ul>
-                </li>
-              ))}
+              {days.map((d, di) => {
+                const open = openDay === di;
+                const dayCost = d.items.reduce((s, it) => s + it.cost, 0);
+                const sugg = SUGGESTIONS_BY_DAY[di] ?? fallbackSuggestions;
+                return (
+                  <li key={d.day} className="rounded-2xl bg-card ring-hairline overflow-hidden">
+                    <button onClick={() => setOpenDay(open ? null : di)} className="w-full text-left p-4 hover:bg-secondary/40 transition">
+                      <div className="flex items-center gap-3">
+                        <span className="font-display text-xs font-semibold text-muted-foreground">DAY {d.day}</span>
+                        <span className="font-display text-base font-semibold flex-1 truncate">{d.title}</span>
+                        <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">{fmtNGN(dayCost)}/p</span>
+                        <svg viewBox="0 0 24 24" className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
+                      </div>
+                      {!open && <ul className="mt-2 space-y-0.5 text-sm text-muted-foreground">{d.items.slice(0, 3).map(it => <li key={it.id} className="truncate">· {it.time} {it.title}</li>)}{d.items.length > 3 && <li className="text-[11px] italic">+ {d.items.length - 3} more</li>}</ul>}
+                    </button>
+
+                    {open && (
+                      <div className="border-t border-border p-4 space-y-4 animate-rise">
+                        {/* editable items */}
+                        <ul className="space-y-1.5">
+                          {d.items.map((it) => (
+                            <li key={it.id} className="flex items-center gap-2 text-sm group">
+                              <span className="font-display text-[11px] font-semibold tabular-nums text-muted-foreground w-12 shrink-0">{it.time}</span>
+                              <span className="flex-1 truncate">{it.title}</span>
+                              <span className="text-[11px] tabular-nums text-muted-foreground">{it.cost ? fmtNGN(it.cost) : "—"}</span>
+                              <button onClick={() => removeItem(di, it.id)} className="opacity-40 hover:opacity-100 hover:text-destructive transition" aria-label="Remove">
+                                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 6l12 12M6 18L18 6" /></svg>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        <button onClick={() => addCustom(di)} className="text-[11px] font-medium text-primary hover:underline">+ Add custom stop</button>
+
+                        {/* AI suggestions w/ photo tiles */}
+                        <div>
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-google-pink mb-2 flex items-center gap-1.5">✨ Gemini suggests for Day {d.day}</div>
+                          <div className="grid sm:grid-cols-2 gap-2.5">
+                            {sugg.map((s) => (
+                              <div key={s.id} className="rounded-xl bg-secondary/50 ring-hairline overflow-hidden flex flex-col">
+                                <div className="aspect-[16/9] grid place-items-center text-4xl bg-gradient-to-br from-google-pink/25 via-primary/20 to-google-blue/25">{s.emoji}</div>
+                                <div className="p-2.5 flex flex-col gap-1.5 flex-1">
+                                  <div className="flex items-baseline justify-between gap-2">
+                                    <div className="font-display text-sm font-semibold truncate">{s.title}</div>
+                                    <div className="text-[10px] font-semibold tabular-nums text-muted-foreground">{fmtNGN(s.cost)}/p</div>
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground line-clamp-2">{s.blurb}</div>
+                                  <button onClick={() => addSuggestion(di, s)} className="mt-1 self-start text-[11px] font-medium px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-90 transition">+ Add to Day {d.day}</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ol>
           </div>
 
@@ -619,37 +827,26 @@ function ContributionsView({ intake, onNext }: { intake: Intake; onNext: () => v
 
 /* ---------------- step 6: during the trip ---------------- */
 type TripPing = {
-  kind: "packing" | "depart" | "safety" | "expense" | "photo" | "update";
+  kind: "depart" | "uber" | "stop" | "expense" | "photo" | "update" | "packup";
   who: string;
   emoji: string;
   text: string;
   time: string;
 };
 
-const PACKING_LIST = [
-  "Phone charger + power bank",
-  "ID card / driver's license",
-  "Toothbrush & toiletries",
-  "2 outfits + sleepwear",
-  "Slippers + sneakers",
-  "Sunglasses & sunscreen",
-  "Small cash (₦5k for tips)",
-  "Meds you actually need",
-];
-
 function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
-  const [packed, setPacked] = useState<Record<string, boolean>>({});
-  const packedCount = Object.values(packed).filter(Boolean).length;
-  const packPct = Math.round((packedCount / PACKING_LIST.length) * 100);
+  const opName = operatorsFor(intake.transport).find(o => o.id === intake.operatorId)?.brand ?? intake.transport;
 
   const FEED_SEQ: TripPing[] = useMemo(() => [
-    { kind: "packing", who: "MySquadGo Bot", emoji: "🤖", text: `🎒 T-12 hours! Packing reminder for ${intake.squadSize} squad members.\nDon't forget: chargers, ID, meds, slippers. Tap the checklist 👉`, time: "Yesterday · 19:00" },
-    { kind: "depart", who: "MySquadGo Bot", emoji: "🤖", text: `🌅 Good morning squad! Day 1 — Depart 7:00am sharp from GIGM Jibowu.\nFirst stop: Agodi Gardens · 11:00am.\nFull itinerary 👉 [link]`, time: "Today · 06:00" },
-    { kind: "safety", who: "MySquadGo Bot", emoji: "🛡️", text: `🛡️ Safety check-in: tap "I'm good" so the squad knows you're safe. (Auto every 4 hours)`, time: "Today · 10:00" },
-    { kind: "photo", who: "MySquadGo Bot", emoji: "📸", text: `📸 Photo drop time! Send your best shots from Cocoa House to the group — I'll save them for the trip collage 🎬`, time: "Today · 16:30" },
-    { kind: "expense", who: "Tunde 🦁", emoji: "💸", text: `Logged ₦5,000 for lunch — split 12 ways = ₦417 each. Settled at end of trip ✅`, time: "Today · 13:42" },
-    { kind: "update", who: "MySquadGo Bot", emoji: "🔁", text: `🔁 Itinerary update: 8pm Amala spot moved to Amala Skye (better reviews ⭐ 4.7). Map pin updated.`, time: "Today · 15:10" },
-  ], [intake.squadSize]);
+    { kind: "depart", who: "MySquadGo Bot", emoji: "🚌", text: `🌅 Good morning squad! Day 1 — ${opName} departs 7:00am sharp.\nFirst stop: Agodi Gardens · 11:00am.\nFull itinerary 👉 [link]`, time: "Day 1 · 06:00" },
+    { kind: "uber", who: "MySquadGo Bot", emoji: "🚖", text: `🚖 Heading to Agodi Gardens? When you book your Uber, drop the trip-share link here so loved ones can follow along.`, time: "Day 1 · 10:42" },
+    { kind: "stop", who: "MySquadGo Bot", emoji: "📍", text: `📍 Stop reached: Agodi Gardens. Quick tap when you've all linked up — that's it, no spam.`, time: "Day 1 · 11:08" },
+    { kind: "photo", who: "MySquadGo Bot", emoji: "📸", text: `📸 Cocoa House looks 🔥 — drop a few shots for the recap reel whenever.`, time: "Day 1 · 16:35" },
+    { kind: "expense", who: "Tunde 🦁", emoji: "💸", text: `Logged ₦5,000 for lunch — split 12 ways = ₦417 each. Settled at end of trip ✅`, time: "Day 1 · 13:42" },
+    { kind: "uber", who: "MySquadGo Bot", emoji: "🚖", text: `🚖 Night move to Amala Skye — share your Uber trip ID so the squad knows you're rolling.`, time: "Day 1 · 19:50" },
+    { kind: "update", who: "MySquadGo Bot", emoji: "🔁", text: `🔁 Itinerary update: tomorrow's brunch pushed to 10am (chef's request). Map pin refreshed.`, time: "Day 1 · 22:10" },
+    { kind: "packup", who: "MySquadGo Bot", emoji: "🎒", text: `🎒 Last morning! Quick reminder before you check out — sweep the room, grab everything you came with: chargers, ID, that one slipper under the bed 👀`, time: "Day 2 · 09:30" },
+  ], [opName]);
 
   const [shown, setShown] = useState(1);
   useEffect(() => {
@@ -658,21 +855,23 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
     return () => clearTimeout(t);
   }, [shown, FEED_SEQ.length]);
 
-  const [checkedIn, setCheckedIn] = useState(false);
   const [photosSent, setPhotosSent] = useState(0);
+  const [uberShared, setUberShared] = useState<Record<number, boolean>>({});
+  const [stopOk, setStopOk] = useState<Record<number, boolean>>({});
 
   const kindStyles: Record<TripPing["kind"], string> = {
-    packing: "bg-google-yellow/15 text-google-yellow",
     depart: "bg-google-blue/15 text-google-blue",
-    safety: "bg-google-green/15 text-google-green",
+    uber: "bg-foreground/10 text-foreground",
+    stop: "bg-google-green/15 text-google-green",
     expense: "bg-primary/15 text-primary",
     photo: "bg-google-pink/15 text-google-pink",
     update: "bg-google-purple/15 text-google-purple",
+    packup: "bg-google-yellow/20 text-google-yellow",
   };
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 6 of 7 · During the trip" title="The bot rides shotgun." sub="Day-of reminders, safety check-ins, expense logging, and photo prompts — all in your group chat." />
+      <StepHeader eyebrow="Step 6 of 7 · During the trip" title="The bot rides shotgun." sub="Stop-based check-ins, Uber trip-share, and quiet reminders — never every-4-hours nagging." />
 
       <div className="grid lg:grid-cols-[1.1fr,1fr] gap-6">
         {/* live trip feed */}
@@ -680,10 +879,10 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Live trip feed</div>
             <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Day 1 active
+              <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Trip live
             </span>
           </div>
-          <div className="space-y-2.5 max-h-[28rem] overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-[32rem] overflow-y-auto pr-1">
             {FEED_SEQ.slice(0, shown).map((p, i) => (
               <div key={i} className="rounded-2xl bg-card ring-hairline p-4 animate-rise">
                 <div className="flex items-start gap-3">
@@ -695,13 +894,22 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
                     </div>
                     <div className="text-sm text-foreground/90 whitespace-pre-line mt-0.5">{p.text}</div>
 
-                    {p.kind === "safety" && (
+                    {p.kind === "uber" && (
                       <button
-                        onClick={() => setCheckedIn(true)}
-                        disabled={checkedIn}
-                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${checkedIn ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
+                        onClick={() => setUberShared((u) => ({ ...u, [i]: true }))}
+                        disabled={uberShared[i]}
+                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${uberShared[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
                       >
-                        {checkedIn ? "✓ Checked in safely" : "I'm good ✋"}
+                        {uberShared[i] ? "✓ Trip ID shared with squad" : "🔗 Share Uber trip ID"}
+                      </button>
+                    )}
+                    {p.kind === "stop" && (
+                      <button
+                        onClick={() => setStopOk((s) => ({ ...s, [i]: true }))}
+                        disabled={stopOk[i]}
+                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${stopOk[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
+                      >
+                        {stopOk[i] ? "✓ Squad linked up" : "👍 We're all here"}
                       </button>
                     )}
                     {p.kind === "photo" && (
@@ -722,37 +930,12 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
           </div>
         </div>
 
-        {/* right column: packing + map + safety */}
+        {/* right column: today's stops + check-in summary + pack-up */}
         <div className="space-y-4">
-          {/* packing */}
-          <div className="rounded-2xl bg-secondary/60 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-display font-semibold flex items-center gap-2">🎒 Packing checklist</div>
-              <div className="text-xs font-semibold tabular-nums text-muted-foreground">{packedCount}/{PACKING_LIST.length}</div>
-            </div>
-            <div className="h-1.5 rounded-full bg-card overflow-hidden mb-3">
-              <div className="h-full bg-gradient-primary transition-all duration-500" style={{ width: `${packPct}%` }} />
-            </div>
-            <ul className="space-y-1.5">
-              {PACKING_LIST.map((item) => (
-                <li key={item}>
-                  <button
-                    onClick={() => setPacked((p) => ({ ...p, [item]: !p[item] }))}
-                    className="w-full flex items-center gap-2.5 text-sm text-left py-1 hover:text-foreground transition-colors"
-                  >
-                    <span className={`grid place-items-center w-4 h-4 rounded ring-1 transition ${packed[item] ? "bg-primary ring-primary text-primary-foreground" : "ring-border bg-card"}`}>
-                      {packed[item] && <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
-                    </span>
-                    <span className={packed[item] ? "line-through text-muted-foreground" : ""}>{item}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* in-city stops mini-map */}
           <div className="rounded-2xl bg-card ring-hairline p-5">
-            <div className="font-display font-semibold mb-3 flex items-center gap-2">🗺️ Today's stops</div>
+            <div className="font-display font-semibold mb-1 flex items-center gap-2">🗺️ Today's stops</div>
+            <div className="text-[11px] text-muted-foreground mb-3">Each Uber ride prompts a trip-share — non-invasive, one tap.</div>
             <ol className="space-y-2.5">
               {[
                 { time: "11:00", stop: "Agodi Gardens", uber: "₦1,800" },
@@ -762,17 +945,25 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
                 <li key={s.stop} className="flex items-center gap-3 text-sm">
                   <span className="font-display text-xs font-semibold tabular-nums text-muted-foreground w-12">{s.time}</span>
                   <span className="flex-1 truncate">{s.stop}</span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-blue/10 text-google-blue">Uber {s.uber}</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-blue/10 text-google-blue">Uber ~{s.uber}</span>
                 </li>
               ))}
             </ol>
           </div>
 
-          {/* safety summary */}
+          {/* squad check-ins */}
           <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 p-5">
-            <div className="font-display font-semibold flex items-center gap-2 mb-2">🛡️ Squad safety</div>
+            <div className="font-display font-semibold flex items-center gap-2 mb-2">🛡️ Squad check-ins</div>
             <div className="text-sm text-foreground/80">
-              {checkedIn ? "11/12" : "10/12"} squad members checked in. Next auto check-in in 4 hours.
+              {Object.keys(stopOk).length + Object.keys(uberShared).length} taps logged so far. Bot only pings at stops & Uber rides — no 4-hour spam.
+            </div>
+          </div>
+
+          {/* pack-up reminder (replaces packing checklist) */}
+          <div className="rounded-2xl bg-google-yellow/15 ring-1 ring-google-yellow/30 p-5">
+            <div className="font-display font-semibold flex items-center gap-2 mb-1.5">🎒 Pack-up reminder</div>
+            <div className="text-sm text-foreground/80">
+              On the last morning the bot sends a single nudge: <em>"Sweep the room — grab everything you came with."</em> No checklists, no chasing.
             </div>
           </div>
         </div>
@@ -784,6 +975,7 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
     </Section>
   );
 }
+
 
 /* ---------------- step 7: after the trip ---------------- */
 function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () => void }) {
