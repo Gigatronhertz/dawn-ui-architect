@@ -536,7 +536,7 @@ function VoteView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
 }
 
 /* ---------------- step 4: contributions ---------------- */
-function ContributionsView({ intake, onRestart }: { intake: Intake; onRestart: () => void }) {
+function ContributionsView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   const plan = useMemo(() => buildPlan(intake), [intake]);
   const [members, setMembers] = useState<Member[]>(() =>
     Array.from({ length: intake.squadSize }, (_, i) => ({
