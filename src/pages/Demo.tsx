@@ -128,7 +128,7 @@ function WhatsAppView({ onNext }: { onNext: () => void }) {
   return (
     <Section>
       <StepHeader
-        eyebrow="Step 1 of 5 · WhatsApp"
+        eyebrow="Step 1 of 7 · WhatsApp"
         title="It starts where your squad already chats."
         sub="Watch what happens the moment someone adds the MySquadGo bot to a group."
       />
@@ -261,7 +261,7 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 2 of 5 · Intake" title="Tell us about the trip." sub={`${STEP1_QUESTIONS} quick questions. Under two minutes. The bot is asking — answer for the squad.`} />
+      <StepHeader eyebrow="Step 2 of 7 · Intake" title="Tell us about the trip." sub={`${STEP1_QUESTIONS} quick questions. Under two minutes. The bot is asking — answer for the squad.`} />
       <div className="grid md:grid-cols-2 gap-5">
         <Field n={1} label="Where from?"><input className={inputCls} value={intake.origin} onChange={(e) => set("origin", e.target.value)} /></Field>
         <Field n={2} label="Where to?"><input className={inputCls} value={intake.destination} onChange={(e) => set("destination", e.target.value)} /></Field>
@@ -311,7 +311,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   if (phase === 0) {
     return (
       <Section>
-        <StepHeader eyebrow="Step 3 of 5 · AI Planning" title="Gemini is cooking…" />
+        <StepHeader eyebrow="Step 3 of 7 · AI Planning" title="Gemini is cooking…" />
         <div className="rounded-2xl bg-secondary/60 p-8 text-center">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow animate-float">
             <svg viewBox="0 0 24 24" className="w-7 h-7 text-primary-foreground" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" /></svg>
@@ -338,7 +338,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   return (
     <div className="space-y-4">
       <Section>
-        <StepHeader eyebrow="Step 3 of 5 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
+        <StepHeader eyebrow="Step 3 of 7 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
 
         <div className="grid md:grid-cols-3 gap-3 mb-8">
           {[
@@ -471,7 +471,7 @@ function VoteView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 4 of 5 · Vote" title="Squad picks the details." sub={`${intake.squadSize} members are voting in real time. Tap to cast yours.`} />
+      <StepHeader eyebrow="Step 4 of 7 · Vote" title="Squad picks the details." sub={`${intake.squadSize} members are voting in real time. Tap to cast yours.`} />
 
       <div className="grid md:grid-cols-2 gap-8">
         <div>
@@ -536,7 +536,7 @@ function VoteView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
 }
 
 /* ---------------- step 4: contributions ---------------- */
-function ContributionsView({ intake, onRestart }: { intake: Intake; onRestart: () => void }) {
+function ContributionsView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   const plan = useMemo(() => buildPlan(intake), [intake]);
   const [members, setMembers] = useState<Member[]>(() =>
     Array.from({ length: intake.squadSize }, (_, i) => ({
@@ -568,7 +568,7 @@ function ContributionsView({ intake, onRestart }: { intake: Intake; onRestart: (
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 5 of 5 · Contributions" title="Live payment tracker." sub="The bot DMs each member their own Paystack link. No spreadsheet, no chasing." />
+      <StepHeader eyebrow="Step 5 of 7 · Contributions" title="Live payment tracker." sub="The bot DMs each member their own Paystack link. No spreadsheet, no chasing." />
 
       <div className="rounded-2xl bg-gradient-primary text-primary-foreground p-6 md:p-8 mb-6 shadow-glow">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -611,6 +611,330 @@ function ContributionsView({ intake, onRestart }: { intake: Intake; onRestart: (
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs text-muted-foreground">Auto-reminders sent at 72h · 24h · 2h before deadline.</div>
+        <PrimaryBtn onClick={onNext}>Trip day — let's go 🚌</PrimaryBtn>
+      </div>
+    </Section>
+  );
+}
+
+/* ---------------- step 6: during the trip ---------------- */
+type TripPing = {
+  kind: "packing" | "depart" | "safety" | "expense" | "photo" | "update";
+  who: string;
+  emoji: string;
+  text: string;
+  time: string;
+};
+
+const PACKING_LIST = [
+  "Phone charger + power bank",
+  "ID card / driver's license",
+  "Toothbrush & toiletries",
+  "2 outfits + sleepwear",
+  "Slippers + sneakers",
+  "Sunglasses & sunscreen",
+  "Small cash (₦5k for tips)",
+  "Meds you actually need",
+];
+
+function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
+  const [packed, setPacked] = useState<Record<string, boolean>>({});
+  const packedCount = Object.values(packed).filter(Boolean).length;
+  const packPct = Math.round((packedCount / PACKING_LIST.length) * 100);
+
+  const FEED_SEQ: TripPing[] = useMemo(() => [
+    { kind: "packing", who: "MySquadGo Bot", emoji: "🤖", text: `🎒 T-12 hours! Packing reminder for ${intake.squadSize} squad members.\nDon't forget: chargers, ID, meds, slippers. Tap the checklist 👉`, time: "Yesterday · 19:00" },
+    { kind: "depart", who: "MySquadGo Bot", emoji: "🤖", text: `🌅 Good morning squad! Day 1 — Depart 7:00am sharp from GIGM Jibowu.\nFirst stop: Agodi Gardens · 11:00am.\nFull itinerary 👉 [link]`, time: "Today · 06:00" },
+    { kind: "safety", who: "MySquadGo Bot", emoji: "🛡️", text: `🛡️ Safety check-in: tap "I'm good" so the squad knows you're safe. (Auto every 4 hours)`, time: "Today · 10:00" },
+    { kind: "photo", who: "MySquadGo Bot", emoji: "📸", text: `📸 Photo drop time! Send your best shots from Cocoa House to the group — I'll save them for the trip collage 🎬`, time: "Today · 16:30" },
+    { kind: "expense", who: "Tunde 🦁", emoji: "💸", text: `Logged ₦5,000 for lunch — split 12 ways = ₦417 each. Settled at end of trip ✅`, time: "Today · 13:42" },
+    { kind: "update", who: "MySquadGo Bot", emoji: "🔁", text: `🔁 Itinerary update: 8pm Amala spot moved to Amala Skye (better reviews ⭐ 4.7). Map pin updated.`, time: "Today · 15:10" },
+  ], [intake.squadSize]);
+
+  const [shown, setShown] = useState(1);
+  useEffect(() => {
+    if (shown >= FEED_SEQ.length) return;
+    const t = setTimeout(() => setShown((s) => s + 1), 1800);
+    return () => clearTimeout(t);
+  }, [shown, FEED_SEQ.length]);
+
+  const [checkedIn, setCheckedIn] = useState(false);
+  const [photosSent, setPhotosSent] = useState(0);
+
+  const kindStyles: Record<TripPing["kind"], string> = {
+    packing: "bg-google-yellow/15 text-google-yellow",
+    depart: "bg-google-blue/15 text-google-blue",
+    safety: "bg-google-green/15 text-google-green",
+    expense: "bg-primary/15 text-primary",
+    photo: "bg-google-pink/15 text-google-pink",
+    update: "bg-google-purple/15 text-google-purple",
+  };
+
+  return (
+    <Section>
+      <StepHeader eyebrow="Step 6 of 7 · During the trip" title="The bot rides shotgun." sub="Day-of reminders, safety check-ins, expense logging, and photo prompts — all in your group chat." />
+
+      <div className="grid lg:grid-cols-[1.1fr,1fr] gap-6">
+        {/* live trip feed */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Live trip feed</div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Day 1 active
+            </span>
+          </div>
+          <div className="space-y-2.5 max-h-[28rem] overflow-y-auto pr-1">
+            {FEED_SEQ.slice(0, shown).map((p, i) => (
+              <div key={i} className="rounded-2xl bg-card ring-hairline p-4 animate-rise">
+                <div className="flex items-start gap-3">
+                  <div className={`grid place-items-center w-9 h-9 rounded-full text-base shrink-0 ${kindStyles[p.kind]}`}>{p.emoji}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="font-display text-sm font-semibold truncate">{p.who}</div>
+                      <div className="text-[10px] text-muted-foreground shrink-0">{p.time}</div>
+                    </div>
+                    <div className="text-sm text-foreground/90 whitespace-pre-line mt-0.5">{p.text}</div>
+
+                    {p.kind === "safety" && (
+                      <button
+                        onClick={() => setCheckedIn(true)}
+                        disabled={checkedIn}
+                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${checkedIn ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
+                      >
+                        {checkedIn ? "✓ Checked in safely" : "I'm good ✋"}
+                      </button>
+                    )}
+                    {p.kind === "photo" && (
+                      <button
+                        onClick={() => setPhotosSent((n) => n + 1)}
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-google-pink/15 text-google-pink px-3 py-1.5 text-xs font-medium hover:bg-google-pink/25 transition"
+                      >
+                        📸 Send photo {photosSent > 0 && `· ${photosSent} sent`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {shown < FEED_SEQ.length && (
+              <div className="text-[11px] text-muted-foreground italic px-2">Bot is typing the next ping…</div>
+            )}
+          </div>
+        </div>
+
+        {/* right column: packing + map + safety */}
+        <div className="space-y-4">
+          {/* packing */}
+          <div className="rounded-2xl bg-secondary/60 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-display font-semibold flex items-center gap-2">🎒 Packing checklist</div>
+              <div className="text-xs font-semibold tabular-nums text-muted-foreground">{packedCount}/{PACKING_LIST.length}</div>
+            </div>
+            <div className="h-1.5 rounded-full bg-card overflow-hidden mb-3">
+              <div className="h-full bg-gradient-primary transition-all duration-500" style={{ width: `${packPct}%` }} />
+            </div>
+            <ul className="space-y-1.5">
+              {PACKING_LIST.map((item) => (
+                <li key={item}>
+                  <button
+                    onClick={() => setPacked((p) => ({ ...p, [item]: !p[item] }))}
+                    className="w-full flex items-center gap-2.5 text-sm text-left py-1 hover:text-foreground transition-colors"
+                  >
+                    <span className={`grid place-items-center w-4 h-4 rounded ring-1 transition ${packed[item] ? "bg-primary ring-primary text-primary-foreground" : "ring-border bg-card"}`}>
+                      {packed[item] && <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                    </span>
+                    <span className={packed[item] ? "line-through text-muted-foreground" : ""}>{item}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* in-city stops mini-map */}
+          <div className="rounded-2xl bg-card ring-hairline p-5">
+            <div className="font-display font-semibold mb-3 flex items-center gap-2">🗺️ Today's stops</div>
+            <ol className="space-y-2.5">
+              {[
+                { time: "11:00", stop: "Agodi Gardens", uber: "₦1,800" },
+                { time: "14:00", stop: "Cocoa House rooftop", uber: "₦1,200" },
+                { time: "20:00", stop: "Amala Skye", uber: "₦2,400" },
+              ].map((s) => (
+                <li key={s.stop} className="flex items-center gap-3 text-sm">
+                  <span className="font-display text-xs font-semibold tabular-nums text-muted-foreground w-12">{s.time}</span>
+                  <span className="flex-1 truncate">{s.stop}</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-blue/10 text-google-blue">Uber {s.uber}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {/* safety summary */}
+          <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 p-5">
+            <div className="font-display font-semibold flex items-center gap-2 mb-2">🛡️ Squad safety</div>
+            <div className="text-sm text-foreground/80">
+              {checkedIn ? "11/12" : "10/12"} squad members checked in. Next auto check-in in 4 hours.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex justify-end">
+        <PrimaryBtn onClick={onNext}>Trip's done — see the recap 📸</PrimaryBtn>
+      </div>
+    </Section>
+  );
+}
+
+/* ---------------- step 7: after the trip ---------------- */
+function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () => void }) {
+  const plan = useMemo(() => buildPlan(intake), [intake]);
+  const extraExpenses = [
+    { who: "Tunde 🦁", what: "Group lunch", amount: 5000 },
+    { who: "Ada 🌶️", what: "Extra Uber", amount: 2400 },
+    { who: "Kemi 🎧", what: "Souvenirs round", amount: 3200 },
+  ];
+  const extraTotal = extraExpenses.reduce((a, b) => a + b.amount, 0);
+  const settlePerPerson = Math.round(extraTotal / intake.squadSize);
+
+  const [collageBuilding, setCollageBuilding] = useState(true);
+  const [reelBuilding, setReelBuilding] = useState(true);
+  useEffect(() => {
+    const t1 = setTimeout(() => setCollageBuilding(false), 1800);
+    const t2 = setTimeout(() => setReelBuilding(false), 3200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  const ratings = [
+    { name: plan.hotel.name, kind: "Hotel", stars: 5 },
+    { name: "Amala Skye", kind: "Restaurant", stars: 5 },
+    { name: "Agodi Gardens", kind: "Activity", stars: 4 },
+    { name: "Bay Lounge", kind: "Nightlife", stars: 4 },
+  ];
+  const [userRatings, setUserRatings] = useState<Record<string, number>>({});
+
+  // mock photo collage tiles
+  const collageTiles = [
+    "from-google-pink/40 to-google-purple/40",
+    "from-google-blue/40 to-primary/40",
+    "from-google-yellow/40 to-google-pink/40",
+    "from-google-green/40 to-google-blue/40",
+    "from-primary/40 to-google-yellow/40",
+    "from-google-purple/40 to-google-green/40",
+  ];
+
+  return (
+    <Section>
+      <StepHeader eyebrow="Step 7 of 7 · After the trip" title="The squad recap." sub="Settle extras, rate the spots, and watch the bot turn 87 group photos into a highlight reel." />
+
+      {/* Auto collage */}
+      <div className="rounded-2xl bg-gradient-to-br from-google-pink/15 via-primary-soft to-google-blue/15 ring-hairline p-6 md:p-8 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-google-pink">📸 Auto collage</div>
+            <div className="font-display text-xl md:text-2xl font-semibold mt-1">87 photos · 12 videos from the group</div>
+          </div>
+          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full ${collageBuilding ? "bg-google-yellow/20 text-google-yellow" : "bg-google-green/20 text-google-green"}`}>
+            {collageBuilding ? "Building…" : "✓ Ready"}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          {collageTiles.map((c, i) => (
+            <div key={i} className={`aspect-square rounded-xl bg-gradient-to-br ${c} grid place-items-center text-2xl ${collageBuilding ? "animate-pulse" : ""}`}>
+              {collageBuilding ? "" : ["🌅", "🍲", "🎉", "🌳", "🪩", "✈️"][i]}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6 mb-6">
+        {/* Settlement */}
+        <div className="rounded-2xl bg-card ring-hairline p-5">
+          <div className="font-display font-semibold mb-3 flex items-center gap-2">💸 Final settlement</div>
+          <div className="text-xs text-muted-foreground mb-3">Extra logged costs split across the squad.</div>
+          <ul className="space-y-2 mb-4">
+            {extraExpenses.map((e) => (
+              <li key={e.what} className="flex items-center justify-between text-sm">
+                <span className="text-foreground/80">{e.who} · {e.what}</span>
+                <span className="font-display font-semibold tabular-nums">{fmtNGN(e.amount)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="rounded-xl bg-primary-soft p-3 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-primary">Each pays</div>
+              <div className="font-display text-lg font-semibold">{fmtNGN(settlePerPerson)}</div>
+            </div>
+            <button className="rounded-full bg-foreground text-background px-4 py-2 text-xs font-medium">Send Paystack links</button>
+          </div>
+        </div>
+
+        {/* Ratings */}
+        <div className="rounded-2xl bg-card ring-hairline p-5">
+          <div className="font-display font-semibold mb-3 flex items-center gap-2">⭐ Rate the spots</div>
+          <div className="text-xs text-muted-foreground mb-3">Feeds SquadGo's Nigerian venue database.</div>
+          <ul className="space-y-3">
+            {ratings.map((r) => {
+              const current = userRatings[r.name] ?? r.stars;
+              return (
+                <li key={r.name}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-sm">
+                      <div className="font-medium">{r.name}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{r.kind}</div>
+                    </div>
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setUserRatings((u) => ({ ...u, [r.name]: n }))}
+                          className={`text-base leading-none transition ${n <= current ? "text-google-yellow" : "text-muted-foreground/40 hover:text-google-yellow/60"}`}
+                          aria-label={`Rate ${n} stars`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+
+      {/* Recap reel */}
+      <div className="rounded-2xl bg-foreground text-background p-6 md:p-8 mb-6 overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-google-pink/20 via-transparent to-google-blue/20" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">🎬 Squad recap reel</div>
+            <div className="font-display text-2xl md:text-3xl font-semibold mt-1">{intake.origin} → {intake.destination} · 0:47</div>
+            <div className="text-sm opacity-80 mt-1">Auto-edited from your photos & clips. Shareable to WhatsApp Status & IG.</div>
+          </div>
+          <div className="relative w-40 h-24 rounded-xl bg-background/10 grid place-items-center ring-1 ring-background/20">
+            {reelBuilding ? (
+              <div className="text-xs font-medium opacity-80 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-background animate-pulse" />
+                Rendering…
+              </div>
+            ) : (
+              <div className="grid place-items-center w-12 h-12 rounded-full bg-background text-foreground">
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              </div>
+            )}
+          </div>
+        </div>
+        {!reelBuilding && (
+          <div className="relative mt-4 flex flex-wrap gap-2">
+            <button className="rounded-full bg-whatsapp text-primary-foreground px-4 py-2 text-xs font-medium">Share to WhatsApp Status</button>
+            <button className="rounded-full bg-background/10 ring-1 ring-background/20 px-4 py-2 text-xs font-medium">Share to Instagram</button>
+            <button className="rounded-full bg-background/10 ring-1 ring-background/20 px-4 py-2 text-xs font-medium">Download MP4</button>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">Trip Journal saved · venue ratings synced · settlement closed.</div>
         <div className="flex gap-2">
           <GhostBtn onClick={onRestart}>Run demo again</GhostBtn>
           <Link to="/" className="inline-flex items-center gap-2 rounded-full bg-foreground text-background px-5 py-3 text-sm font-medium hover:opacity-90 transition-opacity">
@@ -623,7 +947,7 @@ function ContributionsView({ intake, onRestart }: { intake: Intake; onRestart: (
 }
 
 /* ---------------- shell ---------------- */
-const STEPS = ["WhatsApp", "Intake", "AI Plan", "Vote", "Pay"];
+const STEPS = ["WhatsApp", "Intake", "AI Plan", "Vote", "Pay", "On Trip", "Recap"];
 
 const Demo = () => {
   const [step, setStep] = useState(0);
@@ -682,7 +1006,9 @@ const Demo = () => {
         {step === 1 && <IntakeForm onSubmit={(i) => { setIntake(i); setStep(2); }} />}
         {step === 2 && intake && <PlanView intake={intake} onNext={() => setStep(3)} />}
         {step === 3 && intake && <VoteView intake={intake} onNext={() => setStep(4)} />}
-        {step === 4 && intake && <ContributionsView intake={intake} onRestart={reset} />}
+        {step === 4 && intake && <ContributionsView intake={intake} onNext={() => setStep(5)} />}
+        {step === 5 && intake && <DuringTripView intake={intake} onNext={() => setStep(6)} />}
+        {step === 6 && intake && <AfterTripView intake={intake} onRestart={reset} />}
       </div>
     </main>
   );
