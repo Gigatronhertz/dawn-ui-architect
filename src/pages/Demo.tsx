@@ -42,20 +42,45 @@ const DATE_OPTIONS: DateOption[] = [
 const SQUAD_NAMES = ["Tunde", "Ada", "Kemi", "Bisi", "Femi", "Zara", "Chinedu", "Yemi", "Tola", "Amaka", "Kunle", "Lola"];
 const EMOJIS = ["🦁", "🌶️", "🎧", "🍍", "🚀", "🌊", "🎬", "⚡", "🎨", "🍓", "🪩", "🛹"];
 
+const BUS_OPERATORS: Operator[] = [
+  { id: "gigm", brand: "GIGM", logo: "🟧", class: "Executive · Jibowu → Iwo Rd", depart: "07:00", arrive: "09:30", duration: "2h 30m", pricePerSeat: 8500, rating: 4.6, note: "AC · USB ports · WiFi" },
+  { id: "guo", brand: "GUO Transport", logo: "🟦", class: "Standard · Jibowu → Challenge", depart: "06:30", arrive: "09:15", duration: "2h 45m", pricePerSeat: 7000, rating: 4.3, note: "AC · Most frequent" },
+  { id: "abc", brand: "ABC Transport", logo: "🟥", class: "Luxury Coach · Amuwo → Iwo Rd", depart: "08:00", arrive: "10:45", duration: "2h 45m", pricePerSeat: 9500, rating: 4.7, note: "Reclining seats · Snacks" },
+  { id: "chisco", brand: "Chisco", logo: "🟨", class: "Standard · Jibowu", depart: "07:30", arrive: "10:30", duration: "3h", pricePerSeat: 6500, rating: 4.0 },
+];
+
+const FLIGHT_OPERATORS: Operator[] = [
+  { id: "air-peace", brand: "Air Peace", logo: "✈️", class: "Economy · LOS → IBA", depart: "07:25", arrive: "08:10", duration: "45m", pricePerSeat: 78000, rating: 4.4, note: "1 carry-on · 15kg checked" },
+  { id: "ibom", brand: "Ibom Air", logo: "🛫", class: "Economy · LOS → IBA", depart: "10:50", arrive: "11:35", duration: "45m", pricePerSeat: 92000, rating: 4.7, note: "On-time leader" },
+  { id: "green-africa", brand: "Green Africa", logo: "🟢", class: "Saver · LOS → IBA", depart: "14:15", arrive: "15:05", duration: "50m", pricePerSeat: 64000, rating: 4.1, note: "Cheapest · No bag included" },
+  { id: "emirates", brand: "Emirates (connect)", logo: "🔴", class: "Business connect · LOS → DXB → IBA", depart: "22:10", arrive: "+1d 18:30", duration: "20h", pricePerSeat: 480000, rating: 4.9, note: "For the lavish squad 💎" },
+];
+
+const PUBLIC_OPERATORS: Operator[] = [
+  { id: "danfo", brand: "Danfo + Keke combo", logo: "🚐", class: "Jibowu → Iwo Rd park → Keke", depart: "Anytime", arrive: "~3h later", duration: "3h", pricePerSeat: 4500, rating: 3.6, note: "Cheapest · Less comfy" },
+  { id: "shared-cab", brand: "Shared Sienna", logo: "🚙", class: "Park-to-park share (4-6 pax)", depart: "When full", arrive: "~2h 30m", duration: "2h 30m", pricePerSeat: 6000, rating: 4.0, note: "Faster than buses" },
+];
+
+const operatorsFor = (transport: string): Operator[] =>
+  transport === "Flights" ? FLIGHT_OPERATORS : transport === "Public transport" ? PUBLIC_OPERATORS : BUS_OPERATORS;
+
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
 
-function buildPlan(intake: Intake) {
-  const transport = intake.transport === "Charter bus" ? 7500 : intake.transport === "Flights" ? 95000 : 4500;
-  const transportTotal = transport * intake.squadSize;
+function buildPlan(intake: Intake, extraItineraryCost = 0) {
+  const ops = operatorsFor(intake.transport);
+  const op = ops.find((o) => o.id === intake.operatorId) || ops[0];
+  const seats = intake.seats ?? intake.squadSize;
+  const transport = op.pricePerSeat;
+  const transportTotal = transport * seats;
   const hotel = HOTELS[1]; // recommended
   const lodgingTotal = hotel.pricePerNight * intake.days * Math.ceil(intake.squadSize / 2);
   const food = 6500 * intake.days * intake.squadSize;
-  const activities = 9000 * intake.squadSize;
+  const activities = 9000 * intake.squadSize + extraItineraryCost;
   const buffer = Math.round((transportTotal + lodgingTotal + food + activities) * 0.07);
   const total = transportTotal + lodgingTotal + food + activities + buffer;
   const perPerson = Math.round(total / intake.squadSize);
-  return { transport, transportTotal, hotel, lodgingTotal, food, activities, buffer, total, perPerson };
+  return { transport, transportTotal, hotel, lodgingTotal, food, activities, buffer, total, perPerson, operator: op, seats };
 }
 
 /* ---------------- shared UI ---------------- */
