@@ -935,17 +935,17 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
           {/* in-city stops mini-map */}
           <div className="rounded-2xl bg-card ring-hairline p-5">
             <div className="font-display font-semibold mb-1 flex items-center gap-2">🗺️ Today's stops</div>
-            <div className="text-[11px] text-muted-foreground mb-3">Each Uber ride prompts a trip-share — non-invasive, one tap.</div>
+            <div className="text-[11px] text-muted-foreground mb-3">Squad rolls together. One safety tap per stop.</div>
             <ol className="space-y-2.5">
               {[
-                { time: "11:00", stop: "Agodi Gardens", uber: "₦1,800" },
-                { time: "14:00", stop: "Cocoa House rooftop", uber: "₦1,200" },
-                { time: "20:00", stop: "Amala Skye", uber: "₦2,400" },
+                { time: "11:00", stop: "Agodi Gardens" },
+                { time: "14:00", stop: "Cocoa House rooftop" },
+                { time: "20:00", stop: "Amala Skye" },
               ].map((s) => (
                 <li key={s.stop} className="flex items-center gap-3 text-sm">
                   <span className="font-display text-xs font-semibold tabular-nums text-muted-foreground w-12">{s.time}</span>
                   <span className="flex-1 truncate">{s.stop}</span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-blue/10 text-google-blue">Uber ~{s.uber}</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">🛡️ check-in</span>
                 </li>
               ))}
             </ol>
@@ -953,9 +953,9 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
 
           {/* squad check-ins */}
           <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 p-5">
-            <div className="font-display font-semibold flex items-center gap-2 mb-2">🛡️ Squad check-ins</div>
+            <div className="font-display font-semibold flex items-center gap-2 mb-2">🛡️ Safety check-ins</div>
             <div className="text-sm text-foreground/80">
-              {Object.keys(stopOk).length + Object.keys(uberShared).length} taps logged so far. Bot only pings at stops & Uber rides — no 4-hour spam.
+              {Object.keys(stopOk).length + Object.keys(uberShared).length} taps logged. The squad travels together — taps just let loved ones at home know all is well.
             </div>
           </div>
 
