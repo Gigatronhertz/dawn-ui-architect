@@ -1139,10 +1139,12 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
 
 /* ---------------- shell ---------------- */
 const STEPS = ["WhatsApp", "Intake", "AI Plan", "Vote", "Pay", "On Trip", "Recap"];
+const AUTO_DELAYS = [6500, 7000, 8000, 5500, 6000, 9000];
 
 const Demo = () => {
   const [step, setStep] = useState(0);
   const [intake, setIntake] = useState<Intake | null>(null);
+  const [auto, setAuto] = useState(false);
 
   useEffect(() => {
     document.title = "MySquadGo — Interactive Demo";
@@ -1152,7 +1154,24 @@ const Demo = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  const reset = () => { setStep(0); setIntake(null); };
+  // auto-play: walk through steps with timed delays
+  useEffect(() => {
+    if (!auto) return;
+    if (step >= STEPS.length - 1) { setAuto(false); return; }
+    if (step === 1 && !intake) {
+      setIntake({
+        origin: "Lagos", destination: "Ibadan", vibe: "Chill & scenic",
+        budget: 25000, days: 2, squadSize: 8, startWindow: "Aug 2026",
+        transport: "Charter bus", extras: ["City tour", "Local food crawl"],
+        operatorId: "gigm", seats: 8,
+      });
+    }
+    const t = setTimeout(() => setStep((s) => s + 1), AUTO_DELAYS[step] ?? 6000);
+    return () => clearTimeout(t);
+  }, [auto, step, intake]);
+
+  const reset = () => { setStep(0); setIntake(null); setAuto(false); };
+  const startAuto = () => { reset(); setAuto(true); };
 
   return (
     <main className="min-h-screen bg-hero-mesh">
@@ -1160,32 +1179,45 @@ const Demo = () => {
       <div className="pointer-events-none fixed top-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-accent/15 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
 
       <header className="relative pt-8 pb-6">
-        <div className="mx-auto max-w-4xl px-6 flex items-center justify-between">
+        <div className="mx-auto max-w-4xl px-6 flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-2 font-display font-semibold">
             <span className="grid place-items-center w-8 h-8 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft">
               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" /></svg>
             </span>
             MySquadGo
           </Link>
-          <span className="text-xs font-medium px-3 py-1.5 rounded-full glass ring-hairline text-muted-foreground">Interactive demo</span>
+          <div className="flex items-center gap-2">
+            {auto ? (
+              <button onClick={() => setAuto(false)} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Auto-playing · pause
+              </button>
+            ) : (
+              <button onClick={startAuto} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gradient-primary text-primary-foreground shadow-glow inline-flex items-center gap-1.5">
+                ▶ Show me the demo
+              </button>
+            )}
+            <span className="hidden md:inline text-xs font-medium px-3 py-1.5 rounded-full glass ring-hairline text-muted-foreground">Interactive</span>
+          </div>
         </div>
       </header>
 
-      {/* stepper */}
+      {/* stepper — evenly aligned badges with connectors between them */}
       <div className="relative mx-auto max-w-4xl px-6 mb-8">
-        <div className="flex items-center gap-2">
+        <div className="flex items-start">
           {STEPS.map((label, i) => {
             const done = i < step;
             const active = i === step;
             return (
-              <div key={label} className="flex-1 flex items-center gap-2">
-                <div className={`flex items-center gap-2 ${active ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>
-                  <div className={`grid place-items-center w-7 h-7 rounded-full text-[11px] font-display font-semibold ring-hairline ${done ? "bg-primary text-primary-foreground" : active ? "bg-foreground text-background" : "bg-card"}`}>
+              <div key={label} className={`flex items-start min-w-0 ${i < STEPS.length - 1 ? "flex-1" : ""}`}>
+                <div className="flex flex-col items-center gap-1.5 shrink-0 w-16">
+                  <div className={`grid place-items-center w-7 h-7 rounded-full text-[11px] font-display font-semibold ring-hairline ${done ? "bg-primary text-primary-foreground" : active ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}>
                     {done ? "✓" : i + 1}
                   </div>
-                  <span className="hidden sm:inline text-xs font-medium">{label}</span>
+                  <span className={`hidden sm:block text-[10px] font-medium tracking-wide text-center leading-tight ${active ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
                 </div>
-                {i < STEPS.length - 1 && <div className={`flex-1 h-px ${done ? "bg-primary" : "bg-border"}`} />}
+                {i < STEPS.length - 1 && (
+                  <div className={`flex-1 h-px mt-3.5 ${done ? "bg-primary" : "bg-border"}`} />
+                )}
               </div>
             );
           })}
