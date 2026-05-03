@@ -608,24 +608,58 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
                         </ul>
                         <button onClick={() => addCustom(di)} className="text-[11px] font-medium text-primary hover:underline">+ Add custom stop</button>
 
-                        {/* AI suggestions w/ photo tiles */}
+                        {/* AI suggestions w/ photo tiles — show 2 by default */}
                         <div>
                           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-google-pink mb-2 flex items-center gap-1.5">✨ Gemini suggests for Day {d.day}</div>
-                          <div className="grid sm:grid-cols-2 gap-2.5">
-                            {sugg.map((s) => (
-                              <div key={s.id} className="rounded-xl bg-secondary/50 ring-hairline overflow-hidden flex flex-col">
-                                <div className="aspect-[16/9] grid place-items-center text-4xl bg-gradient-to-br from-google-pink/25 via-primary/20 to-google-blue/25">{s.emoji}</div>
-                                <div className="p-2.5 flex flex-col gap-1.5 flex-1">
-                                  <div className="flex items-baseline justify-between gap-2">
-                                    <div className="font-display text-sm font-semibold truncate">{s.title}</div>
-                                    <div className="text-[10px] font-semibold tabular-nums text-muted-foreground">{fmtNGN(s.cost)}/p</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {(seeMore[di] ? sugg : sugg.slice(0, 2)).map((s) => (
+                              <div key={s.id} className="rounded-xl bg-secondary/50 ring-hairline overflow-hidden flex flex-col min-w-0">
+                                <div className="aspect-[16/9] grid place-items-center text-3xl bg-gradient-to-br from-google-pink/25 via-primary/20 to-google-blue/25">{s.emoji}</div>
+                                <div className="p-2 flex flex-col gap-1 flex-1 min-w-0">
+                                  <div className="flex items-baseline justify-between gap-1.5 min-w-0">
+                                    <div className="font-display text-[11px] font-semibold truncate flex-1 min-w-0">{s.title}</div>
+                                    <div className="text-[9px] font-semibold tabular-nums text-muted-foreground shrink-0">{fmtNGN(s.cost)}</div>
                                   </div>
-                                  <div className="text-[11px] text-muted-foreground line-clamp-2">{s.blurb}</div>
-                                  <button onClick={() => addSuggestion(di, s)} className="mt-1 self-start text-[11px] font-medium px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-90 transition">+ Add to Day {d.day}</button>
+                                  <div className="text-[10px] text-muted-foreground line-clamp-2">{s.blurb}</div>
+                                  <button onClick={() => addSuggestion(di, s)} className="mt-1 self-start text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground text-background hover:opacity-90 transition">+ Add</button>
                                 </div>
                               </div>
                             ))}
                           </div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {sugg.length > 2 && (
+                              <button onClick={() => setSeeMore((m) => ({ ...m, [di]: !m[di] }))} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-secondary hover:bg-secondary/70 transition">
+                                {seeMore[di] ? "Show less" : `See ${sugg.length - 2} more`}
+                              </button>
+                            )}
+                            <button onClick={() => setMapsOpen(mapsOpen === di ? null : di)} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-google-blue/15 text-google-blue hover:bg-google-blue/25 transition inline-flex items-center gap-1">
+                              🗺️ Add from Maps
+                            </button>
+                          </div>
+
+                          {mapsOpen === di && (
+                            <div className="mt-3 rounded-xl ring-hairline bg-card p-2.5 animate-rise">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">📍 Nearby places · Google Maps</div>
+                                <button onClick={() => setMapsOpen(null)} className="text-[10px] text-muted-foreground hover:text-foreground">close</button>
+                              </div>
+                              <div className="rounded-lg overflow-hidden ring-hairline mb-2">
+                                <iframe title="maps" loading="lazy" className="w-full h-28 block" src="https://www.openstreetmap.org/export/embed.html?bbox=3.85%2C7.35%2C4.05%2C7.45&layer=mapnik&marker=7.40%2C3.94" />
+                              </div>
+                              <ul className="space-y-1 max-h-40 overflow-y-auto">
+                                {MAPS_PLACES.map((p) => (
+                                  <li key={p.id} className="flex items-center gap-2 text-[11px] rounded-lg p-1.5 hover:bg-secondary/60 transition">
+                                    <span className="text-base shrink-0">{p.emoji}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium truncate">{p.title}</div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{p.tag} · {fmtNGN(p.cost)}/p</div>
+                                    </div>
+                                    <button onClick={() => addSuggestion(di, p)} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground text-background shrink-0">+ Add</button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
