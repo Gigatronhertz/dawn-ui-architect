@@ -839,11 +839,11 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
 
   const FEED_SEQ: TripPing[] = useMemo(() => [
     { kind: "depart", who: "MySquadGo Bot", emoji: "🚌", text: `🌅 Good morning squad! Day 1 — ${opName} departs 7:00am sharp.\nFirst stop: Agodi Gardens · 11:00am.\nFull itinerary 👉 [link]`, time: "Day 1 · 06:00" },
-    { kind: "uber", who: "MySquadGo Bot", emoji: "🚖", text: `🚖 Heading to Agodi Gardens? When you book your Uber, drop the trip-share link here so loved ones can follow along.`, time: "Day 1 · 10:42" },
-    { kind: "stop", who: "MySquadGo Bot", emoji: "📍", text: `📍 Stop reached: Agodi Gardens. Quick tap when you've all linked up — that's it, no spam.`, time: "Day 1 · 11:08" },
+    { kind: "uber", who: "MySquadGo Bot", emoji: "🛡️", text: `🛡️ Safety check-in: tap below so loved ones back home know you're good. Quick, one tap.`, time: "Day 1 · 10:42" },
+    { kind: "stop", who: "MySquadGo Bot", emoji: "📍", text: `📍 Stop reached: Agodi Gardens. Tap once everyone is together — no spam after.`, time: "Day 1 · 11:08" },
     { kind: "photo", who: "MySquadGo Bot", emoji: "📸", text: `📸 Cocoa House looks 🔥 — drop a few shots for the recap reel whenever.`, time: "Day 1 · 16:35" },
     { kind: "expense", who: "Tunde 🦁", emoji: "💸", text: `Logged ₦5,000 for lunch — split 12 ways = ₦417 each. Settled at end of trip ✅`, time: "Day 1 · 13:42" },
-    { kind: "uber", who: "MySquadGo Bot", emoji: "🚖", text: `🚖 Night move to Amala Skye — share your Uber trip ID so the squad knows you're rolling.`, time: "Day 1 · 19:50" },
+    { kind: "uber", who: "MySquadGo Bot", emoji: "🛡️", text: `🛡️ Night move to Amala Skye. Quick safety tap so we know the whole squad rolled out together.`, time: "Day 1 · 19:50" },
     { kind: "update", who: "MySquadGo Bot", emoji: "🔁", text: `🔁 Itinerary update: tomorrow's brunch pushed to 10am (chef's request). Map pin refreshed.`, time: "Day 1 · 22:10" },
     { kind: "packup", who: "MySquadGo Bot", emoji: "🎒", text: `🎒 Last morning! Quick reminder before you check out — sweep the room, grab everything you came with: chargers, ID, that one slipper under the bed 👀`, time: "Day 2 · 09:30" },
   ], [opName]);
