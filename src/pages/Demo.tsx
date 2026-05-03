@@ -465,9 +465,11 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
     setDays((ds) => ds.map((d, i) => i === dayIdx
       ? { ...d, items: [...d.items, { id: `${s.id}-${Date.now()}`, time: "—:—", title: s.title, cost: s.cost }] }
       : d));
+    setDirty(true);
   };
   const removeItem = (dayIdx: number, itemId: string) => {
     setDays((ds) => ds.map((d, i) => i === dayIdx ? { ...d, items: d.items.filter(it => it.id !== itemId) } : d));
+    setDirty(true);
   };
   const addCustom = (dayIdx: number) => {
     const title = window.prompt("What's the new stop?")?.trim();
@@ -477,6 +479,11 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
     setDays((ds) => ds.map((d, i) => i === dayIdx
       ? { ...d, items: [...d.items, { id: `custom-${Date.now()}`, time: "—:—", title, cost }] }
       : d));
+    setDirty(true);
+  };
+  const recalc = () => {
+    setRecalcing(true);
+    setTimeout(() => { setRecalcing(false); setDirty(false); }, 1100);
   };
 
   if (phase === 0) {
