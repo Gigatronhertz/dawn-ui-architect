@@ -569,7 +569,6 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
                         <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">{fmtNGN(dayCost)}/p</span>
                         <svg viewBox="0 0 24 24" className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
                       </div>
-                      {!open && <ul className="mt-2 space-y-0.5 text-sm text-muted-foreground">{d.items.slice(0, 3).map(it => <li key={it.id} className="truncate">· {it.time} {it.title}</li>)}{d.items.length > 3 && <li className="text-[11px] italic">+ {d.items.length - 3} more</li>}</ul>}
                     </button>
 
                     {open && (
@@ -839,11 +838,11 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
 
   const FEED_SEQ: TripPing[] = useMemo(() => [
     { kind: "depart", who: "MySquadGo Bot", emoji: "🚌", text: `🌅 Good morning squad! Day 1 — ${opName} departs 7:00am sharp.\nFirst stop: Agodi Gardens · 11:00am.\nFull itinerary 👉 [link]`, time: "Day 1 · 06:00" },
-    { kind: "uber", who: "MySquadGo Bot", emoji: "🚖", text: `🚖 Heading to Agodi Gardens? When you book your Uber, drop the trip-share link here so loved ones can follow along.`, time: "Day 1 · 10:42" },
-    { kind: "stop", who: "MySquadGo Bot", emoji: "📍", text: `📍 Stop reached: Agodi Gardens. Quick tap when you've all linked up — that's it, no spam.`, time: "Day 1 · 11:08" },
+    { kind: "uber", who: "MySquadGo Bot", emoji: "🛡️", text: `🛡️ Safety check-in: tap below so loved ones back home know you're good. Quick, one tap.`, time: "Day 1 · 10:42" },
+    { kind: "stop", who: "MySquadGo Bot", emoji: "📍", text: `📍 Stop reached: Agodi Gardens. Tap once everyone is together — no spam after.`, time: "Day 1 · 11:08" },
     { kind: "photo", who: "MySquadGo Bot", emoji: "📸", text: `📸 Cocoa House looks 🔥 — drop a few shots for the recap reel whenever.`, time: "Day 1 · 16:35" },
     { kind: "expense", who: "Tunde 🦁", emoji: "💸", text: `Logged ₦5,000 for lunch — split 12 ways = ₦417 each. Settled at end of trip ✅`, time: "Day 1 · 13:42" },
-    { kind: "uber", who: "MySquadGo Bot", emoji: "🚖", text: `🚖 Night move to Amala Skye — share your Uber trip ID so the squad knows you're rolling.`, time: "Day 1 · 19:50" },
+    { kind: "uber", who: "MySquadGo Bot", emoji: "🛡️", text: `🛡️ Night move to Amala Skye. Quick safety tap so we know the whole squad rolled out together.`, time: "Day 1 · 19:50" },
     { kind: "update", who: "MySquadGo Bot", emoji: "🔁", text: `🔁 Itinerary update: tomorrow's brunch pushed to 10am (chef's request). Map pin refreshed.`, time: "Day 1 · 22:10" },
     { kind: "packup", who: "MySquadGo Bot", emoji: "🎒", text: `🎒 Last morning! Quick reminder before you check out — sweep the room, grab everything you came with: chargers, ID, that one slipper under the bed 👀`, time: "Day 2 · 09:30" },
   ], [opName]);
@@ -900,7 +899,7 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
                         disabled={uberShared[i]}
                         className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${uberShared[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
                       >
-                        {uberShared[i] ? "✓ Trip ID shared with squad" : "🔗 Share Uber trip ID"}
+                        {uberShared[i] ? "✓ Safe — loved ones notified" : "🛡️ Tap to check in"}
                       </button>
                     )}
                     {p.kind === "stop" && (
@@ -935,17 +934,17 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
           {/* in-city stops mini-map */}
           <div className="rounded-2xl bg-card ring-hairline p-5">
             <div className="font-display font-semibold mb-1 flex items-center gap-2">🗺️ Today's stops</div>
-            <div className="text-[11px] text-muted-foreground mb-3">Each Uber ride prompts a trip-share — non-invasive, one tap.</div>
+            <div className="text-[11px] text-muted-foreground mb-3">Squad rolls together. One safety tap per stop.</div>
             <ol className="space-y-2.5">
               {[
-                { time: "11:00", stop: "Agodi Gardens", uber: "₦1,800" },
-                { time: "14:00", stop: "Cocoa House rooftop", uber: "₦1,200" },
-                { time: "20:00", stop: "Amala Skye", uber: "₦2,400" },
+                { time: "11:00", stop: "Agodi Gardens" },
+                { time: "14:00", stop: "Cocoa House rooftop" },
+                { time: "20:00", stop: "Amala Skye" },
               ].map((s) => (
                 <li key={s.stop} className="flex items-center gap-3 text-sm">
                   <span className="font-display text-xs font-semibold tabular-nums text-muted-foreground w-12">{s.time}</span>
                   <span className="flex-1 truncate">{s.stop}</span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-blue/10 text-google-blue">Uber ~{s.uber}</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">🛡️ check-in</span>
                 </li>
               ))}
             </ol>
@@ -953,9 +952,9 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
 
           {/* squad check-ins */}
           <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 p-5">
-            <div className="font-display font-semibold flex items-center gap-2 mb-2">🛡️ Squad check-ins</div>
+            <div className="font-display font-semibold flex items-center gap-2 mb-2">🛡️ Safety check-ins</div>
             <div className="text-sm text-foreground/80">
-              {Object.keys(stopOk).length + Object.keys(uberShared).length} taps logged so far. Bot only pings at stops & Uber rides — no 4-hour spam.
+              {Object.keys(stopOk).length + Object.keys(uberShared).length} taps logged. The squad travels together — taps just let loved ones at home know all is well.
             </div>
           </div>
 
@@ -1140,10 +1139,12 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
 
 /* ---------------- shell ---------------- */
 const STEPS = ["WhatsApp", "Intake", "AI Plan", "Vote", "Pay", "On Trip", "Recap"];
+const AUTO_DELAYS = [6500, 7000, 8000, 5500, 6000, 9000];
 
 const Demo = () => {
   const [step, setStep] = useState(0);
   const [intake, setIntake] = useState<Intake | null>(null);
+  const [auto, setAuto] = useState(false);
 
   useEffect(() => {
     document.title = "MySquadGo — Interactive Demo";
@@ -1153,7 +1154,24 @@ const Demo = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  const reset = () => { setStep(0); setIntake(null); };
+  // auto-play: walk through steps with timed delays
+  useEffect(() => {
+    if (!auto) return;
+    if (step >= STEPS.length - 1) { setAuto(false); return; }
+    if (step === 1 && !intake) {
+      setIntake({
+        origin: "Lagos", destination: "Ibadan", vibe: "Chill & scenic",
+        budget: 25000, days: 2, squadSize: 8, startWindow: "Aug 2026",
+        transport: "Charter bus", extras: ["City tour", "Local food crawl"],
+        operatorId: "gigm", seats: 8,
+      });
+    }
+    const t = setTimeout(() => setStep((s) => s + 1), AUTO_DELAYS[step] ?? 6000);
+    return () => clearTimeout(t);
+  }, [auto, step, intake]);
+
+  const reset = () => { setStep(0); setIntake(null); setAuto(false); };
+  const startAuto = () => { reset(); setAuto(true); };
 
   return (
     <main className="min-h-screen bg-hero-mesh">
@@ -1161,32 +1179,45 @@ const Demo = () => {
       <div className="pointer-events-none fixed top-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-accent/15 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
 
       <header className="relative pt-8 pb-6">
-        <div className="mx-auto max-w-4xl px-6 flex items-center justify-between">
+        <div className="mx-auto max-w-4xl px-6 flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-2 font-display font-semibold">
             <span className="grid place-items-center w-8 h-8 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft">
               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" /></svg>
             </span>
             MySquadGo
           </Link>
-          <span className="text-xs font-medium px-3 py-1.5 rounded-full glass ring-hairline text-muted-foreground">Interactive demo</span>
+          <div className="flex items-center gap-2">
+            {auto ? (
+              <button onClick={() => setAuto(false)} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Auto-playing · pause
+              </button>
+            ) : (
+              <button onClick={startAuto} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gradient-primary text-primary-foreground shadow-glow inline-flex items-center gap-1.5">
+                ▶ Show me the demo
+              </button>
+            )}
+            <span className="hidden md:inline text-xs font-medium px-3 py-1.5 rounded-full glass ring-hairline text-muted-foreground">Interactive</span>
+          </div>
         </div>
       </header>
 
-      {/* stepper */}
+      {/* stepper — evenly aligned badges with connectors between them */}
       <div className="relative mx-auto max-w-4xl px-6 mb-8">
-        <div className="flex items-center gap-2">
+        <div className="flex items-start">
           {STEPS.map((label, i) => {
             const done = i < step;
             const active = i === step;
             return (
-              <div key={label} className="flex-1 flex items-center gap-2">
-                <div className={`flex items-center gap-2 ${active ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>
-                  <div className={`grid place-items-center w-7 h-7 rounded-full text-[11px] font-display font-semibold ring-hairline ${done ? "bg-primary text-primary-foreground" : active ? "bg-foreground text-background" : "bg-card"}`}>
+              <div key={label} className={`flex items-start min-w-0 ${i < STEPS.length - 1 ? "flex-1" : ""}`}>
+                <div className="flex flex-col items-center gap-1.5 shrink-0 w-16">
+                  <div className={`grid place-items-center w-7 h-7 rounded-full text-[11px] font-display font-semibold ring-hairline ${done ? "bg-primary text-primary-foreground" : active ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}>
                     {done ? "✓" : i + 1}
                   </div>
-                  <span className="hidden sm:inline text-xs font-medium">{label}</span>
+                  <span className={`hidden sm:block text-[10px] font-medium tracking-wide text-center leading-tight ${active ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
                 </div>
-                {i < STEPS.length - 1 && <div className={`flex-1 h-px ${done ? "bg-primary" : "bg-border"}`} />}
+                {i < STEPS.length - 1 && (
+                  <div className={`flex-1 h-px mt-3.5 ${done ? "bg-primary" : "bg-border"}`} />
+                )}
               </div>
             );
           })}
