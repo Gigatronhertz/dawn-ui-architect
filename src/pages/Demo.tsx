@@ -694,8 +694,16 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-end">
-          <PrimaryBtn onClick={onNext}>Send to squad for voting</PrimaryBtn>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[11px] text-muted-foreground">
+            {recalcing ? "🔄 Gemini recalculating costs…" : dirty ? "⚠️ Itinerary changed — recalculate before sending." : "✓ Plan is up to date."}
+          </div>
+          <div className="flex gap-2">
+            {dirty && !recalcing && (
+              <GhostBtn onClick={recalc}>🔄 Recalculate</GhostBtn>
+            )}
+            <PrimaryBtn onClick={onNext} disabled={dirty || recalcing}>Send to squad for voting</PrimaryBtn>
+          </div>
         </div>
       </Section>
     </div>
