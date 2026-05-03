@@ -900,7 +900,7 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
                         disabled={uberShared[i]}
                         className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${uberShared[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
                       >
-                        {uberShared[i] ? "✓ Trip ID shared with squad" : "🔗 Share Uber trip ID"}
+                        {uberShared[i] ? "✓ Safe — loved ones notified" : "🛡️ Tap to check in"}
                       </button>
                     )}
                     {p.kind === "stop" && (
