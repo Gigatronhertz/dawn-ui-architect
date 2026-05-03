@@ -443,6 +443,10 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
     }))
   );
   const [openDay, setOpenDay] = useState<number | null>(0);
+  const [seeMore, setSeeMore] = useState<Record<number, boolean>>({});
+  const [mapsOpen, setMapsOpen] = useState<number | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [recalcing, setRecalcing] = useState(false);
 
   const extraItineraryCost = useMemo(
     () => days.reduce((sum, d) => sum + d.items.reduce((s, it) => s + it.cost, 0), 0) * intake.squadSize,
