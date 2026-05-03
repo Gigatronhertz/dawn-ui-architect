@@ -412,6 +412,15 @@ const SUGGESTIONS_BY_DAY: Record<number, Suggestion[]> = {
 };
 const fallbackSuggestions: Suggestion[] = SUGGESTIONS_BY_DAY[1];
 
+const MAPS_PLACES: Suggestion[] = [
+  { id: "m-zoo", title: "UI Zoological Garden", tag: "Family", cost: 1500, emoji: "🦒", blurb: "Iconic UI campus zoo — easy 1-hour stop." },
+  { id: "m-trans", title: "Trans Amusement Park", tag: "Fun", cost: 3000, emoji: "🎡", blurb: "Rides + games, great for evening hangs." },
+  { id: "m-dome", title: "Liberty Stadium dome", tag: "Sports", cost: 1000, emoji: "🏟️", blurb: "Walk the historic stadium grounds." },
+  { id: "m-bower", title: "Bower's Memorial Tower", tag: "Viewpoint", cost: 1500, emoji: "🗼", blurb: "Climb for a 360° view of the 7 hills." },
+  { id: "m-irefin", title: "Irefin Palace", tag: "Heritage", cost: 2000, emoji: "🏯", blurb: "Centuries-old royal compound, guided walk." },
+  { id: "m-shrine", title: "Mapo Hill shrine", tag: "Cultural", cost: 1200, emoji: "🕯️", blurb: "Sacred site beside Mapo Hall — quick visit." },
+];
+
 function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   const [phase, setPhase] = useState(0); // 0 = generating, 1 = done
   const phases = ["Analyzing route…", "Pricing 14 hotels with Gemini…", "Building daily itinerary…", "Calculating costs & buffer…"];
