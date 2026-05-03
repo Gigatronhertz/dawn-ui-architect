@@ -85,14 +85,14 @@ function buildPlan(intake: Intake, extraItineraryCost = 0) {
 
 /* ---------------- shared UI ---------------- */
 const Section = ({ children }: { children: React.ReactNode }) => (
-  <div className="rounded-3xl bg-card ring-hairline shadow-card p-6 md:p-10 animate-rise">{children}</div>
+  <div className="rounded-3xl bg-card ring-hairline shadow-card p-4 md:p-7 animate-rise overflow-hidden">{children}</div>
 );
 
 const StepHeader = ({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) => (
-  <div className="mb-8">
-    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</span>
-    <h2 className="font-display text-3xl md:text-5xl font-semibold tracking-tight mt-2 leading-[1.05] text-gradient">{title}</h2>
-    {sub && <p className="mt-3 text-muted-foreground max-w-xl">{sub}</p>}
+  <div className="mb-5">
+    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</span>
+    <h2 className="font-display text-xl md:text-3xl font-semibold tracking-tight mt-1.5 leading-[1.1] text-gradient">{title}</h2>
+    {sub && <p className="mt-1.5 text-xs md:text-sm text-muted-foreground max-w-xl">{sub}</p>}
   </div>
 );
 
