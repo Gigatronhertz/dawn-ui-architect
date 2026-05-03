@@ -497,16 +497,16 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
       <Section>
         <StepHeader eyebrow="Step 3 of 7 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
 
-        <div className="grid md:grid-cols-3 gap-3 mb-8">
+        <div className="grid grid-cols-3 gap-2 mb-6">
           {[
-            { tag: "Transport", val: fmtNGN(plan.transportTotal), sub: `${plan.operator.brand} · ${plan.seats} × ${fmtNGN(plan.transport)}`, color: "bg-google-blue/10 text-google-blue" },
-            { tag: "Lodging", val: fmtNGN(plan.lodgingTotal), sub: `${plan.hotel.name} · ${intake.days} nights`, color: "bg-google-purple/10 text-google-purple" },
-            { tag: "Per person", val: fmtNGN(plan.perPerson), sub: "All-in · live recalc", color: "bg-primary-soft text-primary" },
+            { tag: "Transport", val: fmtNGN(plan.transportTotal), sub: `${plan.operator.brand} · ${plan.seats}×`, color: "bg-google-blue/10 text-google-blue" },
+            { tag: "Lodging", val: fmtNGN(plan.lodgingTotal), sub: `${intake.days} nights`, color: "bg-google-purple/10 text-google-purple" },
+            { tag: "Per person", val: fmtNGN(plan.perPerson), sub: "All-in · live", color: "bg-primary-soft text-primary" },
           ].map((c) => (
-            <div key={c.tag} className="rounded-2xl bg-secondary/60 p-4">
-              <span className={`inline-flex text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${c.color}`}>{c.tag}</span>
-              <div className="mt-3 font-display text-2xl font-semibold">{c.val}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{c.sub}</div>
+            <div key={c.tag} className="rounded-xl bg-secondary/60 p-2.5 min-w-0">
+              <span className={`inline-flex text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${c.color}`}>{c.tag}</span>
+              <div className="mt-1.5 font-display text-sm md:text-lg font-semibold tabular-nums truncate">{c.val}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{c.sub}</div>
             </div>
           ))}
         </div>
