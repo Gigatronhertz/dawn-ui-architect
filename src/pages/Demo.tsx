@@ -569,7 +569,6 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
                         <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">{fmtNGN(dayCost)}/p</span>
                         <svg viewBox="0 0 24 24" className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
                       </div>
-                      {!open && <ul className="mt-2 space-y-0.5 text-sm text-muted-foreground">{d.items.slice(0, 3).map(it => <li key={it.id} className="truncate">· {it.time} {it.title}</li>)}{d.items.length > 3 && <li className="text-[11px] italic">+ {d.items.length - 3} more</li>}</ul>}
                     </button>
 
                     {open && (
