@@ -85,14 +85,14 @@ function buildPlan(intake: Intake, extraItineraryCost = 0) {
 
 /* ---------------- shared UI ---------------- */
 const Section = ({ children }: { children: React.ReactNode }) => (
-  <div className="rounded-3xl bg-card ring-hairline shadow-card p-6 md:p-10 animate-rise">{children}</div>
+  <div className="rounded-3xl bg-card ring-hairline shadow-card p-4 md:p-7 animate-rise overflow-hidden">{children}</div>
 );
 
 const StepHeader = ({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) => (
-  <div className="mb-8">
-    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</span>
-    <h2 className="font-display text-3xl md:text-5xl font-semibold tracking-tight mt-2 leading-[1.05] text-gradient">{title}</h2>
-    {sub && <p className="mt-3 text-muted-foreground max-w-xl">{sub}</p>}
+  <div className="mb-5">
+    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</span>
+    <h2 className="font-display text-xl md:text-3xl font-semibold tracking-tight mt-1.5 leading-[1.1] text-gradient">{title}</h2>
+    {sub && <p className="mt-1.5 text-xs md:text-sm text-muted-foreground max-w-xl">{sub}</p>}
   </div>
 );
 
@@ -100,15 +100,15 @@ const PrimaryBtn = ({ children, onClick, disabled }: { children: React.ReactNode
   <button
     onClick={onClick}
     disabled={disabled}
-    className="group inline-flex items-center gap-2 rounded-full bg-gradient-primary text-primary-foreground px-6 py-3 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100"
+    className="group inline-flex items-center gap-1.5 rounded-full bg-gradient-primary text-primary-foreground px-4 py-2 text-xs font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100"
   >
     {children}
-    <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
   </button>
 );
 
 const GhostBtn = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-  <button onClick={onClick} className="inline-flex items-center gap-2 rounded-full bg-card ring-hairline px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors">
+  <button onClick={onClick} className="inline-flex items-center gap-1.5 rounded-full bg-card ring-hairline px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary transition-colors">
     {children}
   </button>
 );
@@ -412,6 +412,15 @@ const SUGGESTIONS_BY_DAY: Record<number, Suggestion[]> = {
 };
 const fallbackSuggestions: Suggestion[] = SUGGESTIONS_BY_DAY[1];
 
+const MAPS_PLACES: Suggestion[] = [
+  { id: "m-zoo", title: "UI Zoological Garden", tag: "Family", cost: 1500, emoji: "🦒", blurb: "Iconic UI campus zoo — easy 1-hour stop." },
+  { id: "m-trans", title: "Trans Amusement Park", tag: "Fun", cost: 3000, emoji: "🎡", blurb: "Rides + games, great for evening hangs." },
+  { id: "m-dome", title: "Liberty Stadium dome", tag: "Sports", cost: 1000, emoji: "🏟️", blurb: "Walk the historic stadium grounds." },
+  { id: "m-bower", title: "Bower's Memorial Tower", tag: "Viewpoint", cost: 1500, emoji: "🗼", blurb: "Climb for a 360° view of the 7 hills." },
+  { id: "m-irefin", title: "Irefin Palace", tag: "Heritage", cost: 2000, emoji: "🏯", blurb: "Centuries-old royal compound, guided walk." },
+  { id: "m-shrine", title: "Mapo Hill shrine", tag: "Cultural", cost: 1200, emoji: "🕯️", blurb: "Sacred site beside Mapo Hall — quick visit." },
+];
+
 function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   const [phase, setPhase] = useState(0); // 0 = generating, 1 = done
   const phases = ["Analyzing route…", "Pricing 14 hotels with Gemini…", "Building daily itinerary…", "Calculating costs & buffer…"];
@@ -443,6 +452,10 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
     }))
   );
   const [openDay, setOpenDay] = useState<number | null>(0);
+  const [seeMore, setSeeMore] = useState<Record<number, boolean>>({});
+  const [mapsOpen, setMapsOpen] = useState<number | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [recalcing, setRecalcing] = useState(false);
 
   const extraItineraryCost = useMemo(
     () => days.reduce((sum, d) => sum + d.items.reduce((s, it) => s + it.cost, 0), 0) * intake.squadSize,
@@ -461,9 +474,11 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
     setDays((ds) => ds.map((d, i) => i === dayIdx
       ? { ...d, items: [...d.items, { id: `${s.id}-${Date.now()}`, time: "—:—", title: s.title, cost: s.cost }] }
       : d));
+    setDirty(true);
   };
   const removeItem = (dayIdx: number, itemId: string) => {
     setDays((ds) => ds.map((d, i) => i === dayIdx ? { ...d, items: d.items.filter(it => it.id !== itemId) } : d));
+    setDirty(true);
   };
   const addCustom = (dayIdx: number) => {
     const title = window.prompt("What's the new stop?")?.trim();
@@ -473,6 +488,11 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
     setDays((ds) => ds.map((d, i) => i === dayIdx
       ? { ...d, items: [...d.items, { id: `custom-${Date.now()}`, time: "—:—", title, cost }] }
       : d));
+    setDirty(true);
+  };
+  const recalc = () => {
+    setRecalcing(true);
+    setTimeout(() => { setRecalcing(false); setDirty(false); }, 1100);
   };
 
   if (phase === 0) {
@@ -497,16 +517,16 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
       <Section>
         <StepHeader eyebrow="Step 3 of 7 · AI Plan" title={`${intake.origin} → ${intake.destination}`} sub={`${intake.days} days · ${intake.squadSize} people · ${intake.vibe.toLowerCase()} vibe`} />
 
-        <div className="grid md:grid-cols-3 gap-3 mb-8">
+        <div className="grid grid-cols-3 gap-2 mb-6">
           {[
-            { tag: "Transport", val: fmtNGN(plan.transportTotal), sub: `${plan.operator.brand} · ${plan.seats} × ${fmtNGN(plan.transport)}`, color: "bg-google-blue/10 text-google-blue" },
-            { tag: "Lodging", val: fmtNGN(plan.lodgingTotal), sub: `${plan.hotel.name} · ${intake.days} nights`, color: "bg-google-purple/10 text-google-purple" },
-            { tag: "Per person", val: fmtNGN(plan.perPerson), sub: "All-in · live recalc", color: "bg-primary-soft text-primary" },
+            { tag: "Transport", val: fmtNGN(plan.transportTotal), sub: `${plan.operator.brand} · ${plan.seats}×`, color: "bg-google-blue/10 text-google-blue" },
+            { tag: "Lodging", val: fmtNGN(plan.lodgingTotal), sub: `${intake.days} nights`, color: "bg-google-purple/10 text-google-purple" },
+            { tag: "Per person", val: fmtNGN(plan.perPerson), sub: "All-in · live", color: "bg-primary-soft text-primary" },
           ].map((c) => (
-            <div key={c.tag} className="rounded-2xl bg-secondary/60 p-4">
-              <span className={`inline-flex text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${c.color}`}>{c.tag}</span>
-              <div className="mt-3 font-display text-2xl font-semibold">{c.val}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{c.sub}</div>
+            <div key={c.tag} className="rounded-xl bg-secondary/60 p-2.5 min-w-0">
+              <span className={`inline-flex text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${c.color}`}>{c.tag}</span>
+              <div className="mt-1.5 font-display text-sm md:text-lg font-semibold tabular-nums truncate">{c.val}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{c.sub}</div>
             </div>
           ))}
         </div>
@@ -588,24 +608,58 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
                         </ul>
                         <button onClick={() => addCustom(di)} className="text-[11px] font-medium text-primary hover:underline">+ Add custom stop</button>
 
-                        {/* AI suggestions w/ photo tiles */}
+                        {/* AI suggestions w/ photo tiles — show 2 by default */}
                         <div>
                           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-google-pink mb-2 flex items-center gap-1.5">✨ Gemini suggests for Day {d.day}</div>
-                          <div className="grid sm:grid-cols-2 gap-2.5">
-                            {sugg.map((s) => (
-                              <div key={s.id} className="rounded-xl bg-secondary/50 ring-hairline overflow-hidden flex flex-col">
-                                <div className="aspect-[16/9] grid place-items-center text-4xl bg-gradient-to-br from-google-pink/25 via-primary/20 to-google-blue/25">{s.emoji}</div>
-                                <div className="p-2.5 flex flex-col gap-1.5 flex-1">
-                                  <div className="flex items-baseline justify-between gap-2">
-                                    <div className="font-display text-sm font-semibold truncate">{s.title}</div>
-                                    <div className="text-[10px] font-semibold tabular-nums text-muted-foreground">{fmtNGN(s.cost)}/p</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {(seeMore[di] ? sugg : sugg.slice(0, 2)).map((s) => (
+                              <div key={s.id} className="rounded-xl bg-secondary/50 ring-hairline overflow-hidden flex flex-col min-w-0">
+                                <div className="aspect-[16/9] grid place-items-center text-3xl bg-gradient-to-br from-google-pink/25 via-primary/20 to-google-blue/25">{s.emoji}</div>
+                                <div className="p-2 flex flex-col gap-1 flex-1 min-w-0">
+                                  <div className="flex items-baseline justify-between gap-1.5 min-w-0">
+                                    <div className="font-display text-[11px] font-semibold truncate flex-1 min-w-0">{s.title}</div>
+                                    <div className="text-[9px] font-semibold tabular-nums text-muted-foreground shrink-0">{fmtNGN(s.cost)}</div>
                                   </div>
-                                  <div className="text-[11px] text-muted-foreground line-clamp-2">{s.blurb}</div>
-                                  <button onClick={() => addSuggestion(di, s)} className="mt-1 self-start text-[11px] font-medium px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-90 transition">+ Add to Day {d.day}</button>
+                                  <div className="text-[10px] text-muted-foreground line-clamp-2">{s.blurb}</div>
+                                  <button onClick={() => addSuggestion(di, s)} className="mt-1 self-start text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground text-background hover:opacity-90 transition">+ Add</button>
                                 </div>
                               </div>
                             ))}
                           </div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {sugg.length > 2 && (
+                              <button onClick={() => setSeeMore((m) => ({ ...m, [di]: !m[di] }))} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-secondary hover:bg-secondary/70 transition">
+                                {seeMore[di] ? "Show less" : `See ${sugg.length - 2} more`}
+                              </button>
+                            )}
+                            <button onClick={() => setMapsOpen(mapsOpen === di ? null : di)} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-google-blue/15 text-google-blue hover:bg-google-blue/25 transition inline-flex items-center gap-1">
+                              🗺️ Add from Maps
+                            </button>
+                          </div>
+
+                          {mapsOpen === di && (
+                            <div className="mt-3 rounded-xl ring-hairline bg-card p-2.5 animate-rise">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">📍 Nearby places · Google Maps</div>
+                                <button onClick={() => setMapsOpen(null)} className="text-[10px] text-muted-foreground hover:text-foreground">close</button>
+                              </div>
+                              <div className="rounded-lg overflow-hidden ring-hairline mb-2">
+                                <iframe title="maps" loading="lazy" className="w-full h-28 block" src="https://www.openstreetmap.org/export/embed.html?bbox=3.85%2C7.35%2C4.05%2C7.45&layer=mapnik&marker=7.40%2C3.94" />
+                              </div>
+                              <ul className="space-y-1 max-h-40 overflow-y-auto">
+                                {MAPS_PLACES.map((p) => (
+                                  <li key={p.id} className="flex items-center gap-2 text-[11px] rounded-lg p-1.5 hover:bg-secondary/60 transition">
+                                    <span className="text-base shrink-0">{p.emoji}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium truncate">{p.title}</div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{p.tag} · {fmtNGN(p.cost)}/p</div>
+                                    </div>
+                                    <button onClick={() => addSuggestion(di, p)} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground text-background shrink-0">+ Add</button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -640,8 +694,16 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-end">
-          <PrimaryBtn onClick={onNext}>Send to squad for voting</PrimaryBtn>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[11px] text-muted-foreground">
+            {recalcing ? "🔄 Gemini recalculating costs…" : dirty ? "⚠️ Itinerary changed — recalculate before sending." : "✓ Plan is up to date."}
+          </div>
+          <div className="flex gap-2">
+            {dirty && !recalcing && (
+              <GhostBtn onClick={recalc}>🔄 Recalculate</GhostBtn>
+            )}
+            <PrimaryBtn onClick={onNext} disabled={dirty || recalcing}>Send to squad for voting</PrimaryBtn>
+          </div>
         </div>
       </Section>
     </div>
