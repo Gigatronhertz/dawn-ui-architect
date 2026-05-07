@@ -16,7 +16,7 @@ export const Hero = () => {
             AI-powered insights
           </span>
           <span className="w-1 h-1 rounded-full bg-border" />
-          Now in private beta · Lagos · Abuja · Calabar
+          Now in private beta · Lagos · Accra · Dakar · Abidjan
         </div>
 
         <h1 className="animate-rise font-display text-5xl sm:text-6xl md:text-7xl lg:text-[88px] font-semibold leading-[1.02] tracking-tight text-gradient max-w-4xl mx-auto">

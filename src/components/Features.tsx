@@ -37,8 +37,8 @@ const features = [
     icon: <path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7" />,
   },
   {
-    title: "Built for Naija",
-    desc: "GIGM, GUO, Hotels.ng, Paystack — and shortlets that actually have power.",
+    title: "Built for West Africa",
+    desc: "GIGM, VIP, STC, Hotels.ng, Jumia Travel, Paystack — and shortlets that actually have power.",
     color: "text-google-pink",
     bg: "bg-google-pink/10",
     icon: <path d="M12 2a10 10 0 1010 10A10 10 0 0012 2zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />,

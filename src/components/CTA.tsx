@@ -44,7 +44,7 @@ export const Footer = () => (
         </span>
         MySquadGo
       </div>
-      <p className="text-xs text-muted-foreground">© 2026 MySquadGo. Made for Naija squads. 🇳🇬</p>
+      <p className="text-xs text-muted-foreground">© 2026 MySquadGo. Made for West African squads. 🇳🇬 🇬🇭 🇸🇳 🇨🇮</p>
       <div className="flex gap-5 text-xs text-muted-foreground">
         <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
         <a href="#" className="hover:text-foreground transition-colors">Terms</a>
