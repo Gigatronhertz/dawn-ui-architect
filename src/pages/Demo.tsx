@@ -1124,7 +1124,7 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
         {/* Ratings */}
         <div className="rounded-2xl bg-card ring-hairline p-5">
           <div className="font-display font-semibold mb-3 flex items-center gap-2">⭐ Rate the spots</div>
-          <div className="text-xs text-muted-foreground mb-3">Feeds SquadGo's Nigerian venue database.</div>
+          <div className="text-xs text-muted-foreground mb-3">Feeds SquadGo's West African venue database.</div>
           <ul className="space-y-3">
             {ratings.map((r) => {
               const current = userRatings[r.name] ?? r.stars;

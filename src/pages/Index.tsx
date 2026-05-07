@@ -14,7 +14,7 @@ const Index = () => {
     const meta = document.querySelector('meta[name="description"]') ||
       Object.assign(document.createElement("meta"), { name: "description" });
     (meta as HTMLMetaElement).content =
-      "MySquadGo plans your Nigerian group trip end-to-end — itinerary, hotels, WhatsApp updates, and contributions. No app download. No spreadsheet.";
+      "MySquadGo plans your West African group trip end-to-end — itinerary, hotels, WhatsApp updates, and contributions across Nigeria, Ghana, Senegal & Côte d'Ivoire. No app download. No spreadsheet.";
     if (!meta.parentNode) document.head.appendChild(meta);
   }, []);
 
