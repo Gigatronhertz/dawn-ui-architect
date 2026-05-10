@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;600;700&family=Inter:wght@400;500&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1200px;
+      height: 630px;
+      overflow: hidden;
+      font-family: 'Inter Tight', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #f97316 0%, #fb923c 45%, #fdba74 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 60px 64px;
+      position: relative;
+    }
+
+    /* background texture */
+    .orb-1 {
+      position: absolute; top: -120px; right: -120px;
+      width: 480px; height: 480px; border-radius: 50%;
+      background: rgba(255,255,255,0.18); filter: blur(80px);
+    }
+    .orb-2 {
+      position: absolute; bottom: -100px; left: -80px;
+      width: 360px; height: 360px; border-radius: 50%;
+      background: rgba(234,88,12,0.5); filter: blur(70px);
+    }
+    .grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* header */
+    .header {
+      display: flex; align-items: center; gap: 16px;
+      position: relative; z-index: 2;
+    }
+    .logo-icon {
+      width: 52px; height: 52px;
+      background: rgba(255,255,255,0.22);
+      border: 1.5px solid rgba(255,255,255,0.35);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-name {
+      font-size: 26px; font-weight: 700;
+      color: white; letter-spacing: -0.5px;
+    }
+    .badge {
+      margin-left: 4px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.28);
+      color: white; padding: 5px 12px; border-radius: 20px;
+    }
+
+    /* headline */
+    .main { position: relative; z-index: 2; }
+    .headline {
+      font-size: 86px; font-weight: 700; color: white;
+      line-height: 1.00; letter-spacing: -3px;
+      max-width: 960px;
+    }
+    .headline .dim { color: rgba(255,255,255,0.68); }
+    .sub {
+      margin-top: 22px;
+      font-size: 22px; font-weight: 400; color: rgba(255,255,255,0.82);
+      letter-spacing: -0.2px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.5); }
+
+    /* footer */
+    .footer {
+      display: flex; align-items: center; justify-content: space-between;
+      position: relative; z-index: 2;
+    }
+    .cities { display: flex; gap: 8px; }
+    .city {
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.24);
+      color: white; font-size: 15px; font-weight: 500;
+      padding: 9px 18px; border-radius: 24px;
+    }
+    .gemini {
+      font-size: 14px; font-weight: 500;
+      color: rgba(255,255,255,0.72);
+      display: flex; align-items: center; gap-6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="orb-1"></div>
+  <div class="orb-2"></div>
+  <div class="grid"></div>
+
+  <!-- Logo -->
+  <div class="header">
+    <div class="logo-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z"/>
+      </svg>
+    </div>
+    <span class="logo-name">MySquadGo</span>
+    <span class="badge">Private Beta</span>
+  </div>
+
+  <!-- Headline -->
+  <div class="main">
+    <div class="headline">
+      Group trips,<br>
+      <span class="dim">planned in minutes.</span>
+    </div>
+    <div class="sub">
+      AI itinerary
+      <span class="dot"></span>
+      WhatsApp coordination
+      <span class="dot"></span>
+      Paystack split payments
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="cities">
+      <span class="city">🇳🇬 Lagos</span>
+      <span class="city">🇬🇭 Accra</span>
+      <span class="city">🇸🇳 Dakar</span>
+      <span class="city">🇨🇮 Abidjan</span>
+    </div>
+    <div class="gemini">✦ Powered by Google Gemini</div>
+  </div>
+</body>
+</html>
