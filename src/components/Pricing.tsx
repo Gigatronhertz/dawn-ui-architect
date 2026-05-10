@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 const plans = [
   {
     name: "Free",
@@ -21,24 +23,26 @@ const plans = [
     style: "primary",
   },
   {
-    name: "Monthly",
-    price: "₦7,000",
+    name: "Pro Starter",
+    price: "₦10,000",
     cadence: "per month",
-    tag: "Frequent",
-    desc: "Unlimited trips, all features, every month.",
-    features: ["Unlimited trips", "Multiple active trips", "Trip templates", "Remove MySquadGo branding", "Trip escrow", "Platform fee per trip splits across squad as usual"],
-    cta: "Go monthly",
+    tag: "Solo agent",
+    desc: "Branded as your agency. Move from WhatsApp chaos to a real system.",
+    features: ["Up to 3 active trips", "Branded itineraries (no MySquadGo)", "Service fee — keep 100%", "Trip templates (5)", "Verified Pro badge"],
+    cta: "Start Pro Starter",
     style: "ring",
+    href: "/pro",
   },
   {
-    name: "Pro Planner",
-    price: "₦15,000",
+    name: "Pro Growth",
+    price: "₦20,000",
     cadence: "per month",
-    tag: "For agents",
-    desc: "Run your travel-planning business on MySquadGo.",
-    features: ["Public planner profile", "Charge service fees (keep 100%)", "Client dashboard", "Branded itineraries", "Verified Pro badge"],
-    cta: "Go pro",
+    tag: "Scaling",
+    desc: "Unlimited trips, revenue analytics, custom subdomain. For agents at 4+ trips/month.",
+    features: ["Unlimited active trips", "Client dashboard + payment tracking", "Revenue analytics", "Multiple agent seats", "chiomatravel.mysquadgo.com"],
+    cta: "Go Growth",
     style: "dark",
+    href: "/pro",
   },
 ];
 
