@@ -101,15 +101,20 @@ export const Pricing = () => (
                 ))}
               </ul>
 
-              <button className={`mt-7 rounded-full py-3 text-sm font-medium transition-all ${
-                isPrimary
-                  ? "bg-white text-foreground hover:bg-white/90"
-                  : isDark
-                  ? "bg-background text-foreground hover:opacity-90"
-                  : "bg-foreground text-background hover:opacity-90"
-              }`}>
-                {p.cta}
-              </button>
+              {(() => {
+                const btnClass = `mt-7 rounded-full py-3 text-sm font-medium transition-all text-center ${
+                  isPrimary
+                    ? "bg-white text-foreground hover:bg-white/90"
+                    : isDark
+                    ? "bg-background text-foreground hover:opacity-90"
+                    : "bg-foreground text-background hover:opacity-90"
+                }`;
+                return (p as any).href ? (
+                  <Link to={(p as any).href} className={btnClass}>{p.cta}</Link>
+                ) : (
+                  <button className={btnClass}>{p.cta}</button>
+                );
+              })()}
             </div>
           );
         })}
@@ -120,13 +125,17 @@ export const Pricing = () => (
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-google-blue/10 via-transparent to-google-purple/10" />
         <div className="relative grid md:grid-cols-[1fr,auto] gap-8 items-start">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider opacity-50 mb-3">Pro Planner · ₦15,000/mo</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider opacity-50 mb-3">Pro Planner · from ₦10,000/mo</div>
             <h3 className="font-display text-2xl md:text-3xl font-semibold mb-3 leading-tight">
-              Run your travel business on MySquadGo.
+              Run your travel business properly.
             </h3>
             <p className="text-sm opacity-80 leading-relaxed mb-6 max-w-lg">
-              Public profile, branded itineraries, and service fees you keep 100% of. You focus on selling trips. We handle the coordination, payments, and WhatsApp chaos.
+              Fully white-label. Your agency name and logo on every itinerary, message, and payment page. Service fees you keep 100% of. Multi-trip dashboard, client profiles, and trip templates that scale you from 3 trips to 10.
             </p>
+            <Link to="/pro" className="inline-flex items-center gap-2 rounded-full bg-white text-foreground px-5 py-2.5 text-sm font-medium hover:bg-white/90 mb-6">
+              See Pro in action
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+            </Link>
 
             <div className="flex flex-wrap gap-3 mb-6">
               {[
