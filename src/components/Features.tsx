@@ -38,7 +38,7 @@ const features = [
   },
   {
     title: "Built for West Africa",
-    desc: "GIGM, VIP, STC, Hotels.ng, Jumia Travel, Paystack — and shortlets that actually have power.",
+    desc: "Paystack payments, local transport operators, Nigerian Naira pricing — built for how trips actually work here.",
     color: "text-google-pink",
     bg: "bg-google-pink/10",
     icon: <path d="M12 2a10 10 0 1010 10A10 10 0 0012 2zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />,
@@ -72,6 +72,16 @@ export const Features = () => (
             <p className="text-[15px] text-muted-foreground leading-relaxed">{f.desc}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-5 rounded-2xl bg-card ring-hairline p-5 flex flex-wrap items-start gap-4">
+        <div className="text-2xl mt-0.5">📄</div>
+        <div className="flex-1 min-w-[220px]">
+          <div className="font-display font-semibold mb-1">Works offline too.</div>
+          <p className="text-[14px] text-muted-foreground leading-relaxed">
+            The moment your plan is confirmed, the bot sends a full PDF itinerary to the group — hotel address, departure time, pickup point, emergency contacts, individual payment confirmations. WhatsApp caches it locally. Readable at zero signal on the expressway.
+          </p>
+        </div>
       </div>
     </div>
   </section>

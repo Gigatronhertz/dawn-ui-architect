@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\richmond\\\\Documents\\\\dawn-ui-architect\" -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(head -150)",
+      "PowerShell(ls -r \"c:\\\\Users\\\\richmond\\\\Documents\\\\dawn-ui-architect\")",
+      "PowerShell(ls -r \"c:\\\\Users\\\\richmond\\\\Documents\\\\dawn-ui-architect\\\\src\" | where { $_.PSIsContainer } | Select-Object FullName)"
+    ]
+  }
+}

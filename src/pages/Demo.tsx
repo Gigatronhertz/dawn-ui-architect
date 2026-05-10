@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 /* ---------------- types ---------------- */
 type Intake = {
@@ -9,7 +9,9 @@ type Intake = {
   budget: number;
   days: number;
   squadSize: number;
-  startWindow: string;
+  accommodationType: string;
+  dateFlexibility: string;
+  dealbreakers: string;
   transport: string;
   extras: string[];
   operatorId?: string;
@@ -26,6 +28,8 @@ type Suggestion = { id: string; title: string; tag: string; cost: number; emoji:
 /* ---------------- mock generator ---------------- */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
 const EXTRAS_ALL = ["City tour", "Beach day", "Live music", "Local food crawl", "Spa"];
+const ACCOMMODATION_TYPES = ["Hotel", "Shortlet", "Budget guesthouse", "Surprise me"];
+const DATE_FLEXIBILITY_OPTIONS = ["Flexible", "I have specific dates"];
 
 const HOTELS: Hotel[] = [
   { id: "h1", name: "Kakanfo Inn & Conference Centre", area: "Joyce B Road", pricePerNight: 32000, rating: 4.4, perks: ["Free breakfast", "Pool", "Wi-Fi"] },
@@ -96,20 +100,27 @@ const StepHeader = ({ eyebrow, title, sub }: { eyebrow: string; title: string; s
   </div>
 );
 
-const PrimaryBtn = ({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) => (
+const PrimaryBtn = ({ children, onClick, disabled, fullWidth }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; fullWidth?: boolean }) => (
   <button
     onClick={onClick}
     disabled={disabled}
-    className="group inline-flex items-center gap-1.5 rounded-full bg-gradient-primary text-primary-foreground px-4 py-2 text-xs font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100"
+    className={`group inline-flex items-center gap-1.5 rounded-full bg-gradient-primary text-primary-foreground px-4 py-2 text-xs font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100${fullWidth ? " w-full justify-center sm:w-auto" : ""}`}
   >
     {children}
-    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
   </button>
 );
 
-const GhostBtn = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-  <button onClick={onClick} className="inline-flex items-center gap-1.5 rounded-full bg-card ring-hairline px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary transition-colors">
+const GhostBtn = ({ children, onClick, fullWidth }: { children: React.ReactNode; onClick?: () => void; fullWidth?: boolean }) => (
+  <button onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-full bg-card ring-hairline px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary transition-colors${fullWidth ? " w-full justify-center sm:w-auto" : ""}`}>
     {children}
+  </button>
+);
+
+const BackBtn = ({ onClick }: { onClick: () => void }) => (
+  <button onClick={onClick} type="button" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 shrink-0">
+    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+    Back
   </button>
 );
 
@@ -123,19 +134,19 @@ type ChatMsg = {
 };
 
 const INITIAL_CHAT: ChatMsg[] = [
-  { from: "user", who: "Tunde 🦁", text: "Squad, we said Ibadan trip in August. Are we still doing this or nah 😅", time: "10:38" },
-  { from: "user", who: "Ada 🌶️", text: "I'm in! But who's planning this time? Last time was chaos 💀", time: "10:39" },
-  { from: "user", who: "Kemi 🎧", text: "Not me again abeg. Spreadsheet almost killed me last December 🥲", time: "10:40" },
-  { from: "user", who: "Femi 🚀", text: "Wait — let me add the MySquadGo bot. My cousin used it for her Calabar trip, sorted everything in 5 mins.", time: "10:41" },
+  { from: "user", who: "Ada 🌶️", text: "Squad, Ibadan trip in August — we still doing this or nah 😅", time: "10:38" },
+  { from: "user", who: "Kemi 🎧", text: "I'm in! But who's organising? Last time was chaos 💀", time: "10:39" },
+  { from: "user", who: "Femi 🚀", text: "Not me again abeg. Spreadsheet almost killed me last December 🥲", time: "10:40" },
+  { from: "user", who: "Tunde 🦁", text: "I sorted it. Been setting it up quietly — let me add the bot, plan is already ready 👀", time: "10:41" },
 ];
 
 const BOT_SEQUENCE: ChatMsg[] = [
-  { from: "system", text: "Femi 🚀 added MySquadGo Bot to the group", time: "10:41" },
-  { from: "bot", text: "👋 Hey Ibadan Squad! I'm MySquadGo — powered by Google Gemini.\nI'll plan the trip, run the votes, split costs, and collect payments — all here in this chat.", time: "10:41" },
-  { from: "bot", text: "I just need 9 quick answers from one of you to get started. Ready?", time: "10:42", highlight: true },
+  { from: "system", text: "Tunde 🦁 added MySquadGo Bot to the group", time: "10:41" },
+  { from: "bot", text: "👋 Hey Ibadan Squad! MySquadGo here.\nTunde's been planning something... 👀", time: "10:41" },
+  { from: "bot", text: "Your Ibadan trip is ready. Here's what we've got:\n📍 Lagos → Ibadan · 2 days · 8 squad\n🏨 Premier Hotel Ibadan · ₦48k/night\n💰 Est. ₦18,500/person all-in\n\nTwo quick questions for the squad before we lock it 👇", time: "10:42", highlight: true },
 ];
 
-function WhatsAppView({ onNext }: { onNext: () => void }) {
+function WhatsAppView({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const [messages, setMessages] = useState<ChatMsg[]>(INITIAL_CHAT);
   const [typing, setTyping] = useState(false);
   const [step, setStep] = useState(0); // 0 = before add, 1..3 = bot sequence, 4 = ready
@@ -160,7 +171,7 @@ function WhatsAppView({ onNext }: { onNext: () => void }) {
       <StepHeader
         eyebrow="Step 1 of 7 · WhatsApp"
         title="It starts where your squad already chats."
-        sub="Watch what happens the moment someone adds the MySquadGo bot to a group."
+        sub="Watch what happens after Tunde sorts the trip privately and adds the bot to the group."
       />
 
       <div className="grid lg:grid-cols-[1fr,auto] gap-8 items-start">
@@ -235,10 +246,10 @@ function WhatsAppView({ onNext }: { onNext: () => void }) {
           <div className="rounded-2xl bg-secondary/60 p-4">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-2">What just happened</div>
             <ul className="space-y-2.5 text-sm text-foreground/90">
-              <li className="flex gap-2"><span className="text-primary">①</span> Squad started chatting about a trip</li>
-              <li className="flex gap-2"><span className="text-primary">②</span> Femi added <strong>MySquadGo Bot</strong> to the group</li>
-              <li className="flex gap-2"><span className="text-primary">③</span> Bot greets the squad and asks 9 questions</li>
-              <li className="flex gap-2"><span className="text-primary">④</span> From here, it plans, votes, and collects — automatically</li>
+              <li className="flex gap-2"><span className="text-primary">①</span> Tunde planned the trip privately in 2 minutes</li>
+              <li className="flex gap-2"><span className="text-primary">②</span> He added <strong>MySquadGo Bot</strong> to the squad group</li>
+              <li className="flex gap-2"><span className="text-primary">③</span> Bot's first message is the plan reveal — not a form</li>
+              <li className="flex gap-2"><span className="text-primary">④</span> Squad votes on dates + hotel, bot collects contributions</li>
             </ul>
           </div>
           <div className="rounded-2xl bg-card ring-hairline p-4 text-xs text-muted-foreground">
@@ -247,9 +258,10 @@ function WhatsAppView({ onNext }: { onNext: () => void }) {
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end">
-        <PrimaryBtn onClick={onNext} disabled={step < BOT_SEQUENCE.length}>
-          {step < BOT_SEQUENCE.length ? "Bot is talking…" : "Answer the bot's 9 questions"}
+      <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <BackBtn onClick={onBack} />
+        <PrimaryBtn fullWidth onClick={onNext} disabled={step < BOT_SEQUENCE.length}>
+          {step < BOT_SEQUENCE.length ? "Bot is talking…" : "Fill in the trip details (you're Tunde)"}
         </PrimaryBtn>
       </div>
     </Section>
@@ -258,7 +270,7 @@ function WhatsAppView({ onNext }: { onNext: () => void }) {
 
 /* ---------------- step 2: intake ---------------- */
 const STEP1_QUESTIONS = 9;
-function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
+function IntakeForm({ onSubmit, onBack }: { onSubmit: (i: Intake) => void; onBack: () => void }) {
   const [intake, setIntake] = useState<Intake>({
     origin: "Lagos",
     destination: "Ibadan",
@@ -266,14 +278,15 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
     budget: 25000,
     days: 2,
     squadSize: 8,
-    startWindow: "Aug 2026",
+    accommodationType: "Hotel",
+    dateFlexibility: "Flexible",
+    dealbreakers: "",
     transport: "Charter bus",
     extras: ["City tour", "Local food crawl"],
+    operatorId: "gigm",
   });
 
   const set = <K extends keyof Intake>(k: K, v: Intake[K]) => setIntake((p) => ({ ...p, [k]: v }));
-  const toggleExtra = (x: string) =>
-    set("extras", intake.extras.includes(x) ? intake.extras.filter((e) => e !== x) : [...intake.extras, x]);
 
   const Field = ({ label, children, n }: { label: string; children: React.ReactNode; n: number }) => (
     <label className="block">
@@ -291,7 +304,7 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
 
   return (
     <Section>
-      <StepHeader eyebrow="Step 2 of 7 · Intake" title="Tell us about the trip." sub={`${STEP1_QUESTIONS} quick questions. Under two minutes. The bot is asking — answer for the squad.`} />
+      <StepHeader eyebrow="Step 2 of 7 · Intake" title="Tell us about the trip." sub="Answer as Tunde — the organiser. These are the details he filled in privately before adding the bot to the group." />
       <div className="grid md:grid-cols-2 gap-5">
         <Field n={1} label="Where from?"><input className={inputCls} value={intake.origin} onChange={(e) => set("origin", e.target.value)} /></Field>
         <Field n={2} label="Where to?"><input className={inputCls} value={intake.destination} onChange={(e) => set("destination", e.target.value)} /></Field>
@@ -307,87 +320,22 @@ function IntakeForm({ onSubmit }: { onSubmit: (i: Intake) => void }) {
         <Field n={6} label={`Squad size · ${intake.squadSize}`}>
           <input type="range" min={2} max={20} value={intake.squadSize} onChange={(e) => set("squadSize", +e.target.value)} className="w-full accent-primary" />
         </Field>
-        <Field n={7} label="Start window"><input className={inputCls} value={intake.startWindow} onChange={(e) => set("startWindow", e.target.value)} /></Field>
-        <Field n={8} label="Transport">
-          <div className="flex flex-wrap gap-2">{["Charter bus", "Public transport", "Flights"].map((t) => <button key={t} type="button" onClick={() => { set("transport", t); set("operatorId", undefined); }} className={chipCls(intake.transport === t)}>{t}</button>)}</div>
+        <Field n={7} label="Accommodation type">
+          <div className="flex flex-wrap gap-2">{ACCOMMODATION_TYPES.map((t) => <button key={t} type="button" onClick={() => set("accommodationType", t)} className={chipCls(intake.accommodationType === t)}>{t}</button>)}</div>
+        </Field>
+        <Field n={8} label="Specific dates or flexible?">
+          <div className="flex flex-wrap gap-2">{DATE_FLEXIBILITY_OPTIONS.map((d) => <button key={d} type="button" onClick={() => set("dateFlexibility", d)} className={chipCls(intake.dateFlexibility === d)}>{d}</button>)}</div>
         </Field>
         <div className="md:col-span-2">
-          <Field n={9} label="Add-ons (pick any)">
-            <div className="flex flex-wrap gap-2">{EXTRAS_ALL.map((x) => <button key={x} type="button" onClick={() => toggleExtra(x)} className={chipCls(intake.extras.includes(x))}>{x}</button>)}</div>
+          <Field n={9} label="Any dealbreakers?">
+            <input className={inputCls} placeholder="e.g. must have AC / halal food / no shared rooms" value={intake.dealbreakers} onChange={(e) => set("dealbreakers", e.target.value)} />
           </Field>
         </div>
 
-        {/* operator picker — appears inline based on transport choice */}
-        <div className="md:col-span-2">
-          <div className="rounded-2xl bg-secondary/40 ring-hairline p-4 md:p-5">
-            <div className="flex items-baseline justify-between mb-1">
-              <div className="font-display text-sm font-semibold flex items-center gap-2">
-                🔎 Live {intake.transport.toLowerCase()} options
-                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-blue/15 text-google-blue">Pulled by Gemini</span>
-              </div>
-              <div className="text-[11px] text-muted-foreground">{intake.origin} → {intake.destination}</div>
-            </div>
-            <div className="text-[11px] text-muted-foreground mb-3">Pick the operator + how many seats. Price locks in after this.</div>
-
-            <div className="grid sm:grid-cols-2 gap-2.5">
-              {operatorsFor(intake.transport).map((op) => {
-                const active = intake.operatorId === op.id;
-                return (
-                  <button
-                    key={op.id}
-                    type="button"
-                    onClick={() => set("operatorId", op.id)}
-                    className={`text-left rounded-xl p-3 ring-hairline transition ${active ? "bg-primary-soft ring-primary/40" : "bg-card hover:bg-secondary"}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="font-display text-sm font-semibold flex items-center gap-1.5">
-                          <span className="text-base leading-none">{op.logo}</span>
-                          <span className="truncate">{op.brand}</span>
-                          {active && <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">Picked</span>}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{op.class}</div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="font-display text-sm font-semibold tabular-nums">{fmtNGN(op.pricePerSeat)}</div>
-                        <div className="text-[10px] text-muted-foreground">per seat</div>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                      <span className="px-1.5 py-0.5 rounded bg-secondary">🕒 {op.depart} → {op.arrive}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-secondary">⏱ {op.duration}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-secondary">⭐ {op.rating}</span>
-                      {op.note && <span className="px-1.5 py-0.5 rounded bg-secondary">{op.note}</span>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* seat counter */}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card ring-hairline p-3">
-              <div className="text-sm">
-                <div className="font-medium">Seats / tickets</div>
-                <div className="text-[11px] text-muted-foreground">Default = squad size ({intake.squadSize}). Adjust if some are joining later.</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => set("seats", Math.max(1, (intake.seats ?? intake.squadSize) - 1))} className="w-8 h-8 rounded-full ring-hairline bg-card hover:bg-secondary font-display text-base">−</button>
-                <div className="w-10 text-center font-display font-semibold tabular-nums">{intake.seats ?? intake.squadSize}</div>
-                <button type="button" onClick={() => set("seats", Math.min(30, (intake.seats ?? intake.squadSize) + 1))} className="w-8 h-8 rounded-full ring-hairline bg-card hover:bg-secondary font-display text-base">+</button>
-                {intake.operatorId && (
-                  <div className="ml-3 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold tabular-nums">
-                    Locks at {fmtNGN((operatorsFor(intake.transport).find(o => o.id === intake.operatorId)!.pricePerSeat) * (intake.seats ?? intake.squadSize))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
-      <div className="mt-8 flex items-center justify-between gap-3">
-        <div className="text-xs text-muted-foreground">{intake.operatorId ? `✓ ${operatorsFor(intake.transport).find(o => o.id === intake.operatorId)!.brand} selected` : "Pick an operator above to lock the price."}</div>
-        <PrimaryBtn onClick={() => onSubmit({ ...intake, seats: intake.seats ?? intake.squadSize })} disabled={!intake.operatorId}>Generate plan with AI</PrimaryBtn>
+      <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <BackBtn onClick={onBack} />
+        <PrimaryBtn fullWidth onClick={() => onSubmit({ ...intake, seats: intake.seats ?? intake.squadSize })}>Generate plan with AI</PrimaryBtn>
       </div>
     </Section>
   );
@@ -421,7 +369,7 @@ const MAPS_PLACES: Suggestion[] = [
   { id: "m-shrine", title: "Mapo Hill shrine", tag: "Cultural", cost: 1200, emoji: "🕯️", blurb: "Sacred site beside Mapo Hall — quick visit." },
 ];
 
-function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
+function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: () => void; onBack: () => void }) {
   const [phase, setPhase] = useState(0); // 0 = generating, 1 = done
   const phases = ["Analyzing route…", "Pricing 14 hotels with Gemini…", "Building daily itinerary…", "Calculating costs & buffer…"];
   const [pIdx, setPIdx] = useState(0);
@@ -456,6 +404,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
   const [mapsOpen, setMapsOpen] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
   const [recalcing, setRecalcing] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   const extraItineraryCost = useMemo(
     () => days.reduce((sum, d) => sum + d.items.reduce((s, it) => s + it.cost, 0), 0) * intake.squadSize,
@@ -538,33 +487,50 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
             <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">Live</span>
           </div>
           <div className="relative rounded-2xl overflow-hidden ring-hairline shadow-card bg-card">
-            <iframe
-              title="Trip route map"
-              className="w-full h-72 md:h-80 block"
-              loading="lazy"
-              src="https://www.openstreetmap.org/export/embed.html?bbox=2.95%2C6.30%2C4.10%2C7.55&layer=mapnik&marker=7.3775%2C3.9470"
-            />
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute left-[18%] top-[68%] flex flex-col items-center">
-                <div className="px-2.5 py-1 rounded-full bg-foreground text-background text-[10px] font-semibold shadow-card whitespace-nowrap">🚌 {intake.origin}</div>
-                <div className="w-2 h-2 rounded-full bg-foreground mt-1 ring-4 ring-background" />
-              </div>
-              <div className="absolute left-[66%] top-[26%] flex flex-col items-center">
-                <div className="px-2.5 py-1 rounded-full bg-gradient-primary text-primary-foreground text-[10px] font-semibold shadow-glow whitespace-nowrap">📍 {intake.destination}</div>
-                <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1 ring-4 ring-background animate-pulse" />
-              </div>
-              <div className="absolute left-[60%] top-[38%]">
-                <div className="px-2 py-0.5 rounded-full bg-card ring-hairline text-[10px] font-semibold text-foreground shadow-soft whitespace-nowrap">🏨 {plan.hotel.name.split(" ")[0]}</div>
-              </div>
-            </div>
-            <div className="absolute bottom-0 inset-x-0 flex flex-wrap items-center justify-between gap-2 bg-card/85 backdrop-blur px-4 py-2 text-xs">
-              <div className="flex items-center gap-3 text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-foreground" />Pickup</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" />Destination</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-google-purple" />Hotel</span>
-              </div>
-              <div className="font-display font-semibold text-foreground">~128 km · 2h 10m drive</div>
-            </div>
+            {mapLoaded ? (
+              <>
+                <iframe
+                  title="Trip route map"
+                  className="w-full h-72 md:h-80 block"
+                  loading="lazy"
+                  src="https://www.openstreetmap.org/export/embed.html?bbox=2.95%2C6.30%2C4.10%2C7.55&layer=mapnik&marker=7.3775%2C3.9470"
+                />
+                <div className="pointer-events-none absolute inset-0">
+                  <div className="absolute left-[18%] top-[68%] flex flex-col items-center">
+                    <div className="px-2.5 py-1 rounded-full bg-foreground text-background text-[10px] font-semibold shadow-card whitespace-nowrap">🚌 {intake.origin}</div>
+                    <div className="w-2 h-2 rounded-full bg-foreground mt-1 ring-4 ring-background" />
+                  </div>
+                  <div className="absolute left-[66%] top-[26%] flex flex-col items-center">
+                    <div className="px-2.5 py-1 rounded-full bg-gradient-primary text-primary-foreground text-[10px] font-semibold shadow-glow whitespace-nowrap">📍 {intake.destination}</div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1 ring-4 ring-background animate-pulse" />
+                  </div>
+                  <div className="absolute left-[60%] top-[38%]">
+                    <div className="px-2 py-0.5 rounded-full bg-card ring-hairline text-[10px] font-semibold text-foreground shadow-soft whitespace-nowrap">🏨 {plan.hotel.name.split(" ")[0]}</div>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 inset-x-0 flex flex-wrap items-center justify-between gap-2 bg-card/85 backdrop-blur px-4 py-2 text-xs">
+                  <div className="flex items-center gap-3 text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-foreground" />Pickup</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" />Destination</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-google-purple" />Hotel</span>
+                  </div>
+                  <div className="font-display font-semibold text-foreground">~128 km · 2h 10m drive</div>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={() => setMapLoaded(true)}
+                className="w-full h-72 md:h-80 flex flex-col items-center justify-center gap-3 bg-secondary/60 hover:bg-secondary transition-colors"
+              >
+                <div className="grid place-items-center w-12 h-12 rounded-full bg-card ring-hairline text-muted-foreground">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">Tap to load interactive map</span>
+                <span className="text-xs text-muted-foreground/60">{intake.origin} → {intake.destination} · ~128 km</span>
+              </button>
+            )}
           </div>
           <div className="mt-2 text-[11px] text-muted-foreground">Drag the map to explore. Pins refresh as the squad votes on hotels.</div>
         </div>
@@ -694,15 +660,16 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-[11px] text-muted-foreground">
-            {recalcing ? "🔄 Gemini recalculating costs…" : dirty ? "⚠️ Itinerary changed — recalculate before sending." : "✓ Plan is up to date."}
+        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <BackBtn onClick={onBack} />
+            <span className="hidden sm:block text-[11px] text-muted-foreground">
+              {recalcing ? "🔄 Gemini recalculating…" : dirty ? "⚠️ Recalculate before sending." : "✓ Plan is up to date."}
+            </span>
           </div>
-          <div className="flex gap-2">
-            {dirty && !recalcing && (
-              <GhostBtn onClick={recalc}>🔄 Recalculate</GhostBtn>
-            )}
-            <PrimaryBtn onClick={onNext} disabled={dirty || recalcing}>Send to squad for voting</PrimaryBtn>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {dirty && !recalcing && <GhostBtn fullWidth onClick={recalc}>🔄 Recalculate</GhostBtn>}
+            <PrimaryBtn fullWidth onClick={onNext} disabled={dirty || recalcing}>Send to squad for voting</PrimaryBtn>
           </div>
         </div>
       </Section>
@@ -711,7 +678,7 @@ function PlanView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
 }
 
 /* ---------------- step 3: voting ---------------- */
-function VoteView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
+function VoteView({ intake, onNext, onBack }: { intake: Intake; onNext: () => void; onBack: () => void }) {
   // pre-seed votes to feel alive
   const [dateVotes, setDateVotes] = useState<Record<string, number>>({ d1: 2, d2: 5, d3: 1 });
   const [hotelVotes, setHotelVotes] = useState<Record<string, number>>({ h1: 1, h2: 6, h3: 1 });
@@ -796,16 +763,19 @@ function VoteView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
         </div>
       </div>
 
-      <div className="mt-8 flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">{(myDate ? 1 : 0) + (myHotel ? 1 : 0)} of 2 votes cast</div>
-        <PrimaryBtn onClick={onNext} disabled={!myDate || !myHotel}>Lock it in & open contributions</PrimaryBtn>
+      <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-4">
+          <BackBtn onClick={onBack} />
+          <span className="hidden sm:block text-xs text-muted-foreground">{(myDate ? 1 : 0) + (myHotel ? 1 : 0)} of 2 votes cast</span>
+        </div>
+        <PrimaryBtn fullWidth onClick={onNext} disabled={!myDate || !myHotel}>Lock it in & open contributions</PrimaryBtn>
       </div>
     </Section>
   );
 }
 
 /* ---------------- step 4: contributions ---------------- */
-function ContributionsView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
+function ContributionsView({ intake, onNext, onBack }: { intake: Intake; onNext: () => void; onBack: () => void }) {
   const plan = useMemo(() => buildPlan(intake), [intake]);
   const [members, setMembers] = useState<Member[]>(() =>
     Array.from({ length: intake.squadSize }, (_, i) => ({
@@ -878,9 +848,12 @@ function ContributionsView({ intake, onNext }: { intake: Intake; onNext: () => v
         ))}
       </div>
 
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <div className="text-xs text-muted-foreground">Auto-reminders sent at 72h · 24h · 2h before deadline.</div>
-        <PrimaryBtn onClick={onNext}>Trip day — let's go 🚌</PrimaryBtn>
+      <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-4">
+          <BackBtn onClick={onBack} />
+          <span className="hidden sm:block text-xs text-muted-foreground">Auto-reminders sent at 72h · 24h · 2h before deadline.</span>
+        </div>
+        <PrimaryBtn fullWidth onClick={onNext}>Trip day — let's go 🚌</PrimaryBtn>
       </div>
     </Section>
   );
@@ -895,7 +868,7 @@ type TripPing = {
   time: string;
 };
 
-function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void }) {
+function DuringTripView({ intake, onNext, onBack }: { intake: Intake; onNext: () => void; onBack: () => void }) {
   const opName = operatorsFor(intake.transport).find(o => o.id === intake.operatorId)?.brand ?? intake.transport;
 
   const FEED_SEQ: TripPing[] = useMemo(() => [
@@ -1030,8 +1003,9 @@ function DuringTripView({ intake, onNext }: { intake: Intake; onNext: () => void
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end">
-        <PrimaryBtn onClick={onNext}>Trip's done — see the recap 📸</PrimaryBtn>
+      <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <BackBtn onClick={onBack} />
+        <PrimaryBtn fullWidth onClick={onNext}>Trip's done — see the recap 📸</PrimaryBtn>
       </div>
     </Section>
   );
@@ -1186,7 +1160,24 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
         )}
       </div>
 
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-8 rounded-2xl bg-whatsapp/10 ring-1 ring-whatsapp/20 p-5">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-whatsapp/20 grid place-items-center text-base shrink-0">🤖</div>
+          <div className="flex-1">
+            <div className="text-[11px] font-semibold text-whatsapp mb-1.5">MySquadGo Bot</div>
+            <p className="text-sm text-foreground/90 mb-3">That trip was a 10/10. Ready for the next one? It takes 2 minutes to start.</p>
+            <Link
+              to="/demo"
+              className="inline-flex items-center gap-1.5 rounded-full bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity"
+            >
+              Plan another trip
+              <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs text-muted-foreground">Trip Journal saved · venue ratings synced · settlement closed.</div>
         <div className="flex gap-2">
           <GhostBtn onClick={onRestart}>Run demo again</GhostBtn>
@@ -1207,6 +1198,13 @@ const Demo = () => {
   const [step, setStep] = useState(0);
   const [intake, setIntake] = useState<Intake | null>(null);
   const [auto, setAuto] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const navigate = useNavigate();
+
+  const goTo = (n: number) => {
+    setTransitioning(true);
+    setTimeout(() => { setStep(n); setTransitioning(false); }, 450);
+  };
 
   useEffect(() => {
     document.title = "MySquadGo — Interactive Demo";
@@ -1223,7 +1221,8 @@ const Demo = () => {
     if (step === 1 && !intake) {
       setIntake({
         origin: "Lagos", destination: "Ibadan", vibe: "Chill & scenic",
-        budget: 25000, days: 2, squadSize: 8, startWindow: "Aug 2026",
+        budget: 25000, days: 2, squadSize: 8, accommodationType: "Hotel",
+        dateFlexibility: "Flexible", dealbreakers: "",
         transport: "Charter bus", extras: ["City tour", "Local food crawl"],
         operatorId: "gigm", seats: 8,
       });
@@ -1232,7 +1231,7 @@ const Demo = () => {
     return () => clearTimeout(t);
   }, [auto, step, intake]);
 
-  const reset = () => { setStep(0); setIntake(null); setAuto(false); };
+  const reset = () => { setStep(0); setIntake(null); setAuto(false); setTransitioning(false); };
   const startAuto = () => { reset(); setAuto(true); };
 
   return (
@@ -1263,18 +1262,23 @@ const Demo = () => {
         </div>
       </header>
 
-      {/* stepper — evenly aligned badges with connectors between them */}
-      <div className="relative mx-auto max-w-4xl px-6 mb-8">
+      {/* stepper */}
+      <div className="relative mx-auto max-w-4xl px-6 mb-6">
         <div className="flex items-start">
           {STEPS.map((label, i) => {
             const done = i < step;
             const active = i === step;
             return (
               <div key={label} className={`flex items-start min-w-0 ${i < STEPS.length - 1 ? "flex-1" : ""}`}>
-                <div className="flex flex-col items-center gap-1.5 shrink-0 w-16">
-                  <div className={`grid place-items-center w-7 h-7 rounded-full text-[11px] font-display font-semibold ring-hairline ${done ? "bg-primary text-primary-foreground" : active ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}>
+                <div className="flex flex-col items-center gap-1.5 shrink-0 w-8 sm:w-16">
+                  <button
+                    type="button"
+                    onClick={() => done && !transitioning && goTo(i)}
+                    disabled={!done || transitioning}
+                    className={`grid place-items-center w-7 h-7 rounded-full text-[11px] font-display font-semibold ring-hairline transition-transform ${done ? "bg-primary text-primary-foreground hover:scale-110 cursor-pointer" : active ? "bg-foreground text-background cursor-default" : "bg-card text-muted-foreground cursor-default"}`}
+                  >
                     {done ? "✓" : i + 1}
-                  </div>
+                  </button>
                   <span className={`hidden sm:block text-[10px] font-medium tracking-wide text-center leading-tight ${active ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
                 </div>
                 {i < STEPS.length - 1 && (
@@ -1284,16 +1288,30 @@ const Demo = () => {
             );
           })}
         </div>
+        <p className="sm:hidden text-xs font-medium text-center text-muted-foreground mt-3">
+          Step {step + 1} of {STEPS.length} · <span className="text-foreground font-semibold">{STEPS[step]}</span>
+        </p>
       </div>
 
       <div className="relative mx-auto max-w-4xl px-6 pb-24">
-        {step === 0 && <WhatsAppView onNext={() => setStep(1)} />}
-        {step === 1 && <IntakeForm onSubmit={(i) => { setIntake(i); setStep(2); }} />}
-        {step === 2 && intake && <PlanView intake={intake} onNext={() => setStep(3)} />}
-        {step === 3 && intake && <VoteView intake={intake} onNext={() => setStep(4)} />}
-        {step === 4 && intake && <ContributionsView intake={intake} onNext={() => setStep(5)} />}
-        {step === 5 && intake && <DuringTripView intake={intake} onNext={() => setStep(6)} />}
-        {step === 6 && intake && <AfterTripView intake={intake} onRestart={reset} />}
+        {transitioning ? (
+          <div className="rounded-3xl bg-card ring-hairline shadow-card p-12 grid place-items-center gap-4 min-h-[360px] animate-rise">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow animate-float">
+              <svg viewBox="0 0 24 24" className="w-7 h-7 text-primary-foreground" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" /></svg>
+            </div>
+            <p className="font-display text-lg text-gradient">Loading…</p>
+          </div>
+        ) : (
+          <>
+            {step === 0 && <WhatsAppView onNext={() => goTo(1)} onBack={() => navigate("/")} />}
+            {step === 1 && <IntakeForm onSubmit={(i) => { setIntake(i); goTo(2); }} onBack={() => goTo(0)} />}
+            {step === 2 && intake && <PlanView intake={intake} onNext={() => goTo(3)} onBack={() => goTo(1)} />}
+            {step === 3 && intake && <VoteView intake={intake} onNext={() => goTo(4)} onBack={() => goTo(2)} />}
+            {step === 4 && intake && <ContributionsView intake={intake} onNext={() => goTo(5)} onBack={() => goTo(3)} />}
+            {step === 5 && intake && <DuringTripView intake={intake} onNext={() => goTo(6)} onBack={() => goTo(4)} />}
+            {step === 6 && intake && <AfterTripView intake={intake} onRestart={reset} />}
+          </>
+        )}
       </div>
     </main>
   );

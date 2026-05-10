@@ -14,7 +14,8 @@ const plans = [
     price: "₦5,000",
     cadence: "per trip",
     tag: "Most loved",
-    desc: "Unlock everything for one specific trip.",
+    desc: "Split across your squad. Added invisibly to each member's Paystack link.",
+    detail: "8 members → ₦625 each · 12 members → ₦417 each",
     features: ["Full AI itinerary", "Hotel suggestions", "Paystack contribution links", "Auto reminders", "Up to 30 members"],
     cta: "Plan a trip",
     style: "primary",
@@ -25,7 +26,7 @@ const plans = [
     cadence: "per month",
     tag: "Frequent",
     desc: "Unlimited trips, all features, every month.",
-    features: ["Unlimited trips", "Multiple active trips", "Trip templates", "Remove MySquadGo branding", "Trip escrow"],
+    features: ["Unlimited trips", "Multiple active trips", "Trip templates", "Remove MySquadGo branding", "Trip escrow", "Platform fee per trip splits across squad as usual"],
     cta: "Go monthly",
     style: "ring",
   },
@@ -52,7 +53,7 @@ export const Pricing = () => (
           <span className="text-muted-foreground">No transaction cuts.</span>
         </h2>
         <p className="mt-5 text-muted-foreground">
-          ₦5,000 to coordinate a ₦200,000 group trip. Your sanity is worth more.
+          ₦5,000 split across your squad. Everyone chips in a little, nobody feels it.
         </p>
       </div>
 
@@ -83,6 +84,9 @@ export const Pricing = () => (
                 <span className={`text-sm ${isPrimary || isDark ? "opacity-80" : "text-muted-foreground"}`}>/{p.cadence.replace("per ", "")}</span>
               </div>
               <p className={`mt-2 text-sm ${isPrimary || isDark ? "opacity-80" : "text-muted-foreground"}`}>{p.desc}</p>
+              {"detail" in p && p.detail && (
+                <p className={`mt-1.5 text-xs font-medium tabular-nums ${isPrimary ? "opacity-70" : "text-muted-foreground"}`}>{p.detail}</p>
+              )}
 
               <ul className="mt-6 space-y-3 flex-1">
                 {p.features.map((f) => (
@@ -105,6 +109,72 @@ export const Pricing = () => (
             </div>
           );
         })}
+      </div>
+
+      {/* Pro Planner showcase */}
+      <div className="mt-8 rounded-3xl bg-foreground text-background p-8 md:p-10 overflow-hidden relative">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-google-blue/10 via-transparent to-google-purple/10" />
+        <div className="relative grid md:grid-cols-[1fr,auto] gap-8 items-start">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider opacity-50 mb-3">Pro Planner · ₦15,000/mo</div>
+            <h3 className="font-display text-2xl md:text-3xl font-semibold mb-3 leading-tight">
+              Run your travel business on MySquadGo.
+            </h3>
+            <p className="text-sm opacity-80 leading-relaxed mb-6 max-w-lg">
+              Public profile, branded itineraries, and service fees you keep 100% of. You focus on selling trips. We handle the coordination, payments, and WhatsApp chaos.
+            </p>
+
+            <div className="flex flex-wrap gap-3 mb-6">
+              {[
+                { badge: "AT", name: "Amaka Travels", role: "Travel agent", stat: "34 trips planned" },
+                { badge: "CE", name: "Chidi Explores", role: "Content creator", stat: "18 trips planned" },
+                { badge: "YG", name: "Yemi Goes", role: "Frequent organiser", stat: "12 trips planned" },
+              ].map((prof) => (
+                <div key={prof.name} className="flex items-center gap-2.5 rounded-2xl bg-white/5 ring-1 ring-white/10 px-3 py-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground text-[11px] font-display font-bold shrink-0">{prof.badge}</div>
+                  <div>
+                    <div className="text-sm font-semibold leading-none mb-0.5">{prof.name}</div>
+                    <div className="text-[11px] opacity-60">{prof.role} · {prof.stat}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 text-sm opacity-70">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              Verified Pro badge appears on every itinerary you share
+            </div>
+          </div>
+
+          {/* Branded itinerary mock */}
+          <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-5 min-w-[180px] shrink-0 self-start">
+            <div className="text-[10px] opacity-50 uppercase tracking-wider mb-3">Sample itinerary</div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-primary grid place-items-center text-primary-foreground text-[11px] font-display font-bold shrink-0">AT</div>
+              <div>
+                <div className="text-xs font-semibold">Amaka Travels</div>
+                <div className="text-[10px] opacity-60 flex items-center gap-1">
+                  <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                  Verified Pro
+                </div>
+              </div>
+            </div>
+            <div className="font-display text-sm font-semibold mb-0.5">Calabar Carnival 2026</div>
+            <div className="text-[11px] opacity-60 mb-1">4 days · 14 squad</div>
+            <div className="font-display text-lg font-semibold mb-3">₦55,000<span className="text-sm font-normal opacity-60">/person</span></div>
+            <div className="space-y-1 mb-3">
+              {["Day 1 — Arrival & Carnival parade", "Day 2 — Beach day + seafood", "Day 3 — Cultural tour + nightlife", "Day 4 — Brunch & departure"].map((d) => (
+                <div key={d} className="text-[10px] opacity-50 flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-current shrink-0" />
+                  {d}
+                </div>
+              ))}
+            </div>
+            <div className="pt-3 border-t border-white/10 text-[10px] opacity-40">Planned by Amaka via MySquadGo</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>

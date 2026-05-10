@@ -15,7 +15,15 @@ export const CTA = () => (
             Plan it tonight. Send the WhatsApp link. Wake up to a confirmed trip.
           </p>
 
-          <form className="mt-10 flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm">
+            <div className="flex items-center gap-2 opacity-70">
+              <span className="w-1.5 h-1.5 rounded-full bg-whatsapp flex-shrink-0" />
+              <span>47 squads in beta · ₦12M+ collected</span>
+            </div>
+            <p className="italic opacity-60 max-w-xs">"Sorted our Abuja trip in 4 minutes. Everyone paid before we boarded." — Tunde, Lagos</p>
+          </div>
+
+          <form className="mt-8 flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
             <input
               type="tel"
               placeholder="Your WhatsApp number"

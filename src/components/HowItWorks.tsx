@@ -2,7 +2,7 @@ const phases = [
   {
     n: "01",
     title: "Create the trip",
-    desc: "Nine quick questions. Where from, where to, vibe, budget, days. Done in under two minutes.",
+    desc: "Nine quick questions. Where from, where to, vibe, budget, accommodation type, and more. Done in under two minutes.",
     accent: "bg-primary",
   },
   {
