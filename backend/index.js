@@ -19,8 +19,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Parse JSON bodies
-app.use(express.json());
+// Parse JSON bodies — capture raw body on the way through so the Paystack
+// webhook handler can verify the HMAC signature against the exact bytes sent.
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); },
+}));
 
 // Health check
 app.get('/', (req, res) => res.json({ status: 'ok', service: 'MySquadGo backend' }));

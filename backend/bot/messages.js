@@ -117,6 +117,11 @@ const M = {
   PAYMENT_CONFIRMED_GROUP: (name) =>
     `✅ *${name || 'Squad member'} just paid!* Spot locked. 🔒`,
 
+  PAYMENT_CONFIRMED_PRIVATE: (name, destination, amountFormatted) =>
+    `✅ Payment confirmed${name ? `, ${name}` : ''}! Your spot on the *${destination}* trip is locked.\n\n` +
+    `*${amountFormatted}* received via Paystack. 🎉\n\n` +
+    `You'll get the full offline itinerary once everyone on the squad has paid.`,
+
   PAYMENT_REMINDER_PRIVATE: (name, url) =>
     `Hey${name ? ` ${name}` : ''} — just a heads up, payment deadline is in 24 hours.\n\n` +
     `Your link: ${url}\n\n` +

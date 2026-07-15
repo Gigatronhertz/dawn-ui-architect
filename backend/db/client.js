@@ -120,6 +120,7 @@ const insertMember = db.prepare(`
   INSERT OR IGNORE INTO members (id, trip_id, phone, name, amount)
   VALUES (@id, @trip_id, @phone, @name, @amount)
 `);
+const getMember = db.prepare('SELECT * FROM members WHERE trip_id = ? AND phone = ?');
 const getMembersByTrip = db.prepare('SELECT * FROM members WHERE trip_id = ?');
 const markPaid = db.prepare(`
   UPDATE members SET paid = 1, paid_at = unixepoch(), paystack_ref = @ref
@@ -141,6 +142,6 @@ module.exports = {
   db,
   conv: { get: getConv, upsert: upsertConv, reset: resetConv },
   trips: { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
-  members: { insert: insertMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
+  members: { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
   waitlist: { insert: insertWaitlist, list: listWaitlist },
 };
