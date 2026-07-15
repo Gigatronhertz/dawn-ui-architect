@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { WaitlistForm } from "@/components/WaitlistForm";
 
 /* ---------------- types ---------------- */
 type Intake = {
@@ -1160,20 +1161,19 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
         )}
       </div>
 
-      <div className="mt-8 rounded-2xl bg-whatsapp/10 ring-1 ring-whatsapp/20 p-5">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-whatsapp/20 grid place-items-center text-base shrink-0">🤖</div>
-          <div className="flex-1">
-            <div className="text-[11px] font-semibold text-whatsapp mb-1.5">MySquadGo Bot</div>
-            <p className="text-sm text-foreground/90 mb-3">That trip was a 10/10. Ready for the next one? It takes 2 minutes to start.</p>
-            <Link
-              to="/demo"
-              className="inline-flex items-center gap-1.5 rounded-full bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity"
-            >
-              Plan another trip
-              <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
-            </Link>
-          </div>
+      <div className="mt-8 relative overflow-hidden rounded-2xl bg-foreground text-background p-6 md:p-8">
+        <div className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 rounded-full bg-primary/30 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-accent/20 blur-3xl" />
+        <div className="relative">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-50 mb-2">You've seen the full flow</div>
+          <h3 className="font-display text-2xl md:text-3xl font-semibold leading-tight mb-2">
+            Ready to do it for real?
+          </h3>
+          <p className="text-sm opacity-75 mb-6 max-w-md">
+            Drop your WhatsApp number. We'll message you the moment the beta opens in your city — Lagos, Accra, Dakar, or Abidjan.
+          </p>
+          <WaitlistForm source="demo_end" dark />
+          <p className="mt-3 text-[11px] opacity-40">We only message once. Promise.</p>
         </div>
       </div>
 

@@ -1,3 +1,5 @@
+import { WaitlistForm } from "@/components/WaitlistForm";
+
 export const CTA = () => (
   <section id="cta" className="py-28 md:py-36">
     <div className="mx-auto max-w-5xl px-6">
@@ -23,19 +25,7 @@ export const CTA = () => (
             <p className="italic opacity-60 max-w-xs">"Sorted our Abuja trip in 4 minutes. Everyone paid before we boarded." — Tunde, Lagos</p>
           </div>
 
-          <form className="mt-8 flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-            <input
-              type="tel"
-              placeholder="Your WhatsApp number"
-              className="flex-1 rounded-full bg-white/10 ring-1 ring-white/20 px-5 py-3.5 text-sm placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-            />
-            <button
-              type="button"
-              className="rounded-full bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform"
-            >
-              Get early access
-            </button>
-          </form>
+          <WaitlistForm source="cta_section" dark className="mt-8 max-w-md mx-auto" />
           <p className="mt-4 text-xs opacity-50">We only message once. Promise.</p>
         </div>
       </div>

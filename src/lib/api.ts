@@ -41,4 +41,5 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 export const api = {
   generatePlan: (intake: IntakeData) => post<PlanResponse>('/api/plan', intake),
   confirmPlan: (tripId: string, plan: GeminiPlan) => post<ConfirmResponse>('/api/confirm', { tripId, plan }),
+  joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
 };

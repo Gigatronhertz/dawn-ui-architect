@@ -107,4 +107,18 @@ router.get('/plan/:tripId', (req, res) => {
   res.json({ tripId: trip.id, plan: JSON.parse(trip.plan), status: trip.status });
 });
 
+// POST /api/waitlist
+// Captures a phone number + source tag from any conversion surface.
+// Silently deduplicates (phone, source) pairs.
+router.post('/waitlist', (req, res) => {
+  const { phone, source } = req.body;
+  if (!phone || typeof phone !== 'string' || phone.trim().length < 5) {
+    return res.status(400).json({ error: 'A valid phone number is required.' });
+  }
+  const sanitised = phone.trim().replace(/\s+/g, '');
+  const src = (typeof source === 'string' && source.trim()) ? source.trim() : 'unknown';
+  db.waitlist.insert.run({ phone: sanitised, source: src });
+  return res.json({ ok: true });
+});
+
 module.exports = router;

@@ -12,6 +12,14 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS waitlist (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    phone       TEXT NOT NULL,
+    source      TEXT NOT NULL DEFAULT 'unknown',
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+    UNIQUE(phone, source)
+  );
+
   CREATE TABLE IF NOT EXISTS conversations (
     phone       TEXT PRIMARY KEY,
     name        TEXT,
@@ -122,9 +130,17 @@ const updatePaystackUrl = db.prepare(`
   WHERE trip_id = @trip_id AND phone = @phone
 `);
 
+// ── Waitlist helpers ───────────────────────────────────────────────────────
+
+const insertWaitlist = db.prepare(`
+  INSERT OR IGNORE INTO waitlist (phone, source) VALUES (@phone, @source)
+`);
+const listWaitlist = db.prepare('SELECT * FROM waitlist ORDER BY created_at DESC');
+
 module.exports = {
   db,
   conv: { get: getConv, upsert: upsertConv, reset: resetConv },
   trips: { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
   members: { insert: insertMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
+  waitlist: { insert: insertWaitlist, list: listWaitlist },
 };
