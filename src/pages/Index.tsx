@@ -1,11 +1,10 @@
 import { Nav } from "@/components/Nav";
 import { Hero } from "@/components/Hero";
-import { PoweredByGemini } from "@/components/PoweredByGemini";
 import { Features } from "@/components/Features";
-import { MoneyTrust } from "@/components/MoneyTrust";
+import { PoweredByGemini } from "@/components/PoweredByGemini";
 import { HowItWorks } from "@/components/HowItWorks";
-import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { BotPreview } from "@/components/BotPreview";
+import { MoneyTrust } from "@/components/MoneyTrust";
 import { Pricing } from "@/components/Pricing";
 import { Transparency } from "@/components/Transparency";
 import { CTA, Footer } from "@/components/CTA";
@@ -25,12 +24,11 @@ const Index = () => {
     <main className="min-h-screen bg-background">
       <Nav />
       <Hero />
-      <PoweredByGemini />
       <Features />
-      <MoneyTrust />
+      <PoweredByGemini />
       <HowItWorks />
-      <OnboardingFlow />
       <BotPreview />
+      <MoneyTrust />
       <Pricing />
       <Transparency />
       <CTA />

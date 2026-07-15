@@ -33,12 +33,35 @@ const trips = [
   { name: "Cape Coast Weekend", date: "Jan 10 — Jan 12", squad: 6, paid: 2, total: 6, status: "Collecting", tone: "default" as const, action: "Deposit deadline Jan 4", revenue: "₦210,000" },
 ];
 
+const tripMembers: Record<string, { name: string; paid: boolean }[]> = {
+  "Calabar Carnival": [
+    { name: "Tolu", paid: true }, { name: "Chidi", paid: true }, { name: "Ada", paid: true },
+    { name: "Kemi", paid: true }, { name: "Bisi", paid: false }, { name: "Femi", paid: false },
+  ],
+  "Ghana Detty Detty": [
+    { name: "Emeka", paid: false }, { name: "Zara", paid: true }, { name: "Kunle", paid: true },
+    { name: "Lola", paid: true }, { name: "Tunde", paid: false }, { name: "Amaka", paid: true },
+  ],
+  "Lagos NYE House": [
+    { name: "Yemi", paid: true }, { name: "Sade", paid: true }, { name: "Rotimi", paid: true },
+    { name: "Nike", paid: true },
+  ],
+  "Cape Coast Weekend": [
+    { name: "Dotun", paid: true }, { name: "Chisom", paid: true }, { name: "Eze", paid: false },
+    { name: "Ngozi", paid: false },
+  ],
+};
+
 const ProDemo = () => {
   useEffect(() => {
     document.title = "MySquadGo Pro — Run your travel business properly";
   }, []);
 
   const [showInvisible, setShowInvisible] = useState(false);
+  const [agencyName, setAgencyName] = useState("Chioma Travels");
+  const [expandedTrip, setExpandedTrip] = useState<string | null>(null);
+
+  const agencyInitials = agencyName.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "CT";
 
   return (
     <main className="min-h-screen bg-background">
@@ -71,11 +94,11 @@ const ProDemo = () => {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#dashboard" className="rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90">See the dashboard</a>
-              <a href="#pricing" className="rounded-full ring-1 ring-foreground/20 px-5 py-2.5 text-sm font-medium hover:bg-foreground/5">Pricing</a>
+              <a href="#try-it" className="rounded-full ring-1 ring-foreground/20 px-5 py-2.5 text-sm font-medium hover:bg-foreground/5">Brand it as yours</a>
             </div>
             <div className="mt-6 flex items-center gap-3 text-xs text-muted-foreground">
               <div className="flex -space-x-2">
-                {["AT","CE","YG"].map((b,i)=>(<div key={i} className="w-6 h-6 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground text-[9px] font-bold ring-2 ring-background">{b}</div>))}
+                {["AT", "CE", "YG"].map((b, i) => (<div key={i} className="w-6 h-6 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground text-[9px] font-bold ring-2 ring-background">{b}</div>))}
               </div>
               34 agents in beta · West Africa
             </div>
@@ -114,7 +137,7 @@ const ProDemo = () => {
       </section>
 
       {/* Dashboard mock */}
-      <Section id="dashboard" eyebrow="Multi-trip dashboard" title="Every trip, every payment, one screen." sub="What Chioma sees the moment she logs in. Active trips, who paid, who didn't, what to do next.">
+      <Section id="dashboard" eyebrow="Multi-trip dashboard" title="Every trip, every payment, one screen." sub="Click any trip to see who's paid and what to do next.">
         <div className="rounded-3xl bg-foreground text-background p-2 shadow-card overflow-hidden">
           {/* fake browser */}
           <div className="flex items-center gap-1.5 px-3 py-2">
@@ -166,28 +189,57 @@ const ProDemo = () => {
               </div>
               {trips.map((t) => {
                 const pct = Math.round((t.paid / t.total) * 100);
+                const isOpen = expandedTrip === t.name;
+                const members = tripMembers[t.name] || [];
                 return (
-                  <div key={t.name} className="grid grid-cols-12 items-center px-4 py-3 border-t border-border text-xs">
-                    <div className="col-span-4">
-                      <div className="font-semibold flex items-center gap-2">{t.name} <Chip tone={t.tone}>{t.status}</Chip></div>
-                      <div className="text-[10px] text-muted-foreground">{t.date} · {t.revenue}</div>
-                    </div>
-                    <div className="col-span-2 tabular-nums">{t.squad} ppl</div>
-                    <div className="col-span-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div className="h-full bg-gradient-primary" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="tabular-nums text-[10px] text-muted-foreground">{t.paid}/{t.total}</span>
+                  <div key={t.name} className="border-t border-border">
+                    <button
+                      onClick={() => setExpandedTrip(isOpen ? null : t.name)}
+                      className="w-full grid grid-cols-12 items-center px-4 py-3 text-xs text-left hover:bg-secondary/30 transition-colors"
+                    >
+                      <div className="col-span-4">
+                        <div className="font-semibold flex items-center gap-2">{t.name} <Chip tone={t.tone}>{t.status}</Chip></div>
+                        <div className="text-[10px] text-muted-foreground">{t.date} · {t.revenue}</div>
                       </div>
-                    </div>
-                    <div className={`col-span-3 text-[11px] ${t.tone === "warn" ? "text-yellow-700" : "text-muted-foreground"}`}>{t.action}</div>
+                      <div className="col-span-2 tabular-nums">{t.squad} ppl</div>
+                      <div className="col-span-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                            <div className="h-full bg-gradient-primary" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="tabular-nums text-[10px] text-muted-foreground">{t.paid}/{t.total}</span>
+                        </div>
+                      </div>
+                      <div className={`col-span-2 text-[11px] ${t.tone === "warn" ? "text-yellow-700" : "text-muted-foreground"}`}>{t.action}</div>
+                      <div className="col-span-1 text-right text-muted-foreground text-[10px]">{isOpen ? "▲" : "▼"}</div>
+                    </button>
+
+                    {isOpen && (
+                      <div className="px-4 pb-4 bg-secondary/20">
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 pt-2">Members</div>
+                        <div className="flex flex-wrap gap-2">
+                          {members.map((m) => (
+                            <div key={m.name} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${m.paid ? "bg-emerald-100 text-emerald-800" : "bg-yellow-100 text-yellow-800"}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${m.paid ? "bg-emerald-500" : "bg-yellow-500"}`} />
+                              {m.name}
+                              <span className="opacity-70">{m.paid ? "paid" : "pending"}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {members.some((m) => !m.paid) && (
+                          <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-foreground text-background px-3 py-1.5 text-[11px] font-medium cursor-pointer hover:opacity-90">
+                            <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 01-1.3 4.5 8.5 8.5 0 01-7.3 4 8.4 8.4 0 01-4.4-1.2L3 20l1.4-4.9a8.4 8.4 0 01-1.3-4.5 8.5 8.5 0 014-7.3 8.4 8.4 0 014.5-1.3 8.5 8.5 0 018.5 8.5z" /></svg>
+                            Send reminder to unpaid members
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
 
-            <div className="mt-3 text-[10px] text-muted-foreground">↑ This is a Pro Growth view. Pro Starter caps at 3 active trips.</div>
+            <div className="mt-3 text-[10px] text-muted-foreground">↑ Pro Growth view. Pro Starter caps at 3 active trips.</div>
           </div>
         </div>
       </Section>
@@ -245,9 +297,9 @@ const ProDemo = () => {
             <div className="rounded-2xl bg-secondary/40 p-5 text-sm">
               <div className="text-xs text-muted-foreground mb-3">Calabar Carnival · your share</div>
               {[
-                ["Transport (charter)", "₦7,000"],
-                ["Hotel (3 nights, shared)", "₦12,000"],
-                ["Activities & VIP stand", "₦4,500"],
+                ["Transport (charter)", "₦7,000", undefined],
+                ["Hotel (3 nights, shared)", "₦12,000", undefined],
+                ["Activities & VIP stand", "₦4,500", undefined],
                 ["Planning fee — Chioma Travels", "₦10,000", "kept"],
                 ["Platform fee", "₦417", "invisible"],
               ].map(([k, v, tag]) => (
@@ -268,6 +320,96 @@ const ProDemo = () => {
               <div className="mt-2 text-center text-[10px] text-muted-foreground">Powered by Chioma Travels</div>
             </div>
           </div>
+        </div>
+      </Section>
+
+      {/* Interactive branding demo */}
+      <Section id="try-it" eyebrow="Try it yourself" title={<>Type your name. <span className="text-muted-foreground">Watch it apply.</span></>} sub="Every client-facing surface updates instantly — itinerary, WhatsApp messages, payment page. Your clients never see us.">
+        <div>
+          {/* Agency name input */}
+          <div className="flex items-center gap-3 mb-8 max-w-md">
+            <div className="w-10 h-10 rounded-xl bg-gradient-primary grid place-items-center text-primary-foreground font-display font-bold shrink-0 transition-all">
+              {agencyInitials}
+            </div>
+            <input
+              value={agencyName}
+              onChange={(e) => setAgencyName(e.target.value)}
+              placeholder="Your agency name"
+              maxLength={40}
+              className="flex-1 rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+            />
+          </div>
+
+          {/* Live preview panels */}
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* Panel 1: WhatsApp message */}
+            <div className="rounded-2xl bg-card ring-hairline p-5">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">WhatsApp · Group message</div>
+              <div className="rounded-xl bg-secondary/60 p-4 space-y-2.5">
+                <div className="text-[11px] font-semibold text-primary">{agencyName || "Your Agency"} Bot</div>
+                <div className="text-sm text-foreground/90 leading-snug whitespace-pre-line">
+                  👋 Hey Calabar Carnival squad!{"\n"}{agencyName || "Your Agency"} here.{"\n"}Tolu's trip is ready:
+                </div>
+                <div className="rounded-lg bg-card p-3 text-xs space-y-1">
+                  <div>📍 Lagos → Calabar · 4 days · 14 squad</div>
+                  <div>🏨 Transcorp Calabar · ₦22k/night</div>
+                  <div>💰 Est. ₦65,000/person all-in</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Panel 2: Itinerary header */}
+            <div className="rounded-2xl bg-card ring-hairline p-5">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">PDF Itinerary · Header</div>
+              <div className="rounded-xl bg-secondary/40 p-4">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-9 h-9 rounded-lg bg-gradient-primary grid place-items-center text-primary-foreground text-xs font-display font-bold shrink-0">
+                    {agencyInitials}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">{agencyName || "Your Agency"}</div>
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                      Verified Pro
+                    </div>
+                  </div>
+                </div>
+                <div className="font-display text-base font-semibold">Calabar Carnival 2026</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Curated by {agencyName || "Your Agency"} · 4 days · 14 squad</div>
+                <div className="mt-4 pt-3 border-t border-border text-[10px] text-muted-foreground">
+                  Questions? Contact {agencyName || "Your Agency"} directly.
+                </div>
+              </div>
+            </div>
+
+            {/* Panel 3: Payment page */}
+            <div className="rounded-2xl bg-card ring-hairline p-5">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Client payment page · Paystack</div>
+              <div className="rounded-xl bg-secondary/40 p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-primary grid place-items-center text-primary-foreground text-[10px] font-bold">
+                    {agencyInitials}
+                  </div>
+                  <div className="font-semibold text-sm">{agencyName || "Your Agency"}</div>
+                </div>
+                <div className="text-xs font-medium mb-3">Calabar Carnival — your share</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Planning fee — {agencyName || "Your Agency"}</span>
+                    <span className="font-semibold">₦10,000</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Hotel + transport</span>
+                    <span className="font-semibold">₦23,917</span>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-lg bg-foreground text-background text-xs text-center py-2 font-medium">Pay ₦33,917</div>
+                <div className="mt-2 text-center text-[9px] text-muted-foreground">Booking via {agencyName || "Your Agency"}</div>
+              </div>
+            </div>
+          </div>
+
+          <p className="mt-4 text-xs text-muted-foreground">MySquadGo doesn't appear anywhere your clients can see. We're the engine. You're the brand.</p>
         </div>
       </Section>
 
@@ -305,7 +447,7 @@ const ProDemo = () => {
             </div>
             <p className="text-sm text-muted-foreground mt-2">Move from WhatsApp chaos to a proper system.</p>
             <ul className="mt-6 space-y-2.5 text-[13px]">
-              {["Up to 3 active trips","Branded itineraries (no MySquadGo)","Service fee collection — keep 100%","Paystack contribution links","Auto reminders","Trip templates (5)","Verified Pro badge + directory listing","WhatsApp bot fully branded"].map((f)=>(
+              {["Up to 3 active trips", "Branded itineraries (no MySquadGo)", "Service fee collection — keep 100%", "Paystack contribution links", "Auto reminders", "Trip templates (5)", "Verified Pro badge + directory listing", "WhatsApp bot fully branded"].map((f) => (
                 <li key={f} className="flex gap-2"><span className="text-primary">✓</span>{f}</li>
               ))}
             </ul>
@@ -323,7 +465,7 @@ const ProDemo = () => {
             </div>
             <p className="text-sm opacity-90 mt-2">When 3 trips a month isn't enough anymore.</p>
             <ul className="mt-6 space-y-2.5 text-[13px]">
-              {["Unlimited active trips","Everything in Starter","Full client dashboard with payment tracking","Revenue analytics & route profitability","Unlimited trip templates","Multiple agent seats (assistant / partner)","Priority WhatsApp support","Custom subdomain — chiomatravel.mysquadgo.com"].map((f)=>(
+              {["Unlimited active trips", "Everything in Starter", "Full client dashboard with payment tracking", "Revenue analytics & route profitability", "Unlimited trip templates", "Multiple agent seats (assistant / partner)", "Priority WhatsApp support", "Custom subdomain — chiomatravel.mysquadgo.com"].map((f) => (
                 <li key={f} className="flex gap-2"><span>✓</span>{f}</li>
               ))}
             </ul>
@@ -398,7 +540,7 @@ const ProDemo = () => {
           </p>
           <div className="mt-8 flex flex-wrap gap-3 justify-center">
             <button className="rounded-full bg-white text-foreground px-6 py-3 text-sm font-medium">Start Pro Starter</button>
-            <Link to="/demo" className="rounded-full ring-1 ring-white/30 px-6 py-3 text-sm font-medium hover:bg-white/10">See the squad demo</Link>
+            <a href="#try-it" className="rounded-full ring-1 ring-white/30 px-6 py-3 text-sm font-medium hover:bg-white/10">Brand it as yours ↑</a>
           </div>
         </div>
       </section>
