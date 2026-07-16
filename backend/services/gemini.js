@@ -1,4 +1,13 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const {
+  geocodeCity, getRoadDistance,
+  searchHotels: googleHotels, searchHolidayRentals, searchActivities,
+  formatHotelsForPrompt, formatRentalsForPrompt, formatActivitiesForPrompt,
+} = require('./googleMaps');
+const { searchFlights, formatFlightsForPrompt } = require('./amadeus');
+const {
+  searchHotels: bookingHotels, searchApartments, getDates, formatBookingHotelsForPrompt,
+} = require('./bookingCom');
 
 let genAI;
 function getClient() {
@@ -9,8 +18,123 @@ function getClient() {
 const fmtNGN = (n) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
+// ── Fetch real-world data to ground the Gemini plan ───────────────────────────
+// All calls run in parallel. Any individual failure is non-fatal — the plan
+// generation continues with whatever context was successfully retrieved.
+async function fetchRealWorldContext(intake) {
+  const isShortlet = (intake.accommodation || '').toLowerCase().includes('shortlet');
+  const budgetPerNight = Math.round((intake.budget * 0.4) / (intake.days || 1));
+  const { checkin, checkout } = getDates(intake);
+
+  // Geocode destination first — needed for Google Places searches
+  const coords = await geocodeCity(`${intake.destination}, Nigeria`);
+
+  // Run all external API calls in parallel — any failure is non-fatal
+  const [
+    road,
+    gHotels, gRentals, activities,
+    bHotels, bApartments,
+    flights,
+  ] = await Promise.allSettled([
+    getRoadDistance(intake.origin, intake.destination),
+    // Google Places — ratings, addresses, phone numbers, venues
+    googleHotels(intake.destination, coords?.lat, coords?.lng, budgetPerNight),
+    isShortlet
+      ? searchHolidayRentals(intake.destination, coords?.lat, coords?.lng)
+      : Promise.resolve([]),
+    searchActivities(intake.destination, coords?.lat, coords?.lng),
+    // Booking.com — real NGN prices with availability
+    bookingHotels(intake.destination, checkin, checkout, intake.squad_size, budgetPerNight),
+    isShortlet
+      ? searchApartments(intake.destination, checkin, checkout, intake.squad_size)
+      : Promise.resolve([]),
+    // Amadeus — flight prices between cities
+    searchFlights(
+      intake.origin, intake.destination,
+      intake.specific_dates?.match(/\d{4}-\d{2}-\d{2}/)?.[0]
+    ),
+  ]);
+
+  const val = (r) => r.status === 'fulfilled' ? r.value : null;
+
+  return {
+    road:         val(road),
+    gHotels:      val(gHotels)  || [],
+    gRentals:     val(gRentals) || [],
+    activities:   val(activities) || {},
+    bHotels:      val(bHotels) || [],
+    bApartments:  val(bApartments) || [],
+    flights:      val(flights),
+    nights:       intake.days || 1,
+  };
+}
+
+// Build the context block injected into the Gemini prompt
+function buildContextBlock(ctx, intake) {
+  const sections = [];
+
+  if (ctx.road) {
+    sections.push(
+      `🗺️  Real road distance (Google Maps): ${ctx.road.distanceText}, ~${ctx.road.durationText} by road.`
+    );
+  }
+
+  if (ctx.flights) {
+    sections.push(formatFlightsForPrompt(ctx.flights));
+  }
+
+  // Hotels: merge Google Places (ratings/addresses) + Booking.com (real NGN prices)
+  const bHotelStr = formatBookingHotelsForPrompt(ctx.bHotels, ctx.nights);
+  const gHotelStr = formatHotelsForPrompt(ctx.gHotels);
+
+  if (bHotelStr) {
+    sections.push(
+      `🏨  Hotels near ${intake.destination} with REAL NGN prices (Booking.com — use these prices):\n${bHotelStr}`
+    );
+  }
+  if (gHotelStr) {
+    sections.push(
+      `🏨  Hotels near ${intake.destination} with ratings + phone numbers (Google Places — cross-reference with Booking.com prices above):\n${gHotelStr}`
+    );
+  }
+
+  // Holiday rentals / shortlets: merge both sources
+  const bRentalStr = formatBookingHotelsForPrompt(ctx.bApartments, ctx.nights);
+  const gRentalStr = formatRentalsForPrompt(ctx.gRentals);
+
+  if (bRentalStr) {
+    sections.push(
+      `🏠  Apartments / shortlets near ${intake.destination} with REAL NGN prices (Booking.com):\n${bRentalStr}`
+    );
+  }
+  if (gRentalStr) {
+    sections.push(
+      `🏠  Shortlets / holiday rentals near ${intake.destination} (Google Places):\n${gRentalStr}`
+    );
+  }
+
+  const actStr = formatActivitiesForPrompt(ctx.activities);
+  if (actStr) {
+    sections.push(`📍  Real venues near ${intake.destination} (Google Places — use these exact names in the itinerary):\n${actStr}`);
+  }
+
+  if (!sections.length) return '';
+
+  return `\n## REAL-WORLD DATA (prioritise this — do not invent hotel names or prices when real data is provided)\n${sections.join('\n\n')}\n`;
+}
+
+// ── Main plan generation ───────────────────────────────────────────────────────
 async function generateTripPlan(intake) {
   const model = getClient().getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+  // Fetch live data in parallel — takes ~2-4s, runs while user sees "Generating…"
+  const ctx = await fetchRealWorldContext(intake);
+  const contextBlock = buildContextBlock(ctx, intake);
+
+  const useFlights = ctx.flights?.available && intake.budget >= (ctx.flights.cheapestNGN * 1.5);
+  const transportHint = useFlights
+    ? `Flights are available from ${ctx.flights.cheapestNGN.toLocaleString()} NGN/person — use air travel for this trip.`
+    : `Use road transport (GIGM, GUO, ABC, Peace Mass, Efex) — this is a bus/road trip.`;
 
   const prompt = `You are MySquadGo's West African group trip planner. Generate a detailed, realistic trip plan.
 
@@ -23,21 +147,30 @@ Trip details:
 - Accommodation preference: ${intake.accommodation}
 - Date preference: ${intake.date_flexibility}${intake.specific_dates ? ` (${intake.specific_dates})` : ''}
 - Dealbreakers: ${intake.dealbreakers || 'none'}
+- Transport: ${transportHint}
+${contextBlock}
+INSTRUCTIONS:
+1. Pick the hotel from the "Real hotels" list above if provided — use the EXACT name and address. Only invent a hotel if none were returned.
+2. If holiday rentals are listed and the accommodation preference is "Shortlet", pick from that list.
+3. Use real restaurants and attractions from the Google Places data above in the day itinerary. Use the exact names.
+4. Use the real road distance/time for transport. If flights are cheaper than road for this budget, use flights.
+5. Price levels: PRICE_LEVEL_INEXPENSIVE ≈ ₦8,000–₦20,000/night, MODERATE ≈ ₦20,000–₦50,000/night, EXPENSIVE ≈ ₦50,000–₦150,000/night.
+6. All prices must be in Nigerian Naira (NGN) and realistic for 2025.
+7. Return ONLY valid JSON — no markdown, no explanation.
 
-Generate a realistic plan using actual West African hotels, transport operators (GIGM, GUO, ABC, Peace Mass for buses; Air Peace, Ibom Air for flights; UBER/Bolt for city transport), and local activities. Prices must be in Nigerian Naira and realistic for 2025.
-
-Return ONLY valid JSON — no markdown, no explanation:
 {
   "hotel": {
-    "name": "exact hotel name",
-    "area": "neighbourhood/area",
+    "name": "exact name from Google Places list, or invented if none provided",
+    "area": "neighbourhood/area from address",
     "price_per_night": 45000,
     "rating": 4.3,
-    "perks": ["Free breakfast", "Pool", "Wi-Fi"]
+    "perks": ["Free breakfast", "Pool", "Wi-Fi"],
+    "address": "full address if available from Places data",
+    "phone": "phone number if available from Places data"
   },
   "transport": {
-    "operator": "GIGM",
-    "type": "Charter bus",
+    "operator": "GIGM or Air Peace etc.",
+    "type": "Charter bus or Flight",
     "price_per_person": 8500,
     "depart_time": "07:00",
     "arrive_time": "09:30",
@@ -49,8 +182,8 @@ Return ONLY valid JSON — no markdown, no explanation:
       "title": "Arrival & city pulse",
       "activities": [
         { "time": "13:00", "title": "Check-in at hotel", "cost_per_person": 0 },
-        { "time": "16:00", "title": "Cocoa House rooftop", "cost_per_person": 2000 },
-        { "time": "20:00", "title": "Dinner at Amala Skye", "cost_per_person": 4500 }
+        { "time": "16:00", "title": "Real venue name from Places data", "cost_per_person": 2000 },
+        { "time": "20:00", "title": "Real restaurant name from Places data", "cost_per_person": 4500 }
       ]
     }
   ],
@@ -68,23 +201,32 @@ Return ONLY valid JSON — no markdown, no explanation:
     "total": 307000,
     "per_person": 38375
   },
-  "highlights": ["Cocoa House rooftop at sunset", "Amala Skye street food crawl", "Agodi Gardens nature walk"],
-  "offline_note": "Premier Hotel Ibadan — 12 Molete Rd, Mokola, Ibadan. Tel: 0802 000 0000. GIGM pickup: Jibowu Motor Park 07:00."
+  "highlights": ["real venue 1", "real venue 2", "real venue 3"],
+  "offline_note": "Hotel name — full address. Tel: phone number. Transport operator pickup: location, time.",
+  "data_sources": {
+    "hotels_from_google": ${ctx.hotels.length > 0},
+    "rentals_from_google": ${ctx.rentals.length > 0},
+    "activities_from_google": ${Object.keys(ctx.activities || {}).length > 0},
+    "distance_from_google": ${!!ctx.road},
+    "flights_from_amadeus": ${!!ctx.flights}
+  }
 }`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
-
-  // Strip markdown code fences if Gemini wraps the JSON
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   return JSON.parse(cleaned);
 }
 
-// Format a plan into a readable WhatsApp message
+// ── WhatsApp plan summary ──────────────────────────────────────────────────────
 function formatPlanSummary(plan, intake) {
-  const { hotel, transport, cost_breakdown: cost, highlights, days } = plan;
+  const { hotel, transport, cost_breakdown: cost, highlights, days, data_sources } = plan;
 
   const dayLines = days.map((d) => `  Day ${d.day}: ${d.title}`).join('\n');
+
+  const dataBadge = data_sources
+    ? '\n_📍 Hotels, venues & distances pulled live from Google Maps_'
+    : '';
 
   return (
     `✅ *${intake.origin} → ${intake.destination} trip is ready.*\n\n` +
@@ -93,8 +235,9 @@ function formatPlanSummary(plan, intake) {
     `🚌 ${transport.operator} · ${fmtNGN(transport.price_per_person)}/seat · departs ${transport.depart_time}\n` +
     `💰 Est. *${fmtNGN(cost.per_person)}/person* all-in\n\n` +
     `📋 *Itinerary:*\n${dayLines}\n\n` +
-    `✨ *Highlights:* ${highlights.join(' · ')}\n\n` +
-    `Type *confirm* to lock this in, or tell me what to change.`
+    `✨ *Highlights:* ${highlights.join(' · ')}` +
+    dataBadge +
+    `\n\nType *confirm* to lock this in, or tell me what to change.`
   );
 }
 

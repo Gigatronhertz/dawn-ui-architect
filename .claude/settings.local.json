@@ -7,7 +7,10 @@
       "PowerShell(ls -r \"c:\\\\Users\\\\richmond\\\\Documents\\\\dawn-ui-architect\")",
       "PowerShell(ls -r \"c:\\\\Users\\\\richmond\\\\Documents\\\\dawn-ui-architect\\\\src\" | where { $_.PSIsContainer } | Select-Object FullName)",
       "Bash(node --check routes/api.js)",
-      "Bash(node --check db/client.js)"
+      "Bash(node --check db/client.js)",
+      "Bash(node --check services/googleMaps.js)",
+      "Bash(node --check services/amadeus.js)",
+      "Bash(node --check services/gemini.js)"
     ]
   }
 }
