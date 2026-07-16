@@ -5,7 +5,9 @@
       "Bash(Select-Object FullName)",
       "PowerShell(head -150)",
       "PowerShell(ls -r \"c:\\\\Users\\\\richmond\\\\Documents\\\\dawn-ui-architect\")",
-      "PowerShell(ls -r \"c:\\\\Users\\\\richmond\\\\Documents\\\\dawn-ui-architect\\\\src\" | where { $_.PSIsContainer } | Select-Object FullName)"
+      "PowerShell(ls -r \"c:\\\\Users\\\\richmond\\\\Documents\\\\dawn-ui-architect\\\\src\" | where { $_.PSIsContainer } | Select-Object FullName)",
+      "Bash(node --check routes/api.js)",
+      "Bash(node --check db/client.js)"
     ]
   }
 }

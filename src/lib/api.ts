@@ -27,6 +27,43 @@ export type GeminiPlan = {
 export type PlanResponse = { tripId: string; plan: GeminiPlan };
 export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; instructions: string[] };
 
+export type AgentProfile = {
+  phone: string;
+  agencyName: string;
+  waNumber?: string;
+  serviceFee: number;
+  color: string;
+  planType: 'starter' | 'growth';
+  tagline?: string;
+};
+
+export type TripRow = {
+  id: string;
+  origin: string | null;
+  destination: string | null;
+  days: number | null;
+  squad_size: number | null;
+  status: string;
+  created_at: number;
+  paid_count: number;
+  total_members: number;
+  total_collected: number;
+};
+
+export type DashboardSummary = {
+  active_trips: number;
+  trips_completed: number;
+  total_collected: number;
+  pending_payments: number;
+  revenue_mtd: number;
+};
+
+export type DashboardData = {
+  agent: AgentProfile & { agency_name: string; plan_type: string; service_fee: number };
+  trips: TripRow[];
+  summary: DashboardSummary;
+};
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: 'POST',
@@ -38,8 +75,18 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data as T;
+}
+
 export const api = {
   generatePlan: (intake: IntakeData) => post<PlanResponse>('/api/plan', intake),
   confirmPlan: (tripId: string, plan: GeminiPlan) => post<ConfirmResponse>('/api/confirm', { tripId, plan }),
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
+  registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),
+  getAgent: (phone: string) => get<{ agent: AgentProfile }>(`/api/agents/${encodeURIComponent(phone)}`),
+  getDashboard: (phone: string) => get<DashboardData>(`/api/dashboard/${encodeURIComponent(phone)}`),
 };

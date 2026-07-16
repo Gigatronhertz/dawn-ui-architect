@@ -451,7 +451,7 @@ const ProDemo = () => {
                 <li key={f} className="flex gap-2"><span className="text-primary">✓</span>{f}</li>
               ))}
             </ul>
-            <button className="mt-7 w-full rounded-full bg-foreground text-background py-3 text-sm font-medium">Start Pro Starter</button>
+            <Link to="/pro/setup" className="mt-7 block text-center rounded-full bg-foreground text-background py-3 text-sm font-medium hover:opacity-90">Start Pro Starter</Link>
           </div>
 
           <div className="rounded-3xl bg-gradient-primary text-primary-foreground p-7 shadow-glow">
@@ -469,7 +469,7 @@ const ProDemo = () => {
                 <li key={f} className="flex gap-2"><span>✓</span>{f}</li>
               ))}
             </ul>
-            <button className="mt-7 w-full rounded-full bg-white text-foreground py-3 text-sm font-medium hover:bg-white/90">Start Pro Growth</button>
+            <Link to="/pro/setup?plan=growth" className="mt-7 block text-center rounded-full bg-white text-foreground py-3 text-sm font-medium hover:bg-white/90">Start Pro Growth</Link>
           </div>
         </div>
 
@@ -539,7 +539,7 @@ const ProDemo = () => {
             Start with Pro Starter for ₦10,000/month. Upgrade to Growth the moment you're juggling more than 3 trips. Cancel anytime.
           </p>
           <div className="mt-8 flex flex-wrap gap-3 justify-center">
-            <button className="rounded-full bg-white text-foreground px-6 py-3 text-sm font-medium">Start Pro Starter</button>
+            <Link to="/pro/setup" className="rounded-full bg-white text-foreground px-6 py-3 text-sm font-medium hover:bg-white/90">Start Pro Starter</Link>
             <a href="#try-it" className="rounded-full ring-1 ring-white/30 px-6 py-3 text-sm font-medium hover:bg-white/10">Brand it as yours ↑</a>
           </div>
         </div>

@@ -107,6 +107,64 @@ router.get('/plan/:tripId', (req, res) => {
   res.json({ tripId: trip.id, plan: JSON.parse(trip.plan), status: trip.status });
 });
 
+// POST /api/agents
+// Upsert a Pro agent profile. Phone is the unique identifier.
+router.post('/agents', (req, res) => {
+  const { phone, agencyName, waNumber, serviceFee, color, planType, tagline } = req.body;
+  if (!phone || typeof phone !== 'string' || phone.trim().length < 5)
+    return res.status(400).json({ error: 'A valid phone number is required.' });
+  if (!agencyName || typeof agencyName !== 'string' || !agencyName.trim())
+    return res.status(400).json({ error: 'Agency name is required.' });
+
+  const sanitisedPhone = phone.trim().replace(/\s+/g, '');
+  const id = uuid();
+
+  db.agents.upsert.run({
+    id,
+    phone: sanitisedPhone,
+    agency_name: agencyName.trim(),
+    wa_number: (waNumber || sanitisedPhone).trim(),
+    service_fee: Number(serviceFee) || 10000,
+    color: color || '#6366f1',
+    plan_type: planType || 'starter',
+    tagline: tagline?.trim() || null,
+  });
+
+  const agent = db.agents.get.get(sanitisedPhone);
+  return res.json({ ok: true, agent });
+});
+
+// GET /api/agents/:phone
+router.get('/agents/:phone', (req, res) => {
+  const agent = db.agents.get.get(req.params.phone.replace(/\s+/g, ''));
+  if (!agent) return res.status(404).json({ error: 'Agent not found.' });
+  return res.json({ agent });
+});
+
+// GET /api/dashboard/:phone
+// Returns all trips for an agent with payment summaries.
+router.get('/dashboard/:phone', (req, res) => {
+  const phone = req.params.phone.replace(/\s+/g, '');
+  const agent = db.agents.get.get(phone);
+  if (!agent) return res.status(404).json({ error: 'Agent not found.' });
+
+  const trips = db.agents.dashboard.all(phone);
+
+  const activeStatuses = new Set(['awaiting_group', 'voting_dates', 'voting_hotel', 'payment']);
+  const now = Math.floor(Date.now() / 1000);
+  const monthStart = Math.floor(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000);
+
+  const summary = {
+    active_trips: trips.filter(t => activeStatuses.has(t.status)).length,
+    trips_completed: trips.filter(t => t.status === 'active').length,
+    total_collected: trips.reduce((s, t) => s + (t.total_collected || 0), 0),
+    pending_payments: trips.filter(t => t.status === 'payment').reduce((s, t) => s + Math.max(0, (t.squad_size || 0) - t.paid_count), 0),
+    revenue_mtd: trips.filter(t => t.created_at >= monthStart).reduce((s, t) => s + (t.total_collected || 0), 0),
+  };
+
+  return res.json({ agent, trips, summary });
+});
+
 // POST /api/waitlist
 // Captures a phone number + source tag from any conversion surface.
 // Silently deduplicates (phone, source) pairs.

@@ -12,6 +12,18 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS agents (
+    id          TEXT PRIMARY KEY,
+    phone       TEXT UNIQUE NOT NULL,
+    agency_name TEXT NOT NULL,
+    wa_number   TEXT,
+    service_fee INTEGER NOT NULL DEFAULT 10000,
+    color       TEXT NOT NULL DEFAULT '#6366f1',
+    plan_type   TEXT NOT NULL DEFAULT 'starter',
+    tagline     TEXT,
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+
   CREATE TABLE IF NOT EXISTS waitlist (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     phone       TEXT NOT NULL,
@@ -138,10 +150,39 @@ const insertWaitlist = db.prepare(`
 `);
 const listWaitlist = db.prepare('SELECT * FROM waitlist ORDER BY created_at DESC');
 
+// ── Agent helpers ──────────────────────────────────────────────────────────
+
+const upsertAgent = db.prepare(`
+  INSERT INTO agents (id, phone, agency_name, wa_number, service_fee, color, plan_type, tagline)
+  VALUES (@id, @phone, @agency_name, @wa_number, @service_fee, @color, @plan_type, @tagline)
+  ON CONFLICT(phone) DO UPDATE SET
+    agency_name = @agency_name,
+    wa_number   = @wa_number,
+    service_fee = @service_fee,
+    color       = @color,
+    plan_type   = @plan_type,
+    tagline     = @tagline
+`);
+const getAgent = db.prepare('SELECT * FROM agents WHERE phone = ?');
+
+const getAgentDashboard = db.prepare(`
+  SELECT
+    t.id, t.origin, t.destination, t.days, t.squad_size, t.status, t.created_at,
+    COUNT(m.id)                                                AS total_members,
+    COALESCE(SUM(CASE WHEN m.paid = 1 THEN 1 ELSE 0 END), 0) AS paid_count,
+    COALESCE(SUM(CASE WHEN m.paid = 1 THEN m.amount ELSE 0 END), 0) AS total_collected
+  FROM trips t
+  LEFT JOIN members m ON m.trip_id = t.id
+  WHERE t.organiser_phone = ?
+  GROUP BY t.id
+  ORDER BY t.created_at DESC
+`);
+
 module.exports = {
   db,
   conv: { get: getConv, upsert: upsertConv, reset: resetConv },
   trips: { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
   members: { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
   waitlist: { insert: insertWaitlist, list: listWaitlist },
+  agents: { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
 };
