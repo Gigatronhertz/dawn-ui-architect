@@ -23,8 +23,8 @@ const STATE_PROMPTS = {
 // Start a fresh intake session
 async function startIntake(phone, name) {
   const tripId = uuid();
-  db.trips.insert.run({ id: tripId, organiser_phone: phone });
-  db.conv.upsert.run({ phone, name, state: 'intake_q1', trip_id: tripId, temp: '{}' });
+  await db.trips.insert({ id: tripId, organiser_phone: phone });
+  await db.conv.upsert({ phone, name, state: 'intake_q1', trip_id: tripId, temp: '{}' });
   await sendText(phone, M.WELCOME(name));
 }
 
@@ -37,7 +37,7 @@ async function handleIntake(conv, message) {
 
   // Global commands available at any point
   if (lower === 'reset') {
-    db.conv.reset.run(phone);
+    await db.conv.reset(phone);
     return sendText(phone, M.RESET_CONFIRM);
   }
 
@@ -45,13 +45,13 @@ async function handleIntake(conv, message) {
     case 'intake_q1': {
       if (!text) return sendText(phone, M.WELCOME(conv.name));
       temp.origin = text;
-      db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q2', trip_id: tripId, temp: JSON.stringify(temp) });
+      await db.conv.upsert({ phone, name: conv.name, state: 'intake_q2', trip_id: tripId, temp: JSON.stringify(temp) });
       return sendText(phone, M.Q2_DESTINATION);
     }
 
     case 'intake_q2': {
       temp.destination = text;
-      db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q3', trip_id: tripId, temp: JSON.stringify(temp) });
+      await db.conv.upsert({ phone, name: conv.name, state: 'intake_q3', trip_id: tripId, temp: JSON.stringify(temp) });
       return sendText(phone, M.Q3_BUDGET(temp.origin, temp.destination));
     }
 
@@ -59,7 +59,7 @@ async function handleIntake(conv, message) {
       const budget = parseInt(text.replace(/[^0-9]/g, ''), 10);
       if (isNaN(budget) || budget < 5000) return sendText(phone, M.INVALID_NUMBER('budget'));
       temp.budget = budget;
-      db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q4', trip_id: tripId, temp: JSON.stringify(temp) });
+      await db.conv.upsert({ phone, name: conv.name, state: 'intake_q4', trip_id: tripId, temp: JSON.stringify(temp) });
       return sendText(phone, M.Q4_DAYS);
     }
 
@@ -67,7 +67,7 @@ async function handleIntake(conv, message) {
       const days = parseInt(text, 10);
       if (isNaN(days) || days < 1 || days > 14) return sendText(phone, M.INVALID_NUMBER('days (1–14)'));
       temp.days = days;
-      db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q5', trip_id: tripId, temp: JSON.stringify(temp) });
+      await db.conv.upsert({ phone, name: conv.name, state: 'intake_q5', trip_id: tripId, temp: JSON.stringify(temp) });
       return sendText(phone, M.Q5_SQUAD);
     }
 
@@ -75,39 +75,38 @@ async function handleIntake(conv, message) {
       const size = parseInt(text, 10);
       if (isNaN(size) || size < 2 || size > 50) return sendText(phone, M.INVALID_NUMBER('squad size (2–50)'));
       temp.squad_size = size;
-      db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q6', trip_id: tripId, temp: JSON.stringify(temp) });
+      await db.conv.upsert({ phone, name: conv.name, state: 'intake_q6', trip_id: tripId, temp: JSON.stringify(temp) });
       return sendText(phone, M.Q6_ACCOMMODATION);
     }
 
     case 'intake_q6': {
       const acc = ACCOMMODATION_MAP[text] || text;
       temp.accommodation = acc;
-      db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q7', trip_id: tripId, temp: JSON.stringify(temp) });
+      await db.conv.upsert({ phone, name: conv.name, state: 'intake_q7', trip_id: tripId, temp: JSON.stringify(temp) });
       return sendText(phone, M.Q7_DATES);
     }
 
     case 'intake_q7': {
       if (text === '2' || lower.includes('specific') || lower.includes('date')) {
         temp.date_flexibility = 'Specific dates';
-        db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q7b', trip_id: tripId, temp: JSON.stringify(temp) });
+        await db.conv.upsert({ phone, name: conv.name, state: 'intake_q7b', trip_id: tripId, temp: JSON.stringify(temp) });
         return sendText(phone, M.Q7B_SPECIFIC_DATES);
       }
       temp.date_flexibility = 'Flexible';
-      db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q8', trip_id: tripId, temp: JSON.stringify(temp) });
+      await db.conv.upsert({ phone, name: conv.name, state: 'intake_q8', trip_id: tripId, temp: JSON.stringify(temp) });
       return sendText(phone, M.Q8_DEALBREAKERS);
     }
 
     case 'intake_q7b': {
       temp.specific_dates = text;
-      db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q8', trip_id: tripId, temp: JSON.stringify(temp) });
+      await db.conv.upsert({ phone, name: conv.name, state: 'intake_q8', trip_id: tripId, temp: JSON.stringify(temp) });
       return sendText(phone, M.Q8_DEALBREAKERS);
     }
 
     case 'intake_q8': {
       temp.dealbreakers = lower === 'none' ? null : text;
 
-      // Persist all intake answers to the trip row
-      db.trips.update.run({
+      await db.trips.update({
         id: tripId,
         origin: temp.origin,
         destination: temp.destination,
@@ -124,20 +123,24 @@ async function handleIntake(conv, message) {
         group_id: null,
         status: 'generating',
       });
-      db.conv.upsert.run({ phone, name: conv.name, state: 'generating', trip_id: tripId, temp: '{}' });
+      await db.conv.upsert({ phone, name: conv.name, state: 'generating', trip_id: tripId, temp: '{}' });
 
       await sendText(phone, M.GENERATING(temp.destination));
 
-      // Generate plan (async — errors are caught so we can send a friendly failure)
       try {
-        const trip = db.trips.get.get(tripId);
+        const trip = await db.trips.get(tripId);
         const plan = await generateTripPlan(trip);
-        db.trips.update.run({ id: tripId, plan: JSON.stringify(plan), status: 'plan_review', origin: null, destination: null, budget: null, days: null, squad_size: null, accommodation: null, date_flexibility: null, specific_dates: null, dealbreakers: null, selected_date: null, selected_hotel: null, group_id: null });
-        db.conv.upsert.run({ phone, name: conv.name, state: 'plan_review', trip_id: tripId, temp: '{}' });
+        await db.trips.update({
+          id: tripId, plan: JSON.stringify(plan), status: 'plan_review',
+          origin: null, destination: null, budget: null, days: null, squad_size: null,
+          accommodation: null, date_flexibility: null, specific_dates: null,
+          dealbreakers: null, selected_date: null, selected_hotel: null, group_id: null,
+        });
+        await db.conv.upsert({ phone, name: conv.name, state: 'plan_review', trip_id: tripId, temp: '{}' });
         return sendText(phone, formatPlanSummary(plan, trip) + M.PLAN_CONFIRM_PROMPT);
       } catch (err) {
         console.error('[gemini]', err.message);
-        db.conv.upsert.run({ phone, name: conv.name, state: 'intake_q8', trip_id: tripId, temp: JSON.stringify(temp) });
+        await db.conv.upsert({ phone, name: conv.name, state: 'intake_q8', trip_id: tripId, temp: JSON.stringify(temp) });
         return sendText(phone, M.PLAN_ERROR);
       }
     }

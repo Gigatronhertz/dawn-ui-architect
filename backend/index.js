@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const db = require('./db/client');
 const webhookRouter = require('./webhook');
 const apiRouter = require('./routes/api');
 
@@ -38,8 +39,10 @@ app.use('/', webhookRouter);
 process.on('uncaughtException', (err) => console.error('[uncaught]', err.message));
 process.on('unhandledRejection', (err) => console.error('[unhandled]', err?.message || err));
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 MySquadGo backend running on port ${PORT}`);
-  console.log(`   Webhook URL: http://localhost:${PORT}/webhook`);
-  console.log(`   (expose with: ngrok http ${PORT})\n`);
+db.ready.then(() => {
+  app.listen(PORT, () => {
+    console.log(`\n🚀 MySquadGo backend running on port ${PORT}`);
+    console.log(`   Webhook URL: http://localhost:${PORT}/webhook`);
+    console.log(`   (expose with: ngrok http ${PORT})\n`);
+  });
 });

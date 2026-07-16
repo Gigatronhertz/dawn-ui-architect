@@ -1,18 +1,17 @@
-const Database = require('better-sqlite3');
+const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs = require('fs');
 
 const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-const db = new Database(path.join(dataDir, 'mysquadgo.db'));
+const client = createClient({
+  url: `file:${path.join(dataDir, 'mysquadgo.db')}`,
+});
 
-// Enable WAL mode for better concurrent read performance
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS agents (
+// Initialize schema — runs once at startup before the server accepts requests
+const ready = client.batch([
+  { sql: `CREATE TABLE IF NOT EXISTS agents (
     id          TEXT PRIMARY KEY,
     phone       TEXT UNIQUE NOT NULL,
     agency_name TEXT NOT NULL,
@@ -22,26 +21,23 @@ db.exec(`
     plan_type   TEXT NOT NULL DEFAULT 'starter',
     tagline     TEXT,
     created_at  INTEGER NOT NULL DEFAULT (unixepoch())
-  );
-
-  CREATE TABLE IF NOT EXISTS waitlist (
+  )` },
+  { sql: `CREATE TABLE IF NOT EXISTS waitlist (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     phone       TEXT NOT NULL,
     source      TEXT NOT NULL DEFAULT 'unknown',
     created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
     UNIQUE(phone, source)
-  );
-
-  CREATE TABLE IF NOT EXISTS conversations (
+  )` },
+  { sql: `CREATE TABLE IF NOT EXISTS conversations (
     phone       TEXT PRIMARY KEY,
     name        TEXT,
     state       TEXT NOT NULL DEFAULT 'idle',
     trip_id     TEXT,
     temp        TEXT NOT NULL DEFAULT '{}',
     updated_at  INTEGER NOT NULL DEFAULT (unixepoch())
-  );
-
-  CREATE TABLE IF NOT EXISTS trips (
+  )` },
+  { sql: `CREATE TABLE IF NOT EXISTS trips (
     id                TEXT PRIMARY KEY,
     organiser_phone   TEXT NOT NULL,
     group_id          TEXT,
@@ -60,9 +56,8 @@ db.exec(`
     status            TEXT NOT NULL DEFAULT 'intake',
     platform_fee      INTEGER NOT NULL DEFAULT 5000,
     created_at        INTEGER NOT NULL DEFAULT (unixepoch())
-  );
-
-  CREATE TABLE IF NOT EXISTS members (
+  )` },
+  { sql: `CREATE TABLE IF NOT EXISTS members (
     id            TEXT PRIMARY KEY,
     trip_id       TEXT NOT NULL,
     phone         TEXT NOT NULL,
@@ -74,115 +69,218 @@ db.exec(`
     paid_at       INTEGER,
     added_at      INTEGER NOT NULL DEFAULT (unixepoch()),
     UNIQUE(trip_id, phone)
-  );
-`);
+  )` },
+], 'write').catch((err) => {
+  console.error('[db] schema init failed:', err.message);
+  process.exit(1);
+});
+
+// ── Generic raw query ──────────────────────────────────────────────────────
+// Returns first row for SELECT queries, null otherwise.
+async function raw(sql, args) {
+  const res = await client.execute(args !== undefined ? { sql, args } : sql);
+  return res.rows?.[0] ?? null;
+}
 
 // ── Conversation helpers ───────────────────────────────────────────────────
 
-const getConv = db.prepare('SELECT * FROM conversations WHERE phone = ?');
-const upsertConv = db.prepare(`
-  INSERT INTO conversations (phone, name, state, trip_id, temp)
-  VALUES (@phone, @name, @state, @trip_id, @temp)
-  ON CONFLICT(phone) DO UPDATE SET
-    name       = COALESCE(@name, name),
-    state      = @state,
-    trip_id    = @trip_id,
-    temp       = @temp,
-    updated_at = unixepoch()
-`);
-const resetConv = db.prepare(`
-  UPDATE conversations SET state = 'idle', trip_id = NULL, temp = '{}', updated_at = unixepoch()
-  WHERE phone = ?
-`);
+async function getConv(phone) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM conversations WHERE phone = ?',
+    args: [phone],
+  });
+  return res.rows[0] ?? null;
+}
+
+async function upsertConv({ phone, name, state, trip_id, temp }) {
+  await client.execute({
+    sql: `INSERT INTO conversations (phone, name, state, trip_id, temp)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(phone) DO UPDATE SET
+            name       = COALESCE(?, name),
+            state      = ?,
+            trip_id    = ?,
+            temp       = ?,
+            updated_at = unixepoch()`,
+    args: [phone, name, state, trip_id, temp, name, state, trip_id, temp],
+  });
+}
+
+async function resetConv(phone) {
+  await client.execute({
+    sql: `UPDATE conversations SET state = 'idle', trip_id = NULL, temp = '{}', updated_at = unixepoch() WHERE phone = ?`,
+    args: [phone],
+  });
+}
 
 // ── Trip helpers ───────────────────────────────────────────────────────────
 
-const insertTrip = db.prepare(`
-  INSERT INTO trips (id, organiser_phone) VALUES (@id, @organiser_phone)
-`);
-const getTrip = db.prepare('SELECT * FROM trips WHERE id = ?');
-const getTripByOrganiser = db.prepare(
-  'SELECT * FROM trips WHERE organiser_phone = ? ORDER BY created_at DESC LIMIT 1'
-);
-const getTripByGroup = db.prepare(
-  'SELECT * FROM trips WHERE group_id = ? ORDER BY created_at DESC LIMIT 1'
-);
-const updateTrip = db.prepare(`
-  UPDATE trips SET
-    origin           = COALESCE(@origin, origin),
-    destination      = COALESCE(@destination, destination),
-    budget           = COALESCE(@budget, budget),
-    days             = COALESCE(@days, days),
-    squad_size       = COALESCE(@squad_size, squad_size),
-    accommodation    = COALESCE(@accommodation, accommodation),
-    date_flexibility = COALESCE(@date_flexibility, date_flexibility),
-    specific_dates   = COALESCE(@specific_dates, specific_dates),
-    dealbreakers     = COALESCE(@dealbreakers, dealbreakers),
-    plan             = COALESCE(@plan, plan),
-    selected_date    = COALESCE(@selected_date, selected_date),
-    selected_hotel   = COALESCE(@selected_hotel, selected_hotel),
-    group_id         = COALESCE(@group_id, group_id),
-    status           = COALESCE(@status, status)
-  WHERE id = @id
-`);
+async function insertTrip({ id, organiser_phone }) {
+  await client.execute({
+    sql: 'INSERT INTO trips (id, organiser_phone) VALUES (?, ?)',
+    args: [id, organiser_phone],
+  });
+}
+
+async function getTrip(id) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM trips WHERE id = ?',
+    args: [id],
+  });
+  return res.rows[0] ?? null;
+}
+
+async function getTripByOrganiser(phone) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM trips WHERE organiser_phone = ? ORDER BY created_at DESC LIMIT 1',
+    args: [phone],
+  });
+  return res.rows[0] ?? null;
+}
+
+async function getTripByGroup(groupId) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM trips WHERE group_id = ? ORDER BY created_at DESC LIMIT 1',
+    args: [groupId],
+  });
+  return res.rows[0] ?? null;
+}
+
+async function updateTrip({
+  id, origin, destination, budget, days, squad_size, accommodation,
+  date_flexibility, specific_dates, dealbreakers, plan,
+  selected_date, selected_hotel, group_id, status,
+}) {
+  await client.execute({
+    sql: `UPDATE trips SET
+      origin           = COALESCE(?, origin),
+      destination      = COALESCE(?, destination),
+      budget           = COALESCE(?, budget),
+      days             = COALESCE(?, days),
+      squad_size       = COALESCE(?, squad_size),
+      accommodation    = COALESCE(?, accommodation),
+      date_flexibility = COALESCE(?, date_flexibility),
+      specific_dates   = COALESCE(?, specific_dates),
+      dealbreakers     = COALESCE(?, dealbreakers),
+      plan             = COALESCE(?, plan),
+      selected_date    = COALESCE(?, selected_date),
+      selected_hotel   = COALESCE(?, selected_hotel),
+      group_id         = COALESCE(?, group_id),
+      status           = COALESCE(?, status)
+    WHERE id = ?`,
+    args: [
+      origin, destination, budget, days, squad_size, accommodation,
+      date_flexibility, specific_dates, dealbreakers, plan,
+      selected_date, selected_hotel, group_id, status,
+      id,
+    ],
+  });
+}
 
 // ── Member helpers ─────────────────────────────────────────────────────────
 
-const insertMember = db.prepare(`
-  INSERT OR IGNORE INTO members (id, trip_id, phone, name, amount)
-  VALUES (@id, @trip_id, @phone, @name, @amount)
-`);
-const getMember = db.prepare('SELECT * FROM members WHERE trip_id = ? AND phone = ?');
-const getMembersByTrip = db.prepare('SELECT * FROM members WHERE trip_id = ?');
-const markPaid = db.prepare(`
-  UPDATE members SET paid = 1, paid_at = unixepoch(), paystack_ref = @ref
-  WHERE trip_id = @trip_id AND phone = @phone
-`);
-const updatePaystackUrl = db.prepare(`
-  UPDATE members SET paystack_ref = @ref, paystack_url = @url
-  WHERE trip_id = @trip_id AND phone = @phone
-`);
+async function insertMember({ id, trip_id, phone, name, amount }) {
+  await client.execute({
+    sql: 'INSERT OR IGNORE INTO members (id, trip_id, phone, name, amount) VALUES (?, ?, ?, ?, ?)',
+    args: [id, trip_id, phone, name, amount],
+  });
+}
+
+async function getMember(tripId, phone) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM members WHERE trip_id = ? AND phone = ?',
+    args: [tripId, phone],
+  });
+  return res.rows[0] ?? null;
+}
+
+async function getMembersByTrip(tripId) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM members WHERE trip_id = ?',
+    args: [tripId],
+  });
+  return res.rows;
+}
+
+async function markPaid({ ref, trip_id, phone }) {
+  await client.execute({
+    sql: 'UPDATE members SET paid = 1, paid_at = unixepoch(), paystack_ref = ? WHERE trip_id = ? AND phone = ?',
+    args: [ref, trip_id, phone],
+  });
+}
+
+async function updatePaystackUrl({ ref, url, trip_id, phone }) {
+  await client.execute({
+    sql: 'UPDATE members SET paystack_ref = ?, paystack_url = ? WHERE trip_id = ? AND phone = ?',
+    args: [ref, url, trip_id, phone],
+  });
+}
 
 // ── Waitlist helpers ───────────────────────────────────────────────────────
 
-const insertWaitlist = db.prepare(`
-  INSERT OR IGNORE INTO waitlist (phone, source) VALUES (@phone, @source)
-`);
-const listWaitlist = db.prepare('SELECT * FROM waitlist ORDER BY created_at DESC');
+async function insertWaitlist({ phone, source }) {
+  await client.execute({
+    sql: 'INSERT OR IGNORE INTO waitlist (phone, source) VALUES (?, ?)',
+    args: [phone, source],
+  });
+}
+
+async function listWaitlist() {
+  const res = await client.execute('SELECT * FROM waitlist ORDER BY created_at DESC');
+  return res.rows;
+}
 
 // ── Agent helpers ──────────────────────────────────────────────────────────
 
-const upsertAgent = db.prepare(`
-  INSERT INTO agents (id, phone, agency_name, wa_number, service_fee, color, plan_type, tagline)
-  VALUES (@id, @phone, @agency_name, @wa_number, @service_fee, @color, @plan_type, @tagline)
-  ON CONFLICT(phone) DO UPDATE SET
-    agency_name = @agency_name,
-    wa_number   = @wa_number,
-    service_fee = @service_fee,
-    color       = @color,
-    plan_type   = @plan_type,
-    tagline     = @tagline
-`);
-const getAgent = db.prepare('SELECT * FROM agents WHERE phone = ?');
+async function upsertAgent({ id, phone, agency_name, wa_number, service_fee, color, plan_type, tagline }) {
+  await client.execute({
+    sql: `INSERT INTO agents (id, phone, agency_name, wa_number, service_fee, color, plan_type, tagline)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(phone) DO UPDATE SET
+            agency_name = ?,
+            wa_number   = ?,
+            service_fee = ?,
+            color       = ?,
+            plan_type   = ?,
+            tagline     = ?`,
+    args: [
+      id, phone, agency_name, wa_number, service_fee, color, plan_type, tagline,
+      agency_name, wa_number, service_fee, color, plan_type, tagline,
+    ],
+  });
+}
 
-const getAgentDashboard = db.prepare(`
-  SELECT
-    t.id, t.origin, t.destination, t.days, t.squad_size, t.status, t.created_at,
-    COUNT(m.id)                                                AS total_members,
-    COALESCE(SUM(CASE WHEN m.paid = 1 THEN 1 ELSE 0 END), 0) AS paid_count,
-    COALESCE(SUM(CASE WHEN m.paid = 1 THEN m.amount ELSE 0 END), 0) AS total_collected
-  FROM trips t
-  LEFT JOIN members m ON m.trip_id = t.id
-  WHERE t.organiser_phone = ?
-  GROUP BY t.id
-  ORDER BY t.created_at DESC
-`);
+async function getAgent(phone) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM agents WHERE phone = ?',
+    args: [phone],
+  });
+  return res.rows[0] ?? null;
+}
+
+async function getAgentDashboard(phone) {
+  const res = await client.execute({
+    sql: `SELECT
+      t.id, t.origin, t.destination, t.days, t.squad_size, t.status, t.created_at,
+      COUNT(m.id)                                                AS total_members,
+      COALESCE(SUM(CASE WHEN m.paid = 1 THEN 1 ELSE 0 END), 0) AS paid_count,
+      COALESCE(SUM(CASE WHEN m.paid = 1 THEN m.amount ELSE 0 END), 0) AS total_collected
+    FROM trips t
+    LEFT JOIN members m ON m.trip_id = t.id
+    WHERE t.organiser_phone = ?
+    GROUP BY t.id
+    ORDER BY t.created_at DESC`,
+    args: [phone],
+  });
+  return res.rows;
+}
 
 module.exports = {
-  db,
-  conv: { get: getConv, upsert: upsertConv, reset: resetConv },
-  trips: { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
+  ready,
+  raw,
+  conv:    { get: getConv, upsert: upsertConv, reset: resetConv },
+  trips:   { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
   members: { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
   waitlist: { insert: insertWaitlist, list: listWaitlist },
-  agents: { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
+  agents:  { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
 };
