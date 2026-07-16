@@ -112,7 +112,7 @@ export const Pricing = () => (
                 return (p as any).href ? (
                   <Link to={(p as any).href} className={btnClass}>{p.cta}</Link>
                 ) : (
-                  <a href="#cta" className={btnClass}>{p.cta}</a>
+                  <Link to="/start" className={btnClass}>{p.cta}</Link>
                 );
               })()}
             </div>
