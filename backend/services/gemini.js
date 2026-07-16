@@ -204,8 +204,10 @@ INSTRUCTIONS:
   "highlights": ["real venue 1", "real venue 2", "real venue 3"],
   "offline_note": "Hotel name — full address. Tel: phone number. Transport operator pickup: location, time.",
   "data_sources": {
-    "hotels_from_google": ${ctx.hotels.length > 0},
-    "rentals_from_google": ${ctx.rentals.length > 0},
+    "hotels_from_google": ${ctx.gHotels.length > 0},
+    "hotels_from_booking": ${ctx.bHotels.length > 0},
+    "rentals_from_google": ${ctx.gRentals.length > 0},
+    "rentals_from_booking": ${ctx.bApartments.length > 0},
     "activities_from_google": ${Object.keys(ctx.activities || {}).length > 0},
     "distance_from_google": ${!!ctx.road},
     "flights_from_amadeus": ${!!ctx.flights}
