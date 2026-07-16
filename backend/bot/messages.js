@@ -170,6 +170,18 @@ const M = {
 
   RESET_CONFIRM:
     `Done — I've cleared your current session. Send anything to start planning a new trip.`,
+
+  // Sent as a private DM when an organiser confirms their plan via the web form.
+  // At this point the bot has never spoken to them — this is the first touch.
+  WEB_PLAN_CONFIRMED: (destination, botNumber) =>
+    `Hey! 👋 Your *${destination}* trip plan is locked.\n\n` +
+    `Now add me to your squad's WhatsApp group and I'll reveal the full plan — hotel, transport, cost breakdown, everything.\n\n` +
+    `Here's how:\n` +
+    `1. Open your squad's group (or create one)\n` +
+    `2. Tap *Group Info → Add Participants*\n` +
+    `3. Add: *+${botNumber}*\n\n` +
+    `The squad won't know you planned this — my first message to the group is the plan reveal. 👀\n\n` +
+    `Reply *status* anytime to check where things are.`,
 };
 
 module.exports = M;

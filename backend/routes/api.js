@@ -2,6 +2,8 @@ const { Router } = require('express');
 const { v4: uuid } = require('uuid');
 const db = require('../db/client');
 const { generateTripPlan } = require('../services/gemini');
+const { sendText } = require('../services/whatsapp');
+const M = require('../bot/messages');
 
 const router = Router();
 
@@ -62,13 +64,15 @@ router.post('/plan', async (req, res) => {
 
 // POST /api/confirm
 // Organiser has reviewed/edited the plan and confirmed it.
-// Saves final plan, returns bot number and instructions.
+// Saves final plan, DMss the organiser immediately, returns bot number and instructions.
 router.post('/confirm', async (req, res) => {
-  const { tripId, plan } = req.body;
+  const { tripId, plan, phone } = req.body;
   if (!tripId || !plan) return res.status(400).json({ error: 'Missing tripId or plan.' });
 
   const trip = db.trips.get.get(tripId);
   if (!trip) return res.status(404).json({ error: 'Trip not found.' });
+
+  const botNumber = process.env.WA_DISPLAY_NUMBER || '234XXXXXXXXXX';
 
   db.trips.update.run({
     id: tripId,
@@ -79,21 +83,33 @@ router.post('/confirm', async (req, res) => {
     dealbreakers: null, selected_date: null, selected_hotel: null, group_id: null,
   });
 
-  // Set the organiser conversation to awaiting_group so the bot knows to reveal
-  // when it joins. We store the web trip ID keyed against the bot's own number
-  // so the router can find it when a group event fires.
-  const webKey = `web_${tripId}`;
-  db.conv.upsert.run({ phone: webKey, name: null, state: 'awaiting_group', trip_id: tripId, temp: '{}' });
+  // If the organiser gave us their WhatsApp number, wire the trip to them directly
+  // so the dashboard and bot can reference them, then DM the add-to-group instructions.
+  if (phone && typeof phone === 'string' && phone.trim().length >= 7) {
+    const sanitisedPhone = phone.trim().replace(/\s+/g, '').replace(/^\+/, '');
+    // Re-key the trip's organiser to their real phone (was web_{tripId})
+    db.db.prepare('UPDATE trips SET organiser_phone = ? WHERE id = ?').run(sanitisedPhone, tripId);
+    // Track their conversation state so the router can match group events
+    db.conv.upsert.run({ phone: sanitisedPhone, name: null, state: 'awaiting_group', trip_id: tripId, temp: '{}' });
+    // Fire the DM — errors are non-fatal (WA creds may not be live yet)
+    sendText(sanitisedPhone, M.WEB_PLAN_CONFIRMED(trip.destination, botNumber))
+      .catch((err) => console.warn('[confirm/dm]', err.message));
+  } else {
+    // No phone: fall back to the anonymous web key so the trip can still be tracked
+    const webKey = `web_${tripId}`;
+    db.conv.upsert.run({ phone: webKey, name: null, state: 'awaiting_group', trip_id: tripId, temp: '{}' });
+  }
 
   return res.json({
     tripId,
-    botNumber: process.env.WA_DISPLAY_NUMBER || '234XXXXXXXXXX',
+    botNumber,
     destination: trip.destination,
     squadSize: trip.squad_size,
+    dmSent: !!(phone && phone.trim().length >= 7),
     instructions: [
       `Open your squad's WhatsApp group (or create one).`,
       `Tap Group Info → Add Participants.`,
-      `Add: +${process.env.WA_DISPLAY_NUMBER || '234XXXXXXXXXX'}`,
+      `Add: +${botNumber}`,
       `The bot will reveal the plan the moment it joins.`,
     ],
   });

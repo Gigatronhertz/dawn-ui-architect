@@ -25,7 +25,7 @@ export type GeminiPlan = {
 };
 
 export type PlanResponse = { tripId: string; plan: GeminiPlan };
-export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; instructions: string[] };
+export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] };
 
 export type AgentProfile = {
   phone: string;
@@ -84,7 +84,7 @@ async function get<T>(path: string): Promise<T> {
 
 export const api = {
   generatePlan: (intake: IntakeData) => post<PlanResponse>('/api/plan', intake),
-  confirmPlan: (tripId: string, plan: GeminiPlan) => post<ConfirmResponse>('/api/confirm', { tripId, plan }),
+  confirmPlan: (tripId: string, plan: GeminiPlan, phone?: string) => post<ConfirmResponse>('/api/confirm', { tripId, plan, phone }),
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
   registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),
   getAgent: (phone: string) => get<{ agent: AgentProfile }>(`/api/agents/${encodeURIComponent(phone)}`),

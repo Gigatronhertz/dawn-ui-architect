@@ -34,7 +34,8 @@ const chipCls = (active: boolean) =>
   }`;
 
 /* ─── step 1: intake ────────────────────────────────────────────────────────── */
-function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData) => void }) {
+function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) => void }) {
+  const [phone, setPhone] = useState("");
   const [form, setForm] = useState<IntakeData>({
     origin: "Lagos",
     destination: "Ibadan",
@@ -144,6 +145,24 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData) => void }) {
             />
           </Field>
         </div>
+
+        <div className="md:col-span-2">
+          <div className="rounded-2xl bg-whatsapp/8 ring-1 ring-whatsapp/20 p-4">
+            <Field n={9} label="Your WhatsApp number">
+              <input
+                type="tel"
+                className={inputCls}
+                placeholder="+234 801 234 5678"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </Field>
+            <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+              The bot will DM you the plan and add-to-group instructions the moment you confirm.
+              No spam — one message only until the group is live.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -151,7 +170,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData) => void }) {
           Takes ~15 seconds. Gemini prices hotels and transport in real time.
         </p>
         <button
-          onClick={() => onSubmit(form)}
+          onClick={() => onSubmit(form, phone)}
           className="group inline-flex items-center gap-2 rounded-full bg-gradient-primary text-primary-foreground px-6 py-3 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform w-full sm:w-auto justify-center"
         >
           Generate plan with Gemini
@@ -528,9 +547,10 @@ type Step = "intake" | "generating" | "plan" | "confirm";
 export default function Start() {
   const [step, setStep] = useState<Step>("intake");
   const [intake, setIntake] = useState<IntakeData | null>(null);
+  const [phone, setPhone] = useState<string>("");
   const [tripId, setTripId] = useState<string | null>(null);
   const [plan, setPlan] = useState<GeminiPlan | null>(null);
-  const [confirmData, setConfirmData] = useState<{ botNumber: string; destination: string; squadSize: number; instructions: string[] } | null>(null);
+  const [confirmData, setConfirmData] = useState<{ botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -538,8 +558,9 @@ export default function Start() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  async function handleIntakeSubmit(data: IntakeData) {
+  async function handleIntakeSubmit(data: IntakeData, organisersPhone: string) {
     setIntake(data);
+    setPhone(organisersPhone);
     setStep("generating");
     setError(null);
     try {
@@ -557,8 +578,8 @@ export default function Start() {
     if (!tripId) return;
     setError(null);
     try {
-      const result = await api.confirmPlan(tripId, finalPlan);
-      setConfirmData({ botNumber: result.botNumber, destination: result.destination, squadSize: result.squadSize, instructions: result.instructions });
+      const result = await api.confirmPlan(tripId, finalPlan, phone || undefined);
+      setConfirmData({ botNumber: result.botNumber, destination: result.destination, squadSize: result.squadSize, dmSent: result.dmSent, instructions: result.instructions });
       setStep("confirm");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong confirming the plan.");
