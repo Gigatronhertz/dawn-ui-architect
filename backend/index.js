@@ -1,3 +1,4 @@
+require('./utils/logger'); // must be first — patches console.* before any other require
 require('dotenv').config();
 const express = require('express');
 const db = require('./db/client');

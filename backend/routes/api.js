@@ -5,6 +5,7 @@ const { generateTripPlan } = require('../services/gemini');
 const { sendText } = require('../services/whatsapp');
 const M = require('../bot/messages');
 const GT = require('../services/googleTravel');
+const { getLines } = require('../utils/logger');
 
 const router = Router();
 
@@ -232,6 +233,27 @@ router.get('/scraper-debug', async (req, res) => {
     if (page) await page.close().catch(() => {});
     if (browser) await browser.close().catch(() => {});
   }
+});
+
+// GET /api/logs?n=200&level=ERROR
+// Returns the last N log lines captured since the process started.
+// Optional ?level=ERROR|WARN filters to that level and above.
+router.get('/logs', (req, res) => {
+  const n     = Math.min(parseInt(req.query.n) || 200, 600);
+  const level = (req.query.level || '').toUpperCase();
+  const LEVELS = { LOG: 0, INFO: 0, WARN: 1, ERROR: 2 };
+  const minLevel = LEVELS[level] ?? 0;
+  const all = getLines();
+  const filtered = level
+    ? all.filter(l => (LEVELS[l.level] ?? 0) >= minLevel)
+    : all;
+  const slice = filtered.slice(-n);
+  res.json({
+    total: all.length,
+    returned: slice.length,
+    filter: level || 'ALL',
+    lines: slice,
+  });
 });
 
 // POST /api/waitlist
