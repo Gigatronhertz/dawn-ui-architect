@@ -148,51 +148,51 @@ async function handleConsent(page) {
 
 // ── Hotel parser ──────────────────────────────────────────────────────────────
 
-const BADGE_WORDS = new Set(['GREAT DEAL', 'DEAL', 'GREAT PRICE', 'SPONSORED', 'SALE', 'NEW']);
+const BADGE_WORDS = new Set(['GREAT DEAL', 'DEAL', 'GREAT PRICE', 'SPONSORED', 'SALE', 'NEW', 'VACATION RENTAL']);
+// Render servers are US-based so Google ignores curr=NGN and serves USD prices.
+const USD_TO_NGN = 1600;
+
+function parsePrice(line) {
+  const ngn = line.match(/^(?:Avg\s+)?₦([\d,]+)$/);
+  if (ngn) return parseInt(ngn[1].replace(/,/g, ''), 10);
+  const usd = line.match(/^\$([\d,]+(?:\.\d{1,2})?)$/);
+  if (usd) return Math.round(parseFloat(usd[1].replace(/,/g, '')) * USD_TO_NGN);
+  return null;
+}
 
 function parseHotelLines(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const hotels = [];
 
   for (let i = 1; i < lines.length; i++) {
-    // Price line: "₦268,000" or "Avg ₦268,000"
-    const priceMatch = lines[i].match(/^(?:Avg\s+)?₦([\d,]+)$/);
-    if (!priceMatch) continue;
-
-    const price = parseInt(priceMatch[1].replace(/,/g, ''), 10);
-    if (price < 1000 || price > 50000000) continue;
+    const price = parsePrice(lines[i]);
+    if (!price || price < 3000 || price > 50000000) continue;
 
     // Walk back to find name — skip badge lines
     let nameIdx = i - 1;
     let deal = null;
     while (nameIdx >= 0 && BADGE_WORDS.has(lines[nameIdx])) {
-      if (!deal && (lines[nameIdx] === 'GREAT DEAL' || lines[nameIdx] === 'DEAL' || lines[nameIdx] === 'GREAT PRICE')) {
-        deal = lines[nameIdx];
-      }
+      if (!deal && ['GREAT DEAL', 'DEAL', 'GREAT PRICE'].includes(lines[nameIdx])) deal = lines[nameIdx];
       nameIdx--;
     }
     const name = lines[nameIdx];
-    if (!name || name.length < 3 || /₦|NGN|\d{4,}|Skip|Sign in|Filter|Sort|All filter/.test(name)) continue;
+    if (!name || name.length < 3 || /[₦$]|NGN|\d{4,}|Skip|Sign in|Filter|Sort|All filter/.test(name)) continue;
     if (BADGE_WORDS.has(name)) continue;
 
     // Scan forward for metadata
     let rating = null, reviews = null, stars = null, amenities = [], location = null;
     for (let j = i + 1; j < Math.min(i + 20, lines.length); j++) {
       const l = lines[j];
-      if (!rating && /^\d\.\d$/.test(l)) { rating = parseFloat(l); continue; }
+      if (!rating && /^\d\.\d(?:\/5)?$/.test(l)) { rating = parseFloat(l); continue; }
       if (!reviews && /^\([\d,.]+[KM]?\)$/.test(l)) { reviews = l.replace(/[()]/g, ''); continue; }
-      // "4-star hotel" or "4 stars"
-      if (!stars) {
-        const sm = l.match(/^(\d)[- ]star/i);
-        if (sm) { stars = parseInt(sm[1]); continue; }
-      }
+      if (!stars) { const sm = l.match(/^(\d)[- ]star/i); if (sm) { stars = parseInt(sm[1]); continue; } }
       if (!location && l.startsWith('·')) { location = l.replace(/^·\s*/, ''); continue; }
-      const amenMatch = l.match(/^Amenities for .+?\.: (.+)$/);
+      const amenMatch = l.match(/^Amenities for .+?[:.]\s*(.+)$/);
       if (amenMatch) {
-        amenities = amenMatch[1].split(', ').map(a => a.replace(/,$/, '')).filter(Boolean);
+        amenities = amenMatch[1].split(',').map(a => a.trim()).filter(a => a && !/^View/i.test(a));
         break;
       }
-      if (/^₦[\d,]+$/.test(lines[j + 1])) break;
+      if (parsePrice(l)) break; // next hotel's price line — stop
     }
 
     if (!hotels.find(h => h.name === name)) {
@@ -210,29 +210,27 @@ function parseRentalLines(text) {
   const rentals = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const priceMatch = lines[i].match(/^(?:Avg\s+)?₦([\d,]+)$/);
-    if (!priceMatch) continue;
-
-    const price = parseInt(priceMatch[1].replace(/,/g, ''), 10);
-    if (price < 1000) continue;
+    const price = parsePrice(lines[i]);
+    if (!price || price < 3000) continue;
 
     const name = lines[i - 1];
-    if (!name || name.length < 3 || /₦|Skip|Sign in/.test(name)) continue;
+    if (!name || name.length < 3 || /[₦$]|Skip|Sign in/.test(name)) continue;
+    if (BADGE_WORDS.has(name)) continue;
 
     let type = null, sleeps = null, bedrooms = null, bathrooms = null, amenities = [];
     const amenLine = lines[i + 1] || '';
-    const amenMatch = amenLine.match(/^Amenities for .+?\.: (.+)$/);
+    const amenMatch = amenLine.match(/^Amenities for .+?[:.]\s*(.+)$/);
     if (amenMatch) {
-      const parts = amenMatch[1].split(', ').map(a => a.replace(/,$/, ''));
-      type = parts.find(p => /Apartment|House|Villa|Condo|Studio|Loft/i.test(p)) || null;
+      const parts = amenMatch[1].split(',').map(a => a.trim()).filter(Boolean);
+      type = parts.find(p => /Apartment|House|Villa|Condo|Studio|Loft|Cottage/i.test(p)) || null;
       const s = parts.find(p => /^Sleeps/i.test(p));
       if (s) sleeps = parseInt(s.replace(/\D/g, ''));
-      const b = parts.find(p => /bedroom/i.test(p));
+      const b = parts.find(p => /bedroom/i.test(p) && !/bathroom/i.test(p));
       if (b) bedrooms = parseInt(b.replace(/\D/g, ''));
       const ba = parts.find(p => /bathroom/i.test(p));
       if (ba) bathrooms = parseInt(ba.replace(/\D/g, ''));
       amenities = parts.filter(p =>
-        !/^(Sleeps|Apartment|House|Villa|Condo|Studio|\d+ bed|\d+ bath)/i.test(p)
+        !/^(Sleeps|Apartment|House|Villa|Condo|Studio|Cottage|\d+ bed|\d+ bath)/i.test(p)
       ).slice(0, 5);
     }
 
@@ -255,11 +253,13 @@ function parseFlightLines(text) {
   const isRT = text.includes('round trip');
 
   for (let i = 0; i < lines.length; i++) {
-    const priceMatch = lines[i].match(/^NGN ([\d,]+)$/);
-    if (!priceMatch) continue;
-
-    const price = parseInt(priceMatch[1].replace(/,/g, ''), 10);
-    if (price < 5000) continue;
+    // Google serves "NGN 78,000" when currency loads, "$48" when from US servers
+    let price = null;
+    const ngnMatch = lines[i].match(/^NGN ([\d,]+)$/);
+    const usdMatch = lines[i].match(/^\$([\d,]+(?:\.\d{1,2})?)$/);
+    if (ngnMatch) price = parseInt(ngnMatch[1].replace(/,/g, ''), 10);
+    else if (usdMatch) price = Math.round(parseFloat(usdMatch[1].replace(/,/g, '')) * USD_TO_NGN);
+    if (!price || price < 5000) continue;
 
     let airline = null, stops = null, duration = null;
 
