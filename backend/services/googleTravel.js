@@ -38,11 +38,15 @@ function findChrome() {
     if (exe && fs.existsSync(exe)) return exe;
   } catch {}
 
-  // 3. Scan Puppeteer cache dirs — check PUPPETEER_CACHE_DIR first (Render sets this),
-  //    then fall back to the default ~/.cache/puppeteer (local dev).
+  // 3. Scan Puppeteer cache dirs.  Order: explicit env var → HOME-relative default →
+  //    known Render paths (HOME=/opt/render at runtime but build may use /root).
   const cacheDirs = [
     process.env.PUPPETEER_CACHE_DIR,
-    path.join(process.env.USERPROFILE || process.env.HOME || '', '.cache', 'puppeteer'),
+    path.join(process.env.HOME || '', '.cache', 'puppeteer'),
+    path.join(process.env.USERPROFILE || '', '.cache', 'puppeteer'),
+    '/root/.cache/puppeteer',
+    '/opt/render/.cache/puppeteer',
+    '/home/render/.cache/puppeteer',
   ].filter(Boolean);
 
   for (const cacheBase of cacheDirs) {

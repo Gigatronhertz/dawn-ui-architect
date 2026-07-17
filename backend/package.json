@@ -4,7 +4,7 @@
   "description": "MySquadGo WhatsApp bot + trip planning API",
   "main": "index.js",
   "scripts": {
-    "postinstall": "node -e \"try{const p=require('puppeteer'),fs=require('fs');const e=p.executablePath();if(e&&fs.existsSync(e)){fs.writeFileSync('.chrome-path',e);console.log('[postinstall] Chrome saved:',e);}else{console.log('[postinstall] Chrome not found at:',e);}}catch(err){console.log('[postinstall] err:',err.message);}\"",
+    "postinstall": "node postinstall.js",
     "dev": "node --watch index.js",
     "start": "node index.js"
   },
