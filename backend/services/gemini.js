@@ -4,10 +4,11 @@ const {
   searchHotels: googleHotels, searchHolidayRentals, searchActivities,
   formatHotelsForPrompt, formatRentalsForPrompt, formatActivitiesForPrompt,
 } = require('./googleMaps');
-const { searchFlights, formatFlightsForPrompt } = require('./amadeus');
+const { searchFlights, formatFlightsForPrompt, cityToIATA } = require('./amadeus');
 const {
   searchHotels: bookingHotels, searchApartments, getDates, formatBookingHotelsForPrompt,
 } = require('./bookingCom');
+const GT = require('./googleTravel');
 
 let genAI;
 function getClient() {
@@ -29,15 +30,18 @@ async function fetchRealWorldContext(intake) {
   // Geocode destination first — needed for Google Places searches
   const coords = await geocodeCity(`${intake.destination}, Nigeria`);
 
+  const depDate = intake.specific_dates?.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+
   // Run all external API calls in parallel — any failure is non-fatal
   const [
     road,
     gHotels, gRentals, activities,
     bHotels, bApartments,
-    flights,
+    amadeusFlights,
+    gtHotels, gtRentals, gtFlights,
   ] = await Promise.allSettled([
     getRoadDistance(intake.origin, intake.destination),
-    // Google Places — ratings, addresses, phone numbers, venues
+    // Google Places — ratings, addresses, phone numbers
     googleHotels(intake.destination, coords?.lat, coords?.lng, budgetPerNight),
     isShortlet
       ? searchHolidayRentals(intake.destination, coords?.lat, coords?.lng)
@@ -48,23 +52,33 @@ async function fetchRealWorldContext(intake) {
     isShortlet
       ? searchApartments(intake.destination, checkin, checkout, intake.squad_size)
       : Promise.resolve([]),
-    // Amadeus — flight prices between cities
-    searchFlights(
-      intake.origin, intake.destination,
-      intake.specific_dates?.match(/\d{4}-\d{2}-\d{2}/)?.[0]
-    ),
+    // Amadeus — flight prices
+    searchFlights(intake.origin, intake.destination, depDate),
+    // Google Travel — scraped live hotel prices + deals
+    GT.scrapeHotels(intake.destination, checkin, checkout, intake.squad_size),
+    // Google Travel — scraped vacation rentals / shortlets
+    isShortlet
+      ? GT.scrapeVacationRentals(intake.destination, checkin, checkout)
+      : Promise.resolve([]),
+    // Google Travel flights (fallback / cross-check for Amadeus)
+    GT.scrapeFlights(cityToIATA(intake.origin), cityToIATA(intake.destination), depDate),
   ]);
 
   const val = (r) => r.status === 'fulfilled' ? r.value : null;
 
+  // Prefer Google Travel flights if Amadeus returned nothing
+  const flightData = val(amadeusFlights) || val(gtFlights);
+
   return {
     road:         val(road),
-    gHotels:      val(gHotels)  || [],
-    gRentals:     val(gRentals) || [],
-    activities:   val(activities) || {},
-    bHotels:      val(bHotels) || [],
+    gHotels:      val(gHotels)     || [],
+    gRentals:     val(gRentals)    || [],
+    activities:   val(activities)  || {},
+    bHotels:      val(bHotels)     || [],
     bApartments:  val(bApartments) || [],
-    flights:      val(flights),
+    flights:      flightData,
+    gtHotels:     val(gtHotels)    || [],
+    gtRentals:    val(gtRentals)   || [],
     nights:       intake.days || 1,
   };
 }
@@ -80,36 +94,49 @@ function buildContextBlock(ctx, intake) {
   }
 
   if (ctx.flights) {
-    sections.push(formatFlightsForPrompt(ctx.flights));
+    const src = ctx.flights.source === 'google_travel' ? 'Google Travel' : 'Amadeus';
+    sections.push(formatFlightsForPrompt(ctx.flights).replace('✈️  Flights', `✈️  Flights (${src})`));
   }
 
-  // Hotels: merge Google Places (ratings/addresses) + Booking.com (real NGN prices)
-  const bHotelStr = formatBookingHotelsForPrompt(ctx.bHotels, ctx.nights);
-  const gHotelStr = formatHotelsForPrompt(ctx.gHotels);
+  // Hotels: Google Travel (scraped live) + Booking.com (availability) + Google Places (ratings)
+  const gtHotelStr = GT.formatHotelsForPrompt(ctx.gtHotels || []);
+  const bHotelStr  = formatBookingHotelsForPrompt(ctx.bHotels, ctx.nights);
+  const gHotelStr  = formatHotelsForPrompt(ctx.gHotels);
 
+  if (gtHotelStr) {
+    sections.push(
+      `🏨  Hotels near ${intake.destination} — LIVE prices from Google Travel (highest priority, use these):\n${gtHotelStr}`
+    );
+  }
   if (bHotelStr) {
     sections.push(
-      `🏨  Hotels near ${intake.destination} with REAL NGN prices (Booking.com — use these prices):\n${bHotelStr}`
+      `🏨  Hotels near ${intake.destination} — Booking.com NGN prices + availability:\n${bHotelStr}`
     );
   }
   if (gHotelStr) {
     sections.push(
-      `🏨  Hotels near ${intake.destination} with ratings + phone numbers (Google Places — cross-reference with Booking.com prices above):\n${gHotelStr}`
+      `🏨  Hotels near ${intake.destination} — Google Places ratings + phone numbers:\n${gHotelStr}`
     );
   }
 
-  // Holiday rentals / shortlets: merge both sources
-  const bRentalStr = formatBookingHotelsForPrompt(ctx.bApartments, ctx.nights);
-  const gRentalStr = formatRentalsForPrompt(ctx.gRentals);
+  // Holiday rentals: Google Travel (scraped) + Booking.com + Google Places
+  const gtRentalStr = GT.formatRentalsForPrompt(ctx.gtRentals || []);
+  const bRentalStr  = formatBookingHotelsForPrompt(ctx.bApartments, ctx.nights);
+  const gRentalStr  = formatRentalsForPrompt(ctx.gRentals);
 
+  if (gtRentalStr) {
+    sections.push(
+      `🏠  Shortlets / vacation rentals near ${intake.destination} — LIVE from Google Travel:\n${gtRentalStr}`
+    );
+  }
   if (bRentalStr) {
     sections.push(
-      `🏠  Apartments / shortlets near ${intake.destination} with REAL NGN prices (Booking.com):\n${bRentalStr}`
+      `🏠  Apartments / shortlets near ${intake.destination} — Booking.com:\n${bRentalStr}`
     );
   }
   if (gRentalStr) {
     sections.push(
-      `🏠  Shortlets / holiday rentals near ${intake.destination} (Google Places):\n${gRentalStr}`
+      `🏠  Shortlets / holiday rentals near ${intake.destination} — Google Places:\n${gRentalStr}`
     );
   }
 
@@ -204,13 +231,16 @@ INSTRUCTIONS:
   "highlights": ["real venue 1", "real venue 2", "real venue 3"],
   "offline_note": "Hotel name — full address. Tel: phone number. Transport operator pickup: location, time.",
   "data_sources": {
-    "hotels_from_google": ${ctx.gHotels.length > 0},
+    "hotels_from_google_travel": ${(ctx.gtHotels || []).length > 0},
     "hotels_from_booking": ${ctx.bHotels.length > 0},
-    "rentals_from_google": ${ctx.gRentals.length > 0},
+    "hotels_from_places": ${ctx.gHotels.length > 0},
+    "rentals_from_google_travel": ${(ctx.gtRentals || []).length > 0},
     "rentals_from_booking": ${ctx.bApartments.length > 0},
+    "rentals_from_places": ${ctx.gRentals.length > 0},
     "activities_from_google": ${Object.keys(ctx.activities || {}).length > 0},
     "distance_from_google": ${!!ctx.road},
-    "flights_from_amadeus": ${!!ctx.flights}
+    "flights_from_amadeus": ${!!ctx.flights && ctx.flights.source !== 'google_travel'},
+    "flights_from_google_travel": ${!!ctx.flights && ctx.flights.source === 'google_travel'}
   }
 }`;
 

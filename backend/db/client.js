@@ -5,13 +5,18 @@ const fs = require('fs');
 const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-const client = createClient({
-  url: `file:${path.join(dataDir, 'mysquadgo.db')}`,
-});
+// Local dev: file:./data/mysquadgo.db
+// Production (Turso): set DATABASE_URL + DATABASE_AUTH_TOKEN env vars
+const dbUrl = process.env.DATABASE_URL || `file:${path.join(dataDir, 'mysquadgo.db')}`;
+const client = createClient(
+  process.env.DATABASE_AUTH_TOKEN
+    ? { url: dbUrl, authToken: process.env.DATABASE_AUTH_TOKEN }
+    : { url: dbUrl }
+);
 
 // Initialize schema — runs once at startup before the server accepts requests
-const ready = client.batch([
-  { sql: `CREATE TABLE IF NOT EXISTS agents (
+const SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS agents (
     id          TEXT PRIMARY KEY,
     phone       TEXT UNIQUE NOT NULL,
     agency_name TEXT NOT NULL,
@@ -21,23 +26,23 @@ const ready = client.batch([
     plan_type   TEXT NOT NULL DEFAULT 'starter',
     tagline     TEXT,
     created_at  INTEGER NOT NULL DEFAULT (unixepoch())
-  )` },
-  { sql: `CREATE TABLE IF NOT EXISTS waitlist (
+  )`,
+  `CREATE TABLE IF NOT EXISTS waitlist (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     phone       TEXT NOT NULL,
     source      TEXT NOT NULL DEFAULT 'unknown',
     created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
     UNIQUE(phone, source)
-  )` },
-  { sql: `CREATE TABLE IF NOT EXISTS conversations (
+  )`,
+  `CREATE TABLE IF NOT EXISTS conversations (
     phone       TEXT PRIMARY KEY,
     name        TEXT,
     state       TEXT NOT NULL DEFAULT 'idle',
     trip_id     TEXT,
     temp        TEXT NOT NULL DEFAULT '{}',
     updated_at  INTEGER NOT NULL DEFAULT (unixepoch())
-  )` },
-  { sql: `CREATE TABLE IF NOT EXISTS trips (
+  )`,
+  `CREATE TABLE IF NOT EXISTS trips (
     id                TEXT PRIMARY KEY,
     organiser_phone   TEXT NOT NULL,
     group_id          TEXT,
@@ -56,8 +61,8 @@ const ready = client.batch([
     status            TEXT NOT NULL DEFAULT 'intake',
     platform_fee      INTEGER NOT NULL DEFAULT 5000,
     created_at        INTEGER NOT NULL DEFAULT (unixepoch())
-  )` },
-  { sql: `CREATE TABLE IF NOT EXISTS members (
+  )`,
+  `CREATE TABLE IF NOT EXISTS members (
     id            TEXT PRIMARY KEY,
     trip_id       TEXT NOT NULL,
     phone         TEXT NOT NULL,
@@ -69,8 +74,12 @@ const ready = client.batch([
     paid_at       INTEGER,
     added_at      INTEGER NOT NULL DEFAULT (unixepoch()),
     UNIQUE(trip_id, phone)
-  )` },
-], 'write').catch((err) => {
+  )`,
+];
+
+const ready = (async () => {
+  for (const sql of SCHEMA) await client.execute(sql);
+})().catch((err) => {
   console.error('[db] schema init failed:', err.message);
   process.exit(1);
 });
