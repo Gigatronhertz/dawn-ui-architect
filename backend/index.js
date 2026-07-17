@@ -7,15 +7,13 @@ const apiRouter = require('./routes/api');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS — allow the frontend origin
-const ALLOWED = (process.env.FRONTEND_ORIGIN || 'http://localhost:8080').split(',').map((s) => s.trim());
+// CORS — open to all origins by default (public API); lock down via FRONTEND_ORIGIN if needed
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (!origin || ALLOWED.includes(origin) || ALLOWED.includes('*')) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  }
+  const origin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
