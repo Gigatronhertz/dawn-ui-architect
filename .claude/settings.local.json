@@ -10,7 +10,16 @@
       "Bash(node --check db/client.js)",
       "Bash(node --check services/googleMaps.js)",
       "Bash(node --check services/amadeus.js)",
-      "Bash(node --check services/gemini.js)"
+      "Bash(node --check services/gemini.js)",
+      "Bash(node -e ' *)",
+      "Bash(turso *)",
+      "Bash(node -e \"require\\('puppeteer-extra'\\); console.log\\('OK'\\)\")",
+      "Read(//c/Users/richm/.cache/puppeteer/**)",
+      "Bash(where chrome *)",
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
