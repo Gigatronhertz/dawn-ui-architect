@@ -1,0 +1,10 @@
+{
+  "env": {
+    "VITE_API_URL": "https://dawn-ui-architect.onrender.com"
+  },
+  "build": {
+    "env": {
+      "VITE_API_URL": "https://dawn-ui-architect.onrender.com"
+    }
+  }
+}

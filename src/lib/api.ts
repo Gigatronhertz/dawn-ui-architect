@@ -1,4 +1,5 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+console.log('[api] Backend URL:', API_URL);
 
 export type IntakeData = {
   origin: string;

@@ -24,6 +24,12 @@ app.use(express.json({
   verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); },
 }));
 
+// Request logger
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} — origin: ${req.headers.origin || 'none'}`);
+  next();
+});
+
 // Health check
 app.get('/', (req, res) => res.json({ status: 'ok', service: 'MySquadGo backend' }));
 
