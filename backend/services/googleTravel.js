@@ -361,9 +361,12 @@ async function scrapeFlights(originCity, destCity, date) {
 
   const page = await newPage();
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // Google Flights is a pure SPA — domcontentloaded fires before any results render.
+    // networkidle2 waits for XHR calls to finish so flight cards are in the DOM.
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
     await handleConsent(page);
-    await new Promise(r => setTimeout(r, 6000));
+    // Extra settle time for late-loading flight cards
+    await new Promise(r => setTimeout(r, 5000));
     const text = await page.evaluate(() => document.body.innerText);
     console.log(`[googleTravel/flights] Page text length: ${text.length} chars`);
     if (text.length < 500) console.log('[googleTravel/flights] Short page text:', text.slice(0, 300));
