@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { WaitlistForm } from "@/components/WaitlistForm";
-import { api, type GeminiPlan } from "@/lib/api";
+import { api, type GeminiPlan, type ScrapedData } from "@/lib/api";
 
 /* ---------------- types ---------------- */
 type Intake = {
@@ -393,12 +393,61 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
   const [dirty, setDirty] = useState(false);
   const [recalcing, setRecalcing] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [scraped, setScraped] = useState<ScrapedData | null>(null);
+  const [selectedHotelKey, setSelectedHotelKey] = useState<string>('ai');
+  const [selectedFlightIdx, setSelectedFlightIdx] = useState<number | null>(null);
 
   const extraItineraryCost = useMemo(
     () => days.reduce((sum, d) => sum + d.items.reduce((s, it) => s + it.cost, 0), 0) * intake.squadSize,
     [days, intake.squadSize]
   );
   const fallbackPlan = useMemo(() => buildPlan(intake, extraItineraryCost), [intake, extraItineraryCost]);
+
+  const allHotelOptions = useMemo(() => {
+    type HotelOpt = { key: string; name: string; area: string; price: number | null; rating: number | null; source: string; badge?: string; perks: string[] };
+    const opts: HotelOpt[] = [];
+    if (realPlan?.hotel) {
+      const h = realPlan.hotel;
+      opts.push({ key: 'ai', name: h.name, area: h.area, price: h.price_per_night, rating: h.rating, source: 'Gemini AI', badge: 'AI Pick', perks: h.perks || [] });
+    }
+    (scraped?.gtHotels ?? []).forEach((h, i) => {
+      if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase()))
+        opts.push({ key: `gt-${i}`, name: h.name, area: h.location || '', price: h.pricePerNight, rating: h.rating, source: 'Google Travel', perks: h.amenities.slice(0, 3) });
+    });
+    (scraped?.bHotels ?? []).forEach((h, i) => {
+      if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase()))
+        opts.push({ key: `bk-${i}`, name: h.name, area: h.address?.split(',')[0] || '', price: h.pricePerNight, rating: h.rating ? +(h.rating / 2).toFixed(1) : null, source: 'Booking.com', perks: [] });
+    });
+    return opts;
+  }, [realPlan, scraped]);
+
+  const flightOffers = useMemo(() => scraped?.flights?.offers ?? [], [scraped]);
+
+  const rentalOptions = useMemo(() => {
+    if (!intake.accommodationType.toLowerCase().includes('shortlet')) return [];
+    type RentalOpt = { key: string; name: string; details: string; price: number | null; source: string };
+    const opts: RentalOpt[] = [];
+    (scraped?.gtRentals ?? []).forEach((r, i) =>
+      opts.push({ key: `gr-${i}`, name: r.name, details: [r.type, r.sleeps ? `sleeps ${r.sleeps}` : null, r.bedrooms ? `${r.bedrooms} bed` : null].filter(Boolean).join(' · '), price: r.pricePerNight, source: 'Google Travel' })
+    );
+    (scraped?.bApartments ?? []).forEach((r, i) =>
+      opts.push({ key: `ba-${i}`, name: r.name, details: r.propertyType || 'Apartment', price: r.pricePerNight, source: 'Booking.com' })
+    );
+    return opts;
+  }, [scraped, intake.accommodationType]);
+
+  const buildFinalPlan = (): GeminiPlan => {
+    const base = realPlan!;
+    const selHotel = allHotelOptions.find(o => o.key === selectedHotelKey);
+    const hotel = (selHotel && selHotel.key !== 'ai' && selHotel.price)
+      ? { ...base.hotel, name: selHotel.name, area: selHotel.area, price_per_night: selHotel.price, rating: selHotel.rating ?? base.hotel.rating, perks: selHotel.perks }
+      : base.hotel;
+    const selFlight = selectedFlightIdx !== null ? flightOffers[selectedFlightIdx] : null;
+    const transport = selFlight
+      ? { ...base.transport, operator: selFlight.airline || 'Unknown', type: selFlight.stops === 0 ? 'Nonstop Flight' : 'Flight', price_per_person: selFlight.price }
+      : base.transport;
+    return { ...base, hotel, transport };
+  };
 
   // Cycle through loading messages
   useEffect(() => {
@@ -420,6 +469,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
       dealbreakers: intake.dealbreakers,
     }).then((res) => {
       setRealPlan(res.plan);
+      setScraped(res.scraped ?? null);
       setDays(
         res.plan.days.map((d, di) => ({
           day: d.day,
@@ -587,7 +637,6 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
                       <div className="flex items-center gap-3">
                         <span className="font-display text-xs font-semibold text-muted-foreground">DAY {d.day}</span>
                         <span className="font-display text-base font-semibold flex-1 truncate">{d.title}</span>
-                        <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">{fmtNGN(dayCost)}/p</span>
                         <svg viewBox="0 0 24 24" className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
                       </div>
                     </button>
@@ -600,7 +649,6 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
                             <li key={it.id} className="flex items-center gap-2 text-sm group">
                               <span className="font-display text-[11px] font-semibold tabular-nums text-muted-foreground w-12 shrink-0">{it.time}</span>
                               <span className="flex-1 truncate">{it.title}</span>
-                              <span className="text-[11px] tabular-nums text-muted-foreground">{it.cost ? fmtNGN(it.cost) : "—"}</span>
                               <button onClick={() => removeItem(di, it.id)} className="opacity-40 hover:opacity-100 hover:text-destructive transition" aria-label="Remove">
                                 <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 6l12 12M6 18L18 6" /></svg>
                               </button>
@@ -619,7 +667,6 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
                                 <div className="p-2 flex flex-col gap-1 flex-1 min-w-0">
                                   <div className="flex items-baseline justify-between gap-1.5 min-w-0">
                                     <div className="font-display text-[11px] font-semibold truncate flex-1 min-w-0">{s.title}</div>
-                                    <div className="text-[9px] font-semibold tabular-nums text-muted-foreground shrink-0">{fmtNGN(s.cost)}</div>
                                   </div>
                                   <div className="text-[10px] text-muted-foreground line-clamp-2">{s.blurb}</div>
                                   <button onClick={() => addSuggestion(di, s)} className="mt-1 self-start text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground text-background hover:opacity-90 transition">+ Add</button>
@@ -653,7 +700,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
                                     <span className="text-base shrink-0">{p.emoji}</span>
                                     <div className="flex-1 min-w-0">
                                       <div className="font-medium truncate">{p.title}</div>
-                                      <div className="text-[10px] text-muted-foreground truncate">{p.tag} · {fmtNGN(p.cost)}/p</div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{p.tag}</div>
                                     </div>
                                     <button onClick={() => addSuggestion(di, p)} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground text-background shrink-0">+ Add</button>
                                   </li>
@@ -670,71 +717,132 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
             </ol>
           </div>
 
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">AI-recommended accommodation</div>
-            <div className="space-y-3">
-              {(() => {
-                const h = realPlan?.hotel;
-                if (!h) return null;
-                return (
-                  <div className="rounded-2xl p-4 ring-hairline bg-primary-soft">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-display text-base font-semibold flex items-center gap-2 flex-wrap">
-                          {h.name}
-                          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-primary-foreground">AI pick</span>
+          <div className="space-y-4">
+
+            {/* Trip highlights */}
+            {(realPlan?.highlights?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {realPlan!.highlights.map((hl: string) => (
+                  <span key={hl} className="text-[10px] px-2 py-0.5 rounded-full bg-google-pink/10 text-google-pink">{hl}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Flights — selectable */}
+            {(flightOffers.length > 0 || scraped?.flights) && (
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center justify-between">
+                  <span>Flights — {scraped?.flights?.source === 'google_travel' ? 'Google Travel' : 'Amadeus'}</span>
+                  {scraped?.flights?.directAvailable && <span className="text-[10px] px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">Direct available</span>}
+                </div>
+                <div className="space-y-1.5">
+                  {flightOffers.map((fl, i) => (
+                    <button key={i} onClick={() => setSelectedFlightIdx(i === selectedFlightIdx ? null : i)} className={`w-full text-left rounded-xl p-3 ring-hairline transition ${selectedFlightIdx === i ? 'bg-primary-soft ring-1 ring-primary/30' : 'bg-card hover:bg-secondary'}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="font-display text-sm font-semibold">{fl.airline || 'Unknown airline'}</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {fl.stops === 0 ? 'Nonstop' : `${fl.stops} stop${(fl.stops ?? 0) > 1 ? 's' : ''}`}
+                            {fl.duration ? ` · ${fl.duration}` : ''}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{h.area} · ⭐ {h.rating}</div>
-                        {realPlan?.transport && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            ✈️ {realPlan.transport.operator} · departs {realPlan.transport.depart_time} → arrives {realPlan.transport.arrive_time}
+                        <div className="text-right shrink-0">
+                          <div className="font-display font-semibold text-sm">{fmtNGN(fl.price)}</div>
+                          <div className="text-[10px] text-muted-foreground">per person</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  <button onClick={() => setSelectedFlightIdx(null)} className={`w-full text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedFlightIdx === null ? 'bg-primary-soft ring-1 ring-primary/30' : 'bg-card hover:bg-secondary'}`}>
+                    <span className="font-display font-semibold">🚌 Road transport</span>
+                    <span className="text-muted-foreground ml-2 text-[11px]">{realPlan?.transport?.operator || 'Bus'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Hotels — all options, selectable */}
+            {allHotelOptions.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">Hotels — tap to select</div>
+                <div className="space-y-1.5">
+                  {allHotelOptions.map((h) => (
+                    <button key={h.key} onClick={() => setSelectedHotelKey(h.key)} className={`w-full text-left rounded-xl p-3 ring-hairline transition ${selectedHotelKey === h.key ? 'bg-primary-soft ring-1 ring-primary/30' : 'bg-card hover:bg-secondary'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-display text-sm font-semibold truncate flex items-center gap-1.5 flex-wrap">
+                            {h.name}
+                            {h.badge && <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground shrink-0">{h.badge}</span>}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            {h.area && <span>{h.area}</span>}
+                            {h.rating && <span>⭐ {h.rating}</span>}
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">{h.source}</span>
+                          </div>
+                          {h.perks.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {h.perks.map(p => <span key={p} className="text-[9px] px-1.5 py-0.5 rounded-full bg-secondary/70 text-muted-foreground">{p}</span>)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          {h.price && <div className="font-display font-semibold text-sm">{fmtNGN(h.price)}</div>}
+                          {h.price && <div className="text-[10px] text-muted-foreground">per night</div>}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Holiday rentals — only if shortlet selected */}
+            {rentalOptions.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">Shortlets & rentals — tap to select</div>
+                <div className="space-y-1.5">
+                  {rentalOptions.map((r) => (
+                    <button key={r.key} onClick={() => setSelectedHotelKey(r.key)} className={`w-full text-left rounded-xl p-3 ring-hairline transition ${selectedHotelKey === r.key ? 'bg-primary-soft ring-1 ring-primary/30' : 'bg-card hover:bg-secondary'}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-display text-sm font-semibold truncate">{r.name}</div>
+                          <div className="text-[11px] text-muted-foreground">{r.details} · <span className="text-[9px]">{r.source}</span></div>
+                        </div>
+                        {r.price && (
+                          <div className="text-right shrink-0">
+                            <div className="font-display font-semibold text-sm">{fmtNGN(r.price)}</div>
+                            <div className="text-[10px] text-muted-foreground">avg/night</div>
                           </div>
                         )}
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="font-display text-base font-semibold">{fmtNGN(h.price_per_night)}</div>
-                        <div className="text-[10px] text-muted-foreground">per night</div>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {(h.perks || []).map((p: string) => <span key={p} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{p}</span>)}
-                    </div>
-                    {(realPlan?.highlights?.length ?? 0) > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Trip highlights</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {realPlan.highlights.map((hl: string) => (
-                            <span key={hl} className="text-[10px] px-2 py-0.5 rounded-full bg-google-pink/10 text-google-pink">{hl}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-              {/* Cost breakdown detail */}
-              {realPlan?.cost_breakdown && (
-                <div className="rounded-2xl p-4 ring-hairline bg-card text-xs space-y-1.5">
-                  <div className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Cost breakdown</div>
-                  {[
-                    ["Transport", realPlan.cost_breakdown.transport_total],
-                    ["Lodging", realPlan.cost_breakdown.lodging_total],
-                    ["Food", realPlan.cost_breakdown.food_total],
-                    ["Activities", realPlan.cost_breakdown.activities_total],
-                    ["Buffer", realPlan.cost_breakdown.buffer],
-                  ].map(([label, val]) => (
-                    <div key={String(label)} className="flex justify-between">
-                      <span className="text-muted-foreground">{label}</span>
-                      <span className="font-display font-semibold tabular-nums">{fmtNGN(Number(val))}</span>
-                    </div>
+                    </button>
                   ))}
-                  <div className="flex justify-between pt-1.5 border-t border-border font-semibold">
-                    <span>Total ({intake.squadSize} pax)</span>
-                    <span className="font-display tabular-nums text-primary">{fmtNGN(realPlan.cost_breakdown.total)}</span>
-                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Cost breakdown */}
+            {realPlan?.cost_breakdown && (
+              <div className="rounded-2xl p-4 ring-hairline bg-card text-xs space-y-1.5">
+                <div className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Estimated breakdown</div>
+                {[
+                  ["Transport", realPlan.cost_breakdown.transport_total],
+                  ["Lodging", realPlan.cost_breakdown.lodging_total],
+                  ["Food", realPlan.cost_breakdown.food_total],
+                  ["Activities", realPlan.cost_breakdown.activities_total],
+                  ["Buffer", realPlan.cost_breakdown.buffer],
+                ].map(([label, val]) => (
+                  <div key={String(label)} className="flex justify-between">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-display font-semibold tabular-nums">{fmtNGN(Number(val))}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between pt-1.5 border-t border-border font-semibold">
+                  <span>Total ({intake.squadSize} pax)</span>
+                  <span className="font-display tabular-nums text-primary">{fmtNGN(realPlan.cost_breakdown.total)}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -747,7 +855,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             {dirty && !recalcing && <GhostBtn fullWidth onClick={recalc}>🔄 Recalculate</GhostBtn>}
-            <PrimaryBtn fullWidth onClick={() => onNext(realPlan!)} disabled={dirty || recalcing || !realPlan}>Send to squad for voting</PrimaryBtn>
+            <PrimaryBtn fullWidth onClick={() => onNext(buildFinalPlan())} disabled={dirty || recalcing || !realPlan}>Plan your trip →</PrimaryBtn>
           </div>
         </div>
       </Section>

@@ -247,7 +247,17 @@ INSTRUCTIONS:
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  return JSON.parse(cleaned);
+  const plan = JSON.parse(cleaned);
+  return {
+    plan,
+    scraped: {
+      flights:     ctx.flights,
+      gtHotels:    ctx.gtHotels    || [],
+      bHotels:     ctx.bHotels     || [],
+      gtRentals:   ctx.gtRentals   || [],
+      bApartments: ctx.bApartments || [],
+    },
+  };
 }
 
 // ── WhatsApp plan summary ──────────────────────────────────────────────────────

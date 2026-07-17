@@ -39,7 +39,7 @@ router.post('/plan', async (req, res) => {
 
   try {
     const intake = await db.trips.get(tripId);
-    const plan = await generateTripPlan(intake);
+    const { plan, scraped } = await generateTripPlan(intake);
 
     await db.trips.update({
       id: tripId, plan: JSON.stringify(plan), status: 'plan_review',
@@ -48,7 +48,7 @@ router.post('/plan', async (req, res) => {
       dealbreakers: null, selected_date: null, selected_hotel: null, group_id: null,
     });
 
-    return res.json({ tripId, plan });
+    return res.json({ tripId, plan, scraped });
   } catch (err) {
     console.error('[api/plan]', err.message);
     await db.trips.update({

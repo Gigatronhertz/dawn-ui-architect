@@ -25,7 +25,14 @@ export type GeminiPlan = {
   offline_note: string;
 };
 
-export type PlanResponse = { tripId: string; plan: GeminiPlan };
+export type ScrapedFlightOffer = { price: number; airline: string | null; stops: number | null; duration: string | null; roundTrip: boolean };
+export type ScrapedFlights = { available: boolean; cheapestNGN: number; averageNGN: number; cheapestAirline: string; directAvailable: boolean; offers: ScrapedFlightOffer[]; source: string };
+export type GTHotel = { name: string; pricePerNight: number; rating: number | null; stars: number | null; deal: string | null; amenities: string[]; location: string | null };
+export type GTRental = { name: string; pricePerNight: number; type: string | null; sleeps: number | null; bedrooms: number | null; amenities: string[] };
+export type BHotel = { id: number; name: string; rating: number | null; address: string; pricePerNight: number | null; propertyType: string | null; stars: number | null; freeCancellation: boolean };
+export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[]; bHotels: BHotel[]; gtRentals: GTRental[]; bApartments: BHotel[] };
+
+export type PlanResponse = { tripId: string; plan: GeminiPlan; scraped?: ScrapedData };
 export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] };
 
 export type AgentProfile = {
