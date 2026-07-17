@@ -100,17 +100,21 @@ async function getBrowser() {
 
   const wsEndpoint = process.env.BROWSERLESS_WS_ENDPOINT;
   if (wsEndpoint) {
-    // Remote Chrome via Browserless.io — no local Chrome needed
-    console.log('[googleTravel] Connecting to Browserless remote Chrome...');
-    _browser = await puppeteer.connect({
-      browserWSEndpoint: wsEndpoint,
-      defaultViewport: null,
-    });
-    console.log('[googleTravel] Browserless connected OK');
-    return _browser;
+    try {
+      console.log('[googleTravel] Connecting to Browserless remote Chrome...');
+      _browser = await puppeteer.connect({
+        browserWSEndpoint: wsEndpoint,
+        defaultViewport: null,
+      });
+      console.log('[googleTravel] Browserless connected OK');
+      return _browser;
+    } catch (e) {
+      console.warn('[googleTravel] Browserless failed:', e.message, '— falling back to local Chrome');
+      _browser = null;
+    }
   }
 
-  // Fallback: local Chrome (dev / non-Browserless deployments)
+  // Fallback: local Chrome (dev, or if Browserless is down)
   if (!CHROME) throw new Error('No Chrome executable and BROWSERLESS_WS_ENDPOINT not set');
   console.log('[googleTravel] Launching local Chrome...');
   _browser = await puppeteer.launch({
