@@ -25,7 +25,13 @@ function findChrome() {
   // 1. Explicit env var always wins
   if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
 
-  // 2. Use puppeteer's bundled Chrome (auto-downloaded on Render during npm install)
+  // 2. Path saved by the postinstall script (most reliable on Render)
+  try {
+    const saved = fs.readFileSync(path.join(__dirname, '../.chrome-path'), 'utf8').trim();
+    if (saved && fs.existsSync(saved)) return saved;
+  } catch {}
+
+  // 3. Ask puppeteer directly where it put Chrome
   try {
     const pup = require('puppeteer');
     const exe = typeof pup.executablePath === 'function' ? pup.executablePath() : null;
