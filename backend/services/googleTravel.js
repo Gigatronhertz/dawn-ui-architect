@@ -250,12 +250,12 @@ function parseRentalLines(text) {
 function parseFlightLines(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const flights = [];
-  const isRT = text.includes('round trip');
+  const isRT = /round.?trip/i.test(text);
 
   for (let i = 0; i < lines.length; i++) {
-    // Google serves "NGN 78,000" when currency loads, "$48" when from US servers
+    // Price: "NGN 78,000" (currency loaded) or "$48" (US-server fallback)
     let price = null;
-    const ngnMatch = lines[i].match(/^NGN ([\d,]+)$/);
+    const ngnMatch = lines[i].match(/^NGN\s*([\d,]+)$/);
     const usdMatch = lines[i].match(/^\$([\d,]+(?:\.\d{1,2})?)$/);
     if (ngnMatch) price = parseInt(ngnMatch[1].replace(/,/g, ''), 10);
     else if (usdMatch) price = Math.round(parseFloat(usdMatch[1].replace(/,/g, '')) * USD_TO_NGN);
@@ -263,26 +263,33 @@ function parseFlightLines(text) {
 
     let airline = null, stops = null, duration = null;
 
-    // Scan the next 4 lines for the combined stops/duration/airline line
-    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+    // Primary: scan BACKWARD — Google Flights card order is airline → time → route → duration → price
+    for (let j = i - 1; j >= Math.max(0, i - 8); j--) {
       const l = lines[j];
-
-      // "Nonstop1 hr 20 minAir Peace"  or  "Nonstop · 1 hr 20 min · Air Peace"
-      const nonstop = l.match(/^Nonstop(?:\s*·?\s*)([\d]+ hr [\d]+ min)(?:\s*·?\s*)(.+)$/i);
-      if (nonstop) {
-        stops = 0;
-        duration = nonstop[1].trim();
-        airline = nonstop[2].trim();
-        break;
+      if (stops === null) {
+        const ns = l.match(/Nonstop[·\s]*([\d]+ hr(?:\s+[\d]+ min)?)/i);
+        if (ns) { stops = 0; duration = ns[1].trim(); continue; }
+        const st = l.match(/(\d+)\s*stops?[·\s]*([\d]+ hr(?:\s+[\d]+ min)?)/i);
+        if (st) { stops = parseInt(st[1]); duration = st[2].trim(); continue; }
       }
+      // Airline name: plain text, not a time, route, badge, or price
+      if (!airline && stops !== null &&
+          !l.includes('–') && !/^\d{1,2}:\d{2}/.test(l) &&
+          /^[A-Za-z]/.test(l) && l.length >= 3 && l.length <= 60 &&
+          !/^(NGN|USD|\$|Economy|Business|Nonstop|\d+ stop|Round|One.way)/i.test(l)) {
+        airline = l;
+      }
+    }
 
-      // "1 stop6 hr 35 minAfrica World Airlines"  or  "1 stop · 6 hr 35 min · Africa World Airlines"
-      const withStops = l.match(/^(\d+)\s*stops?(?:\s*·?\s*)([\d]+ hr [\d]+ min)(?:\s*·?\s*)(.+)$/i);
-      if (withStops) {
-        stops = parseInt(withStops[1]);
-        duration = withStops[2].trim();
-        airline = withStops[3].trim();
-        break;
+    // Fallback: scan FORWARD for older concatenated format
+    // "Nonstop1 hr 20 minAir Peace" or "1 stop · 6 hr 35 min · Airline"
+    if (stops === null) {
+      for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+        const l = lines[j];
+        const ns = l.match(/^Nonstop(?:\s*·?\s*)([\d]+ hr[\d\s]*min)(?:\s*·?\s*)(.+)$/i);
+        if (ns) { stops = 0; duration = ns[1].trim(); airline = ns[2].trim(); break; }
+        const st = l.match(/^(\d+)\s*stops?(?:\s*·?\s*)([\d]+ hr[\d\s]*min)(?:\s*·?\s*)(.+)$/i);
+        if (st) { stops = parseInt(st[1]); duration = st[2].trim(); airline = st[3].trim(); break; }
       }
     }
 
@@ -361,12 +368,15 @@ async function scrapeFlights(originCity, destCity, date) {
 
   const page = await newPage();
   try {
-    // Google Flights is a pure SPA — domcontentloaded fires before any results render.
-    // networkidle2 waits for XHR calls to finish so flight cards are in the DOM.
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+    // Google Flights is a pure SPA. domcontentloaded fires on the empty shell (~450 chars).
+    // waitForFunction polls until actual flight results appear (page grows past 2000 chars).
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await handleConsent(page);
-    // Extra settle time for late-loading flight cards
-    await new Promise(r => setTimeout(r, 5000));
+    await page.waitForFunction(
+      () => document.body.innerText.length > 2000,
+      { timeout: 35000, polling: 1500 }
+    ).catch(() => console.log('[googleTravel/flights] waitForFunction timed out — using current state'));
+    await new Promise(r => setTimeout(r, 2000));
     const text = await page.evaluate(() => document.body.innerText);
     console.log(`[googleTravel/flights] Page text length: ${text.length} chars`);
     if (text.length < 500) console.log('[googleTravel/flights] Short page text:', text.slice(0, 300));
