@@ -66,6 +66,19 @@ async function fetchRealWorldContext(intake) {
 
   const val = (r) => r.status === 'fulfilled' ? r.value : null;
 
+  // Log what each source returned so failures are visible in Render logs
+  const logCount = (label, r) => {
+    if (r.status === 'rejected') console.warn(`[gemini/context] ${label}: ERROR — ${r.reason?.message}`);
+    else console.log(`[gemini/context] ${label}: ${Array.isArray(r.value) ? r.value.length + ' results' : r.value ? JSON.stringify(r.value).slice(0, 80) : 'null'}`);
+  };
+  logCount('road distance', road);
+  logCount('GT hotels', gtHotels);
+  logCount('GT rentals', gtRentals);
+  logCount('GT flights', gtFlights);
+  logCount('Booking hotels', bHotels);
+  logCount('Booking apartments', bApartments);
+  logCount('Amadeus flights', amadeusFlights);
+
   // Prefer Google Travel flights if Amadeus returned nothing
   const flightData = val(amadeusFlights) || val(gtFlights);
 

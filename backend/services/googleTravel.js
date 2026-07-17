@@ -98,6 +98,7 @@ let _consentAccepted = false;
 async function getBrowser() {
   if (!CHROME) throw new Error('No Chrome executable');
   if (!_browser || !_browser.isConnected()) {
+    console.log('[googleTravel] Launching Chrome...');
     _browser = await puppeteer.launch({
       executablePath: CHROME,
       headless: true,
@@ -105,8 +106,15 @@ async function getBrowser() {
         '--no-sandbox', '--disable-setuid-sandbox',
         '--disable-dev-shm-usage', '--disable-gpu',
         '--disable-extensions',
+        '--disable-background-networking',
+        '--disable-default-apps',
+        '--disable-sync',
+        '--mute-audio',
+        '--no-first-run',
+        '--no-default-browser-check',
       ],
     });
+    console.log('[googleTravel] Chrome launched OK');
   }
   return _browser;
 }
@@ -287,17 +295,25 @@ function parseFlightLines(text) {
 
 async function scrapeHotels(destination, checkin, checkout, adults = 1) {
   if (!CHROME) return [];
+  const t0 = Date.now();
+  console.log(`[googleTravel/hotels] Scraping hotels: ${destination}`);
   const page = await newPage();
   try {
     const dates = checkin && checkout ? `&dates=${checkin},${checkout}` : '';
     const url = `https://www.google.com/travel/hotels?q=hotels+in+${encodeURIComponent(destination + ' Nigeria')}&hl=en&curr=NGN${dates}`;
+    console.log('[googleTravel/hotels] URL:', url);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
     await handleConsent(page);
     await new Promise(r => setTimeout(r, 5000));
     const text = await page.evaluate(() => document.body.innerText);
-    return parseHotelLines(text);
+    console.log(`[googleTravel/hotels] Page text length: ${text.length} chars`);
+    if (text.length < 500) console.log('[googleTravel/hotels] Short page text:', text.slice(0, 300));
+    const hotels = parseHotelLines(text);
+    console.log(`[googleTravel/hotels] Found ${hotels.length} hotels in ${Date.now() - t0}ms`);
+    if (hotels.length) console.log('[googleTravel/hotels] First result:', hotels[0].name, '·', hotels[0].pricePerNight);
+    return hotels;
   } catch (err) {
-    console.warn('[googleTravel/hotels]', err.message);
+    console.error(`[googleTravel/hotels] Error after ${Date.now() - t0}ms:`, err.message);
     return [];
   } finally {
     await page.close().catch(() => {});
@@ -306,6 +322,8 @@ async function scrapeHotels(destination, checkin, checkout, adults = 1) {
 
 async function scrapeVacationRentals(destination, checkin, checkout) {
   if (!CHROME) return [];
+  const t0 = Date.now();
+  console.log(`[googleTravel/rentals] Scraping rentals: ${destination}`);
   const page = await newPage();
   try {
     const dates = checkin && checkout ? `&dates=${checkin},${checkout}` : '';
@@ -314,9 +332,11 @@ async function scrapeVacationRentals(destination, checkin, checkout) {
     await handleConsent(page);
     await new Promise(r => setTimeout(r, 5000));
     const text = await page.evaluate(() => document.body.innerText);
-    return parseRentalLines(text);
+    const rentals = parseRentalLines(text);
+    console.log(`[googleTravel/rentals] Found ${rentals.length} rentals in ${Date.now() - t0}ms`);
+    return rentals;
   } catch (err) {
-    console.warn('[googleTravel/rentals]', err.message);
+    console.error(`[googleTravel/rentals] Error after ${Date.now() - t0}ms:`, err.message);
     return [];
   } finally {
     await page.close().catch(() => {});
@@ -328,9 +348,12 @@ async function scrapeVacationRentals(destination, checkin, checkout) {
 // — no IATA codes needed, and Google understands Nigerian city names natively.
 async function scrapeFlights(originCity, destCity, date) {
   if (!CHROME || !originCity || !destCity) return null;
+  const t0 = Date.now();
+  console.log(`[googleTravel/flights] Scraping flights: ${originCity} → ${destCity}`);
 
   const q = `flights from ${originCity} to ${destCity}`;
   const url = `https://www.google.com/travel/flights?hl=en&curr=NGN&q=${encodeURIComponent(q)}`;
+  console.log('[googleTravel/flights] URL:', url);
 
   const page = await newPage();
   try {
@@ -338,7 +361,11 @@ async function scrapeFlights(originCity, destCity, date) {
     await handleConsent(page);
     await new Promise(r => setTimeout(r, 6000));
     const text = await page.evaluate(() => document.body.innerText);
+    console.log(`[googleTravel/flights] Page text length: ${text.length} chars`);
+    if (text.length < 500) console.log('[googleTravel/flights] Short page text:', text.slice(0, 300));
     const flights = parseFlightLines(text);
+    console.log(`[googleTravel/flights] Found ${flights.length} flights in ${Date.now() - t0}ms`);
+    if (flights.length) console.log('[googleTravel/flights] Cheapest:', flights[0].airline, '·', flights[0].price);
     if (!flights.length) return null;
     return {
       available: true,
@@ -350,7 +377,7 @@ async function scrapeFlights(originCity, destCity, date) {
       source: 'google_travel',
     };
   } catch (err) {
-    console.warn('[googleTravel/flights]', err.message);
+    console.error(`[googleTravel/flights] Error after ${Date.now() - t0}ms:`, err.message);
     return null;
   } finally {
     await page.close().catch(() => {});

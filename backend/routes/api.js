@@ -4,6 +4,7 @@ const db = require('../db/client');
 const { generateTripPlan } = require('../services/gemini');
 const { sendText } = require('../services/whatsapp');
 const M = require('../bot/messages');
+const GT = require('../services/googleTravel');
 
 const router = Router();
 
@@ -173,6 +174,30 @@ router.get('/dashboard/:phone', async (req, res) => {
   };
 
   return res.json({ agent, trips, summary });
+});
+
+// GET /api/scraper-test?from=Lagos&to=Ibadan
+// Quick diagnostic: runs the three scrapers and returns raw results.
+// Hit this in the browser to see what Google Travel actually returns.
+router.get('/scraper-test', async (req, res) => {
+  const from = req.query.from || 'Lagos';
+  const to   = req.query.to   || 'Ibadan';
+  console.log(`[scraper-test] Testing scrapers: ${from} → ${to}`);
+  const t0 = Date.now();
+  const [hotels, rentals, flights] = await Promise.allSettled([
+    GT.scrapeHotels(to),
+    GT.scrapeVacationRentals(to),
+    GT.scrapeFlights(from, to),
+  ]);
+  const elapsed = Date.now() - t0;
+  const unwrap = r => r.status === 'fulfilled' ? r.value : { error: r.reason?.message };
+  res.json({
+    chromeAvailable: GT.available,
+    elapsedMs: elapsed,
+    hotels:  unwrap(hotels),
+    rentals: unwrap(rentals),
+    flights: unwrap(flights),
+  });
 });
 
 // POST /api/waitlist
