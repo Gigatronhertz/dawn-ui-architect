@@ -4,7 +4,7 @@ const {
   searchHotels: googleHotels, searchHolidayRentals, searchActivities,
   formatHotelsForPrompt, formatRentalsForPrompt, formatActivitiesForPrompt,
 } = require('./googleMaps');
-const { searchFlights, formatFlightsForPrompt, cityToIATA } = require('./amadeus');
+const { searchFlights, formatFlightsForPrompt } = require('./amadeus');
 const {
   searchHotels: bookingHotels, searchApartments, getDates, formatBookingHotelsForPrompt,
 } = require('./bookingCom');
@@ -61,7 +61,7 @@ async function fetchRealWorldContext(intake) {
       ? GT.scrapeVacationRentals(intake.destination, checkin, checkout)
       : Promise.resolve([]),
     // Google Travel flights (fallback / cross-check for Amadeus)
-    GT.scrapeFlights(cityToIATA(intake.origin), cityToIATA(intake.destination), depDate),
+    GT.scrapeFlights(intake.origin, intake.destination, depDate),
   ]);
 
   const val = (r) => r.status === 'fulfilled' ? r.value : null;

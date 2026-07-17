@@ -206,37 +206,53 @@ function parseRentalLines(text) {
 }
 
 // ── Flight parser ─────────────────────────────────────────────────────────────
+// Google Flight text dumps the detail line as a single concatenated string:
+//   "Nonstop1 hr 20 minAir Peace"   or   "1 stop6 hr 35 minAfrica World Airlines"
+// (sometimes separated by " · " but often not). We match both forms.
 
 function parseFlightLines(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const flights = [];
+  const isRT = text.includes('round trip');
 
-  for (let i = 0; i < lines.length - 3; i++) {
-    // Price line: "NGN 2,017,556"
+  for (let i = 0; i < lines.length; i++) {
     const priceMatch = lines[i].match(/^NGN ([\d,]+)$/);
     if (!priceMatch) continue;
 
     const price = parseInt(priceMatch[1].replace(/,/g, ''), 10);
+    if (price < 5000) continue;
 
-    // Find airline + stops on nearby lines
     let airline = null, stops = null, duration = null;
-    for (let j = i - 3; j < i + 3; j++) {
-      if (j < 0 || j >= lines.length) continue;
-      if (!stops && /\d stop|nonstop/i.test(lines[j])) {
-        stops = lines[j].includes('nonstop') ? 0 : parseInt(lines[j]);
-        duration = lines[j].split(' ').slice(1, 4).join(' ');
+
+    // Scan the next 4 lines for the combined stops/duration/airline line
+    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+      const l = lines[j];
+
+      // "Nonstop1 hr 20 minAir Peace"  or  "Nonstop · 1 hr 20 min · Air Peace"
+      const nonstop = l.match(/^Nonstop(?:\s*·?\s*)([\d]+ hr [\d]+ min)(?:\s*·?\s*)(.+)$/i);
+      if (nonstop) {
+        stops = 0;
+        duration = nonstop[1].trim();
+        airline = nonstop[2].trim();
+        break;
       }
-      if (!airline && /Air|United|Delta|Lufthansa|Turkish|Qatar|Emirates|British|Kenya|Ethiopian|Peace|Ibom|Overland|Dana/i.test(lines[j])) {
-        airline = lines[j];
+
+      // "1 stop6 hr 35 minAfrica World Airlines"  or  "1 stop · 6 hr 35 min · Africa World Airlines"
+      const withStops = l.match(/^(\d+)\s*stops?(?:\s*·?\s*)([\d]+ hr [\d]+ min)(?:\s*·?\s*)(.+)$/i);
+      if (withStops) {
+        stops = parseInt(withStops[1]);
+        duration = withStops[2].trim();
+        airline = withStops[3].trim();
+        break;
       }
     }
 
-    if (!flights.find(f => f.price === price)) {
-      flights.push({ price, airline, stops, duration, roundTrip: text.includes('round trip') });
+    const key = `${price}-${airline}`;
+    if (!flights.find(f => `${f.price}-${f.airline}` === key)) {
+      flights.push({ price, airline, stops, duration, roundTrip: isRT });
     }
   }
 
-  // Sort cheapest first
   return flights.sort((a, b) => a.price - b.price).slice(0, 5);
 }
 
@@ -280,25 +296,18 @@ async function scrapeVacationRentals(destination, checkin, checkout) {
   }
 }
 
-// Flights: builds URL from IATA codes (reuses amadeus city→IATA map)
-async function scrapeFlights(originIATA, destIATA, date) {
-  if (!CHROME || !originIATA || !destIATA) return null;
+// Flights: scrape using city names (e.g. "Lagos", "Abuja").
+// The confirmed-working URL format is ?q=flights+from+{origin}+to+{destination}
+// — no IATA codes needed, and Google understands Nigerian city names natively.
+async function scrapeFlights(originCity, destCity, date) {
+  if (!CHROME || !originCity || !destCity) return null;
 
-  // Encode a one-way search in the tfs proto format Google Flights uses.
-  // We use a pre-built template and swap the city codes + date inline.
-  // This works for any airport pair supported by Google Flights.
-  const depDate = date || (() => {
-    const d = new Date(); d.setDate(d.getDate() + 42); return d.toISOString().split('T')[0];
-  })();
-
-  // Build tfs via btoa of a proto-like string Google accepts
-  // Format: one-way, economy, 1 adult
-  const tfsRaw = `CBcQAhoeEgoyMDI2LTA4LTAxagcIARID${btoa(originIATA).replace(/=/g, '')}cgcIARID${btoa(destIATA).replace(/=/g, '')}`;
-  const url = `https://www.google.com/travel/flights?hl=en&curr=NGN&q=flights+from+${originIATA}+to+${destIATA}+on+${depDate}`;
+  const q = `flights from ${originCity} to ${destCity}`;
+  const url = `https://www.google.com/travel/flights?hl=en&curr=NGN&q=${encodeURIComponent(q)}`;
 
   const page = await newPage();
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await handleConsent(page);
     await new Promise(r => setTimeout(r, 6000));
     const text = await page.evaluate(() => document.body.innerText);
