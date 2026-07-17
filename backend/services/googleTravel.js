@@ -102,6 +102,7 @@ async function getBrowser() {
     _browser = await puppeteer.launch({
       executablePath: CHROME,
       headless: true,
+      protocolTimeout: 120000,
       args: [
         '--no-sandbox', '--disable-setuid-sandbox',
         '--disable-dev-shm-usage', '--disable-gpu',
@@ -112,6 +113,9 @@ async function getBrowser() {
         '--mute-audio',
         '--no-first-run',
         '--no-default-browser-check',
+        '--disable-renderer-backgrounding',
+        '--disable-background-timer-throttling',
+        '--js-flags=--max-old-space-size=256',
       ],
     });
     console.log('[googleTravel] Chrome launched OK');

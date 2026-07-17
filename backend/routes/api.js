@@ -182,21 +182,20 @@ router.get('/dashboard/:phone', async (req, res) => {
 router.get('/scraper-test', async (req, res) => {
   const from = req.query.from || 'Lagos';
   const to   = req.query.to   || 'Ibadan';
-  console.log(`[scraper-test] Testing scrapers: ${from} → ${to}`);
+  console.log(`[scraper-test] Testing scrapers sequentially: ${from} → ${to}`);
   const t0 = Date.now();
-  const [hotels, rentals, flights] = await Promise.allSettled([
-    GT.scrapeHotels(to),
-    GT.scrapeVacationRentals(to),
-    GT.scrapeFlights(from, to),
-  ]);
-  const elapsed = Date.now() - t0;
-  const unwrap = r => r.status === 'fulfilled' ? r.value : { error: r.reason?.message };
+
+  let hotels, rentals, flights;
+  try { hotels  = await GT.scrapeHotels(to); }            catch(e) { hotels  = { error: e.message }; }
+  try { rentals = await GT.scrapeVacationRentals(to); }   catch(e) { rentals = { error: e.message }; }
+  try { flights = await GT.scrapeFlights(from, to); }     catch(e) { flights = { error: e.message }; }
+
   res.json({
     chromeAvailable: GT.available,
-    elapsedMs: elapsed,
-    hotels:  unwrap(hotels),
-    rentals: unwrap(rentals),
-    flights: unwrap(flights),
+    elapsedMs: Date.now() - t0,
+    hotels,
+    rentals,
+    flights,
   });
 });
 
