@@ -468,6 +468,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
       dateFlexibility: intake.dateFlexibility,
       dealbreakers: intake.dealbreakers,
     }).then((res) => {
+      console.log('[demo] plan response — scraped:', JSON.stringify(res.scraped, null, 2));
       setRealPlan(res.plan);
       setScraped(res.scraped ?? null);
       setDays(

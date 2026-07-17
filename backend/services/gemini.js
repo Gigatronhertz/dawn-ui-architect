@@ -33,12 +33,20 @@ async function fetchRealWorldContext(intake) {
   const depDate = intake.specific_dates?.match(/\d{4}-\d{2}-\d{2}/)?.[0];
 
   // Run all external API calls in parallel — any failure is non-fatal
+  // Run Google Travel scrapers sequentially first — they share one Chrome instance
+  // and opening 3 tabs in parallel OOMs Render's 512MB free tier.
+  const gtHotelsRaw  = await GT.scrapeHotels(intake.destination, checkin, checkout, intake.squad_size).catch(() => []);
+  const gtRentalsRaw = isShortlet
+    ? await GT.scrapeVacationRentals(intake.destination, checkin, checkout).catch(() => [])
+    : [];
+  const gtFlightsRaw = await GT.scrapeFlights(intake.origin, intake.destination, depDate).catch(() => null);
+
+  // All other API calls can run in parallel — they don't use Chrome
   const [
     road,
     gHotels, gRentals, activities,
     bHotels, bApartments,
     amadeusFlights,
-    gtHotels, gtRentals, gtFlights,
   ] = await Promise.allSettled([
     getRoadDistance(intake.origin, intake.destination),
     // Google Places — ratings, addresses, phone numbers
@@ -54,15 +62,11 @@ async function fetchRealWorldContext(intake) {
       : Promise.resolve([]),
     // Amadeus — flight prices
     searchFlights(intake.origin, intake.destination, depDate),
-    // Google Travel — scraped live hotel prices + deals
-    GT.scrapeHotels(intake.destination, checkin, checkout, intake.squad_size),
-    // Google Travel — scraped vacation rentals / shortlets
-    isShortlet
-      ? GT.scrapeVacationRentals(intake.destination, checkin, checkout)
-      : Promise.resolve([]),
-    // Google Travel flights (fallback / cross-check for Amadeus)
-    GT.scrapeFlights(intake.origin, intake.destination, depDate),
   ]);
+
+  const gtHotels   = { status: 'fulfilled', value: gtHotelsRaw };
+  const gtRentals  = { status: 'fulfilled', value: gtRentalsRaw };
+  const gtFlights  = { status: 'fulfilled', value: gtFlightsRaw };
 
   const val = (r) => r.status === 'fulfilled' ? r.value : null;
 
