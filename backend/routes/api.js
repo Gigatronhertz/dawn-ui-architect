@@ -236,6 +236,50 @@ router.get('/scraper-debug', async (req, res) => {
   }
 });
 
+// GET /api/gigm-debug — loads gigm.com and returns DOM structure so we can find real selectors
+router.get('/gigm-debug', async (req, res) => {
+  const puppeteer = require('puppeteer-extra');
+  const Stealth   = require('puppeteer-extra-plugin-stealth');
+  puppeteer.use(Stealth());
+  let browser, page;
+  try {
+    const ws = process.env.BROWSERLESS_WS_ENDPOINT;
+    if (ws) {
+      browser = await puppeteer.connect({ browserWSEndpoint: ws, defaultViewport: null });
+    } else {
+      const fs = require('fs'), path = require('path');
+      const chrome = fs.readFileSync(path.join(__dirname, '../.chrome-path'), 'utf8').trim();
+      browser = await puppeteer.launch({ executablePath: chrome, headless: true, protocolTimeout: 120000, args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu'] });
+    }
+    page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+    await page.goto('https://www.gigm.com/book-a-seat', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 4000));
+
+    const info = await page.evaluate(() => {
+      const inputs = Array.from(document.querySelectorAll('input, select, textarea')).map(el => ({
+        tag: el.tagName, type: el.type, id: el.id, name: el.name,
+        placeholder: el.placeholder, class: el.className?.slice(0, 60),
+        value: el.value?.slice(0, 40),
+      }));
+      const buttons = Array.from(document.querySelectorAll('button, [role="button"]')).map(el => ({
+        tag: el.tagName, type: el.type, id: el.id, class: el.className?.slice(0, 60),
+        text: el.innerText?.trim().slice(0, 40),
+      }));
+      const htmlSnippet = document.body.innerHTML.slice(0, 6000);
+      const text = document.body.innerText.slice(0, 2000);
+      return { inputs, buttons, htmlSnippet, text };
+    });
+
+    res.json({ url: 'https://www.gigm.com/book-a-seat', ...info });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    if (page) await page.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
+  }
+});
+
 // GET /api/gigm-test?from=Lagos&to=Abuja&date=2026-07-25
 // Runs the GIGM scraper and returns raw results for inspection.
 router.get('/gigm-test', async (req, res) => {
