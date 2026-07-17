@@ -28,7 +28,7 @@ services:
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
       - key: FRONTEND_ORIGIN
-        sync: false
+        value: "*"
       - key: GOOGLE_API_KEY
         sync: false
       - key: RAPIDAPI_KEY
