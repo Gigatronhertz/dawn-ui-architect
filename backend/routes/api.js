@@ -4,7 +4,8 @@ const db = require('../db/client');
 const { generateTripPlan } = require('../services/gemini');
 const { sendText } = require('../services/whatsapp');
 const M = require('../bot/messages');
-const GT = require('../services/googleTravel');
+const GT   = require('../services/googleTravel');
+const GIGM = require('../services/gigm');
 const { getLines } = require('../utils/logger');
 
 const router = Router();
@@ -232,6 +233,22 @@ router.get('/scraper-debug', async (req, res) => {
   } finally {
     if (page) await page.close().catch(() => {});
     if (browser) await browser.close().catch(() => {});
+  }
+});
+
+// GET /api/gigm-test?from=Lagos&to=Abuja&date=2026-07-25
+// Runs the GIGM scraper and returns raw results for inspection.
+router.get('/gigm-test', async (req, res) => {
+  const from = req.query.from || 'Lagos';
+  const to   = req.query.to   || 'Abuja';
+  const date = req.query.date || null;
+  console.log(`[gigm-test] ${from} → ${to} on ${date || 'next week'}`);
+  const t0 = Date.now();
+  try {
+    const trips = await GIGM.scrapeGIGM(from, to, date);
+    res.json({ from, to, date, elapsedMs: Date.now() - t0, count: trips.length, trips });
+  } catch (e) {
+    res.status(500).json({ error: e.message, elapsedMs: Date.now() - t0 });
   }
 });
 
