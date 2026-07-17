@@ -32,21 +32,28 @@ function findChrome() {
     if (exe && fs.existsSync(exe)) return exe;
   } catch {}
 
-  // 3. Scan Puppeteer cache directory (Windows dev / chrome-headless-shell)
-  const cacheBase = path.join(process.env.USERPROFILE || process.env.HOME || '', '.cache', 'puppeteer');
-  for (const shell of ['chrome-headless-shell', 'chrome']) {
-    const shellDir = path.join(cacheBase, shell);
-    if (!fs.existsSync(shellDir)) continue;
-    const versions = fs.readdirSync(shellDir).sort().reverse();
-    for (const ver of versions) {
-      const candidates = [
-        path.join(shellDir, ver, `${shell}-win64`, `${shell}.exe`),
-        path.join(shellDir, ver, `${shell}-win64`, 'chrome.exe'),
-        path.join(shellDir, ver, `${shell}-linux64`, shell),
-        path.join(shellDir, ver, `${shell}-linux64`, 'chrome'),
-      ];
-      const found = candidates.find(p => fs.existsSync(p));
-      if (found) return found;
+  // 3. Scan Puppeteer cache dirs — check PUPPETEER_CACHE_DIR first (Render sets this),
+  //    then fall back to the default ~/.cache/puppeteer (local dev).
+  const cacheDirs = [
+    process.env.PUPPETEER_CACHE_DIR,
+    path.join(process.env.USERPROFILE || process.env.HOME || '', '.cache', 'puppeteer'),
+  ].filter(Boolean);
+
+  for (const cacheBase of cacheDirs) {
+    for (const shell of ['chrome-headless-shell', 'chrome']) {
+      const shellDir = path.join(cacheBase, shell);
+      if (!fs.existsSync(shellDir)) continue;
+      const versions = fs.readdirSync(shellDir).sort().reverse();
+      for (const ver of versions) {
+        const candidates = [
+          path.join(shellDir, ver, `${shell}-win64`, `${shell}.exe`),
+          path.join(shellDir, ver, `${shell}-win64`, 'chrome.exe'),
+          path.join(shellDir, ver, `${shell}-linux64`, shell),
+          path.join(shellDir, ver, `${shell}-linux64`, 'chrome'),
+        ];
+        const found = candidates.find(p => fs.existsSync(p));
+        if (found) return found;
+      }
     }
   }
 
@@ -59,8 +66,13 @@ function findChrome() {
 }
 
 const CHROME = findChrome();
-if (!CHROME) {
-  console.warn('[googleTravel] No Chrome found — Google Travel scraping disabled. Set PUPPETEER_EXECUTABLE_PATH to enable.');
+if (CHROME) {
+  console.log('[googleTravel] Chrome found:', CHROME);
+} else {
+  console.warn('[googleTravel] No Chrome found — Google Travel scraping disabled.');
+  console.warn('  PUPPETEER_CACHE_DIR:', process.env.PUPPETEER_CACHE_DIR || '(not set)');
+  console.warn('  HOME:', process.env.HOME || '(not set)');
+  console.warn('  Set PUPPETEER_EXECUTABLE_PATH to the Chrome binary path to enable scraping.');
 }
 
 // ── Browser singleton ─────────────────────────────────────────────────────────
