@@ -199,6 +199,41 @@ router.get('/scraper-test', async (req, res) => {
   });
 });
 
+// GET /api/scraper-debug?url=...
+// Returns the raw innerText of a URL loaded by headless Chrome — used to diagnose what
+// Google actually serves to our scraper (consent wall, CAPTCHA, real listings, etc.).
+router.get('/scraper-debug', async (req, res) => {
+  const url = req.query.url || 'https://www.google.com/travel/hotels?q=hotels+in+Ibadan+Nigeria&hl=en&curr=NGN';
+  console.log(`[scraper-debug] Fetching: ${url}`);
+  const puppeteer = require('puppeteer-extra');
+  const Stealth   = require('puppeteer-extra-plugin-stealth');
+  puppeteer.use(Stealth());
+  const fs   = require('fs');
+  const path = require('path');
+  let browser, page;
+  try {
+    const chromePath = (() => {
+      try { return fs.readFileSync(path.join(__dirname, '../.chrome-path'), 'utf8').trim(); } catch { return null; }
+    })() || process.env.PUPPETEER_EXECUTABLE_PATH;
+    if (!chromePath) return res.status(503).json({ error: 'No Chrome found' });
+    browser = await puppeteer.launch({
+      executablePath: chromePath, headless: true, protocolTimeout: 120000,
+      args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu'],
+    });
+    page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 7000));
+    const text = await page.evaluate(() => document.body.innerText);
+    res.json({ url, textLength: text.length, preview: text.slice(0, 5000) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    if (page) await page.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
+  }
+});
+
 // POST /api/waitlist
 // Captures a phone number + source tag from any conversion surface.
 // Silently deduplicates (phone, source) pairs.
