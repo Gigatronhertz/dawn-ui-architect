@@ -185,8 +185,8 @@ function parseHotelLines(text) {
       const l = lines[j];
       if (!rating && /^\d\.\d(?:\/5)?$/.test(l)) { rating = parseFloat(l); continue; }
       if (!reviews && /^\([\d,.]+[KM]?\)$/.test(l)) { reviews = l.replace(/[()]/g, ''); continue; }
-      if (!stars) { const sm = l.match(/^(\d)[- ]star/i); if (sm) { stars = parseInt(sm[1]); continue; } }
-      if (!location && l.startsWith('·')) { location = l.replace(/^·\s*/, ''); continue; }
+      if (!stars) { const sm = l.match(/(?:^|·\s*)(\d)[- ]star/i); if (sm) { stars = parseInt(sm[1]); continue; } }
+      if (!location && l.startsWith('·') && !/star/i.test(l)) { location = l.replace(/^·\s*/, ''); continue; }
       const amenMatch = l.match(/^Amenities for .+?[:.]\s*(.+)$/);
       if (amenMatch) {
         amenities = amenMatch[1].split(',').map(a => a.trim()).filter(a => a && !/^View/i.test(a));
