@@ -96,30 +96,43 @@ let _browser = null;
 let _consentAccepted = false;
 
 async function getBrowser() {
-  if (!CHROME) throw new Error('No Chrome executable');
-  if (!_browser || !_browser.isConnected()) {
-    console.log('[googleTravel] Launching Chrome...');
-    _browser = await puppeteer.launch({
-      executablePath: CHROME,
-      headless: true,
-      protocolTimeout: 120000,
-      args: [
-        '--no-sandbox', '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage', '--disable-gpu',
-        '--disable-extensions',
-        '--disable-background-networking',
-        '--disable-default-apps',
-        '--disable-sync',
-        '--mute-audio',
-        '--no-first-run',
-        '--no-default-browser-check',
-        '--disable-renderer-backgrounding',
-        '--disable-background-timer-throttling',
-        '--js-flags=--max-old-space-size=256',
-      ],
+  if (_browser && _browser.isConnected()) return _browser;
+
+  const wsEndpoint = process.env.BROWSERLESS_WS_ENDPOINT;
+  if (wsEndpoint) {
+    // Remote Chrome via Browserless.io — no local Chrome needed
+    console.log('[googleTravel] Connecting to Browserless remote Chrome...');
+    _browser = await puppeteer.connect({
+      browserWSEndpoint: wsEndpoint,
+      defaultViewport: null,
     });
-    console.log('[googleTravel] Chrome launched OK');
+    console.log('[googleTravel] Browserless connected OK');
+    return _browser;
   }
+
+  // Fallback: local Chrome (dev / non-Browserless deployments)
+  if (!CHROME) throw new Error('No Chrome executable and BROWSERLESS_WS_ENDPOINT not set');
+  console.log('[googleTravel] Launching local Chrome...');
+  _browser = await puppeteer.launch({
+    executablePath: CHROME,
+    headless: true,
+    protocolTimeout: 120000,
+    args: [
+      '--no-sandbox', '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage', '--disable-gpu',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--disable-default-apps',
+      '--disable-sync',
+      '--mute-audio',
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-renderer-backgrounding',
+      '--disable-background-timer-throttling',
+      '--js-flags=--max-old-space-size=256',
+    ],
+  });
+  console.log('[googleTravel] Local Chrome launched OK');
   return _browser;
 }
 
@@ -450,5 +463,5 @@ module.exports = {
   formatHotelsForPrompt,
   formatRentalsForPrompt,
   formatFlightsForPrompt,
-  available: !!CHROME,
+  available: !!(CHROME || process.env.BROWSERLESS_WS_ENDPOINT),
 };
