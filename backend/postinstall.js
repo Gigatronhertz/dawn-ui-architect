@@ -37,6 +37,7 @@ try {
   //    and executablePath() returns a path that hasn't been written yet.
   const cacheDirs = [
     process.env.PUPPETEER_CACHE_DIR,
+    path.join(__dirname, '.puppeteer-cache'),   // project-local (gets bundled in Render build artifact)
     path.join(process.env.HOME || '', '.cache', 'puppeteer'),
     '/root/.cache/puppeteer',
     '/opt/render/.cache/puppeteer',

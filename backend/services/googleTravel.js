@@ -38,15 +38,20 @@ function findChrome() {
     if (exe && fs.existsSync(exe)) return exe;
   } catch {}
 
-  // 3. Scan Puppeteer cache dirs.  Order: explicit env var → HOME-relative default →
-  //    known Render paths (HOME=/opt/render at runtime but build may use /root).
+  // 3. Scan Puppeteer cache dirs.
+  //    Priority: explicit env var → project-local cache (Render build artifact) →
+  //    HOME-relative defaults → known Render home paths.
+  //    The project-local path (/opt/render/project/src/backend/.puppeteer-cache)
+  //    is what gets bundled in the Render build upload — unlike HOME/.cache which
+  //    lives outside the project directory and is NOT included in the build artifact.
   const cacheDirs = [
     process.env.PUPPETEER_CACHE_DIR,
+    path.join(__dirname, '../.puppeteer-cache'),                          // project-local (Render build artifact)
     path.join(process.env.HOME || '', '.cache', 'puppeteer'),
     path.join(process.env.USERPROFILE || '', '.cache', 'puppeteer'),
+    '/opt/render/project/src/backend/.puppeteer-cache',                   // absolute project-local fallback
     '/root/.cache/puppeteer',
     '/opt/render/.cache/puppeteer',
-    '/home/render/.cache/puppeteer',
   ].filter(Boolean);
 
   for (const cacheBase of cacheDirs) {
