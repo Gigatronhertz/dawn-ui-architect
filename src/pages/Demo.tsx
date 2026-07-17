@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { WaitlistForm } from "@/components/WaitlistForm";
+import { api, type GeminiPlan } from "@/lib/api";
 
 /* ---------------- types ---------------- */
 type Intake = {
@@ -342,7 +343,7 @@ function IntakeForm({ onSubmit, onBack }: { onSubmit: (i: Intake) => void; onBac
   );
 }
 
-/* ---------------- step 2: AI plan ---------------- */
+/* ---------------- step 3: AI plan ---------------- */
 const SUGGESTIONS_BY_DAY: Record<number, Suggestion[]> = {
   0: [
     { id: "s-cocoa2", title: "Bower's Tower sunset", tag: "Viewpoint", cost: 1500, emoji: "🌇", blurb: "360° view of Ibadan rooftops, best at golden hour." },
@@ -370,36 +371,22 @@ const MAPS_PLACES: Suggestion[] = [
   { id: "m-shrine", title: "Mapo Hill shrine", tag: "Cultural", cost: 1200, emoji: "🕯️", blurb: "Sacred site beside Mapo Hall — quick visit." },
 ];
 
-function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: () => void; onBack: () => void }) {
-  const [phase, setPhase] = useState(0); // 0 = generating, 1 = done
-  const phases = ["Analyzing route…", "Pricing 14 hotels with Gemini…", "Building daily itinerary…", "Calculating costs & buffer…"];
+function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: GeminiPlan) => void; onBack: () => void }) {
+  const [phase, setPhase] = useState(0); // 0 = generating, 1 = done, 2 = error
+  const phases = [
+    "Checking live flight prices…",
+    "Scraping hotel deals from Google Travel…",
+    "Searching Booking.com for availability…",
+    "Building your itinerary with Gemini AI…",
+    "Calculating costs & squad split…",
+  ];
   const [pIdx, setPIdx] = useState(0);
+  const [realPlan, setRealPlan] = useState<GeminiPlan | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
-  // editable itinerary state
-  const [days, setDays] = useState<{ day: number; title: string; items: ItineraryItem[] }[]>(() =>
-    Array.from({ length: intake.days }, (_, i) => ({
-      day: i + 1,
-      title: i === 0 ? "Arrival & city pulse" : i === intake.days - 1 ? "Brunch & departure" : "Cultural day + nightlife",
-      items: i === 0
-        ? [
-            { id: `d${i}-1`, time: "08:00", title: `${operatorsFor(intake.transport).find(o => o.id === intake.operatorId)?.brand ?? "Departure"} — pickup`, cost: 0 },
-            { id: `d${i}-2`, time: "13:00", title: "Check-in at hotel", cost: 0 },
-            { id: `d${i}-3`, time: "16:00", title: "Cocoa House rooftop", cost: 2000 },
-            { id: `d${i}-4`, time: "20:00", title: "Amala spot at Amala Skye", cost: 4500 },
-          ]
-        : i === intake.days - 1
-        ? [
-            { id: `d${i}-1`, time: "09:00", title: "Brunch at Kakanfo", cost: 5500 },
-            { id: `d${i}-2`, time: "12:00", title: "Souvenirs at Bodija", cost: 4000 },
-            { id: `d${i}-3`, time: "15:00", title: "Bus back to Lagos", cost: 0 },
-          ]
-        : [
-            { id: `d${i}-1`, time: "10:00", title: "University of Ibadan tour", cost: 2500 },
-            { id: `d${i}-2`, time: "14:00", title: "Agodi Gardens", cost: 3000 },
-            { id: `d${i}-3`, time: "19:00", title: "Live music at Bay Lounge", cost: 5500 },
-          ],
-    }))
-  );
+  // editable itinerary state — starts empty, populated when realPlan arrives
+  const [days, setDays] = useState<{ day: number; title: string; items: ItineraryItem[] }[]>([]);
   const [openDay, setOpenDay] = useState<number | null>(0);
   const [seeMore, setSeeMore] = useState<Record<number, boolean>>({});
   const [mapsOpen, setMapsOpen] = useState<number | null>(null);
@@ -411,14 +398,48 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
     () => days.reduce((sum, d) => sum + d.items.reduce((s, it) => s + it.cost, 0), 0) * intake.squadSize,
     [days, intake.squadSize]
   );
-  const plan = useMemo(() => buildPlan(intake, extraItineraryCost), [intake, extraItineraryCost]);
+  const fallbackPlan = useMemo(() => buildPlan(intake, extraItineraryCost), [intake, extraItineraryCost]);
 
+  // Cycle through loading messages
   useEffect(() => {
-    if (phase === 1) return;
-    const t = setInterval(() => setPIdx((i) => (i + 1) % phases.length), 700);
-    const done = setTimeout(() => setPhase(1), 2800);
-    return () => { clearInterval(t); clearTimeout(done); };
+    if (phase !== 0) return;
+    const t = setInterval(() => setPIdx((i) => (i + 1) % phases.length), 900);
+    return () => clearInterval(t);
   }, [phase]);
+
+  // Fire the real API call (re-fires on retry)
+  useEffect(() => {
+    api.generatePlan({
+      origin: intake.origin,
+      destination: intake.destination,
+      budget: intake.budget,
+      days: intake.days,
+      squadSize: intake.squadSize,
+      accommodationType: intake.accommodationType,
+      dateFlexibility: intake.dateFlexibility,
+      dealbreakers: intake.dealbreakers,
+    }).then((res) => {
+      setRealPlan(res.plan);
+      setDays(
+        res.plan.days.map((d, di) => ({
+          day: d.day,
+          title: d.title,
+          items: d.activities.map((a, ai) => ({
+            id: `real-d${di}-${ai}`,
+            time: a.time,
+            title: a.title,
+            cost: a.cost_per_person,
+          })),
+        }))
+      );
+      setPhase(1);
+    }).catch((err) => {
+      console.error('[demo/plan]', err);
+      setPlanError(err.message || 'Plan generation failed. Please try again.');
+      setPhase(2);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retryKey]);
 
   const addSuggestion = (dayIdx: number, s: Suggestion) => {
     setDays((ds) => ds.map((d, i) => i === dayIdx
@@ -448,15 +469,28 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
   if (phase === 0) {
     return (
       <Section>
-        <StepHeader eyebrow="Step 3 of 7 · AI Planning" title="Gemini is cooking…" />
+        <StepHeader eyebrow="Step 3 of 7 · AI Planning" title="Gemini is planning your trip…" sub="Pulling live hotel prices, flights, and venue data before generating your plan." />
         <div className="rounded-2xl bg-secondary/60 p-8 text-center">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow animate-float">
             <svg viewBox="0 0 24 24" className="w-7 h-7 text-primary-foreground" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" /></svg>
           </div>
           <div className="mt-5 font-display text-lg">{phases[pIdx]}</div>
+          <div className="mt-1.5 text-xs text-muted-foreground">This takes ~15–30 seconds — we're fetching live data</div>
           <div className="mt-4 mx-auto max-w-md h-1.5 rounded-full bg-card overflow-hidden">
-            <div className="h-full bg-gradient-primary animate-[typing_2.6s_linear_forwards]" style={{ width: "100%" }} />
+            <div className="h-full bg-gradient-primary animate-pulse" style={{ width: "100%" }} />
           </div>
+        </div>
+      </Section>
+    );
+  }
+
+  if (phase === 2) {
+    return (
+      <Section>
+        <StepHeader eyebrow="Step 3 of 7 · AI Planning" title="Something went wrong." sub={planError || "Could not generate plan. Check your backend is running and GEMINI_API_KEY is set."} />
+        <div className="mt-6 flex gap-3">
+          <BackBtn onClick={onBack} />
+          <GhostBtn onClick={() => { setPhase(0); setPlanError(null); setRetryKey(k => k + 1); }}>Try again</GhostBtn>
         </div>
       </Section>
     );
@@ -469,9 +503,9 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
 
         <div className="grid grid-cols-3 gap-2 mb-6">
           {[
-            { tag: "Transport", val: fmtNGN(plan.transportTotal), sub: `${plan.operator.brand} · ${plan.seats}×`, color: "bg-google-blue/10 text-google-blue" },
-            { tag: "Lodging", val: fmtNGN(plan.lodgingTotal), sub: `${intake.days} nights`, color: "bg-google-purple/10 text-google-purple" },
-            { tag: "Per person", val: fmtNGN(plan.perPerson), sub: "All-in · live", color: "bg-primary-soft text-primary" },
+            { tag: "Transport", val: fmtNGN(realPlan?.cost_breakdown.transport_total ?? fallbackPlan.transportTotal), sub: `${realPlan?.transport.operator ?? fallbackPlan.operator.brand} · ${intake.squadSize}×`, color: "bg-google-blue/10 text-google-blue" },
+            { tag: "Lodging", val: fmtNGN(realPlan?.cost_breakdown.lodging_total ?? fallbackPlan.lodgingTotal), sub: `${intake.days} nights`, color: "bg-google-purple/10 text-google-purple" },
+            { tag: "Per person", val: fmtNGN(realPlan?.cost_breakdown.per_person ?? fallbackPlan.perPerson), sub: "All-in · live", color: "bg-primary-soft text-primary" },
           ].map((c) => (
             <div key={c.tag} className="rounded-xl bg-secondary/60 p-2.5 min-w-0">
               <span className={`inline-flex text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${c.color}`}>{c.tag}</span>
@@ -506,7 +540,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
                     <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1 ring-4 ring-background animate-pulse" />
                   </div>
                   <div className="absolute left-[60%] top-[38%]">
-                    <div className="px-2 py-0.5 rounded-full bg-card ring-hairline text-[10px] font-semibold text-foreground shadow-soft whitespace-nowrap">🏨 {plan.hotel.name.split(" ")[0]}</div>
+                    <div className="px-2 py-0.5 rounded-full bg-card ring-hairline text-[10px] font-semibold text-foreground shadow-soft whitespace-nowrap">🏨 {(realPlan?.hotel.name ?? fallbackPlan.hotel.name).split(" ")[0]}</div>
                   </div>
                 </div>
                 <div className="absolute bottom-0 inset-x-0 flex flex-wrap items-center justify-between gap-2 bg-card/85 backdrop-blur px-4 py-2 text-xs">
@@ -637,26 +671,69 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
           </div>
 
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">Hotel options</div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">AI-recommended accommodation</div>
             <div className="space-y-3">
-              {HOTELS.map((h) => (
-                <div key={h.id} className={`rounded-2xl p-4 ring-hairline ${h.id === plan.hotel.id ? "bg-primary-soft" : "bg-card"}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-display text-base font-semibold flex items-center gap-2">
-                        {h.name}
-                        {h.id === plan.hotel.id && <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-primary-foreground">AI pick</span>}
+              {(() => {
+                const h = realPlan?.hotel;
+                if (!h) return null;
+                return (
+                  <div className="rounded-2xl p-4 ring-hairline bg-primary-soft">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-display text-base font-semibold flex items-center gap-2 flex-wrap">
+                          {h.name}
+                          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-primary-foreground">AI pick</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{h.area} · ⭐ {h.rating}</div>
+                        {realPlan?.transport && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            ✈️ {realPlan.transport.operator} · departs {realPlan.transport.depart_time} → arrives {realPlan.transport.arrive_time}
+                          </div>
+                        )}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{h.area} · ⭐ {h.rating}</div>
+                      <div className="text-right shrink-0">
+                        <div className="font-display text-base font-semibold">{fmtNGN(h.price_per_night)}</div>
+                        <div className="text-[10px] text-muted-foreground">per night</div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-display text-base font-semibold">{fmtNGN(h.pricePerNight)}</div>
-                      <div className="text-[10px] text-muted-foreground">per night</div>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {(h.perks || []).map((p: string) => <span key={p} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{p}</span>)}
                     </div>
+                    {(realPlan?.highlights?.length ?? 0) > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Trip highlights</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {realPlan.highlights.map((hl: string) => (
+                            <span key={hl} className="text-[10px] px-2 py-0.5 rounded-full bg-google-pink/10 text-google-pink">{hl}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">{h.perks.map((p) => <span key={p} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{p}</span>)}</div>
+                );
+              })()}
+              {/* Cost breakdown detail */}
+              {realPlan?.cost_breakdown && (
+                <div className="rounded-2xl p-4 ring-hairline bg-card text-xs space-y-1.5">
+                  <div className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Cost breakdown</div>
+                  {[
+                    ["Transport", realPlan.cost_breakdown.transport_total],
+                    ["Lodging", realPlan.cost_breakdown.lodging_total],
+                    ["Food", realPlan.cost_breakdown.food_total],
+                    ["Activities", realPlan.cost_breakdown.activities_total],
+                    ["Buffer", realPlan.cost_breakdown.buffer],
+                  ].map(([label, val]) => (
+                    <div key={String(label)} className="flex justify-between">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-display font-semibold tabular-nums">{fmtNGN(Number(val))}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between pt-1.5 border-t border-border font-semibold">
+                    <span>Total ({intake.squadSize} pax)</span>
+                    <span className="font-display tabular-nums text-primary">{fmtNGN(realPlan.cost_breakdown.total)}</span>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -670,7 +747,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             {dirty && !recalcing && <GhostBtn fullWidth onClick={recalc}>🔄 Recalculate</GhostBtn>}
-            <PrimaryBtn fullWidth onClick={onNext} disabled={dirty || recalcing}>Send to squad for voting</PrimaryBtn>
+            <PrimaryBtn fullWidth onClick={() => onNext(realPlan!)} disabled={dirty || recalcing || !realPlan}>Send to squad for voting</PrimaryBtn>
           </div>
         </div>
       </Section>
@@ -678,11 +755,20 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
   );
 }
 
-/* ---------------- step 3: voting ---------------- */
-function VoteView({ intake, onNext, onBack }: { intake: Intake; onNext: () => void; onBack: () => void }) {
-  // pre-seed votes to feel alive
-  const [dateVotes, setDateVotes] = useState<Record<string, number>>({ d1: 2, d2: 5, d3: 1 });
-  const [hotelVotes, setHotelVotes] = useState<Record<string, number>>({ h1: 1, h2: 6, h3: 1 });
+/* ---------------- step 4: voting ---------------- */
+function VoteView({ intake, plan, onNext, onBack }: { intake: Intake; plan: GeminiPlan | null; onNext: () => void; onBack: () => void }) {
+  const dateOptions = plan?.date_options ?? DATE_OPTIONS;
+
+  // pre-seed votes so the UI feels alive
+  const [dateVotes, setDateVotes] = useState<Record<string, number>>(() => {
+    const opts = plan?.date_options ?? DATE_OPTIONS;
+    return Object.fromEntries(opts.map((o, i) => [o.id, i === 1 ? 5 : i === 0 ? 2 : 1]));
+  });
+  const hotelId = plan ? 'ai-hotel' : 'h2';
+  const hotelLabel = plan ? plan.hotel.name : HOTELS[1].name;
+  const hotelPrice = plan ? plan.hotel.price_per_night : HOTELS[1].pricePerNight;
+  const hotelRating = plan ? plan.hotel.rating : HOTELS[1].rating;
+  const [hotelVotes, setHotelVotes] = useState<Record<string, number>>({ [hotelId]: 8 });
   const [myDate, setMyDate] = useState<string | null>(null);
   const [myHotel, setMyHotel] = useState<string | null>(null);
 
@@ -714,7 +800,7 @@ function VoteView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">Pick the dates</div>
           <div className="space-y-3">
-            {DATE_OPTIONS.map((d) => {
+            {dateOptions.map((d) => {
               const v = dateVotes[d.id] || 0;
               const pct = totalDate ? Math.round((v / totalDate) * 100) : 0;
               const winning = v === Math.max(...Object.values(dateVotes));
@@ -738,28 +824,30 @@ function VoteView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
         </div>
 
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">Pick the hotel</div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">Confirm the accommodation</div>
           <div className="space-y-3">
-            {HOTELS.map((h) => {
-              const v = hotelVotes[h.id] || 0;
-              const pct = totalHotel ? Math.round((v / totalHotel) * 100) : 0;
-              const winning = v === Math.max(...Object.values(hotelVotes));
+            {(() => {
+              const v = hotelVotes[hotelId] || 0;
+              const pct = totalHotel ? Math.round((v / totalHotel) * 100) : 100;
               return (
-                <button key={h.id} onClick={() => voteHotel(h.id)} className={`w-full text-left rounded-2xl p-4 ring-hairline transition ${myHotel === h.id ? "bg-primary-soft" : "bg-card hover:bg-secondary"}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-display font-semibold">{h.name}</div>
-                      <div className="text-xs text-muted-foreground">{fmtNGN(h.pricePerNight)}/night · ⭐ {h.rating}</div>
+                <button onClick={() => voteHotel(hotelId)} className={`w-full text-left rounded-2xl p-4 ring-hairline transition ${myHotel === hotelId ? "bg-primary-soft" : "bg-card hover:bg-secondary"}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-display font-semibold truncate flex items-center gap-2 flex-wrap">
+                        {hotelLabel}
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">AI pick</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{fmtNGN(hotelPrice)}/night · ⭐ {hotelRating}</div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <div className="font-display text-sm font-semibold tabular-nums">{v} {v === 1 ? "vote" : "votes"}</div>
                       <div className="text-[10px] text-muted-foreground">{pct}%</div>
                     </div>
                   </div>
-                  <div className="mt-3"><Bar pct={pct} highlight={winning} /></div>
+                  <div className="mt-3"><Bar pct={pct} highlight /></div>
                 </button>
               );
-            })}
+            })()}
           </div>
         </div>
       </div>
@@ -775,9 +863,10 @@ function VoteView({ intake, onNext, onBack }: { intake: Intake; onNext: () => vo
   );
 }
 
-/* ---------------- step 4: contributions ---------------- */
-function ContributionsView({ intake, onNext, onBack }: { intake: Intake; onNext: () => void; onBack: () => void }) {
-  const plan = useMemo(() => buildPlan(intake), [intake]);
+/* ---------------- step 5: contributions ---------------- */
+function ContributionsView({ intake, plan: realPlan, onNext, onBack }: { intake: Intake; plan: GeminiPlan | null; onNext: () => void; onBack: () => void }) {
+  const fallback = useMemo(() => buildPlan(intake), [intake]);
+  const plan = { perPerson: realPlan?.cost_breakdown.per_person ?? fallback.perPerson, total: realPlan?.cost_breakdown.total ?? fallback.total };
   const [members, setMembers] = useState<Member[]>(() =>
     Array.from({ length: intake.squadSize }, (_, i) => ({
       name: SQUAD_NAMES[i % SQUAD_NAMES.length],
@@ -1197,6 +1286,7 @@ const AUTO_DELAYS = [6500, 7000, 8000, 5500, 6000, 9000];
 const Demo = () => {
   const [step, setStep] = useState(0);
   const [intake, setIntake] = useState<Intake | null>(null);
+  const [plan, setPlan] = useState<GeminiPlan | null>(null);
   const [auto, setAuto] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const navigate = useNavigate();
@@ -1231,7 +1321,7 @@ const Demo = () => {
     return () => clearTimeout(t);
   }, [auto, step, intake]);
 
-  const reset = () => { setStep(0); setIntake(null); setAuto(false); setTransitioning(false); };
+  const reset = () => { setStep(0); setIntake(null); setPlan(null); setAuto(false); setTransitioning(false); };
   const startAuto = () => { reset(); setAuto(true); };
 
   return (
@@ -1305,9 +1395,9 @@ const Demo = () => {
           <>
             {step === 0 && <WhatsAppView onNext={() => goTo(1)} onBack={() => navigate("/")} />}
             {step === 1 && <IntakeForm onSubmit={(i) => { setIntake(i); goTo(2); }} onBack={() => goTo(0)} />}
-            {step === 2 && intake && <PlanView intake={intake} onNext={() => goTo(3)} onBack={() => goTo(1)} />}
-            {step === 3 && intake && <VoteView intake={intake} onNext={() => goTo(4)} onBack={() => goTo(2)} />}
-            {step === 4 && intake && <ContributionsView intake={intake} onNext={() => goTo(5)} onBack={() => goTo(3)} />}
+            {step === 2 && intake && <PlanView intake={intake} onNext={(p) => { setPlan(p); goTo(3); }} onBack={() => goTo(1)} />}
+            {step === 3 && intake && <VoteView intake={intake} plan={plan} onNext={() => goTo(4)} onBack={() => goTo(2)} />}
+            {step === 4 && intake && <ContributionsView intake={intake} plan={plan} onNext={() => goTo(5)} onBack={() => goTo(3)} />}
             {step === 5 && intake && <DuringTripView intake={intake} onNext={() => goTo(6)} onBack={() => goTo(4)} />}
             {step === 6 && intake && <AfterTripView intake={intake} onRestart={reset} />}
           </>
