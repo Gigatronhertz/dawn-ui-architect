@@ -92,25 +92,26 @@ function resolveTerminal(city) {
 // GIGM's internal API returns a payload like { data: { availableTrips: [...] } }
 // We normalise that into our format.
 function parseApiResponse(json) {
-  // Try common shapes GIGM has used
+  // GIGM v2 API shape (confirmed): { code, shortDescription, data: { departures: [...] } }
   const trips =
-    json?.data?.availableTrips ||
-    json?.Data?.AvailableTrips ||
-    json?.availableTrips       ||
-    json?.trips                ||
-    json?.data                 ||
+    json?.data?.departures        ||   // actual GIGM v2 shape
+    json?.data?.availableTrips    ||
+    json?.Data?.AvailableTrips    ||
+    json?.availableTrips          ||
+    json?.trips                   ||
+    (Array.isArray(json?.data) ? json.data : null) ||
     null;
 
   if (!Array.isArray(trips) || trips.length === 0) return [];
 
   return trips.map(t => ({
-    operator:         'GIGM',
-    departureTime:    t.departureTime   || t.DepartureTime   || t.departure_time || null,
-    arrivalTime:      t.arrivalTime     || t.ArrivalTime     || t.arrival_time   || null,
-    price:            Number(t.fare || t.Fare || t.price || t.Price || 0),
-    class:            t.vehicleClass   || t.VehicleClass   || t.busClass || t.class || 'Economy',
-    seatsAvailable:   Number(t.availableSeats || t.AvailableSeats || t.seats || 0),
-    terminal:         t.departureTerminal || t.DepartureTerminal || t.terminal || null,
+    operator:       'GIGM',
+    departureTime:  t.departureTime || t.DepartureTime || null,
+    arrivalTime:    t.arrivalTime   || t.ArrivalTime   || null,
+    price:          Number(t.discountedFarePrice ?? t.farePrice ?? t.fare ?? t.Fare ?? t.price ?? 0),
+    class:          t.vehicleModel  || t.vehicleClass  || t.busClass || 'Economy',
+    seatsAvailable: Number(t.availableNumberOfSeats ?? t.availableSeats?.length ?? 0),
+    terminal:       (t.routeName || '').split(/==?>+/)[0].trim() || t.departureTerminal || null,
   })).filter(t => t.price > 0);
 }
 
@@ -163,21 +164,26 @@ async function scrapeGIGM(origin, destination, date) {
   );
 
   // ── Intercept GIGM's internal API calls ──────────────────────────────────────
+  // Catch ANY JSON response from gigmobility2.com — we'll parse all and keep
+  // the one that has trip/price data.
   let apiData = null;
   page.on('response', async (response) => {
     try {
       const url = response.url();
       const ct  = response.headers()['content-type'] || '';
       if (!ct.includes('json')) return;
-      // GIGM API URLs typically contain these keywords
-      if (!/availabl|trip|route|book|search|schedule/i.test(url)) return;
       if (response.status() !== 200) return;
+      // Only look at GIGM's own API domain
+      if (!url.includes('gigmobility') && !url.includes('gigm.com/api')) return;
       const json = await response.json().catch(() => null);
       if (!json) return;
-      console.log(`[gigm] API response intercepted: ${url.slice(0, 80)}`);
-      console.log('[gigm] API payload keys:', Object.keys(json).join(', '));
       const trips = parseApiResponse(json);
-      if (trips.length > 0) { apiData = trips; }
+      if (trips.length > 0) {
+        console.log(`[gigm] Trips API found: ${url.slice(0, 90)} → ${trips.length} trips`);
+        apiData = trips;
+      } else {
+        console.log(`[gigm] API (no trips): ${url.slice(0, 70)} keys:${Object.keys(json).join(',')}`);
+      }
     } catch {}
   });
 
@@ -196,27 +202,28 @@ async function scrapeGIGM(origin, destination, date) {
     });
     if (accepted) {
       console.log('[gigm] Cookie consent accepted');
-      await new Promise(r => setTimeout(r, 1000));
+      // React needs ~2s to re-render auth wall after cookie overlay dismisses
+      await new Promise(r => setTimeout(r, 2500));
     }
 
-    // 1b. Click "Continue as a guest" if auth-wall is present
-    const guestClicked = await page.evaluate(() => {
-      const all = Array.from(document.querySelectorAll('*'));
-      // Find the leaf text node matching "Continue as a guest" then click its card parent
-      const leaf = all.find(e => e.children.length === 0 && /continue as a guest/i.test(e.innerText?.trim()));
-      if (!leaf) return false;
-      // Walk up to find a clickable container (div or button with cursor-pointer)
-      let node = leaf.parentElement;
+    // 1b. Click "Continue as a guest" — use evaluateHandle to get a real ElementHandle
+    // so Puppeteer dispatches proper mouse events (React ignores element.click() in evaluate).
+    let guestClicked = false;
+    const guestTarget = await page.evaluateHandle(() => {
+      const h2 = Array.from(document.querySelectorAll('h2'))
+        .find(e => /continue as a guest/i.test(e.textContent));
+      if (!h2) return null;
+      let node = h2.parentElement;
       while (node && node !== document.body) {
-        if (node.tagName === 'BUTTON' || (node.tagName === 'DIV' && node.className?.includes('cursor-pointer'))) {
-          node.click(); return true;
-        }
+        if (node.className?.includes('cursor-pointer') || node.tagName === 'BUTTON') return node;
         node = node.parentElement;
       }
-      leaf.click();
-      return true;
+      return h2;
     });
-    if (guestClicked) {
+    const guestEl = guestTarget.asElement();
+    if (guestEl) {
+      await guestEl.click();
+      guestClicked = true;
       console.log('[gigm] Clicked "Continue as a guest"');
       await new Promise(r => setTimeout(r, 3000));
     } else {
@@ -263,51 +270,50 @@ async function scrapeGIGM(origin, destination, date) {
       await new Promise(r => setTimeout(r, 800));
     }
 
-    // Get all visible React Select inputs in DOM order
+    // Get all visible React Select inputs in DOM order.
+    // GIGM form order: [0]=Trip Type, [1]=Travelling From, [2]=Travelling To,
+    //                  [3]=Adults, [4]=Children
     const rsHandles = await page.$$('input[id^="react-select"]');
     console.log(`[gigm] Found ${rsHandles.length} react-select inputs`);
 
-    // 3. From = first react-select
-    if (rsHandles[0]) {
-      await fillReactSelect(rsHandles[0], from, 'From');
-    } else {
-      console.log('[gigm] No react-select inputs found — form may not have loaded');
+    if (rsHandles.length < 3) {
+      console.log('[gigm] Not enough react-select inputs — form may not have loaded');
     }
 
-    // 4. To = second react-select (re-query after options close and DOM updates)
+    // 3. From = index 1 (index 0 is Trip Type — leave as default "One Way")
+    if (rsHandles[1]) {
+      await fillReactSelect(rsHandles[1], from, 'From');
+    } else if (rsHandles[0]) {
+      // Safety: if only 1 input, try it anyway
+      await fillReactSelect(rsHandles[0], from, 'From (fallback)');
+    }
+
+    // 4. To = index 2 (re-query after options close and DOM updates)
     const rsHandles2 = await page.$$('input[id^="react-select"]');
-    if (rsHandles2[1]) {
-      await fillReactSelect(rsHandles2[1], to, 'To');
+    if (rsHandles2[2]) {
+      await fillReactSelect(rsHandles2[2], to, 'To');
+    } else if (rsHandles2[1]) {
+      await fillReactSelect(rsHandles2[1], to, 'To (fallback)');
     }
 
-    // 5. Fill date — GIGM date field has name="date", type="text"
+    // 5. Fill date — use Puppeteer click+type to properly trigger React's datepicker
     console.log('[gigm] Setting date:', travelDate);
-    // Format as DD/MM/YYYY (common Nigerian web format)
     const [yyyy, mm, dd] = travelDate.split('-');
     const dateFormatted = `${dd}/${mm}/${yyyy}`;
-    const dateSet = await page.evaluate((val) => {
-      const el = document.querySelector('input[name="date"]') ||
-                 document.querySelector('input[type="date"]') ||
-                 document.querySelector('input[placeholder*="date" i]');
-      if (!el) return 'not found';
-      el.focus();
-      // Clear then type
-      el.value = '';
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.value = val;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      return el.value;
-    }, dateFormatted);
-    console.log(`[gigm] Date field value after set: "${dateSet}"`);
-
-    // If the field rejected DD/MM/YYYY try ISO format
-    if (!dateSet || dateSet === 'not found' || dateSet.length < 4) {
-      await page.evaluate((val) => {
+    const dateHandle = await page.$('input[name="date"]') ||
+                       await page.$('input[type="date"]');
+    if (dateHandle) {
+      await dateHandle.click({ clickCount: 3 }); // triple-click selects all
+      await dateHandle.type(dateFormatted, { delay: 80 });
+      // Also fire change via evaluate for React state
+      await page.evaluate(val => {
         const el = document.querySelector('input[name="date"]');
         if (el) { el.value = val; el.dispatchEvent(new Event('change', { bubbles: true })); }
-      }, travelDate);
-      console.log('[gigm] Retried date with ISO format:', travelDate);
+      }, dateFormatted);
+      const dateVal = await dateHandle.evaluate(el => el.value);
+      console.log(`[gigm] Date field value after set: "${dateVal}"`);
+    } else {
+      console.log('[gigm] Date input not found');
     }
     await new Promise(r => setTimeout(r, 800));
 
@@ -323,13 +329,20 @@ async function scrapeGIGM(origin, destination, date) {
     console.log('[gigm] Clicked button:', submitted || 'none — pressing Enter');
     if (!submitted) await page.keyboard.press('Enter').catch(() => {});
 
-    // 7. Wait for results — GIGM navigates to a results page after search
+    // 7. Wait for results — GIGM navigates away from /book-a-seat to a results page
     console.log('[gigm] Waiting for results page...');
-    await Promise.race([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
-      page.waitForFunction(() => document.body.innerText.includes('₦'), { timeout: 30000, polling: 1000 }),
-    ]).catch(() => console.log('[gigm] Navigation/results wait timed out'));
-    await new Promise(r => setTimeout(r, 3000));
+    // First wait for any navigation (the form submit triggers a page change)
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 })
+      .catch(() => console.log('[gigm] No navigation detected — checking page content'));
+    const postNavUrl = page.url();
+    console.log('[gigm] URL after submit:', postNavUrl);
+
+    // Then wait for trip prices to appear on the results page
+    await page.waitForFunction(
+      () => document.body.innerText.includes('₦') || document.body.innerText.includes('NGN'),
+      { timeout: 25000, polling: 1000 }
+    ).catch(() => console.log('[gigm] Price wait timed out'));
+    await new Promise(r => setTimeout(r, 2000));
 
     // 7. Return intercepted API data or fall back to page text
     if (apiData && apiData.length > 0) {

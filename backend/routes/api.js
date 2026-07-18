@@ -262,14 +262,22 @@ router.get('/gigm-debug', async (req, res) => {
       const accept = btns.find(b => /accept/i.test(b.innerText));
       if (accept) accept.click();
     });
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 2500));
 
-    // Click "Continue as a guest"
-    await page.evaluate(() => {
-      const all = Array.from(document.querySelectorAll('*'));
-      const el = all.find(e => e.children.length === 0 && /continue as a guest/i.test(e.innerText?.trim()));
-      if (el) { let node = el; while (node && node.tagName !== 'DIV' && node.tagName !== 'BUTTON') node = node.parentElement; (node || el).click(); }
+    // Click "Continue as a guest" via evaluateHandle + native Puppeteer click
+    const guestTarget = await page.evaluateHandle(() => {
+      const h2 = Array.from(document.querySelectorAll('h2'))
+        .find(e => /continue as a guest/i.test(e.textContent));
+      if (!h2) return null;
+      let node = h2.parentElement;
+      while (node && node !== document.body) {
+        if (node.className?.includes('cursor-pointer') || node.tagName === 'BUTTON') return node;
+        node = node.parentElement;
+      }
+      return h2;
     });
+    const guestEl = guestTarget.asElement();
+    if (guestEl) await guestEl.click();
     await new Promise(r => setTimeout(r, 3000));
 
     const info = await page.evaluate(() => {
