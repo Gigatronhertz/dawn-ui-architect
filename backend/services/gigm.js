@@ -187,47 +187,147 @@ async function scrapeGIGM(origin, destination, date) {
     await page.goto('https://www.gigm.com/book-a-seat', { waitUntil: 'domcontentloaded', timeout: 30000 });
     await new Promise(r => setTimeout(r, 3000));
 
-    // 2. Fill "From" field
-    console.log('[gigm] Filling origin:', from);
-    const fromSel = 'input[placeholder*="From"], input[placeholder*="Depart"], input[name*="from"], input[id*="from"]';
-    await page.waitForSelector(fromSel, { timeout: 10000 }).catch(() => {});
-    await page.click(fromSel).catch(() => {});
-    await page.type(fromSel, from, { delay: 60 });
-    await new Promise(r => setTimeout(r, 1500));
-
-    // Select first dropdown suggestion
-    const fromDrop = 'ul.dropdown-menu li, .autocomplete-results li, [class*="suggestion"] li, [class*="option"]:first-child';
-    await page.waitForSelector(fromDrop, { timeout: 5000 }).catch(() => {});
-    await page.click(fromDrop).catch(() => console.log('[gigm] No from-dropdown found, continuing'));
-    await new Promise(r => setTimeout(r, 800));
-
-    // 3. Fill "To" field
-    console.log('[gigm] Filling destination:', to);
-    const toSel = 'input[placeholder*="To"], input[placeholder*="Destination"], input[name*="to"], input[id*="to"]';
-    await page.click(toSel).catch(() => {});
-    await page.type(toSel, to, { delay: 60 });
-    await new Promise(r => setTimeout(r, 1500));
-    const toDrop = 'ul.dropdown-menu li:first-child, .autocomplete-results li:first-child, [class*="suggestion"] li:first-child';
-    await page.waitForSelector(toDrop, { timeout: 5000 }).catch(() => {});
-    await page.click(toDrop).catch(() => console.log('[gigm] No to-dropdown found, continuing'));
-    await new Promise(r => setTimeout(r, 800));
-
-    // 4. Fill date
-    console.log('[gigm] Setting date:', travelDate);
-    const dateSel = 'input[type="date"], input[placeholder*="date"], input[placeholder*="Date"], input[name*="date"]';
-    await page.evaluate((sel, val) => {
-      const el = document.querySelector(sel);
-      if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
-    }, dateSel, travelDate).catch(() => {});
-    await new Promise(r => setTimeout(r, 800));
-
-    // 5. Submit / Search
-    console.log('[gigm] Submitting search...');
-    const submitSel = 'button[type="submit"], button:has-text("Search"), button:has-text("Find"), .search-btn, [class*="search"] button';
-    await page.click(submitSel).catch(() => {
-      // Try pressing Enter on the last filled field
-      page.keyboard.press('Enter').catch(() => {});
+    // 1a. Accept cookie consent if present
+    const accepted = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const accept = btns.find(b => /accept/i.test(b.innerText));
+      if (accept) { accept.click(); return true; }
+      return false;
     });
+    if (accepted) {
+      console.log('[gigm] Cookie consent accepted');
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
+    // 1b. Click "Continue as a guest" if auth-wall is present
+    const guestClicked = await page.evaluate(() => {
+      const all = Array.from(document.querySelectorAll('*'));
+      // Find the leaf text node matching "Continue as a guest" then click its card parent
+      const leaf = all.find(e => e.children.length === 0 && /continue as a guest/i.test(e.innerText?.trim()));
+      if (!leaf) return false;
+      // Walk up to find a clickable container (div or button with cursor-pointer)
+      let node = leaf.parentElement;
+      while (node && node !== document.body) {
+        if (node.tagName === 'BUTTON' || (node.tagName === 'DIV' && node.className?.includes('cursor-pointer'))) {
+          node.click(); return true;
+        }
+        node = node.parentElement;
+      }
+      leaf.click();
+      return true;
+    });
+    if (guestClicked) {
+      console.log('[gigm] Clicked "Continue as a guest"');
+      await new Promise(r => setTimeout(r, 3000));
+    } else {
+      console.log('[gigm] No guest button found — assuming booking form is already visible');
+    }
+
+    // 2. Wait for booking form inputs to appear (after guest click)
+    console.log('[gigm] Waiting for booking form...');
+    const ANY_INPUT = 'input[type="text"], input[type="search"], input:not([type="hidden"]):not([type="submit"])';
+    await page.waitForSelector(ANY_INPUT, { timeout: 12000 }).catch(() => {});
+
+    // Dump visible inputs so we can see real selectors in logs
+    const inputSummary = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('input, select'))
+        .filter(el => el.offsetParent !== null)
+        .map(el => `${el.tagName}[type=${el.type}][id=${el.id}][name=${el.name}][placeholder="${el.placeholder}"]`)
+    );
+    console.log('[gigm] Visible inputs after auth:', JSON.stringify(inputSummary));
+
+    // 3. Fill "From" field — try common GIGM selector patterns
+    console.log('[gigm] Filling origin:', from);
+    const fromSel = [
+      'input[placeholder*="From" i]',
+      'input[placeholder*="Depart" i]',
+      'input[placeholder*="Origin" i]',
+      'input[name*="from" i]',
+      'input[id*="from" i]',
+      'input[id*="departure" i]',
+    ].join(', ');
+
+    const fromFound = await page.$(fromSel);
+    if (fromFound) {
+      await fromFound.click();
+      await fromFound.type(from, { delay: 60 });
+    } else {
+      // Last resort: click first visible text input
+      await page.evaluate((city) => {
+        const inputs = Array.from(document.querySelectorAll('input[type="text"], input:not([type])'));
+        const vis = inputs.find(el => el.offsetParent !== null);
+        if (vis) { vis.focus(); vis.value = city; vis.dispatchEvent(new Event('input', { bubbles: true })); }
+      }, from);
+      console.log('[gigm] Used fallback for From input');
+    }
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Select first autocomplete suggestion for "From"
+    const dropSels = 'ul li, [class*="suggestion"], [class*="option"], [role="option"], [class*="dropdown"] li';
+    await page.waitForSelector(dropSels, { timeout: 5000 }).catch(() => {});
+    await page.click(dropSels).catch(() => console.log('[gigm] No from-dropdown found, continuing'));
+    await new Promise(r => setTimeout(r, 800));
+
+    // 4. Fill "To" field
+    console.log('[gigm] Filling destination:', to);
+    const toSel = [
+      'input[placeholder*="To" i]',
+      'input[placeholder*="Destination" i]',
+      'input[placeholder*="Arrival" i]',
+      'input[name*="to" i]',
+      'input[id*="to" i]',
+      'input[id*="arrival" i]',
+      'input[id*="destination" i]',
+    ].join(', ');
+
+    const toFound = await page.$(toSel);
+    if (toFound) {
+      await toFound.click();
+      await toFound.type(to, { delay: 60 });
+    } else {
+      // Last resort: click second visible text input
+      await page.evaluate((city) => {
+        const inputs = Array.from(document.querySelectorAll('input[type="text"], input:not([type])'))
+          .filter(el => el.offsetParent !== null);
+        const el = inputs[1] || inputs[0];
+        if (el) { el.focus(); el.value = city; el.dispatchEvent(new Event('input', { bubbles: true })); }
+      }, to);
+      console.log('[gigm] Used fallback for To input');
+    }
+    await new Promise(r => setTimeout(r, 1500));
+    await page.waitForSelector(dropSels, { timeout: 5000 }).catch(() => {});
+    await page.click(dropSels).catch(() => console.log('[gigm] No to-dropdown found, continuing'));
+    await new Promise(r => setTimeout(r, 800));
+
+    // 5. Fill date
+    console.log('[gigm] Setting date:', travelDate);
+    const dateSel = 'input[type="date"], input[placeholder*="date" i], input[name*="date" i]';
+    const dateSet = await page.evaluate((sel, val) => {
+      const el = document.querySelector(sel);
+      if (!el) return false;
+      el.value = val;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }, dateSel, travelDate);
+    console.log('[gigm] Date set:', dateSet);
+    await new Promise(r => setTimeout(r, 800));
+
+    // 6. Submit / Search
+    console.log('[gigm] Submitting search...');
+    const submitted = await page.evaluate(() => {
+      // Try submit button
+      const btns = Array.from(document.querySelectorAll('button'));
+      const search = btns.find(b => /search|find|book|proceed/i.test(b.innerText));
+      const submit = btns.find(b => b.type === 'submit');
+      const btn = search || submit;
+      if (btn) { btn.click(); return true; }
+      return false;
+    });
+    if (!submitted) {
+      console.log('[gigm] No submit button found — pressing Enter');
+      await page.keyboard.press('Enter').catch(() => {});
+    }
 
     // 6. Wait for results (either API interception or page render)
     console.log('[gigm] Waiting for results...');

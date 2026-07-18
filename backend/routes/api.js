@@ -254,7 +254,23 @@ router.get('/gigm-debug', async (req, res) => {
     page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
     await page.goto('https://www.gigm.com/book-a-seat', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 4000));
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Accept cookie consent
+    await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const accept = btns.find(b => /accept/i.test(b.innerText));
+      if (accept) accept.click();
+    });
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Click "Continue as a guest"
+    await page.evaluate(() => {
+      const all = Array.from(document.querySelectorAll('*'));
+      const el = all.find(e => e.children.length === 0 && /continue as a guest/i.test(e.innerText?.trim()));
+      if (el) { let node = el; while (node && node.tagName !== 'DIV' && node.tagName !== 'BUTTON') node = node.parentElement; (node || el).click(); }
+    });
+    await new Promise(r => setTimeout(r, 3000));
 
     const info = await page.evaluate(() => {
       const inputs = Array.from(document.querySelectorAll('input, select, textarea')).map(el => ({
