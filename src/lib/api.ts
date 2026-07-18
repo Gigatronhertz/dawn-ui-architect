@@ -94,6 +94,10 @@ async function get<T>(path: string): Promise<T> {
 
 export const api = {
   generatePlan: (intake: IntakeData) => post<PlanResponse>('/api/plan', intake),
+  getGigmBuses: (from: string, to: string, date?: string) =>
+    get<{ from: string; to: string; count: number; trips: GIGMTrip[] }>(
+      `/api/gigm-test?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${date ? `&date=${date}` : ''}`
+    ),
   confirmPlan: (tripId: string, plan: GeminiPlan, phone?: string) => post<ConfirmResponse>('/api/confirm', { tripId, plan, phone }),
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
   registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),

@@ -47,10 +47,9 @@ async function fetchRealWorldContext(intake) {
   const gtFlightsRaw = isFlightMode
     ? await GT.scrapeFlights(intake.origin, intake.destination, depDate).catch(() => null)
     : null;
-  // Only run GIGM if user chose bus mode
-  const gigmTripsRaw = isBusMode
-    ? await GIGM.scrapeGIGM(intake.origin, intake.destination, depDate).catch(() => [])
-    : [];
+  // GIGM is called separately from the frontend after plan generation completes
+  // (avoids Browserless contention with GT hotel scraper and keeps plan generation fast)
+  const gigmTripsRaw = [];
 
   // All other API calls can run in parallel — they don't use Chrome
   const [
@@ -196,16 +195,11 @@ async function generateTripPlan(intake) {
   const contextBlock = buildContextBlock(ctx, intake);
 
   const isFlightMode = /flight/i.test(intake.transport || '');
-  const gigmCheapest = ctx.gigmTrips?.length > 0
-    ? ctx.gigmTrips.reduce((min, t) => t.price < min.price ? t : min, ctx.gigmTrips[0])
-    : null;
   const transportHint = isFlightMode
     ? ctx.flights?.available
-      ? `USER CHOSE FLIGHT MODE. Flights from ${ctx.flights.cheapestNGN.toLocaleString()} NGN/person — use air travel.`
-      : `USER CHOSE FLIGHT MODE. No live flight data found but use Air Peace / Ibom Air for this route.`
-    : gigmCheapest
-    ? `USER CHOSE BUS MODE. GIGM buses from ₦${gigmCheapest.price.toLocaleString()}/seat (live, departs ${gigmCheapest.departureTime?.slice(0,5) || 'morning'}). Use GIGM as primary transport.`
-    : `USER CHOSE BUS MODE. Use road transport (GIGM, GUO, ABC, Peace Mass, Efex).`;
+      ? `USER CHOSE FLIGHT MODE. Flights from ${ctx.flights.cheapestNGN.toLocaleString()} NGN/person. Use Air Peace, Ibom Air, or cheapest available airline.`
+      : `USER CHOSE FLIGHT MODE. Use Air Peace / Ibom Air for this route — user explicitly chose to fly.`
+    : `USER CHOSE BUS MODE. Use GIGM as the primary transport operator. Estimate realistic NGN bus fares for this route.`;
 
   const prompt = `You are MySquadGo's West African group trip planner. Generate a detailed, realistic trip plan.
 

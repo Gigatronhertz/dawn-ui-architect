@@ -458,6 +458,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
   const [selectedHotelKey, setSelectedHotelKey] = useState<string>('ai');
   const [selectedFlightIdx, setSelectedFlightIdx] = useState<number | null>(null);
   const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
+  const [busLoading, setBusLoading] = useState(false);
 
   const extraItineraryCost = useMemo(
     () => days.reduce((sum, d) => sum + d.items.reduce((s, it) => s + it.cost, 0), 0) * intake.squadSize,
@@ -535,7 +536,6 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
       dealbreakers: intake.dealbreakers,
       transport: intake.transport,
     }).then((res) => {
-      console.log('[demo] plan response — scraped:', JSON.stringify(res.scraped, null, 2));
       setRealPlan(res.plan);
       setScraped(res.scraped ?? null);
       setDays(
@@ -551,6 +551,19 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
         }))
       );
       setPhase(1);
+      // Fire GIGM separately now that Chrome is free from GT hotel scraping
+      // Only for bus mode; result merges into scraped state when it arrives
+      if (!/flight/i.test(intake.transport || '')) {
+        setBusLoading(true);
+        api.getGigmBuses(intake.origin, intake.destination)
+          .then(data => {
+            if (data.trips?.length) {
+              setScraped(s => s ? { ...s, gigmTrips: data.trips } : s);
+            }
+          })
+          .catch(() => {})
+          .finally(() => setBusLoading(false));
+      }
     }).catch((err) => {
       console.error('[demo/plan]', err);
       setPlanError(err.message || 'Plan generation failed. Please try again.');
@@ -796,8 +809,13 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
               </div>
             )}
 
-            {/* GIGM buses — selectable live prices */}
-            {busOffers.length > 0 && (
+            {/* GIGM buses — live prices fetched after plan arrives */}
+            {busLoading && (
+              <div className="rounded-xl p-3 bg-secondary/40 ring-hairline text-xs text-muted-foreground flex items-center gap-2">
+                <span className="animate-spin">⏳</span> Fetching live GIGM bus prices…
+              </div>
+            )}
+            {!busLoading && busOffers.length > 0 && (
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center justify-between">
                   <span>🚌 GIGM Buses — live prices</span>
