@@ -10,6 +10,8 @@ const {
 } = require('./bookingCom');
 const GT   = require('./googleTravel');
 const GIGM = require('./gigm');
+const db   = require('../db/client');
+const { cityToState, formatAttractionsForPrompt } = require('./attractions');
 
 let genAI;
 function getClient() {
@@ -50,6 +52,13 @@ async function fetchRealWorldContext(intake) {
   // GIGM is called separately from the frontend after plan generation completes
   // (avoids Browserless contention with GT hotel scraper and keeps plan generation fast)
   const gigmTripsRaw = [];
+
+  // Look up attractions from DB (fast — local/Turso query)
+  const destState = cityToState(intake.destination);
+  const localAttractions = destState
+    ? await db.attractions.byState(destState).catch(() => [])
+    : [];
+  console.log(`[gemini/context] attractions for ${intake.destination} (${destState}): ${localAttractions.length}`);
 
   // All other API calls can run in parallel — they don't use Chrome
   const [
@@ -100,17 +109,18 @@ async function fetchRealWorldContext(intake) {
   const flightData = val(amadeusFlights) || val(gtFlights);
 
   return {
-    road:         val(road),
-    gHotels:      val(gHotels)     || [],
-    gRentals:     val(gRentals)    || [],
-    activities:   val(activities)  || {},
-    bHotels:      val(bHotels)     || [],
-    bApartments:  val(bApartments) || [],
-    flights:      flightData,
-    gtHotels:     val(gtHotels)    || [],
-    gtRentals:    val(gtRentals)   || [],
-    gigmTrips:    val(gigmTrips)   || [],
-    nights:       intake.days || 1,
+    road:              val(road),
+    gHotels:           val(gHotels)     || [],
+    gRentals:          val(gRentals)    || [],
+    activities:        val(activities)  || {},
+    bHotels:           val(bHotels)     || [],
+    bApartments:       val(bApartments) || [],
+    flights:           flightData,
+    gtHotels:          val(gtHotels)    || [],
+    gtRentals:         val(gtRentals)   || [],
+    gigmTrips:         val(gigmTrips)   || [],
+    localAttractions:  localAttractions || [],
+    nights:            intake.days || 1,
   };
 }
 
@@ -181,6 +191,13 @@ function buildContextBlock(ctx, intake) {
     sections.push(`📍  Real venues near ${intake.destination} (Google Places — use these exact names in the itinerary):\n${actStr}`);
   }
 
+  const attrStr = formatAttractionsForPrompt(ctx.localAttractions);
+  if (attrStr) {
+    sections.push(
+      `🏛️  Tourist attractions in ${intake.destination} state (curated with real entry fees — USE THESE in the day itinerary, not invented places):\n${attrStr}`
+    );
+  }
+
   if (!sections.length) return '';
 
   return `\n## REAL-WORLD DATA (prioritise this — do not invent hotel names or prices when real data is provided)\n${sections.join('\n\n')}\n`;
@@ -217,11 +234,12 @@ ${contextBlock}
 INSTRUCTIONS:
 1. Pick the hotel from the "Real hotels" list above if provided — use the EXACT name and address. Only invent a hotel if none were returned.
 2. If holiday rentals are listed and the accommodation preference is "Shortlet", pick from that list.
-3. Use real restaurants and attractions from the Google Places data above in the day itinerary. Use the exact names.
-4. Use the real road distance/time for transport. If flights are cheaper than road for this budget, use flights.
-5. Price levels: PRICE_LEVEL_INEXPENSIVE ≈ ₦8,000–₦20,000/night, MODERATE ≈ ₦20,000–₦50,000/night, EXPENSIVE ≈ ₦50,000–₦150,000/night.
-6. All prices must be in Nigerian Naira (NGN) and realistic for 2025.
-7. Return ONLY valid JSON — no markdown, no explanation.
+3. Use real tourist attractions from the "Tourist attractions" list above — include 2–3 in the itinerary with the EXACT names and the real entry fee as the cost_per_person.
+4. Supplement with restaurants and venues from the Google Places data. Use exact names.
+5. Use the real road distance/time for transport. Honour the user's transport mode choice.
+6. Price levels: PRICE_LEVEL_INEXPENSIVE ≈ ₦8,000–₦20,000/night, MODERATE ≈ ₦20,000–₦50,000/night, EXPENSIVE ≈ ₦50,000–₦150,000/night.
+7. All prices must be in Nigerian Naira (NGN) and realistic for 2025.
+8. Return ONLY valid JSON — no markdown, no explanation.
 
 {
   "hotel": {

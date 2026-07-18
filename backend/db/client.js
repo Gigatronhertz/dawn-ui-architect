@@ -1,6 +1,7 @@
 const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs = require('fs');
+const { SEED_DATA } = require('../services/attractions');
 
 const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -62,6 +63,15 @@ const SCHEMA = [
     platform_fee      INTEGER NOT NULL DEFAULT 5000,
     created_at        INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  `CREATE TABLE IF NOT EXISTS attractions (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    state    TEXT NOT NULL,
+    name     TEXT NOT NULL,
+    fee_min  INTEGER NOT NULL DEFAULT 0,
+    fee_max  INTEGER NOT NULL DEFAULT 0,
+    fee_note TEXT,
+    UNIQUE(state, name)
+  )`,
   `CREATE TABLE IF NOT EXISTS members (
     id            TEXT PRIMARY KEY,
     trip_id       TEXT NOT NULL,
@@ -79,6 +89,18 @@ const SCHEMA = [
 
 const ready = (async () => {
   for (const sql of SCHEMA) await client.execute(sql);
+  // Seed attractions once — INSERT OR IGNORE is idempotent
+  const existing = await client.execute('SELECT COUNT(*) as n FROM attractions');
+  if ((existing.rows[0]?.n ?? 0) === 0) {
+    console.log('[db] Seeding attractions table…');
+    for (const [state, name, fee_min, fee_max, fee_note] of SEED_DATA) {
+      await client.execute({
+        sql: 'INSERT OR IGNORE INTO attractions (state, name, fee_min, fee_max, fee_note) VALUES (?, ?, ?, ?, ?)',
+        args: [state, name, fee_min, fee_max, fee_note],
+      });
+    }
+    console.log(`[db] Seeded ${SEED_DATA.length} attractions`);
+  }
 })().catch((err) => {
   console.error('[db] schema init failed:', err.message);
   process.exit(1);
@@ -239,6 +261,16 @@ async function listWaitlist() {
   return res.rows;
 }
 
+// ── Attractions helpers ────────────────────────────────────────────────────
+
+async function getAttractionsByState(state) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM attractions WHERE state = ? ORDER BY name',
+    args: [state],
+  });
+  return res.rows;
+}
+
 // ── Agent helpers ──────────────────────────────────────────────────────────
 
 async function upsertAgent({ id, phone, agency_name, wa_number, service_fee, color, plan_type, tagline }) {
@@ -287,9 +319,10 @@ async function getAgentDashboard(phone) {
 module.exports = {
   ready,
   raw,
-  conv:    { get: getConv, upsert: upsertConv, reset: resetConv },
-  trips:   { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
-  members: { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
-  waitlist: { insert: insertWaitlist, list: listWaitlist },
-  agents:  { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
+  conv:        { get: getConv, upsert: upsertConv, reset: resetConv },
+  trips:       { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
+  members:     { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
+  waitlist:    { insert: insertWaitlist, list: listWaitlist },
+  agents:      { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
+  attractions: { byState: getAttractionsByState },
 };
