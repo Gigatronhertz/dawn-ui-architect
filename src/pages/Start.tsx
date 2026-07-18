@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type GeminiPlan, type IntakeData, type PlanDay, type Activity } from "@/lib/api";
+import { api, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip } from "@/lib/api";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
 const ACCOMMODATION_TYPES = ["Hotel", "Shortlet", "Budget guesthouse", "Surprise me"];
 const DATE_OPTIONS = ["Flexible", "I have specific dates"];
+
+const GIGM_CITIES = [
+  'Abeokuta','Abuja','Akure','Asaba','Benin City','Calabar','Enugu',
+  'Ibadan','Ilorin','Jos','Kaduna','Kano','Lagos','Maiduguri','Onitsha',
+  'Owerri','Port Harcourt','Warri',
+];
+
+const FLIGHT_CITIES = [
+  'Abuja','Akure','Asaba','Benin City','Calabar','Enugu','Ibadan',
+  'Ilorin','Jos','Kaduna','Kano','Lagos','Maiduguri','Owerri',
+  'Port Harcourt','Sokoto','Uyo','Warri','Yola',
+];
 
 const MAPS_PLACES = [
   { id: "p1", title: "Local cultural centre", tag: "Culture", cost: 1500, emoji: "🏛️", blurb: "Heritage tours and local craft exhibitions." },
@@ -36,22 +48,39 @@ const chipCls = (active: boolean) =>
 /* ─── step 1: intake ────────────────────────────────────────────────────────── */
 function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) => void }) {
   const [phone, setPhone] = useState("");
+  const [transportMode, setTransportMode] = useState<'bus' | 'flight'>('bus');
+  const cities = transportMode === 'bus' ? GIGM_CITIES : FLIGHT_CITIES;
+
   const [form, setForm] = useState<IntakeData>({
     origin: "Lagos",
-    destination: "Ibadan",
+    destination: "Abuja",
     budget: 25000,
     days: 2,
     squadSize: 8,
     accommodationType: "Hotel",
     dateFlexibility: "Flexible",
     dealbreakers: "",
+    transport: "Charter bus",
   });
 
   const set = <K extends keyof IntakeData>(k: K, v: IntakeData[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
-  const inputCls =
-    "w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition";
+  const switchMode = (mode: 'bus' | 'flight') => {
+    setTransportMode(mode);
+    const list = mode === 'bus' ? GIGM_CITIES : FLIGHT_CITIES;
+    setForm(p => ({
+      ...p,
+      transport: mode === 'flight' ? 'Flights' : 'Charter bus',
+      origin: list.includes(p.origin!) ? p.origin! : list[0],
+      destination: list.includes(p.destination!) && p.destination !== p.origin
+        ? p.destination!
+        : (list.find(c => c !== p.origin) ?? list[1]),
+    }));
+  };
+
+  const inputCls = "w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition";
+  const selectCls = `${inputCls} cursor-pointer appearance-none`;
 
   const Field = ({ n, label, children }: { n: number; label: string; children: React.ReactNode }) => (
     <label className="block">
@@ -73,16 +102,46 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           Tell us about the trip.
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          8 quick questions. Gemini builds the full itinerary. You edit before it goes to the squad.
+          9 quick questions. Gemini builds the full itinerary with live prices. You edit before it goes to the squad.
+        </p>
+      </div>
+
+      {/* Transport mode toggle */}
+      <div className="mb-6 p-4 rounded-2xl bg-secondary/40 ring-hairline">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">How are you getting there?</div>
+        <div className="flex gap-3">
+          <button type="button" onClick={() => switchMode('bus')}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold ring-hairline transition ${transportMode === 'bus' ? 'bg-foreground text-background' : 'bg-card text-foreground hover:bg-secondary'}`}>
+            🚌 Bus
+          </button>
+          <button type="button" onClick={() => switchMode('flight')}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold ring-hairline transition ${transportMode === 'flight' ? 'bg-foreground text-background' : 'bg-card text-foreground hover:bg-secondary'}`}>
+            ✈️ Flight
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          {transportMode === 'bus'
+            ? `GIGM live prices · ${GIGM_CITIES.length} cities covered`
+            : `Google Travel + Amadeus · ${FLIGHT_CITIES.length} airports covered`}
         </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-5">
         <Field n={1} label="Where from?">
-          <input className={inputCls} value={form.origin} onChange={(e) => set("origin", e.target.value)} />
+          <select className={selectCls} value={form.origin}
+            onChange={e => {
+              const v = e.target.value;
+              set("origin", v);
+              if (v === form.destination) set("destination", cities.find(c => c !== v) ?? cities[1]);
+            }}>
+            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </Field>
         <Field n={2} label="Where to?">
-          <input className={inputCls} value={form.destination} onChange={(e) => set("destination", e.target.value)} />
+          <select className={selectCls} value={form.destination}
+            onChange={e => set("destination", e.target.value)}>
+            {cities.filter(c => c !== form.origin).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </Field>
 
         <Field n={3} label={`Budget per person · ${fmtNGN(form.budget)}`}>
@@ -167,7 +226,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
 
       <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          Takes ~15 seconds. Gemini prices hotels and transport in real time.
+          Takes ~30 seconds. Gemini prices hotels and transport with live data.
         </p>
         <button
           onClick={() => onSubmit(form, phone)}
@@ -215,12 +274,14 @@ function GeneratingStep() {
 
 /* ─── step 3: plan editor ───────────────────────────────────────────────────── */
 function PlanStep({
-  tripId, plan: initialPlan, intake,
+  tripId, plan: initialPlan, intake, scraped, busLoading,
   onConfirm,
 }: {
   tripId: string;
   plan: GeminiPlan;
   intake: IntakeData;
+  scraped?: ScrapedData | null;
+  busLoading?: boolean;
   onConfirm: (finalPlan: GeminiPlan) => void;
 }) {
   const [days, setDays] = useState<PlanDay[]>(initialPlan.days);
@@ -228,6 +289,12 @@ function PlanStep({
   const [mapsOpen, setMapsOpen] = useState<number | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
+  const [selectedFlightIdx, setSelectedFlightIdx] = useState<number | null>(null);
+
+  const busOffers: GIGMTrip[] = useMemo(() => scraped?.gigmTrips ?? [], [scraped]);
+  const flightOffers = useMemo(() => scraped?.flights?.offers ?? [], [scraped]);
+  const isBusMode = !/flight/i.test(intake.transport || '');
 
   const extraCost = useMemo(
     () => days.reduce((sum, d) => sum + d.activities.reduce((s, a) => s + a.cost_per_person, 0), 0),
@@ -253,7 +320,14 @@ function PlanStep({
     setDirty(true);
   };
 
-  const finalPlan: GeminiPlan = { ...initialPlan, days, cost_breakdown: { ...initialPlan.cost_breakdown, per_person: perPerson } };
+  const selBus    = selectedBusIdx    !== null ? busOffers[selectedBusIdx]       : null;
+  const selFlight = selectedFlightIdx !== null ? flightOffers[selectedFlightIdx] : null;
+  const transport = selFlight
+    ? { ...initialPlan.transport, operator: selFlight.airline || 'Unknown', type: selFlight.stops === 0 ? 'Nonstop Flight' : 'Flight', price_per_person: selFlight.price }
+    : selBus
+    ? { ...initialPlan.transport, operator: 'GIGM', type: `Bus · ${selBus.class}`, price_per_person: selBus.price, depart_time: selBus.departureTime?.slice(0, 5) || initialPlan.transport.depart_time, pickup: selBus.terminal || initialPlan.transport.pickup }
+    : initialPlan.transport;
+  const finalPlan: GeminiPlan = { ...initialPlan, days, transport, cost_breakdown: { ...initialPlan.cost_breakdown, per_person: perPerson } };
 
   return (
     <div className="space-y-5">
@@ -319,6 +393,80 @@ function PlanStep({
           )}
         </div>
       </Card>
+
+      {/* Transport selection — live bus or flight options */}
+      {(isBusMode ? (busLoading || busOffers.length > 0) : flightOffers.length > 0) && (
+        <Card>
+          <SectionLabel>{isBusMode ? '🚌 GIGM Buses — live prices' : '✈️ Flights — live prices'}</SectionLabel>
+          <h2 className="font-display text-base font-semibold mb-4">Pick your departure.</h2>
+
+          {busLoading && isBusMode && (
+            <div className="rounded-xl p-3 bg-secondary/40 ring-hairline text-sm text-muted-foreground flex items-center gap-2">
+              <span className="animate-spin inline-block">⏳</span> Fetching live GIGM prices…
+            </div>
+          )}
+
+          {isBusMode && busOffers.length > 0 && (
+            <div className="space-y-2">
+              {busOffers.map((bus, i) => (
+                <button key={i} type="button"
+                  onClick={() => { setSelectedBusIdx(i === selectedBusIdx ? null : i); setSelectedFlightIdx(null); }}
+                  className={`w-full text-left rounded-xl p-4 ring-hairline transition ${selectedBusIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-display text-sm font-semibold">{bus.departureTime?.slice(0, 5) || '—'} · {bus.class}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{bus.terminal || intake.origin} · {bus.seatsAvailable} seats left</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-display text-base font-semibold text-primary">{fmtNGN(bus.price)}</div>
+                      <div className="text-[10px] text-muted-foreground">per seat</div>
+                    </div>
+                  </div>
+                  {selectedBusIdx === i && (
+                    <div className="mt-2 text-[11px] text-primary font-medium">✓ Selected — applied to your plan</div>
+                  )}
+                </button>
+              ))}
+              <button type="button"
+                onClick={() => { setSelectedBusIdx(null); setSelectedFlightIdx(null); }}
+                className={`w-full text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedBusIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                <span className="font-medium">🤖 Let Gemini decide</span>
+                <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator} · {initialPlan.transport.type}</span>
+              </button>
+            </div>
+          )}
+
+          {!isBusMode && flightOffers.length > 0 && (
+            <div className="space-y-2">
+              {flightOffers.slice(0, 5).map((f, i) => (
+                <button key={i} type="button"
+                  onClick={() => { setSelectedFlightIdx(i === selectedFlightIdx ? null : i); setSelectedBusIdx(null); }}
+                  className={`w-full text-left rounded-xl p-4 ring-hairline transition ${selectedFlightIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-display text-sm font-semibold">{f.airline || 'Unknown airline'}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{f.stops === 0 ? 'Nonstop' : `${f.stops} stop`} · {f.duration || '—'}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-display text-base font-semibold text-primary">{fmtNGN(f.price)}</div>
+                      <div className="text-[10px] text-muted-foreground">per person</div>
+                    </div>
+                  </div>
+                  {selectedFlightIdx === i && (
+                    <div className="mt-2 text-[11px] text-primary font-medium">✓ Selected — applied to your plan</div>
+                  )}
+                </button>
+              ))}
+              <button type="button"
+                onClick={() => { setSelectedFlightIdx(null); setSelectedBusIdx(null); }}
+                className={`w-full text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedFlightIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                <span className="font-medium">🤖 Let Gemini decide</span>
+                <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator}</span>
+              </button>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Editable itinerary */}
       <Card>
@@ -577,6 +725,8 @@ export default function Start() {
   const [phone, setPhone] = useState<string>("");
   const [tripId, setTripId] = useState<string | null>(null);
   const [plan, setPlan] = useState<GeminiPlan | null>(null);
+  const [scraped, setScraped] = useState<ScrapedData | null>(null);
+  const [busLoading, setBusLoading] = useState(false);
   const [confirmData, setConfirmData] = useState<{ botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -588,13 +738,26 @@ export default function Start() {
   async function handleIntakeSubmit(data: IntakeData, organisersPhone: string) {
     setIntake(data);
     setPhone(organisersPhone);
+    setScraped(null);
     setStep("generating");
     setError(null);
     try {
       const result = await api.generatePlan(data);
       setTripId(result.tripId);
       setPlan(result.plan);
+      setScraped(result.scraped ?? null);
       setStep("plan");
+
+      // Fire GIGM separately after plan arrives — Chrome is free from GT hotel scraping
+      if (!/flight/i.test(data.transport || '')) {
+        setBusLoading(true);
+        api.getGigmBuses(data.origin!, data.destination!)
+          .then(d => {
+            if (d.trips?.length) setScraped(s => s ? { ...s, gigmTrips: d.trips } : s);
+          })
+          .catch(() => {})
+          .finally(() => setBusLoading(false));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setStep("intake");
@@ -666,7 +829,7 @@ export default function Start() {
         {step === "intake" && <IntakeStep onSubmit={handleIntakeSubmit} />}
         {step === "generating" && <GeneratingStep />}
         {step === "plan" && plan && intake && (
-          <PlanStep tripId={tripId!} plan={plan} intake={intake} onConfirm={handleConfirm} />
+          <PlanStep tripId={tripId!} plan={plan} intake={intake} scraped={scraped} busLoading={busLoading} onConfirm={handleConfirm} />
         )}
         {step === "confirm" && confirmData && (
           <ConfirmStep tripId={tripId!} {...confirmData} />
