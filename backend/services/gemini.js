@@ -33,16 +33,24 @@ async function fetchRealWorldContext(intake) {
 
   const depDate = intake.specific_dates?.match(/\d{4}-\d{2}-\d{2}/)?.[0];
 
-  // Run all external API calls in parallel — any failure is non-fatal
-  // Run Google Travel scrapers sequentially first — they share one Chrome instance
-  // and opening 3 tabs in parallel OOMs Render's 512MB free tier.
+  // Transport mode: bus → run GIGM, skip flights; flight → run flights, skip GIGM
+  const isFlightMode = /flight/i.test(intake.transport || '');
+  const isBusMode    = !isFlightMode;
+  console.log(`[gemini] Transport mode: ${isFlightMode ? 'flight' : 'bus'} (intake.transport="${intake.transport}")`);
+
+  // Run GT hotel/rental scrapers — needed regardless of transport mode
   const gtHotelsRaw  = await GT.scrapeHotels(intake.destination, checkin, checkout, intake.squad_size).catch(() => []);
   const gtRentalsRaw = isShortlet
     ? await GT.scrapeVacationRentals(intake.destination, checkin, checkout).catch(() => [])
     : [];
-  const gtFlightsRaw = await GT.scrapeFlights(intake.origin, intake.destination, depDate).catch(() => null);
-  // GIGM runs after GT scrapers — all share Chrome/Browserless, sequential avoids OOM
-  const gigmTripsRaw = await GIGM.scrapeGIGM(intake.origin, intake.destination, depDate).catch(() => []);
+  // Only scrape flights if user chose flight mode
+  const gtFlightsRaw = isFlightMode
+    ? await GT.scrapeFlights(intake.origin, intake.destination, depDate).catch(() => null)
+    : null;
+  // Only run GIGM if user chose bus mode
+  const gigmTripsRaw = isBusMode
+    ? await GIGM.scrapeGIGM(intake.origin, intake.destination, depDate).catch(() => [])
+    : [];
 
   // All other API calls can run in parallel — they don't use Chrome
   const [
@@ -63,8 +71,8 @@ async function fetchRealWorldContext(intake) {
     isShortlet
       ? searchApartments(intake.destination, checkin, checkout, intake.squad_size)
       : Promise.resolve([]),
-    // Amadeus — flight prices
-    searchFlights(intake.origin, intake.destination, depDate),
+    // Amadeus — flight prices (skip in bus mode)
+    isFlightMode ? searchFlights(intake.origin, intake.destination, depDate) : Promise.resolve(null),
   ]);
 
   const gtHotels   = { status: 'fulfilled', value: gtHotelsRaw };
@@ -187,15 +195,17 @@ async function generateTripPlan(intake) {
   const ctx = await fetchRealWorldContext(intake);
   const contextBlock = buildContextBlock(ctx, intake);
 
-  const useFlights = ctx.flights?.available && intake.budget >= (ctx.flights.cheapestNGN * 1.5);
+  const isFlightMode = /flight/i.test(intake.transport || '');
   const gigmCheapest = ctx.gigmTrips?.length > 0
     ? ctx.gigmTrips.reduce((min, t) => t.price < min.price ? t : min, ctx.gigmTrips[0])
     : null;
-  const transportHint = useFlights
-    ? `Flights are available from ${ctx.flights.cheapestNGN.toLocaleString()} NGN/person — use air travel for this trip.`
+  const transportHint = isFlightMode
+    ? ctx.flights?.available
+      ? `USER CHOSE FLIGHT MODE. Flights from ${ctx.flights.cheapestNGN.toLocaleString()} NGN/person — use air travel.`
+      : `USER CHOSE FLIGHT MODE. No live flight data found but use Air Peace / Ibom Air for this route.`
     : gigmCheapest
-    ? `GIGM buses available from ₦${gigmCheapest.price.toLocaleString()}/seat (live price, departs ${gigmCheapest.departureTime?.slice(0,5) || 'morning'}). Use GIGM as the primary transport operator.`
-    : `Use road transport (GIGM, GUO, ABC, Peace Mass, Efex) — this is a bus/road trip.`;
+    ? `USER CHOSE BUS MODE. GIGM buses from ₦${gigmCheapest.price.toLocaleString()}/seat (live, departs ${gigmCheapest.departureTime?.slice(0,5) || 'morning'}). Use GIGM as primary transport.`
+    : `USER CHOSE BUS MODE. Use road transport (GIGM, GUO, ABC, Peace Mass, Efex).`;
 
   const prompt = `You are MySquadGo's West African group trip planner. Generate a detailed, realistic trip plan.
 

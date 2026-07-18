@@ -270,12 +270,27 @@ function WhatsAppView({ onNext, onBack }: { onNext: () => void; onBack: () => vo
   );
 }
 
+/* ---------------- city lists for intake dropdowns ---------------- */
+const GIGM_CITIES = [
+  'Lagos', 'Abuja', 'Ibadan', 'Port Harcourt', 'Benin City', 'Enugu',
+  'Kano', 'Kaduna', 'Owerri', 'Warri', 'Calabar', 'Abeokuta',
+  'Ilorin', 'Asaba', 'Onitsha', 'Akure', 'Jos', 'Maiduguri',
+].sort();
+
+const FLIGHT_CITIES = [
+  'Lagos', 'Abuja', 'Port Harcourt', 'Kano', 'Enugu', 'Owerri',
+  'Calabar', 'Akure', 'Benin City', 'Ilorin', 'Jos', 'Kaduna',
+  'Maiduguri', 'Warri', 'Uyo', 'Ibadan', 'Asaba', 'Yola', 'Sokoto',
+].sort();
+
 /* ---------------- step 2: intake ---------------- */
-const STEP1_QUESTIONS = 9;
 function IntakeForm({ onSubmit, onBack }: { onSubmit: (i: Intake) => void; onBack: () => void }) {
+  const [transportMode, setTransportMode] = useState<'bus' | 'flight'>('bus');
+  const cities = transportMode === 'bus' ? GIGM_CITIES : FLIGHT_CITIES;
+
   const [intake, setIntake] = useState<Intake>({
     origin: "Lagos",
-    destination: "Ibadan",
+    destination: "Abuja",
     vibe: "Chill & scenic",
     budget: 25000,
     days: 2,
@@ -290,6 +305,20 @@ function IntakeForm({ onSubmit, onBack }: { onSubmit: (i: Intake) => void; onBac
 
   const set = <K extends keyof Intake>(k: K, v: Intake[K]) => setIntake((p) => ({ ...p, [k]: v }));
 
+  // When mode switches, reset origin/destination to valid cities for the new mode
+  const switchMode = (mode: 'bus' | 'flight') => {
+    setTransportMode(mode);
+    const list = mode === 'bus' ? GIGM_CITIES : FLIGHT_CITIES;
+    setIntake(p => ({
+      ...p,
+      transport: mode === 'flight' ? 'Flights' : 'Charter bus',
+      origin: list.includes(p.origin) ? p.origin : list[0],
+      destination: list.includes(p.destination) && p.destination !== p.origin
+        ? p.destination
+        : (list.find(c => c !== p.origin) ?? list[1]),
+    }));
+  };
+
   const Field = ({ label, children, n }: { label: string; children: React.ReactNode; n: number }) => (
     <label className="block">
       <div className="flex items-baseline gap-2 mb-2">
@@ -301,15 +330,48 @@ function IntakeForm({ onSubmit, onBack }: { onSubmit: (i: Intake) => void; onBac
   );
 
   const inputCls = "w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition";
+  const selectCls = `${inputCls} cursor-pointer appearance-none`;
   const chipCls = (active: boolean) =>
     `px-3 py-1.5 rounded-full text-xs font-medium ring-hairline transition ${active ? "bg-foreground text-background" : "bg-card text-foreground hover:bg-secondary"}`;
 
   return (
     <Section>
       <StepHeader eyebrow="Step 2 of 7 · Intake" title="Tell us about the trip." sub="Answer as Tunde — the organiser. These are the details he filled in privately before adding the bot to the group." />
+
+      {/* Transport mode toggle — drives which city lists appear */}
+      <div className="mb-6 p-4 rounded-2xl bg-secondary/40 ring-hairline">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">How are you getting there?</div>
+        <div className="flex gap-3">
+          <button type="button" onClick={() => switchMode('bus')}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold ring-hairline transition ${transportMode === 'bus' ? 'bg-foreground text-background' : 'bg-card text-foreground hover:bg-secondary'}`}>
+            🚌 Bus
+          </button>
+          <button type="button" onClick={() => switchMode('flight')}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold ring-hairline transition ${transportMode === 'flight' ? 'bg-foreground text-background' : 'bg-card text-foreground hover:bg-secondary'}`}>
+            ✈️ Flight
+          </button>
+        </div>
+        {transportMode === 'bus' && (
+          <p className="mt-2 text-[11px] text-muted-foreground">GIGM live prices · {GIGM_CITIES.length} cities covered</p>
+        )}
+        {transportMode === 'flight' && (
+          <p className="mt-2 text-[11px] text-muted-foreground">Google Travel + Amadeus · {FLIGHT_CITIES.length} airports covered</p>
+        )}
+      </div>
+
       <div className="grid md:grid-cols-2 gap-5">
-        <Field n={1} label="Where from?"><input className={inputCls} value={intake.origin} onChange={(e) => set("origin", e.target.value)} /></Field>
-        <Field n={2} label="Where to?"><input className={inputCls} value={intake.destination} onChange={(e) => set("destination", e.target.value)} /></Field>
+        <Field n={1} label="Where from?">
+          <select className={selectCls} value={intake.origin}
+            onChange={e => { const v = e.target.value; set("origin", v); if (v === intake.destination) set("destination", cities.find(c => c !== v) ?? cities[1]); }}>
+            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field n={2} label="Where to?">
+          <select className={selectCls} value={intake.destination}
+            onChange={e => set("destination", e.target.value)}>
+            {cities.filter(c => c !== intake.origin).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
         <Field n={3} label="Squad vibe">
           <div className="flex flex-wrap gap-2">{VIBES.map((v) => <button key={v} type="button" onClick={() => set("vibe", v)} className={chipCls(intake.vibe === v)}>{v}</button>)}</div>
         </Field>
@@ -333,7 +395,6 @@ function IntakeForm({ onSubmit, onBack }: { onSubmit: (i: Intake) => void; onBac
             <input className={inputCls} placeholder="e.g. must have AC / halal food / no shared rooms" value={intake.dealbreakers} onChange={(e) => set("dealbreakers", e.target.value)} />
           </Field>
         </div>
-
       </div>
       <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <BackBtn onClick={onBack} />
@@ -472,6 +533,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
       accommodationType: intake.accommodationType,
       dateFlexibility: intake.dateFlexibility,
       dealbreakers: intake.dealbreakers,
+      transport: intake.transport,
     }).then((res) => {
       console.log('[demo] plan response — scraped:', JSON.stringify(res.scraped, null, 2));
       setRealPlan(res.plan);

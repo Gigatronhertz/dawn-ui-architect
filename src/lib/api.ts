@@ -10,6 +10,7 @@ export type IntakeData = {
   accommodationType: string;
   dateFlexibility: string;
   dealbreakers: string;
+  transport?: string;
 };
 
 export type Activity = { time: string; title: string; cost_per_person: number };
