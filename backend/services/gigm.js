@@ -236,106 +236,100 @@ async function scrapeGIGM(origin, destination, date) {
     );
     console.log('[gigm] Visible inputs after auth:', JSON.stringify(inputSummary));
 
-    // 3. Fill "From" field — try common GIGM selector patterns
-    console.log('[gigm] Filling origin:', from);
-    const fromSel = [
-      'input[placeholder*="From" i]',
-      'input[placeholder*="Depart" i]',
-      'input[placeholder*="Origin" i]',
-      'input[name*="from" i]',
-      'input[id*="from" i]',
-      'input[id*="departure" i]',
-    ].join(', ');
+    // GIGM uses React Select for From/To. These inputs have IDs like "react-select-13-input".
+    // React Select ignores direct value injection — must click to focus, type to filter,
+    // then click the dropdown option that appears.
 
-    const fromFound = await page.$(fromSel);
-    if (fromFound) {
-      await fromFound.click();
-      await fromFound.type(from, { delay: 60 });
-    } else {
-      // Last resort: click first visible text input
-      await page.evaluate((city) => {
-        const inputs = Array.from(document.querySelectorAll('input[type="text"], input:not([type])'));
-        const vis = inputs.find(el => el.offsetParent !== null);
-        if (vis) { vis.focus(); vis.value = city; vis.dispatchEvent(new Event('input', { bubbles: true })); }
-      }, from);
-      console.log('[gigm] Used fallback for From input');
+    // Helper: fill one React Select by its input element handle
+    async function fillReactSelect(inputHandle, searchText, label) {
+      const inputId = await inputHandle.evaluate(el => el.id);
+      const selectBase = inputId.replace('-input', ''); // e.g. "react-select-13"
+      console.log(`[gigm] Filling ${label} via ${inputId}`);
+      await inputHandle.click();
+      await inputHandle.type(searchText, { delay: 80 });
+      await new Promise(r => setTimeout(r, 1500));
+      // Options appear with IDs like react-select-13-option-0
+      const optSel = `[id^="${selectBase}-option"]`;
+      const fallbackOptSel = '[class*="option"]:not([class*="container"]):not([class*="multi"])';
+      const opt = await page.waitForSelector(optSel, { timeout: 6000 })
+        .catch(() => page.$(fallbackOptSel));
+      if (opt) {
+        await opt.click();
+        console.log(`[gigm] ${label} option selected`);
+      } else {
+        console.log(`[gigm] No dropdown option found for ${label} — pressing Enter`);
+        await inputHandle.press('Enter');
+      }
+      await new Promise(r => setTimeout(r, 800));
     }
-    await new Promise(r => setTimeout(r, 1500));
 
-    // Select first autocomplete suggestion for "From"
-    const dropSels = 'ul li, [class*="suggestion"], [class*="option"], [role="option"], [class*="dropdown"] li';
-    await page.waitForSelector(dropSels, { timeout: 5000 }).catch(() => {});
-    await page.click(dropSels).catch(() => console.log('[gigm] No from-dropdown found, continuing'));
-    await new Promise(r => setTimeout(r, 800));
+    // Get all visible React Select inputs in DOM order
+    const rsHandles = await page.$$('input[id^="react-select"]');
+    console.log(`[gigm] Found ${rsHandles.length} react-select inputs`);
 
-    // 4. Fill "To" field
-    console.log('[gigm] Filling destination:', to);
-    const toSel = [
-      'input[placeholder*="To" i]',
-      'input[placeholder*="Destination" i]',
-      'input[placeholder*="Arrival" i]',
-      'input[name*="to" i]',
-      'input[id*="to" i]',
-      'input[id*="arrival" i]',
-      'input[id*="destination" i]',
-    ].join(', ');
-
-    const toFound = await page.$(toSel);
-    if (toFound) {
-      await toFound.click();
-      await toFound.type(to, { delay: 60 });
+    // 3. From = first react-select
+    if (rsHandles[0]) {
+      await fillReactSelect(rsHandles[0], from, 'From');
     } else {
-      // Last resort: click second visible text input
-      await page.evaluate((city) => {
-        const inputs = Array.from(document.querySelectorAll('input[type="text"], input:not([type])'))
-          .filter(el => el.offsetParent !== null);
-        const el = inputs[1] || inputs[0];
-        if (el) { el.focus(); el.value = city; el.dispatchEvent(new Event('input', { bubbles: true })); }
-      }, to);
-      console.log('[gigm] Used fallback for To input');
+      console.log('[gigm] No react-select inputs found — form may not have loaded');
     }
-    await new Promise(r => setTimeout(r, 1500));
-    await page.waitForSelector(dropSels, { timeout: 5000 }).catch(() => {});
-    await page.click(dropSels).catch(() => console.log('[gigm] No to-dropdown found, continuing'));
-    await new Promise(r => setTimeout(r, 800));
 
-    // 5. Fill date
+    // 4. To = second react-select (re-query after options close and DOM updates)
+    const rsHandles2 = await page.$$('input[id^="react-select"]');
+    if (rsHandles2[1]) {
+      await fillReactSelect(rsHandles2[1], to, 'To');
+    }
+
+    // 5. Fill date — GIGM date field has name="date", type="text"
     console.log('[gigm] Setting date:', travelDate);
-    const dateSel = 'input[type="date"], input[placeholder*="date" i], input[name*="date" i]';
-    const dateSet = await page.evaluate((sel, val) => {
-      const el = document.querySelector(sel);
-      if (!el) return false;
+    // Format as DD/MM/YYYY (common Nigerian web format)
+    const [yyyy, mm, dd] = travelDate.split('-');
+    const dateFormatted = `${dd}/${mm}/${yyyy}`;
+    const dateSet = await page.evaluate((val) => {
+      const el = document.querySelector('input[name="date"]') ||
+                 document.querySelector('input[type="date"]') ||
+                 document.querySelector('input[placeholder*="date" i]');
+      if (!el) return 'not found';
+      el.focus();
+      // Clear then type
+      el.value = '';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
       el.value = val;
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
-      return true;
-    }, dateSel, travelDate);
-    console.log('[gigm] Date set:', dateSet);
+      return el.value;
+    }, dateFormatted);
+    console.log(`[gigm] Date field value after set: "${dateSet}"`);
+
+    // If the field rejected DD/MM/YYYY try ISO format
+    if (!dateSet || dateSet === 'not found' || dateSet.length < 4) {
+      await page.evaluate((val) => {
+        const el = document.querySelector('input[name="date"]');
+        if (el) { el.value = val; el.dispatchEvent(new Event('change', { bubbles: true })); }
+      }, travelDate);
+      console.log('[gigm] Retried date with ISO format:', travelDate);
+    }
     await new Promise(r => setTimeout(r, 800));
 
     // 6. Submit / Search
     console.log('[gigm] Submitting search...');
     const submitted = await page.evaluate(() => {
-      // Try submit button
       const btns = Array.from(document.querySelectorAll('button'));
-      const search = btns.find(b => /search|find|book|proceed/i.test(b.innerText));
-      const submit = btns.find(b => b.type === 'submit');
-      const btn = search || submit;
-      if (btn) { btn.click(); return true; }
-      return false;
+      const btn = btns.find(b => /search|find|proceed|continue/i.test(b.innerText)) ||
+                  btns.find(b => b.type === 'submit');
+      if (btn) { btn.click(); return btn.innerText.trim(); }
+      return null;
     });
-    if (!submitted) {
-      console.log('[gigm] No submit button found — pressing Enter');
-      await page.keyboard.press('Enter').catch(() => {});
-    }
+    console.log('[gigm] Clicked button:', submitted || 'none — pressing Enter');
+    if (!submitted) await page.keyboard.press('Enter').catch(() => {});
 
-    // 6. Wait for results (either API interception or page render)
-    console.log('[gigm] Waiting for results...');
-    await page.waitForFunction(
-      () => document.body.innerText.length > 1500,
-      { timeout: 25000, polling: 1000 }
-    ).catch(() => console.log('[gigm] waitForFunction timed out'));
-    await new Promise(r => setTimeout(r, 2000));
+    // 7. Wait for results — GIGM navigates to a results page after search
+    console.log('[gigm] Waiting for results page...');
+    await Promise.race([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
+      page.waitForFunction(() => document.body.innerText.includes('₦'), { timeout: 30000, polling: 1000 }),
+    ]).catch(() => console.log('[gigm] Navigation/results wait timed out'));
+    await new Promise(r => setTimeout(r, 3000));
 
     // 7. Return intercepted API data or fall back to page text
     if (apiData && apiData.length > 0) {
