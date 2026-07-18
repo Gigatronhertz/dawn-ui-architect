@@ -24,7 +24,12 @@
       "Bash(node -e \"require\\('./utils/logger'\\); const GIGM = require\\('./services/gigm'\\); console.log\\('available:', GIGM.available\\);\")",
       "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\('BROWSERLESS:', process.env.BROWSERLESS_WS_ENDPOINT ? 'SET' : 'NOT SET'\\); console.log\\('GEMINI:', process.env.GEMINI_API_KEY ? 'SET' : 'NOT SET'\\);\")",
       "Read(//c/Program Files/Google/Chrome/Application/**)",
-      "Read(//c/Program Files \\\\\\(x86\\\\\\)/Google/Chrome/Application/**)"
+      "Read(//c/Program Files \\\\\\(x86\\\\\\)/Google/Chrome/Application/**)",
+      "Bash(curl -s \"https://dawn-ui-architect.onrender.com/api/logs?n=100&level=WARN\")",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s \"https://dawn-ui-architect.onrender.com/api/logs?n=100\")",
+      "Bash(curl -s \"https://dawn-ui-architect.onrender.com/api/logs?n=80\")",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(l['ts'], l['level'], l['msg']\\) for l in data['lines'] if 'gigm' in l['msg'].lower\\(\\) or 'gigm' in l['msg']]\")"
     ]
   }
 }
