@@ -30,7 +30,8 @@ export type ScrapedFlights = { available: boolean; cheapestNGN: number; averageN
 export type GTHotel = { name: string; pricePerNight: number; rating: number | null; stars: number | null; deal: string | null; amenities: string[]; location: string | null };
 export type GTRental = { name: string; pricePerNight: number; type: string | null; sleeps: number | null; bedrooms: number | null; amenities: string[] };
 export type BHotel = { id: number; name: string; rating: number | null; address: string; pricePerNight: number | null; propertyType: string | null; stars: number | null; freeCancellation: boolean };
-export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[]; bHotels: BHotel[]; gtRentals: GTRental[]; bApartments: BHotel[] };
+export type GIGMTrip = { operator: string; departureTime: string | null; arrivalTime: string | null; price: number; class: string; seatsAvailable: number; terminal: string | null };
+export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[]; bHotels: BHotel[]; gtRentals: GTRental[]; bApartments: BHotel[]; gigmTrips: GIGMTrip[] };
 
 export type PlanResponse = { tripId: string; plan: GeminiPlan; scraped?: ScrapedData };
 export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] };

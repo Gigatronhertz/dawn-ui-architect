@@ -396,6 +396,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
   const [scraped, setScraped] = useState<ScrapedData | null>(null);
   const [selectedHotelKey, setSelectedHotelKey] = useState<string>('ai');
   const [selectedFlightIdx, setSelectedFlightIdx] = useState<number | null>(null);
+  const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
 
   const extraItineraryCost = useMemo(
     () => days.reduce((sum, d) => sum + d.items.reduce((s, it) => s + it.cost, 0), 0) * intake.squadSize,
@@ -422,6 +423,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
   }, [realPlan, scraped]);
 
   const flightOffers = useMemo(() => scraped?.flights?.offers ?? [], [scraped]);
+  const busOffers = useMemo(() => scraped?.gigmTrips ?? [], [scraped]);
 
   const rentalOptions = useMemo(() => {
     if (!intake.accommodationType.toLowerCase().includes('shortlet')) return [];
@@ -443,8 +445,11 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
       ? { ...base.hotel, name: selHotel.name, area: selHotel.area, price_per_night: selHotel.price, rating: selHotel.rating ?? base.hotel.rating, perks: selHotel.perks }
       : base.hotel;
     const selFlight = selectedFlightIdx !== null ? flightOffers[selectedFlightIdx] : null;
+    const selBus    = selectedBusIdx    !== null ? busOffers[selectedBusIdx]       : null;
     const transport = selFlight
       ? { ...base.transport, operator: selFlight.airline || 'Unknown', type: selFlight.stops === 0 ? 'Nonstop Flight' : 'Flight', price_per_person: selFlight.price }
+      : selBus
+      ? { ...base.transport, operator: 'GIGM', type: `Bus · ${selBus.class}`, price_per_person: selBus.price, depart_time: selBus.departureTime?.slice(0, 5) || base.transport.depart_time, pickup: selBus.terminal || base.transport.pickup }
       : base.transport;
     return { ...base, hotel, transport };
   };
@@ -729,6 +734,37 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
               </div>
             )}
 
+            {/* GIGM buses — selectable live prices */}
+            {busOffers.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center justify-between">
+                  <span>🚌 GIGM Buses — live prices</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">{busOffers.length} departures</span>
+                </div>
+                <div className="space-y-1.5">
+                  {busOffers.map((bus, i) => (
+                    <button key={i}
+                      onClick={() => { setSelectedBusIdx(i === selectedBusIdx ? null : i); setSelectedFlightIdx(null); }}
+                      className={`w-full text-left rounded-xl p-3 ring-hairline transition ${selectedBusIdx === i ? 'bg-primary-soft ring-1 ring-primary/30' : 'bg-card hover:bg-secondary'}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="font-display text-sm font-semibold">{bus.departureTime?.slice(0, 5) || '—'} · {bus.class}</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {bus.terminal && <span>{bus.terminal} · </span>}
+                            {bus.seatsAvailable > 0 ? `${bus.seatsAvailable} seats left` : 'Limited seats'}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="font-display font-semibold text-sm">{fmtNGN(bus.price)}</div>
+                          <div className="text-[10px] text-muted-foreground">per seat</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Flights — selectable */}
             {(flightOffers.length > 0 || scraped?.flights) && (
               <div>
@@ -738,7 +774,9 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
                 </div>
                 <div className="space-y-1.5">
                   {flightOffers.map((fl, i) => (
-                    <button key={i} onClick={() => setSelectedFlightIdx(i === selectedFlightIdx ? null : i)} className={`w-full text-left rounded-xl p-3 ring-hairline transition ${selectedFlightIdx === i ? 'bg-primary-soft ring-1 ring-primary/30' : 'bg-card hover:bg-secondary'}`}>
+                    <button key={i}
+                      onClick={() => { setSelectedFlightIdx(i === selectedFlightIdx ? null : i); setSelectedBusIdx(null); }}
+                      className={`w-full text-left rounded-xl p-3 ring-hairline transition ${selectedFlightIdx === i ? 'bg-primary-soft ring-1 ring-primary/30' : 'bg-card hover:bg-secondary'}`}>
                       <div className="flex items-center justify-between gap-2">
                         <div>
                           <div className="font-display text-sm font-semibold">{fl.airline || 'Unknown airline'}</div>
@@ -754,9 +792,9 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
                       </div>
                     </button>
                   ))}
-                  <button onClick={() => setSelectedFlightIdx(null)} className={`w-full text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedFlightIdx === null ? 'bg-primary-soft ring-1 ring-primary/30' : 'bg-card hover:bg-secondary'}`}>
-                    <span className="font-display font-semibold">🚌 Road transport</span>
-                    <span className="text-muted-foreground ml-2 text-[11px]">{realPlan?.transport?.operator || 'Bus'}</span>
+                  <button onClick={() => { setSelectedFlightIdx(null); setSelectedBusIdx(null); }} className={`w-full text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedFlightIdx === null && selectedBusIdx === null ? 'bg-primary-soft ring-1 ring-primary/30' : 'bg-card hover:bg-secondary'}`}>
+                    <span className="font-display font-semibold">🚌 AI transport pick</span>
+                    <span className="text-muted-foreground ml-2 text-[11px]">{realPlan?.transport?.operator || 'Bus'} · {realPlan?.transport?.type}</span>
                   </button>
                 </div>
               </div>

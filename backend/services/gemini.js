@@ -8,7 +8,8 @@ const { searchFlights, formatFlightsForPrompt } = require('./amadeus');
 const {
   searchHotels: bookingHotels, searchApartments, getDates, formatBookingHotelsForPrompt,
 } = require('./bookingCom');
-const GT = require('./googleTravel');
+const GT   = require('./googleTravel');
+const GIGM = require('./gigm');
 
 let genAI;
 function getClient() {
@@ -40,6 +41,8 @@ async function fetchRealWorldContext(intake) {
     ? await GT.scrapeVacationRentals(intake.destination, checkin, checkout).catch(() => [])
     : [];
   const gtFlightsRaw = await GT.scrapeFlights(intake.origin, intake.destination, depDate).catch(() => null);
+  // GIGM runs after GT scrapers — all share Chrome/Browserless, sequential avoids OOM
+  const gigmTripsRaw = await GIGM.scrapeGIGM(intake.origin, intake.destination, depDate).catch(() => []);
 
   // All other API calls can run in parallel — they don't use Chrome
   const [
@@ -75,10 +78,13 @@ async function fetchRealWorldContext(intake) {
     if (r.status === 'rejected') console.warn(`[gemini/context] ${label}: ERROR — ${r.reason?.message}`);
     else console.log(`[gemini/context] ${label}: ${Array.isArray(r.value) ? r.value.length + ' results' : r.value ? JSON.stringify(r.value).slice(0, 80) : 'null'}`);
   };
+  const gigmTrips = { status: 'fulfilled', value: gigmTripsRaw };
+
   logCount('road distance', road);
   logCount('GT hotels', gtHotels);
   logCount('GT rentals', gtRentals);
   logCount('GT flights', gtFlights);
+  logCount('GIGM buses', gigmTrips);
   logCount('Booking hotels', bHotels);
   logCount('Booking apartments', bApartments);
   logCount('Amadeus flights', amadeusFlights);
@@ -96,6 +102,7 @@ async function fetchRealWorldContext(intake) {
     flights:      flightData,
     gtHotels:     val(gtHotels)    || [],
     gtRentals:    val(gtRentals)   || [],
+    gigmTrips:    val(gigmTrips)   || [],
     nights:       intake.days || 1,
   };
 }
@@ -108,6 +115,11 @@ function buildContextBlock(ctx, intake) {
     sections.push(
       `🗺️  Real road distance (Google Maps): ${ctx.road.distanceText}, ~${ctx.road.durationText} by road.`
     );
+  }
+
+  const gigmStr = GIGM.formatGIGMForPrompt(ctx.gigmTrips);
+  if (gigmStr) {
+    sections.push(`🚌  ${gigmStr}`);
   }
 
   if (ctx.flights) {
@@ -176,8 +188,13 @@ async function generateTripPlan(intake) {
   const contextBlock = buildContextBlock(ctx, intake);
 
   const useFlights = ctx.flights?.available && intake.budget >= (ctx.flights.cheapestNGN * 1.5);
+  const gigmCheapest = ctx.gigmTrips?.length > 0
+    ? ctx.gigmTrips.reduce((min, t) => t.price < min.price ? t : min, ctx.gigmTrips[0])
+    : null;
   const transportHint = useFlights
     ? `Flights are available from ${ctx.flights.cheapestNGN.toLocaleString()} NGN/person — use air travel for this trip.`
+    : gigmCheapest
+    ? `GIGM buses available from ₦${gigmCheapest.price.toLocaleString()}/seat (live price, departs ${gigmCheapest.departureTime?.slice(0,5) || 'morning'}). Use GIGM as the primary transport operator.`
     : `Use road transport (GIGM, GUO, ABC, Peace Mass, Efex) — this is a bus/road trip.`;
 
   const prompt = `You are MySquadGo's West African group trip planner. Generate a detailed, realistic trip plan.
@@ -257,7 +274,8 @@ INSTRUCTIONS:
     "activities_from_google": ${Object.keys(ctx.activities || {}).length > 0},
     "distance_from_google": ${!!ctx.road},
     "flights_from_amadeus": ${!!ctx.flights && ctx.flights.source !== 'google_travel'},
-    "flights_from_google_travel": ${!!ctx.flights && ctx.flights.source === 'google_travel'}
+    "flights_from_google_travel": ${!!ctx.flights && ctx.flights.source === 'google_travel'},
+    "buses_from_gigm": ${(ctx.gigmTrips || []).length > 0}
   }
 }`;
 
@@ -273,6 +291,7 @@ INSTRUCTIONS:
       bHotels:     ctx.bHotels     || [],
       gtRentals:   ctx.gtRentals   || [],
       bApartments: ctx.bApartments || [],
+      gigmTrips:   ctx.gigmTrips   || [],
     },
   };
 }
