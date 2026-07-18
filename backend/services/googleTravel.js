@@ -342,6 +342,7 @@ async function scrapeHotels(destination, checkin, checkout, adults = 1) {
     return hotels;
   } catch (err) {
     console.error(`[googleTravel/hotels] Error after ${Date.now() - t0}ms:`, err.message);
+    if (/detached|disconnected|Protocol error|Target closed|Session closed/i.test(err.message)) _browser = null;
     return [];
   } finally {
     await page.close().catch(() => {});
@@ -365,6 +366,7 @@ async function scrapeVacationRentals(destination, checkin, checkout) {
     return rentals;
   } catch (err) {
     console.error(`[googleTravel/rentals] Error after ${Date.now() - t0}ms:`, err.message);
+    if (/detached|disconnected|Protocol error|Target closed|Session closed/i.test(err.message)) _browser = null;
     return [];
   } finally {
     await page.close().catch(() => {});
@@ -412,6 +414,7 @@ async function scrapeFlights(originCity, destCity, date) {
     };
   } catch (err) {
     console.error(`[googleTravel/flights] Error after ${Date.now() - t0}ms:`, err.message);
+    if (/detached|disconnected|Protocol error|Target closed|Session closed/i.test(err.message)) _browser = null;
     return null;
   } finally {
     await page.close().catch(() => {});

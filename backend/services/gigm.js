@@ -247,26 +247,22 @@ async function scrapeGIGM(origin, destination, date) {
     // React Select ignores direct value injection — must click to focus, type to filter,
     // then click the dropdown option that appears.
 
-    // Helper: fill one React Select by its input element handle
+    // Helper: fill one React Select. Throws if no option appears (route doesn't exist).
     async function fillReactSelect(inputHandle, searchText, label) {
       const inputId = await inputHandle.evaluate(el => el.id);
-      const selectBase = inputId.replace('-input', ''); // e.g. "react-select-13"
+      const selectBase = inputId.replace('-input', '');
       console.log(`[gigm] Filling ${label} via ${inputId}`);
       await inputHandle.click();
       await inputHandle.type(searchText, { delay: 80 });
       await new Promise(r => setTimeout(r, 1500));
-      // Options appear with IDs like react-select-13-option-0
       const optSel = `[id^="${selectBase}-option"]`;
-      const fallbackOptSel = '[class*="option"]:not([class*="container"]):not([class*="multi"])';
-      const opt = await page.waitForSelector(optSel, { timeout: 6000 })
-        .catch(() => page.$(fallbackOptSel));
-      if (opt) {
-        await opt.click();
-        console.log(`[gigm] ${label} option selected`);
-      } else {
-        console.log(`[gigm] No dropdown option found for ${label} — pressing Enter`);
-        await inputHandle.press('Enter');
+      const opt = await page.waitForSelector(optSel, { timeout: 7000 }).catch(() => null);
+      if (!opt) {
+        throw new Error(`No "${searchText}" option in ${label} dropdown — route may not be served by GIGM`);
       }
+      const optText = await opt.evaluate(el => el.innerText).catch(() => searchText);
+      await opt.click();
+      console.log(`[gigm] ${label} selected: "${optText}"`);
       await new Promise(r => setTimeout(r, 800));
     }
 
@@ -331,18 +327,19 @@ async function scrapeGIGM(origin, destination, date) {
 
     // 7. Wait for results — GIGM navigates away from /book-a-seat to a results page
     console.log('[gigm] Waiting for results page...');
-    // First wait for any navigation (the form submit triggers a page change)
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 })
       .catch(() => console.log('[gigm] No navigation detected — checking page content'));
     const postNavUrl = page.url();
     console.log('[gigm] URL after submit:', postNavUrl);
 
-    // Then wait for trip prices to appear on the results page
-    await page.waitForFunction(
-      () => document.body.innerText.includes('₦') || document.body.innerText.includes('NGN'),
-      { timeout: 25000, polling: 1000 }
-    ).catch(() => console.log('[gigm] Price wait timed out'));
-    await new Promise(r => setTimeout(r, 2000));
+    // If GIGM bounced us to homepage the search was rejected (invalid route)
+    if (/^https?:\/\/(?:www\.)?gigm\.com\/?$/.test(postNavUrl)) {
+      console.log('[gigm] Redirected to homepage — route not served or form fill failed, returning []');
+      return [];
+    }
+
+    // Wait for the API interception to fire (API response arrives before DOM renders)
+    await new Promise(r => setTimeout(r, 8000));
 
     // 7. Return intercepted API data or fall back to page text
     if (apiData && apiData.length > 0) {
@@ -361,6 +358,11 @@ async function scrapeGIGM(origin, destination, date) {
 
   } catch (err) {
     console.error(`[gigm] Error after ${Date.now() - t0}ms:`, err.message);
+    // Stale Browserless connection — force reconnect on next call
+    if (/detached|disconnected|Protocol error|Target closed|Session closed/i.test(err.message)) {
+      console.warn('[gigm] Resetting browser connection due to stale session');
+      _browser = null;
+    }
     return [];
   } finally {
     await page.close().catch(() => {});
