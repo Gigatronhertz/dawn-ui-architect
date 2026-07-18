@@ -20,7 +20,11 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(git commit -m 'Switch to gemini-2.5-flash \\(2.0-flash deprecated\\) *)"
+      "Bash(git commit -m 'Switch to gemini-2.5-flash \\(2.0-flash deprecated\\) *)",
+      "Bash(node -e \"require\\('./utils/logger'\\); const GIGM = require\\('./services/gigm'\\); console.log\\('available:', GIGM.available\\);\")",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\('BROWSERLESS:', process.env.BROWSERLESS_WS_ENDPOINT ? 'SET' : 'NOT SET'\\); console.log\\('GEMINI:', process.env.GEMINI_API_KEY ? 'SET' : 'NOT SET'\\);\")",
+      "Read(//c/Program Files/Google/Chrome/Application/**)",
+      "Read(//c/Program Files \\\\\\(x86\\\\\\)/Google/Chrome/Application/**)"
     ]
   }
 }
