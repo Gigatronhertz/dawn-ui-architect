@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip } from "@/lib/api";
+import { api, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel } from "@/lib/api";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
@@ -291,10 +291,28 @@ function PlanStep({
   const [dirty, setDirty] = useState(false);
   const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
   const [selectedFlightIdx, setSelectedFlightIdx] = useState<number | null>(null);
+  const [selectedHotelKey, setSelectedHotelKey] = useState<string>('ai');
 
   const busOffers: GIGMTrip[] = useMemo(() => scraped?.gigmTrips ?? [], [scraped]);
   const flightOffers = useMemo(() => scraped?.flights?.offers ?? [], [scraped]);
   const isBusMode = !/flight/i.test(intake.transport || '');
+
+  type HotelOpt = { key: string; name: string; area: string; price: number | null; rating: number | null; source: string; badge?: string; perks: string[] };
+  const allHotelOptions = useMemo<HotelOpt[]>(() => {
+    const opts: HotelOpt[] = [];
+    if (initialPlan?.hotel) {
+      opts.push({ key: 'ai', name: initialPlan.hotel.name, area: initialPlan.hotel.area, price: initialPlan.hotel.price_per_night, rating: initialPlan.hotel.rating, source: 'Gemini AI', badge: 'AI Pick', perks: initialPlan.hotel.perks || [] });
+    }
+    (scraped?.gtHotels ?? []).forEach((h: GTHotel, i: number) => {
+      if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase()))
+        opts.push({ key: `gt-${i}`, name: h.name, area: h.location || '', price: h.pricePerNight, rating: h.rating, source: 'Google Travel', perks: h.amenities.slice(0, 3) });
+    });
+    (scraped?.bHotels ?? []).forEach((h: BHotel, i: number) => {
+      if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase()))
+        opts.push({ key: `bk-${i}`, name: h.name, area: h.address?.split(',')[0] || '', price: h.pricePerNight, rating: h.rating ? +(h.rating / 2).toFixed(1) : null, source: 'Booking.com', perks: [] });
+    });
+    return opts;
+  }, [initialPlan, scraped]);
 
   const extraCost = useMemo(
     () => days.reduce((sum, d) => sum + d.activities.reduce((s, a) => s + a.cost_per_person, 0), 0),
@@ -322,12 +340,16 @@ function PlanStep({
 
   const selBus    = selectedBusIdx    !== null ? busOffers[selectedBusIdx]       : null;
   const selFlight = selectedFlightIdx !== null ? flightOffers[selectedFlightIdx] : null;
+  const selHotel  = allHotelOptions.find(o => o.key === selectedHotelKey);
   const transport = selFlight
     ? { ...initialPlan.transport, operator: selFlight.airline || 'Unknown', type: selFlight.stops === 0 ? 'Nonstop Flight' : 'Flight', price_per_person: selFlight.price }
     : selBus
     ? { ...initialPlan.transport, operator: 'GIGM', type: `Bus · ${selBus.class}`, price_per_person: selBus.price, depart_time: selBus.departureTime?.slice(0, 5) || initialPlan.transport.depart_time, pickup: selBus.terminal || initialPlan.transport.pickup }
     : initialPlan.transport;
-  const finalPlan: GeminiPlan = { ...initialPlan, days, transport, cost_breakdown: { ...initialPlan.cost_breakdown, per_person: perPerson } };
+  const hotel = (selHotel && selHotel.key !== 'ai' && selHotel.price)
+    ? { ...initialPlan.hotel, name: selHotel.name, area: selHotel.area, price_per_night: selHotel.price, rating: selHotel.rating ?? initialPlan.hotel.rating, perks: selHotel.perks }
+    : initialPlan.hotel;
+  const finalPlan: GeminiPlan = { ...initialPlan, days, transport, hotel, cost_breakdown: { ...initialPlan.cost_breakdown, per_person: perPerson } };
 
   return (
     <div className="space-y-5">
@@ -566,32 +588,50 @@ function PlanStep({
         </ol>
       </Card>
 
-      {/* Hotel */}
+      {/* Hotel selection */}
       <Card>
-        <SectionLabel>Accommodation · AI pick</SectionLabel>
-        <div className="mt-3 rounded-2xl bg-primary-soft ring-hairline p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="font-display text-base font-semibold flex items-center gap-2">
-                {initialPlan.hotel.name}
-                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-primary-foreground">Gemini pick</span>
+        <SectionLabel>Accommodation</SectionLabel>
+        <h2 className="font-display text-base font-semibold mb-4">Pick your hotel.</h2>
+        <div className="space-y-2">
+          {allHotelOptions.map(opt => (
+            <button key={opt.key} type="button"
+              onClick={() => setSelectedHotelKey(opt.key)}
+              className={`w-full text-left rounded-xl p-4 ring-hairline transition ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-display text-sm font-semibold flex items-center gap-1.5 flex-wrap">
+                    <span className="truncate">{opt.name}</span>
+                    {opt.badge && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground shrink-0">{opt.badge}</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2">
+                    <span>{opt.area || '—'}</span>
+                    {opt.rating && <span>⭐ {opt.rating}</span>}
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary">{opt.source}</span>
+                  </div>
+                  {opt.perks.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {opt.perks.map(pk => <span key={pk} className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary/60 text-muted-foreground">{pk}</span>)}
+                    </div>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-display text-base font-semibold">{opt.price ? fmtNGN(opt.price) : '—'}</div>
+                  <div className="text-[10px] text-muted-foreground">per night</div>
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">{initialPlan.hotel.area} · ⭐ {initialPlan.hotel.rating}</div>
-            </div>
-            <div className="text-right shrink-0">
-              <div className="font-display text-base font-semibold">{fmtNGN(initialPlan.hotel.price_per_night)}</div>
-              <div className="text-[10px] text-muted-foreground">per night</div>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            {initialPlan.hotel.perks.map((pk) => (
-              <span key={pk} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{pk}</span>
-            ))}
-          </div>
+              {selectedHotelKey === opt.key && (
+                <div className="mt-2 text-[11px] text-primary font-medium">✓ Selected — applied to your plan</div>
+              )}
+            </button>
+          ))}
         </div>
-        <p className="text-xs text-muted-foreground mt-3">
-          The squad will vote on the hotel in the WhatsApp group — this is the AI's starting recommendation.
-        </p>
+        {allHotelOptions.length <= 1 && (
+          <p className="text-xs text-muted-foreground mt-3">
+            Live hotel data is loading — only the Gemini pick is available right now.
+          </p>
+        )}
       </Card>
 
       {/* Confirm */}
