@@ -6,5 +6,8 @@
     "env": {
       "VITE_API_URL": "https://dawn-ui-architect.onrender.com"
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
