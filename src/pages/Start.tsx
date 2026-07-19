@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel } from "@/lib/api";
+import { api, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
@@ -30,6 +30,19 @@ const MAPS_PLACES = [
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
+
+function attractionEmoji(name: string): string {
+  const n = name.toLowerCase();
+  if (/waterfall|spring|lake|river|beach|bay/.test(n)) return '🌊';
+  if (/park|garden|reserve|forest|wildlife/.test(n)) return '🌿';
+  if (/hill|mountain|plateau|peak|rock/.test(n)) return '⛰️';
+  if (/museum|palace|castle|bunker|wall|tomb|heritage|moat/.test(n)) return '🏛️';
+  if (/cave/.test(n)) return '🪨';
+  if (/zoo/.test(n)) return '🦁';
+  if (/festival/.test(n)) return '🎉';
+  if (/dam/.test(n)) return '💧';
+  return '📍';
+}
 
 /* ─── shared UI ─────────────────────────────────────────────────────────────── */
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
@@ -61,6 +74,8 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
     dateFlexibility: "Flexible",
     dealbreakers: "",
     transport: "Charter bus",
+    vibe: "Chill & scenic",
+    specificDates: "",
   });
 
   const set = <K extends keyof IntakeData>(k: K, v: IntakeData[K]) =>
@@ -102,7 +117,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           Tell us about the trip.
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          9 quick questions. Gemini builds the full itinerary with live prices. You edit before it goes to the squad.
+          10 quick questions. Gemini builds the full itinerary with live prices. You edit before it goes to the squad.
         </p>
       </div>
 
@@ -144,7 +159,19 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           </select>
         </Field>
 
-        <Field n={3} label={`Budget per person · ${fmtNGN(form.budget)}`}>
+        <div className="md:col-span-2">
+          <Field n={3} label="Squad vibe">
+            <div className="flex flex-wrap gap-2">
+              {VIBES.map((v) => (
+                <button key={v} type="button" onClick={() => set("vibe", v)} className={chipCls(form.vibe === v)}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+
+        <Field n={4} label={`Budget per person · ${fmtNGN(form.budget)}`}>
           <input
             type="range" min={5000} max={200000} step={1000} value={form.budget}
             onChange={(e) => set("budget", +e.target.value)} className="w-full accent-primary"
@@ -154,7 +181,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           </div>
         </Field>
 
-        <Field n={4} label={`How many days? · ${form.days}`}>
+        <Field n={5} label={`How many days? · ${form.days}`}>
           <input
             type="range" min={1} max={10} value={form.days}
             onChange={(e) => set("days", +e.target.value)} className="w-full accent-primary"
@@ -164,7 +191,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           </div>
         </Field>
 
-        <Field n={5} label={`Squad size · ${form.squadSize} people`}>
+        <Field n={6} label={`Squad size · ${form.squadSize} people`}>
           <input
             type="range" min={2} max={40} value={form.squadSize}
             onChange={(e) => set("squadSize", +e.target.value)} className="w-full accent-primary"
@@ -174,7 +201,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           </div>
         </Field>
 
-        <Field n={6} label="Accommodation type">
+        <Field n={7} label="Accommodation type">
           <div className="flex flex-wrap gap-2">
             {ACCOMMODATION_TYPES.map((t) => (
               <button key={t} type="button" onClick={() => set("accommodationType", t)} className={chipCls(form.accommodationType === t)}>
@@ -184,7 +211,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           </div>
         </Field>
 
-        <Field n={7} label="Specific dates or flexible?">
+        <Field n={8} label="Specific dates or flexible?">
           <div className="flex flex-wrap gap-2">
             {DATE_OPTIONS.map((d) => (
               <button key={d} type="button" onClick={() => set("dateFlexibility", d)} className={chipCls(form.dateFlexibility === d)}>
@@ -192,10 +219,22 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
               </button>
             ))}
           </div>
+          {form.dateFlexibility === "I have specific dates" && (
+            <div className="mt-3">
+              <input
+                type="date"
+                className={inputCls}
+                value={form.specificDates || ""}
+                onChange={(e) => set("specificDates", e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">Departure date — used to fetch live bus/flight prices</p>
+            </div>
+          )}
         </Field>
 
         <div className="md:col-span-2">
-          <Field n={8} label="Any dealbreakers?">
+          <Field n={9} label="Any dealbreakers?">
             <input
               className={inputCls}
               placeholder="e.g. must have AC / halal food / no shared rooms"
@@ -207,7 +246,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
 
         <div className="md:col-span-2">
           <div className="rounded-2xl bg-whatsapp/8 ring-1 ring-whatsapp/20 p-4">
-            <Field n={9} label="Your WhatsApp number">
+            <Field n={10} label="Your WhatsApp number">
               <input
                 type="tel"
                 className={inputCls}
@@ -319,6 +358,21 @@ function PlanStep({
     [days]
   );
   const perPerson = initialPlan.cost_breakdown.per_person + Math.round(extraCost * 0.1);
+  const squadTotal = perPerson * intake.squadSize;
+
+  const placesItems = useMemo(() => {
+    const attrs: Attraction[] = scraped?.localAttractions ?? [];
+    if (attrs.length > 0) {
+      return attrs.map((a) => ({
+        id: `attr-${a.id}`,
+        emoji: attractionEmoji(a.name),
+        title: a.name,
+        tag: a.fee_note || (a.fee_max > 0 ? `₦${a.fee_min.toLocaleString()}–₦${a.fee_max.toLocaleString()}` : 'Free'),
+        cost: a.fee_max > 0 ? Math.round((a.fee_min + a.fee_max) / 2) : 0,
+      }));
+    }
+    return MAPS_PLACES;
+  }, [scraped]);
 
   const addActivity = (dayIdx: number, a: { id: string; title: string; cost: number; emoji: string }) => {
     setDays((ds) =>
@@ -355,11 +409,12 @@ function PlanStep({
     <div className="space-y-5">
       {/* Cost summary strip */}
       <Card className="p-0 overflow-hidden">
-        <div className="grid grid-cols-3 divide-x divide-border">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
           {[
             { label: "Transport", val: fmtNGN(initialPlan.cost_breakdown.transport_total), sub: `${initialPlan.transport.operator} · ${intake.squadSize}×`, color: "text-google-blue" },
             { label: "Lodging", val: fmtNGN(initialPlan.cost_breakdown.lodging_total), sub: `${initialPlan.hotel.name.split(" ")[0]} · ${intake.days} nights`, color: "text-google-purple" },
             { label: "Per person", val: fmtNGN(perPerson), sub: dirty ? "Updated · live" : "All-in estimate", color: "text-primary" },
+            { label: "Squad total", val: fmtNGN(squadTotal), sub: `${intake.squadSize} people · all-in`, color: "text-google-green" },
           ].map((c) => (
             <div key={c.label} className="p-4 md:p-6 text-center">
               <div className={`text-[10px] font-semibold uppercase tracking-wider ${c.color} mb-1`}>{c.label}</div>
@@ -437,7 +492,9 @@ function PlanStep({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="font-display text-sm font-semibold">{bus.departureTime?.slice(0, 5) || '—'} · {bus.class}</div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5">{bus.terminal || intake.origin} · {bus.seatsAvailable} seats left</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {intake.specificDates ? new Date(intake.specificDates).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Flexible date'} · {bus.terminal || intake.origin} · {bus.seatsAvailable} seats
+                      </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="font-display text-base font-semibold text-primary">{fmtNGN(bus.price)}</div>
@@ -561,12 +618,12 @@ function PlanStep({
                             <button onClick={() => setMapsOpen(null)} className="text-[10px] text-muted-foreground hover:text-foreground">close</button>
                           </div>
                           <ul className="space-y-1">
-                            {MAPS_PLACES.map((p) => (
+                            {placesItems.map((p) => (
                               <li key={p.id} className="flex items-center gap-2 text-[12px] rounded-lg p-1.5 hover:bg-secondary/60 transition">
                                 <span className="text-base shrink-0">{p.emoji}</span>
                                 <div className="flex-1 min-w-0">
                                   <div className="font-medium truncate">{p.title}</div>
-                                  <div className="text-[10px] text-muted-foreground">{p.tag} · {fmtNGN(p.cost)}/person</div>
+                                  <div className="text-[10px] text-muted-foreground">{p.tag}{p.cost > 0 ? ` · ${fmtNGN(p.cost)}/person` : ' · Free'}</div>
                                 </div>
                                 <button
                                   onClick={() => { addActivity(di, { id: p.id, title: p.title, cost: p.cost, emoji: p.emoji }); setMapsOpen(null); }}
@@ -655,8 +712,8 @@ function PlanStep({
 }
 
 /* ─── step 4: confirm ────────────────────────────────────────────────────────── */
-function ConfirmStep({ botNumber, destination, dmSent, tripId }: {
-  botNumber: string; destination: string; dmSent: boolean; instructions: string[]; tripId: string;
+function ConfirmStep({ botNumber, destination, dmSent, tripId, squadSize, finalPlan }: {
+  botNumber: string; destination: string; dmSent: boolean; instructions: string[]; tripId: string; squadSize: number; finalPlan?: GeminiPlan | null;
 }) {
   const [copied, setCopied] = useState(false);
   const number = botNumber.startsWith("+") ? botNumber : `+${botNumber}`;
@@ -693,6 +750,31 @@ function ConfirmStep({ botNumber, destination, dmSent, tripId }: {
           </svg>
           Open WhatsApp → follow the instructions we sent you
         </a>
+      )}
+
+      {/* Plan recap */}
+      {finalPlan && (
+        <div className="rounded-2xl bg-secondary/40 ring-hairline p-5 mb-6">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">What you confirmed</div>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Hotel</span>
+              <span className="font-medium text-right truncate max-w-[60%]">{finalPlan.hotel.name}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Transport</span>
+              <span className="font-medium">{finalPlan.transport.operator} · {finalPlan.transport.type}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Per person</span>
+              <span className="font-display font-semibold">{fmtNGN(finalPlan.cost_breakdown.per_person)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+              <span className="font-medium">Squad total ({squadSize} people)</span>
+              <span className="font-display font-semibold text-primary">{fmtNGN(finalPlan.cost_breakdown.per_person * squadSize)}</span>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Bot number — always shown so they can copy if needed */}
@@ -767,6 +849,7 @@ export default function Start() {
   const [plan, setPlan] = useState<GeminiPlan | null>(null);
   const [scraped, setScraped] = useState<ScrapedData | null>(null);
   const [busLoading, setBusLoading] = useState(false);
+  const [confirmedPlan, setConfirmedPlan] = useState<GeminiPlan | null>(null);
   const [confirmData, setConfirmData] = useState<{ botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -791,7 +874,7 @@ export default function Start() {
       // Fire GIGM separately after plan arrives — Chrome is free from GT hotel scraping
       if (!/flight/i.test(data.transport || '')) {
         setBusLoading(true);
-        api.getGigmBuses(data.origin!, data.destination!)
+        api.getGigmBuses(data.origin!, data.destination!, data.specificDates || undefined)
           .then(d => {
             if (d.trips?.length) setScraped(s => s ? { ...s, gigmTrips: d.trips } : s);
           })
@@ -809,6 +892,7 @@ export default function Start() {
     setError(null);
     try {
       const result = await api.confirmPlan(tripId, finalPlan, phone || undefined);
+      setConfirmedPlan(finalPlan);
       setConfirmData({ botNumber: result.botNumber, destination: result.destination, squadSize: result.squadSize, dmSent: result.dmSent, instructions: result.instructions });
       setStep("confirm");
     } catch (err) {
@@ -872,7 +956,7 @@ export default function Start() {
           <PlanStep tripId={tripId!} plan={plan} intake={intake} scraped={scraped} busLoading={busLoading} onConfirm={handleConfirm} />
         )}
         {step === "confirm" && confirmData && (
-          <ConfirmStep tripId={tripId!} {...confirmData} />
+          <ConfirmStep tripId={tripId!} {...confirmData} finalPlan={confirmedPlan} />
         )}
       </div>
     </main>

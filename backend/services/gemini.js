@@ -229,6 +229,7 @@ Trip details:
 - Accommodation preference: ${intake.accommodation}
 - Date preference: ${intake.date_flexibility}${intake.specific_dates ? ` (${intake.specific_dates})` : ''}
 - Dealbreakers: ${intake.dealbreakers || 'none'}
+- Squad vibe: ${intake.vibe || 'Chill & scenic'}
 - Transport: ${transportHint}
 ${contextBlock}
 INSTRUCTIONS:
@@ -239,7 +240,8 @@ INSTRUCTIONS:
 5. Use the real road distance/time for transport. Honour the user's transport mode choice.
 6. Price levels: PRICE_LEVEL_INEXPENSIVE ≈ ₦8,000–₦20,000/night, MODERATE ≈ ₦20,000–₦50,000/night, EXPENSIVE ≈ ₦50,000–₦150,000/night.
 7. All prices must be in Nigerian Naira (NGN) and realistic for 2025.
-8. Return ONLY valid JSON — no markdown, no explanation.
+8. Match activity style and tone to the squad vibe.
+9. Return ONLY valid JSON — no markdown, no explanation.
 
 {
   "hotel": {
@@ -313,7 +315,8 @@ INSTRUCTIONS:
       bHotels:     ctx.bHotels     || [],
       gtRentals:   ctx.gtRentals   || [],
       bApartments: ctx.bApartments || [],
-      gigmTrips:   ctx.gigmTrips   || [],
+      gigmTrips:        ctx.gigmTrips        || [],
+      localAttractions: ctx.localAttractions || [],
     },
   };
 }

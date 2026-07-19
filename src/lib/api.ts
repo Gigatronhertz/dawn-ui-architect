@@ -11,7 +11,11 @@ export type IntakeData = {
   dateFlexibility: string;
   dealbreakers: string;
   transport?: string;
+  vibe?: string;
+  specificDates?: string;
 };
+
+export type Attraction = { id: number; state: string; name: string; fee_min: number; fee_max: number; fee_note: string | null };
 
 export type Activity = { time: string; title: string; cost_per_person: number };
 export type PlanDay = { day: number; title: string; activities: Activity[] };
@@ -32,7 +36,7 @@ export type GTHotel = { name: string; pricePerNight: number; rating: number | nu
 export type GTRental = { name: string; pricePerNight: number; type: string | null; sleeps: number | null; bedrooms: number | null; amenities: string[] };
 export type BHotel = { id: number; name: string; rating: number | null; address: string; pricePerNight: number | null; propertyType: string | null; stars: number | null; freeCancellation: boolean };
 export type GIGMTrip = { operator: string; departureTime: string | null; arrivalTime: string | null; price: number; class: string; seatsAvailable: number; terminal: string | null };
-export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[]; bHotels: BHotel[]; gtRentals: GTRental[]; bApartments: BHotel[]; gigmTrips: GIGMTrip[] };
+export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[]; bHotels: BHotel[]; gtRentals: GTRental[]; bApartments: BHotel[]; gigmTrips: GIGMTrip[]; localAttractions?: Attraction[] };
 
 export type PlanResponse = { tripId: string; plan: GeminiPlan; scraped?: ScrapedData };
 export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] };

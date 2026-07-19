@@ -13,7 +13,7 @@ const router = Router();
 // POST /api/plan
 // Called by the web form after intake. Returns tripId + full Gemini plan.
 router.post('/plan', async (req, res) => {
-  const { origin, destination, budget, days, squadSize, accommodationType, dateFlexibility, dealbreakers, transport } = req.body;
+  const { origin, destination, budget, days, squadSize, accommodationType, dateFlexibility, dealbreakers, transport, vibe, specificDates } = req.body;
 
   if (!origin || !destination || !budget || !days || !squadSize) {
     return res.status(400).json({ error: 'Missing required fields.' });
@@ -31,7 +31,7 @@ router.post('/plan', async (req, res) => {
     squad_size: Number(squadSize),
     accommodation: accommodationType || 'Hotel',
     date_flexibility: dateFlexibility || 'Flexible',
-    specific_dates: null,
+    specific_dates: specificDates || null,
     dealbreakers: dealbreakers || null,
     plan: null,
     selected_date: null,
@@ -43,7 +43,7 @@ router.post('/plan', async (req, res) => {
   try {
     const intake = await db.trips.get(tripId);
     // Merge transport mode from request body — not stored in DB but needed by scrapers
-    const { plan, scraped } = await generateTripPlan({ ...intake, transport: transport || 'Charter bus' });
+    const { plan, scraped } = await generateTripPlan({ ...intake, transport: transport || 'Charter bus', vibe: vibe || null });
 
     await db.trips.update({
       id: tripId, plan: JSON.stringify(plan), status: 'plan_review',
