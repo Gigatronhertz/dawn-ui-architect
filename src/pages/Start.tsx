@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
@@ -283,21 +284,90 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
 
 /* ─── step 2: generating ────────────────────────────────────────────────────── */
 const PHASES = [
-  { title: "Analyzing your route…",         sub: "Mapping distances and transport options" },
-  { title: "Fetching live prices…",          sub: "Checking GIGM buses, flights & hotels" },
-  { title: "Building your itinerary…",       sub: "Creating a day-by-day plan for your squad" },
-  { title: "Calculating squad costs…",       sub: "Working out the per-person breakdown" },
+  { title: "Analyzing your route…",        sub: "Mapping distances and transport options" },
+  { title: "Fetching live prices…",         sub: "Checking GIGM buses, flights & hotels" },
+  { title: "Building your itinerary…",      sub: "Creating a day-by-day plan for your squad" },
+  { title: "Calculating squad costs…",      sub: "Working out the per-person breakdown" },
 ];
 
-function GeneratingStep() {
-  const [idx, setIdx] = useState(0);
+/** Converts a URL-safe base64 VAPID key to the Uint8Array the browser expects. */
+function urlBase64ToUint8Array(base64: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(b64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmail: string | null }) {
+  const [idx, setIdx]               = useState(0);
+  const [showNotify, setShowNotify] = useState(false);
+
+  // Email state
+  const [emailInput, setEmailInput] = useState(userEmail || '');
+  const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent'>('idle');
+
+  // Push state
+  const [pushState, setPushState]   = useState<'idle' | 'subscribing' | 'granted' | 'blocked'>('idle');
+
   useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % PHASES.length), 3000);
+    const t = setInterval(() => setIdx(i => (i + 1) % PHASES.length), 3000);
     return () => clearInterval(t);
   }, []);
 
+  // Show the notification panel 7 s in — plan still generating, user is waiting
+  useEffect(() => {
+    const t = setTimeout(() => setShowNotify(true), 7000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Sync email input if the user signs in while on this screen
+  useEffect(() => {
+    if (userEmail && !emailInput) setEmailInput(userEmail);
+  }, [userEmail]); // eslint-disable-line
+
+  async function handleEmailNotify() {
+    if (!tripId || !emailInput.includes('@')) return;
+    setEmailState('sending');
+    try {
+      await api.subscribeNotify(tripId, { email: emailInput });
+      setEmailState('sent');
+    } catch {
+      setEmailState('idle');
+    }
+  }
+
+  async function handlePushSubscribe() {
+    if (!tripId || !('Notification' in window)) return;
+    setPushState('subscribing');
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') { setPushState('blocked'); return; }
+
+      if (!('serviceWorker' in navigator)) { setPushState('blocked'); return; }
+
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+
+      const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      if (!vapidKey) { setPushState('blocked'); return; }
+
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+
+      await api.subscribeNotify(tripId, { subscription: subscription.toJSON() as object });
+      setPushState('granted');
+    } catch (err) {
+      console.warn('[push subscribe]', err);
+      setPushState('blocked');
+    }
+  }
+
+  const supportsNotifications = typeof window !== 'undefined' && 'Notification' in window;
+
   return (
-    <Card className="min-h-[400px] grid place-items-center text-center">
+    <Card className="min-h-[400px] flex items-center justify-center text-center">
       <div className="space-y-6 max-w-xs w-full mx-auto">
         <div className="w-16 h-16 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow animate-float mx-auto">
           <svg viewBox="0 0 24 24" className="w-8 h-8 text-primary-foreground" fill="currentColor">
@@ -314,18 +384,73 @@ function GeneratingStep() {
         {/* Step dots */}
         <div className="flex items-center justify-center gap-1.5">
           {PHASES.map((_, i) => (
-            <div
-              key={i}
-              className={`rounded-full transition-all duration-500 ${
-                i === idx ? "w-4 h-1.5 bg-primary" : i < idx ? "w-1.5 h-1.5 bg-primary/40" : "w-1.5 h-1.5 bg-border"
-              }`}
-            />
+            <div key={i} className={`rounded-full transition-all duration-500 ${
+              i === idx ? "w-4 h-1.5 bg-primary" : i < idx ? "w-1.5 h-1.5 bg-primary/40" : "w-1.5 h-1.5 bg-border"
+            }`} />
           ))}
         </div>
         <div className="mx-auto max-w-xs h-1.5 rounded-full bg-secondary overflow-hidden">
           <div className="h-full bg-gradient-primary animate-[typing_12s_linear_forwards]" />
         </div>
         <p className="text-xs text-muted-foreground">Usually ready in 15–25 seconds.</p>
+
+        {/* ── Notification opt-in — appears after 7 s ──────────────────── */}
+        {showNotify && tripId && (
+          <div className="text-left border-t border-border pt-5 space-y-3 animate-rise">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground text-center">
+              Going somewhere? Get notified when ready:
+            </div>
+
+            {/* Email row */}
+            <div className="flex items-center gap-2">
+              <span className="text-base shrink-0 w-5 text-center">📧</span>
+              {emailState === 'sent' ? (
+                <span className="text-xs text-google-green font-medium">✓ We'll email you</span>
+              ) : (
+                <>
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={e => setEmailInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleEmailNotify()}
+                    placeholder="your@email.com"
+                    className="flex-1 min-w-0 text-xs bg-secondary/60 rounded-lg px-3 py-1.5 ring-hairline outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                  <button
+                    onClick={handleEmailNotify}
+                    disabled={emailState === 'sending' || !emailInput.includes('@')}
+                    className="shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-foreground text-background hover:opacity-80 transition disabled:opacity-40"
+                  >
+                    {emailState === 'sending' ? '…' : 'Notify'}
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Push row */}
+            {supportsNotifications && (
+              <div className="flex items-center gap-2">
+                <span className="text-base shrink-0 w-5 text-center">🔔</span>
+                {pushState === 'granted' ? (
+                  <span className="text-xs text-google-green font-medium">✓ Browser notification set</span>
+                ) : pushState === 'blocked' ? (
+                  <span className="text-xs text-muted-foreground">Blocked — enable in browser settings</span>
+                ) : (
+                  <>
+                    <span className="flex-1 text-xs text-muted-foreground">Browser notification</span>
+                    <button
+                      onClick={handlePushSubscribe}
+                      disabled={pushState === 'subscribing'}
+                      className="shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-foreground text-background hover:opacity-80 transition disabled:opacity-40"
+                    >
+                      {pushState === 'subscribing' ? '…' : 'Allow'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -818,6 +943,9 @@ function PlanStep({
         )}
       </Card>
 
+      {/* Lock-in / account save */}
+      <LockBanner tripId={tripId} />
+
       {/* Confirm */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-1">
         <div>
@@ -930,10 +1058,131 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan }: {
   );
 }
 
+/* ─── lock-in banner ─────────────────────────────────────────────────────────── */
+function LockBanner({ tripId }: { tripId: string }) {
+  const { user, signIn, getIdToken } = useAuth();
+  const [state, setState] = useState<'idle' | 'signing-in' | 'linking' | 'linked' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // If the user is already logged in when the plan arrives, link automatically
+  useEffect(() => {
+    if (!user || state !== 'idle') return;
+    linkPlan();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  async function linkPlan() {
+    setState('linking');
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error('No token');
+      await api.linkPlan(tripId, token);
+      setState('linked');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to save plan.');
+      setState('error');
+    }
+  }
+
+  async function handleSignIn() {
+    setState('signing-in');
+    try {
+      await signIn();
+      // useEffect above will detect user change and call linkPlan
+    } catch {
+      setState('idle');
+    }
+  }
+
+  if (state === 'linked') {
+    return (
+      <Card className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-full bg-google-green/15 text-google-green grid place-items-center text-xl shrink-0">✅</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-display font-semibold text-sm">Plan saved to your account</div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Come back anytime at{" "}
+            <Link to="/my-plans" className="underline underline-offset-2 hover:text-foreground transition-colors">My Plans</Link>
+          </p>
+        </div>
+        <Link
+          to="/my-plans"
+          className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition"
+        >
+          View all →
+        </Link>
+      </Card>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <Card className="flex items-center gap-4">
+        <div className="text-destructive text-xl shrink-0">⚠️</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-display font-semibold text-sm text-destructive">Couldn't save plan</div>
+          <p className="text-xs text-muted-foreground mt-0.5">{errorMsg}</p>
+        </div>
+        <button onClick={linkPlan} className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition">
+          Retry
+        </button>
+      </Card>
+    );
+  }
+
+  if (user) {
+    // Logged in but not yet linked (linking in progress)
+    return (
+      <Card className="flex items-center gap-4">
+        <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+        <div className="text-sm text-muted-foreground">Saving plan to your account…</div>
+      </Card>
+    );
+  }
+
+  // Default: not logged in → show CTA
+  return (
+    <Card>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">🔐</span>
+            <div className="font-display font-semibold">Lock in your plan</div>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Sign in with Google to save this plan to your account. Close the tab, come back later — it'll be right here.
+          </p>
+        </div>
+        <button
+          onClick={handleSignIn}
+          disabled={state === 'signing-in'}
+          className="shrink-0 inline-flex items-center gap-2.5 rounded-full px-5 py-3 text-sm font-medium bg-card ring-hairline hover:bg-secondary active:scale-95 transition disabled:opacity-60 whitespace-nowrap"
+        >
+          {state === 'signing-in' ? (
+            <><span className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />Signing in…</>
+          ) : (
+            <>
+              {/* Google "G" logo */}
+              <svg viewBox="0 0 24 24" className="w-4 h-4" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Continue with Google
+            </>
+          )}
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 /* ─── page shell ─────────────────────────────────────────────────────────────── */
 type Step = "intake" | "generating" | "plan" | "confirm";
 
 export default function Start() {
+  const { user, signIn, signOut } = useAuth();
   const [step, setStep] = useState<Step>("intake");
   const [intake, setIntake] = useState<IntakeData | null>(null);
   const [phone, setPhone] = useState<string>("");
@@ -974,6 +1223,20 @@ export default function Start() {
           setPlan(result.plan);
           setScraped(result.scraped ?? null);
           setStep("plan");
+
+          // ── In-tab notification (tab is open but backgrounded) ──────────
+          if (
+            document.visibilityState !== "visible" &&
+            typeof Notification !== "undefined" &&
+            Notification.permission === "granted"
+          ) {
+            const dest = eff?.destination || result.plan.hotel?.area || "your destination";
+            new Notification("Your squad plan is ready! 🎉", {
+              body: `Trip to ${dest} is all mapped out. Tap to view.`,
+              icon: "/favicon.ico",
+              tag:  "plan-ready",
+            });
+          }
 
           // GIGM buses — fire separately after plan lands
           if (eff && !/flight/i.test(eff.transport || "")) {
@@ -1066,19 +1329,48 @@ export default function Start() {
             </span>
             MySquadGo
           </Link>
-          {step !== "intake" && step !== "generating" && (
-            <button
-              onClick={() => {
-                setStep("intake");
-                const url = new URL(window.location.href);
-                url.searchParams.delete("job");
-                window.history.replaceState({}, "", url.toString());
-              }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← Start over
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Start over — shown on plan/confirm steps */}
+            {step !== "intake" && step !== "generating" && (
+              <button
+                onClick={() => {
+                  setStep("intake");
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete("job");
+                  window.history.replaceState({}, "", url.toString());
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Start over
+              </button>
+            )}
+
+            {/* Auth */}
+            {user ? (
+              <div className="flex items-center gap-2">
+                <Link to="/my-plans" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full ring-hairline" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="w-6 h-6 rounded-full bg-primary/15 grid place-items-center text-primary text-[10px] font-semibold">
+                      {(user.displayName || user.email || "U")[0].toUpperCase()}
+                    </span>
+                  )}
+                  <span className="hidden sm:inline">My Plans</span>
+                </Link>
+                <button onClick={() => signOut()} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  Sign out
+                </button>
+              </div>
+            ) : step === "intake" ? (
+              <button
+                onClick={() => signIn().catch(() => {})}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Sign in
+              </button>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -1126,7 +1418,9 @@ export default function Start() {
         )}
 
         {step === "intake" && <IntakeStep onSubmit={handleIntakeSubmit} />}
-        {step === "generating" && <GeneratingStep />}
+        {step === "generating" && (
+          <GeneratingStep tripId={tripId} userEmail={user?.email ?? null} />
+        )}
         {step === "plan" && plan && intake && (
           <PlanStep tripId={tripId!} plan={plan} intake={intake} scraped={scraped} busLoading={busLoading} onConfirm={handleConfirm} />
         )}

@@ -41,6 +41,17 @@ export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[];
 export type PlanResponse = { tripId: string; plan: GeminiPlan; scraped?: ScrapedData };
 export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] };
 
+export type UserPlan = {
+  tripId:      string;
+  origin:      string | null;
+  destination: string | null;
+  days:        number | null;
+  squadSize:   number | null;
+  status:      string;
+  plan:        GeminiPlan | null;
+  createdAt:   number;
+};
+
 /** Returned by POST /api/plan — job is created, work runs in background */
 export type CreatePlanResponse = { tripId: string; status: 'generating' };
 
@@ -91,10 +102,10 @@ export type DashboardData = {
   summary: DashboardSummary;
 };
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function post<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   });
   const data = await res.json();
@@ -102,12 +113,15 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`);
+async function get<T>(path: string, headers?: Record<string, string>): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, { headers });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data as T;
+
 }
+
+function bearer(token: string) { return { Authorization: `Bearer ${token}` }; }
 
 export const api = {
   /** Fire-and-forget: creates the job, returns tripId immediately. */
@@ -121,6 +135,24 @@ export const api = {
       `/api/gigm-test?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${date ? `&date=${date}` : ''}`
     ),
   confirmPlan: (tripId: string, plan: GeminiPlan, phone?: string) => post<ConfirmResponse>('/api/confirm', { tripId, plan, phone }),
+  /** Save a push subscription and/or email address to notify when the plan is ready. */
+  subscribeNotify: (tripId: string, opts: { subscription?: object; email?: string }) =>
+    post<{ ok: boolean }>('/api/notify/subscribe', { tripId, ...opts }),
+
+  /** Link a completed trip to the signed-in user's account. */
+  linkPlan:   (tripId: string, token: string) =>
+    post<{ ok: boolean }>('/api/auth/link-plan', { tripId }, bearer(token)),
+
+  /** Fetch all plans saved by the authenticated user. */
+  getMyPlans: (token: string) =>
+    get<{ plans: UserPlan[] }>('/api/auth/plans', bearer(token)),
+
+  /** Verify token and return profile. */
+  getMe: (token: string) =>
+    get<{ uid: string; email: string; name: string | null; photoUrl: string | null; planCount: number }>(
+      '/api/auth/me', bearer(token)
+    ),
+
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
   registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),
   getAgent: (phone: string) => get<{ agent: AgentProfile }>(`/api/agents/${encodeURIComponent(phone)}`),

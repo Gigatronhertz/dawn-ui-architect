@@ -72,6 +72,19 @@ const SCHEMA = [
     fee_note TEXT,
     UNIQUE(state, name)
   )`,
+  `CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id           TEXT PRIMARY KEY,
+    trip_id      TEXT NOT NULL,
+    subscription TEXT NOT NULL,
+    created_at   INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  `CREATE TABLE IF NOT EXISTS users (
+    id          TEXT PRIMARY KEY,
+    email       TEXT UNIQUE NOT NULL,
+    name        TEXT,
+    photo_url   TEXT,
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
   `CREATE TABLE IF NOT EXISTS members (
     id            TEXT PRIMARY KEY,
     trip_id       TEXT NOT NULL,
@@ -90,8 +103,10 @@ const SCHEMA = [
 // Safe schema migrations — new columns added after initial release.
 // Each statement is run once; duplicate-column errors are swallowed.
 const MIGRATIONS = [
-  `ALTER TABLE trips ADD COLUMN scraped      TEXT`,
-  `ALTER TABLE trips ADD COLUMN intake_json  TEXT`,
+  `ALTER TABLE trips ADD COLUMN scraped       TEXT`,
+  `ALTER TABLE trips ADD COLUMN intake_json   TEXT`,
+  `ALTER TABLE trips ADD COLUMN user_id       TEXT`,
+  `ALTER TABLE trips ADD COLUMN notify_email  TEXT`,
 ];
 
 const ready = (async () => {
@@ -116,11 +131,18 @@ const ready = (async () => {
   process.exit(1);
 });
 
-// ── Generic raw query ──────────────────────────────────────────────────────
-// Returns first row for SELECT queries, null otherwise.
+// ── Generic raw queries ────────────────────────────────────────────────────
+
+/** Returns the first row, or null. */
 async function raw(sql, args) {
   const res = await client.execute(args !== undefined ? { sql, args } : sql);
   return res.rows?.[0] ?? null;
+}
+
+/** Returns all rows as an array. */
+async function rawAll(sql, args) {
+  const res = await client.execute(args !== undefined ? { sql, args } : sql);
+  return res.rows ?? [];
 }
 
 // ── Conversation helpers ───────────────────────────────────────────────────
@@ -326,13 +348,43 @@ async function getAgentDashboard(phone) {
   return res.rows;
 }
 
+// ── User helpers ───────────────────────────────────────────────────────────
+
+async function upsertUser({ id, email, name, photo_url }) {
+  await client.execute({
+    sql: `INSERT INTO users (id, email, name, photo_url)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            email     = ?,
+            name      = COALESCE(?, name),
+            photo_url = COALESCE(?, photo_url)`,
+    args: [id, email, name ?? null, photo_url ?? null, email, name ?? null, photo_url ?? null],
+  });
+}
+
+async function getUser(id) {
+  const res = await client.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [id] });
+  return res.rows[0] ?? null;
+}
+
+async function getUserPlans(userId) {
+  const res = await client.execute({
+    sql: `SELECT id, origin, destination, days, squad_size, status, plan, created_at
+          FROM trips WHERE user_id = ? ORDER BY created_at DESC`,
+    args: [userId],
+  });
+  return res.rows;
+}
+
 module.exports = {
   ready,
   raw,
+  rawAll,
   conv:        { get: getConv, upsert: upsertConv, reset: resetConv },
   trips:       { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
   members:     { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
   waitlist:    { insert: insertWaitlist, list: listWaitlist },
   agents:      { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
   attractions: { byState: getAttractionsByState },
+  users:       { upsert: upsertUser, get: getUser, plans: getUserPlans },
 };

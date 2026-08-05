@@ -7,6 +7,9 @@ const M = require('../bot/messages');
 const GT   = require('../services/googleTravel');
 const GIGM = require('../services/gigm');
 const { getLines } = require('../utils/logger');
+const { requireAuth }      = require('../middleware/auth');
+const { sendPlanReadyEmail } = require('../services/email');
+const { sendPlanReadyPush  } = require('../services/webPush');
 
 const router = Router();
 
@@ -55,6 +58,35 @@ router.post('/plan', async (req, res) => {
         [JSON.stringify(plan), JSON.stringify(scraped), 'plan_review', tripId]
       );
       console.log(`[api/plan] ${tripId} done`);
+
+      // ── Notify the user ────────────────────────────────────────────────────
+      const trip = await db.trips.get(tripId);
+
+      // Email
+      if (trip?.notify_email) {
+        sendPlanReadyEmail({
+          to:          trip.notify_email,
+          destination: destination,
+          origin:      origin,
+          days:        Number(days),
+          squadSize:   Number(squadSize),
+          perPerson:   plan.cost_breakdown?.per_person ?? 0,
+          tripId,
+        }).catch(() => {});
+      }
+
+      // Web push — find all subscriptions for this trip
+      const pushRows = await db.rawAll(
+        `SELECT subscription FROM push_subscriptions WHERE trip_id = ?`,
+        [tripId]
+      );
+      for (const row of pushRows) {
+        sendPlanReadyPush({
+          subscription: JSON.parse(row.subscription),
+          destination,
+          tripId,
+        }).catch(() => {});
+      }
     } catch (err) {
       console.error('[api/plan/bg]', err.message);
       await db.raw(`UPDATE trips SET status=? WHERE id=?`, ['error', tripId]);
@@ -366,6 +398,89 @@ router.post('/waitlist', async (req, res) => {
   const src = (typeof source === 'string' && source.trim()) ? source.trim() : 'unknown';
   await db.waitlist.insert({ phone: sanitised, source: src });
   return res.json({ ok: true });
+});
+
+// ── Notification routes ───────────────────────────────────────────────────────
+
+// POST /api/notify/subscribe
+// Stores a push subscription and/or email address for a trip.
+// Called from the generating screen — unauthenticated (tripId is the secret).
+router.post('/notify/subscribe', async (req, res) => {
+  const { tripId, subscription, email } = req.body;
+  if (!tripId) return res.status(400).json({ error: 'tripId required.' });
+
+  // Store push subscription
+  if (subscription && typeof subscription === 'object') {
+    await db.raw(
+      `INSERT OR REPLACE INTO push_subscriptions (id, trip_id, subscription) VALUES (?, ?, ?)`,
+      [uuid(), tripId, JSON.stringify(subscription)]
+    );
+  }
+
+  // Store notify email
+  if (email && typeof email === 'string' && email.includes('@')) {
+    await db.raw(
+      `UPDATE trips SET notify_email = ? WHERE id = ?`,
+      [email.trim().toLowerCase(), tripId]
+    );
+  }
+
+  return res.json({ ok: true });
+});
+
+// ── Auth routes ───────────────────────────────────────────────────────────────
+
+// POST /api/auth/link-plan
+// Associates a trip with the authenticated Google user.
+// Creates the user record on first sign-in; idempotent on subsequent calls.
+router.post('/auth/link-plan', requireAuth, async (req, res) => {
+  const { tripId } = req.body;
+  if (!tripId) return res.status(400).json({ error: 'tripId required.' });
+
+  const { uid, email, name, picture } = req.user;
+
+  // Upsert user row
+  await db.users.upsert({ id: uid, email, name: name || null, photo_url: picture || null });
+
+  // Link the trip — only if it isn't already owned by a different user
+  await db.raw(
+    `UPDATE trips SET user_id = ? WHERE id = ? AND (user_id IS NULL OR user_id = ?)`,
+    [uid, tripId, uid]
+  );
+
+  return res.json({ ok: true });
+});
+
+// GET /api/auth/plans
+// Returns all saved plans belonging to the authenticated user, newest first.
+router.get('/auth/plans', requireAuth, async (req, res) => {
+  const { uid } = req.user;
+  const rows = await db.users.plans(uid);
+  const plans = rows.map(t => ({
+    tripId:      t.id,
+    origin:      t.origin,
+    destination: t.destination,
+    days:        t.days,
+    squadSize:   t.squad_size,
+    status:      t.status,
+    plan:        t.plan ? JSON.parse(t.plan) : null,
+    createdAt:   t.created_at,
+  }));
+  return res.json({ plans });
+});
+
+// GET /api/auth/me
+// Verifies the token and returns the user's profile + plan count.
+router.get('/auth/me', requireAuth, async (req, res) => {
+  const { uid, email, name, picture } = req.user;
+  const user = await db.users.get(uid);
+  const rows = await db.users.plans(uid);
+  return res.json({
+    uid, email,
+    name:     name   || user?.name   || null,
+    photoUrl: picture || user?.photo_url || null,
+    planCount: rows.length,
+  });
 });
 
 module.exports = router;
