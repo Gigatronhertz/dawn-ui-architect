@@ -1159,8 +1159,11 @@ function LockBanner({ tripId }: { tripId: string }) {
     try {
       await signIn();
       // useEffect above will detect user change and call linkPlan
-    } catch {
-      setState('idle');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[sign-in]', msg);
+      setErrorMsg(msg);
+      setState('error');
     }
   }
 
