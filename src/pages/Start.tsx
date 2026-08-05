@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { signInWithGoogleRedirect } from "@/lib/firebase";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
@@ -1129,14 +1130,21 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
 }
 
 /* ─── lock-in banner ─────────────────────────────────────────────────────────── */
+const PENDING_LINK_KEY = 'msgo_pending_link';
+
 function LockBanner({ tripId }: { tripId: string }) {
   const { user, signIn, getIdToken } = useAuth();
   const [state, setState] = useState<'idle' | 'signing-in' | 'linking' | 'linked' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // If the user is already logged in when the plan arrives, link automatically
+  // Auto-link when:
+  // (a) user was already signed in when the component mounted, or
+  // (b) we just came back from a Google redirect (sessionStorage has our tripId)
   useEffect(() => {
     if (!user || state !== 'idle') return;
+    const pending = sessionStorage.getItem(PENDING_LINK_KEY);
+    // Always link — either they were already signed in, or they just redirected back
+    if (pending) sessionStorage.removeItem(PENDING_LINK_KEY);
     linkPlan();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -1164,7 +1172,15 @@ function LockBanner({ tripId }: { tripId: string }) {
       if (!token) throw new Error('No token after sign-in');
       await api.linkPlan(tripId, token);
       setState('linked');
-    } catch (err) {
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code ?? '';
+      // Ad blockers and strict privacy shields kill the popup's network requests.
+      // Fall back to a full-page redirect — bypasses the blocker entirely.
+      if (code === 'auth/network-request-failed' || code === 'auth/popup-blocked') {
+        sessionStorage.setItem(PENDING_LINK_KEY, tripId); // resume link after redirect
+        await signInWithGoogleRedirect();
+        return; // page navigates away
+      }
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[sign-in]', msg);
       setErrorMsg(msg);

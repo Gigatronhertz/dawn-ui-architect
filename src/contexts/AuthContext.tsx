@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { onAuthStateChanged, signInWithGoogle, signOut, type User } from '@/lib/firebase';
+import { onAuthStateChanged, signInWithGoogle, signOut, resolveGoogleRedirect, type User } from '@/lib/firebase';
 
 type AuthCtx = {
   user:        User | null;
@@ -16,6 +16,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Resolve any pending redirect sign-in first (no-op if we didn't redirect).
+    // getRedirectResult triggers onAuthStateChanged internally when it succeeds,
+    // so we don't need to handle the returned user explicitly.
+    resolveGoogleRedirect().catch(() => {});
+
     // onAuthStateChanged is a no-op when Firebase is unconfigured — sets user = null immediately
     const unsub = onAuthStateChanged((u) => {
       setUser(u);
