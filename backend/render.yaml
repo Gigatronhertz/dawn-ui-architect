@@ -9,12 +9,38 @@ services:
         value: production
       - key: PUPPETEER_CACHE_DIR
         value: /opt/render/project/.puppeteer-cache
+
+      # ── Database (Turso) ───────────────────────────────────────────────────
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_AUTH_TOKEN
         sync: false
-      - key: GEMINI_API_KEY
+
+      # ── AI plan generation (Groq) ──────────────────────────────────────────
+      - key: GROQ_API_KEY
         sync: false
+
+      # ── Web Push (VAPID) ───────────────────────────────────────────────────
+      - key: VAPID_PUBLIC_KEY
+        value: BPxF52XvvGuQWWYzJCYwDXY6VnH2A6euA1hnWHjWUu7CvgUDZRZ19k5xrbt9XuUFbjHjtQ4JJG3AgBRrilQxtW4
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_EMAIL
+        value: hello@mysquadgo.com
+
+      # ── Email notifications (Resend) ───────────────────────────────────────
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: "MySquadGo <onboarding@resend.dev>"
+      - key: FRONTEND_URL
+        value: https://mysquadgo.vercel.app
+
+      # ── Firebase Admin (Google Auth verification) ──────────────────────────
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+
+      # ── WhatsApp (Meta Cloud API) ──────────────────────────────────────────
       - key: WA_TOKEN
         sync: false
       - key: WA_PHONE_ID
@@ -23,12 +49,14 @@ services:
         sync: false
       - key: WA_DISPLAY_NUMBER
         sync: false
+
+      # ── Payments (Paystack) ────────────────────────────────────────────────
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
-      - key: FRONTEND_ORIGIN
-        value: "*"
+
+      # ── Scrapers ───────────────────────────────────────────────────────────
       - key: GOOGLE_API_KEY
         sync: false
       - key: RAPIDAPI_KEY
@@ -37,3 +65,7 @@ services:
         sync: false
       - key: AMADEUS_CLIENT_SECRET
         sync: false
+
+      # ── CORS ───────────────────────────────────────────────────────────────
+      - key: FRONTEND_ORIGIN
+        value: "https://mysquadgo.vercel.app"

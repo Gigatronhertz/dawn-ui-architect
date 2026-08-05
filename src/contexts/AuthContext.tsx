@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { auth, onAuthStateChanged, signInWithGoogle, signOut, type User } from '@/lib/firebase';
+import { onAuthStateChanged, signInWithGoogle, signOut, type User } from '@/lib/firebase';
 
 type AuthCtx = {
   user:        User | null;
@@ -16,7 +16,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    // onAuthStateChanged is a no-op when Firebase is unconfigured — sets user = null immediately
+    const unsub = onAuthStateChanged((u) => {
       setUser(u);
       setLoading(false);
     });
@@ -24,8 +25,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getIdToken = async (): Promise<string | null> => {
-    if (!auth.currentUser) return null;
-    return auth.currentUser.getIdToken();
+    if (!user) return null;
+    return (user as User & { getIdToken: () => Promise<string> }).getIdToken();
   };
 
   return (

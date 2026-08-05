@@ -1,10 +1,12 @@
 {
   "env": {
-    "VITE_API_URL": "https://dawn-ui-architect.onrender.com"
+    "VITE_API_URL": "https://dawn-ui-architect.onrender.com",
+    "VITE_VAPID_PUBLIC_KEY": "BPxF52XvvGuQWWYzJCYwDXY6VnH2A6euA1hnWHjWUu7CvgUDZRZ19k5xrbt9XuUFbjHjtQ4JJG3AgBRrilQxtW4"
   },
   "build": {
     "env": {
-      "VITE_API_URL": "https://dawn-ui-architect.onrender.com"
+      "VITE_API_URL": "https://dawn-ui-architect.onrender.com",
+      "VITE_VAPID_PUBLIC_KEY": "BPxF52XvvGuQWWYzJCYwDXY6VnH2A6euA1hnWHjWUu7CvgUDZRZ19k5xrbt9XuUFbjHjtQ4JJG3AgBRrilQxtW4"
     }
   },
   "rewrites": [
