@@ -9,7 +9,7 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.7.1",
+    "@google/generative-ai": "^0.24.1",
     "@libsql/client": "^0.14.0",
     "axios": "^1.6.8",
     "dotenv": "^16.4.5",

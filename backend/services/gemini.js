@@ -19,6 +19,13 @@ function getClient() {
   return genAI;
 }
 
+function getModel() {
+  return getClient().getGenerativeModel({
+    model: 'gemini-1.5-flash',               // free tier — no billing needed
+    generationConfig: { responseMimeType: 'application/json' },
+  });
+}
+
 const fmtNGN = (n) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
@@ -205,7 +212,7 @@ function buildContextBlock(ctx, intake) {
 
 // ── Main plan generation ───────────────────────────────────────────────────────
 async function generateTripPlan(intake) {
-  const model = getClient().getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = getModel();
 
   // Fetch live data in parallel — takes ~2-4s, runs while user sees "Generating…"
   const ctx = await fetchRealWorldContext(intake);
@@ -305,6 +312,8 @@ INSTRUCTIONS:
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
+  // responseMimeType:'application/json' guarantees raw JSON — no markdown fences.
+  // We still strip them defensively in case a model version slips them in anyway.
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const plan = JSON.parse(cleaned);
   return {
