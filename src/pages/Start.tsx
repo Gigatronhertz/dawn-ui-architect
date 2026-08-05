@@ -512,10 +512,11 @@ function PlanStep({
   intake: IntakeData;
   scraped?: ScrapedData | null;
   busLoading?: boolean;
-  onConfirm: (finalPlan: GeminiPlan) => void;
+  onConfirm: (finalPlan: GeminiPlan, selectedDate?: string) => void;
 }) {
   const [days, setDays] = useState<PlanDay[]>(initialPlan.days);
   const [openDay, setOpenDay] = useState<number>(0);
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [mapsOpen, setMapsOpen] = useState<number | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -946,14 +947,34 @@ function PlanStep({
       {/* Lock-in / account save */}
       <LockBanner tripId={tripId} />
 
+      {/* Trip date picker */}
+      <Card className="p-5">
+        <div className="flex items-start gap-4">
+          <div className="text-2xl shrink-0 mt-0.5">📅</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-display font-semibold mb-1">When is the trip?</div>
+            <p className="text-sm text-muted-foreground mb-3">
+              Optional — sets a live countdown on the squad page your group will see.
+            </p>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              min={new Date().toISOString().split("T")[0]}
+              className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition"
+            />
+          </div>
+        </div>
+      </Card>
+
       {/* Confirm */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-1">
         <div>
           <div className="font-display font-semibold">Happy with the plan?</div>
-          <p className="text-sm text-muted-foreground">Confirm to get the link that adds the bot to your group.</p>
+          <p className="text-sm text-muted-foreground">Confirm to get the share link for your squad.</p>
         </div>
         <button
-          onClick={() => onConfirm(finalPlan)}
+          onClick={() => onConfirm(finalPlan, selectedDate || undefined)}
           className="group inline-flex items-center gap-2 rounded-full bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform whitespace-nowrap w-full sm:w-auto justify-center"
         >
           Confirm & share with squad
@@ -967,13 +988,16 @@ function PlanStep({
 }
 
 /* ─── step 4: confirm ────────────────────────────────────────────────────────── */
-function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan }: {
-  botNumber: string; destination: string; instructions: string[]; tripId: string; squadSize: number; finalPlan?: GeminiPlan | null;
+function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, selectedDate }: {
+  botNumber: string; destination: string; instructions: string[]; tripId: string; squadSize: number; finalPlan?: GeminiPlan | null; selectedDate?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const number = botNumber.startsWith("+") ? botNumber : `+${botNumber}`;
   const planUrl = `${window.location.origin}/plan/${tripId}`;
+  const tripDateLabel = selectedDate
+    ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })
+    : null;
   const waShareText = encodeURIComponent(
     `🛫 I've planned our squad trip to ${destination}! Check it out and say you're in:\n${planUrl}`
   );
@@ -1017,6 +1041,12 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan }: {
               <span className="text-muted-foreground">Per person</span>
               <span className="font-display font-semibold">{fmtNGN(finalPlan.cost_breakdown.per_person)}</span>
             </div>
+            {tripDateLabel && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Trip date</span>
+                <span className="font-medium">📅 {tripDateLabel}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
               <span className="font-medium">Squad total ({squadSize} people)</span>
               <span className="font-display font-semibold text-primary">{fmtNGN(finalPlan.cost_breakdown.per_person * squadSize)}</span>
@@ -1231,7 +1261,7 @@ export default function Start() {
   const [scraped, setScraped] = useState<ScrapedData | null>(null);
   const [busLoading, setBusLoading] = useState(false);
   const [confirmedPlan, setConfirmedPlan] = useState<GeminiPlan | null>(null);
-  const [confirmData, setConfirmData] = useState<{ botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] } | null>(null);
+  const [confirmData, setConfirmData] = useState<{ botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[]; selectedDate?: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1340,13 +1370,20 @@ export default function Start() {
     }
   }
 
-  async function handleConfirm(finalPlan: GeminiPlan) {
+  async function handleConfirm(finalPlan: GeminiPlan, selectedDate?: string) {
     if (!tripId) return;
     setError(null);
     try {
-      const result = await api.confirmPlan(tripId, finalPlan, phone || undefined);
+      const result = await api.confirmPlan(tripId, finalPlan, phone || undefined, selectedDate);
       setConfirmedPlan(finalPlan);
-      setConfirmData({ botNumber: result.botNumber, destination: result.destination, squadSize: result.squadSize, dmSent: result.dmSent, instructions: result.instructions });
+      setConfirmData({
+        botNumber: result.botNumber,
+        destination: result.destination,
+        squadSize: result.squadSize,
+        dmSent: result.dmSent,
+        instructions: result.instructions,
+        selectedDate: result.selectedDate,
+      });
       setStep("confirm");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong confirming the plan.");
@@ -1465,7 +1502,7 @@ export default function Start() {
           <PlanStep tripId={tripId!} plan={plan} intake={intake} scraped={scraped} busLoading={busLoading} onConfirm={handleConfirm} />
         )}
         {step === "confirm" && confirmData && (
-          <ConfirmStep tripId={tripId!} botNumber={confirmData.botNumber} destination={confirmData.destination} squadSize={confirmData.squadSize} instructions={confirmData.instructions} finalPlan={confirmedPlan} />
+          <ConfirmStep tripId={tripId!} botNumber={confirmData.botNumber} destination={confirmData.destination} squadSize={confirmData.squadSize} instructions={confirmData.instructions} finalPlan={confirmedPlan} selectedDate={confirmData.selectedDate} />
         )}
       </div>
     </main>

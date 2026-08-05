@@ -39,7 +39,7 @@ export type GIGMTrip = { operator: string; departureTime: string | null; arrival
 export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[]; bHotels: BHotel[]; gtRentals: GTRental[]; bApartments: BHotel[]; gigmTrips: GIGMTrip[]; localAttractions?: Attraction[] };
 
 export type PlanResponse = { tripId: string; plan: GeminiPlan; scraped?: ScrapedData };
-export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] };
+export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[]; selectedDate?: string | null };
 
 export type UserPlan = {
   tripId:           string;
@@ -68,6 +68,7 @@ export type PublicPlanResponse = {
   days_plan:        PlanDay[];
   cost_breakdown:   GeminiPlan['cost_breakdown'];
   participantCount: number;
+  selectedDate:     string | null;
   paidCount:        number;
   totalCollected:   number;
   paymentsEnabled:  boolean;
@@ -163,7 +164,8 @@ export const api = {
     get<{ from: string; to: string; count: number; trips: GIGMTrip[] }>(
       `/api/gigm-test?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${date ? `&date=${date}` : ''}`
     ),
-  confirmPlan: (tripId: string, plan: GeminiPlan, phone?: string) => post<ConfirmResponse>('/api/confirm', { tripId, plan, phone }),
+  confirmPlan: (tripId: string, plan: GeminiPlan, phone?: string, selectedDate?: string) =>
+    post<ConfirmResponse>('/api/confirm', { tripId, plan, phone, selectedDate: selectedDate || null }),
   /** Save a push subscription and/or email address to notify when the plan is ready. */
   subscribeNotify: (tripId: string, opts: { subscription?: object; email?: string }) =>
     post<{ ok: boolean }>('/api/notify/subscribe', { tripId, ...opts }),

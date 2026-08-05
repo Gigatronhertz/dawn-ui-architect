@@ -99,7 +99,7 @@ router.post('/plan', async (req, res) => {
 // Organiser has reviewed/edited the plan and confirmed it.
 // Saves final plan, DMss the organiser immediately, returns bot number and instructions.
 router.post('/confirm', async (req, res) => {
-  const { tripId, plan, phone } = req.body;
+  const { tripId, plan, phone, selectedDate } = req.body;
   if (!tripId || !plan) return res.status(400).json({ error: 'Missing tripId or plan.' });
 
   const trip = await db.trips.get(tripId);
@@ -107,13 +107,16 @@ router.post('/confirm', async (req, res) => {
 
   const botNumber = process.env.WA_DISPLAY_NUMBER || '234XXXXXXXXXX';
 
+  // A valid YYYY-MM-DD date string; silently ignored if malformed
+  const tripDate = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate || '') ? selectedDate : null;
+
   await db.trips.update({
     id: tripId,
     plan: JSON.stringify(plan),
     status: 'awaiting_group',
     origin: null, destination: null, budget: null, days: null, squad_size: null,
     accommodation: null, date_flexibility: null, specific_dates: null,
-    dealbreakers: null, selected_date: null, selected_hotel: null, group_id: null,
+    dealbreakers: null, selected_date: tripDate, selected_hotel: null, group_id: null,
   });
 
   // If the organiser gave us their WhatsApp number, wire the trip to them directly
@@ -134,6 +137,7 @@ router.post('/confirm', async (req, res) => {
     botNumber,
     destination: trip.destination,
     squadSize: trip.squad_size,
+    selectedDate: tripDate,
     dmSent: !!(phone && phone.trim().length >= 7),
     instructions: [
       `Open your squad's WhatsApp group (or create one).`,
@@ -430,6 +434,7 @@ router.get('/public/plan/:tripId', async (req, res) => {
     highlights:       plan.highlights || [],
     days_plan:        plan.days || [],
     cost_breakdown:   plan.cost_breakdown,
+    selectedDate:     trip.selected_date || null,
     participantCount: participants.length,
     paidCount:        stats.paidCount,
     totalCollected:   stats.totalCollected,
