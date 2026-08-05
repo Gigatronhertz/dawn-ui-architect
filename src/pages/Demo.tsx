@@ -438,7 +438,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
     "Checking live flight prices…",
     "Scraping hotel deals from Google Travel…",
     "Searching Booking.com for availability…",
-    "Building your itinerary with Gemini AI…",
+    "Building your itinerary with Karije…",
     "Calculating costs & squad split…",
   ];
   const [pIdx, setPIdx] = useState(0);
@@ -471,7 +471,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
     const opts: HotelOpt[] = [];
     if (realPlan?.hotel) {
       const h = realPlan.hotel;
-      opts.push({ key: 'ai', name: h.name, area: h.area, price: h.price_per_night, rating: h.rating, source: 'Gemini AI', badge: 'AI Pick', perks: h.perks || [] });
+      opts.push({ key: 'ai', name: h.name, area: h.area, price: h.price_per_night, rating: h.rating, source: 'Karije Pick', badge: 'AI Pick', perks: h.perks || [] });
     }
     (scraped?.gtHotels ?? []).forEach((h, i) => {
       if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase()))
@@ -600,7 +600,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
   if (phase === 0) {
     return (
       <Section>
-        <StepHeader eyebrow="Step 3 of 7 · AI Planning" title="Gemini is planning your trip…" sub="Pulling live hotel prices, flights, and venue data before generating your plan." />
+        <StepHeader eyebrow="Step 3 of 7 · AI Planning" title="Karije is planning your trip…" sub="Pulling live hotel prices, flights, and venue data before generating your plan." />
         <div className="rounded-2xl bg-secondary/60 p-8 text-center">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow animate-float">
             <svg viewBox="0 0 24 24" className="w-7 h-7 text-primary-foreground" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" /></svg>
@@ -618,7 +618,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
   if (phase === 2) {
     return (
       <Section>
-        <StepHeader eyebrow="Step 3 of 7 · AI Planning" title="Something went wrong." sub={planError || "Could not generate plan. Check your backend is running and GEMINI_API_KEY is set."} />
+        <StepHeader eyebrow="Step 3 of 7 · AI Planning" title="Something went wrong." sub={planError || "Could not generate plan. Check your backend is running and GROQ_API_KEY is set."} />
         <div className="mt-6 flex gap-3">
           <BackBtn onClick={onBack} />
           <GhostBtn onClick={() => { setPhase(0); setPlanError(null); setRetryKey(k => k + 1); }}>Try again</GhostBtn>
@@ -740,7 +740,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
 
                         {/* AI suggestions w/ photo tiles — show 2 by default */}
                         <div>
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-google-pink mb-2 flex items-center gap-1.5">✨ Gemini suggests for Day {d.day}</div>
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-google-pink mb-2 flex items-center gap-1.5">✨ Karije suggests for Day {d.day}</div>
                           <div className="grid grid-cols-2 gap-2">
                             {(seeMore[di] ? sugg : sugg.slice(0, 2)).map((s) => (
                               <div key={s.id} className="rounded-xl bg-secondary/50 ring-hairline overflow-hidden flex flex-col min-w-0">
@@ -969,7 +969,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
           <div className="flex items-center gap-4">
             <BackBtn onClick={onBack} />
             <span className="hidden sm:block text-[11px] text-muted-foreground">
-              {recalcing ? "🔄 Gemini recalculating…" : dirty ? "⚠️ Recalculate before sending." : "✓ Plan is up to date."}
+              {recalcing ? "🔄 Karije recalculating…" : dirty ? "⚠️ Recalculate before sending." : "✓ Plan is up to date."}
             </span>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
