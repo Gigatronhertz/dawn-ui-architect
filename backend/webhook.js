@@ -55,6 +55,18 @@ async function processPayment(reference) {
   const result = await verifyPayment(reference);
   if (!result.success) return false;
 
+  // ── Phase 6: web squad payments (participants table) ──────────────────────
+  // References starting with WEBSQ- belong to web squad members.
+  if (reference.startsWith('WEBSQ-')) {
+    const participant = await db.participants.getByRef(reference);
+    if (!participant) { console.warn('[processPayment] participant not found for ref', reference); return false; }
+    if (participant.paid) return false; // idempotent
+    await db.participants.markPaid({ paystack_ref: reference });
+    console.log(`[processPayment] web participant ${participant.id} paid for trip ${participant.trip_id}`);
+    return true;
+  }
+
+  // ── Existing WhatsApp member payment flow ─────────────────────────────────
   const { tripId, phone, amountNGN } = result;
   if (!tripId || !phone) return false;
 

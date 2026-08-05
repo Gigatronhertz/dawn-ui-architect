@@ -113,6 +113,13 @@ const MIGRATIONS = [
   `ALTER TABLE trips ADD COLUMN intake_json   TEXT`,
   `ALTER TABLE trips ADD COLUMN user_id       TEXT`,
   `ALTER TABLE trips ADD COLUMN notify_email  TEXT`,
+  // Phase 6 — payment columns on participants
+  `ALTER TABLE participants ADD COLUMN email        TEXT`,
+  `ALTER TABLE participants ADD COLUMN paid         INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE participants ADD COLUMN amount       INTEGER`,
+  `ALTER TABLE participants ADD COLUMN paystack_ref TEXT`,
+  `ALTER TABLE participants ADD COLUMN paystack_url TEXT`,
+  `ALTER TABLE participants ADD COLUMN paid_at      INTEGER`,
 ];
 
 const ready = (async () => {
@@ -376,7 +383,9 @@ async function getUser(id) {
 async function getUserPlans(userId) {
   const res = await client.execute({
     sql: `SELECT t.id, t.origin, t.destination, t.days, t.squad_size, t.status, t.plan, t.created_at,
-          (SELECT COUNT(*) FROM participants p WHERE p.trip_id = t.id) AS participant_count
+          (SELECT COUNT(*)                          FROM participants p WHERE p.trip_id = t.id             ) AS participant_count,
+          (SELECT COUNT(*)                          FROM participants p WHERE p.trip_id = t.id AND p.paid=1) AS paid_count,
+          (SELECT COALESCE(SUM(p.amount),0)         FROM participants p WHERE p.trip_id = t.id AND p.paid=1) AS total_collected
           FROM trips t WHERE t.user_id = ? ORDER BY t.created_at DESC`,
     args: [userId],
   });
@@ -394,10 +403,43 @@ async function insertParticipant({ id, trip_id, name }) {
 
 async function getParticipants(tripId) {
   const res = await client.execute({
-    sql: 'SELECT id, name, created_at FROM participants WHERE trip_id = ? ORDER BY created_at ASC',
+    sql: 'SELECT id, name, paid, amount, created_at FROM participants WHERE trip_id = ? ORDER BY created_at ASC',
     args: [tripId],
   });
   return res.rows;
+}
+
+async function getParticipantByRef(paystackRef) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM participants WHERE paystack_ref = ?',
+    args: [paystackRef],
+  });
+  return res.rows[0] ?? null;
+}
+
+async function updateParticipantPayment({ id, email, amount, paystack_ref, paystack_url }) {
+  await client.execute({
+    sql: `UPDATE participants SET email=?, amount=?, paystack_ref=?, paystack_url=? WHERE id=?`,
+    args: [email, amount, paystack_ref, paystack_url, id],
+  });
+}
+
+async function markParticipantPaid({ paystack_ref }) {
+  await client.execute({
+    sql: `UPDATE participants SET paid=1, paid_at=unixepoch() WHERE paystack_ref=?`,
+    args: [paystack_ref],
+  });
+}
+
+/** Returns { paidCount, totalCollected } for a trip's participants. */
+async function getParticipantStats(tripId) {
+  const res = await client.execute({
+    sql: `SELECT COUNT(*) AS paid_count, COALESCE(SUM(amount), 0) AS total_collected
+          FROM participants WHERE trip_id = ? AND paid = 1`,
+    args: [tripId],
+  });
+  const row = res.rows[0];
+  return { paidCount: Number(row?.paid_count ?? 0), totalCollected: Number(row?.total_collected ?? 0) };
 }
 
 module.exports = {
@@ -411,5 +453,12 @@ module.exports = {
   agents:      { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
   attractions: { byState: getAttractionsByState },
   users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },
-  participants: { insert: insertParticipant, get: getParticipants },
+  participants: {
+    insert: insertParticipant,
+    get: getParticipants,
+    getByRef: getParticipantByRef,
+    updatePayment: updateParticipantPayment,
+    markPaid: markParticipantPaid,
+    stats: getParticipantStats,
+  },
 };

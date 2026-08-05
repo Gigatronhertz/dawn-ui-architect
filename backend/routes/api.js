@@ -7,9 +7,10 @@ const M = require('../bot/messages');
 const GT   = require('../services/googleTravel');
 const GIGM = require('../services/gigm');
 const { getLines } = require('../utils/logger');
-const { requireAuth }      = require('../middleware/auth');
+const { requireAuth }        = require('../middleware/auth');
 const { sendPlanReadyEmail } = require('../services/email');
 const { sendPlanReadyPush  } = require('../services/webPush');
+const paystack               = require('../services/paystack');
 
 const router = Router();
 
@@ -416,6 +417,7 @@ router.get('/public/plan/:tripId', async (req, res) => {
   if (!plan) return res.status(404).json({ error: 'Plan data is missing.' });
 
   const participants = await db.participants.get(trip.id);
+  const stats = await db.participants.stats(trip.id);
 
   return res.json({
     tripId:           trip.id,
@@ -429,7 +431,10 @@ router.get('/public/plan/:tripId', async (req, res) => {
     days_plan:        plan.days || [],
     cost_breakdown:   plan.cost_breakdown,
     participantCount: participants.length,
-    participants:     participants.map(p => ({ name: p.name, createdAt: p.created_at })),
+    paidCount:        stats.paidCount,
+    totalCollected:   stats.totalCollected,
+    participants:     participants.map(p => ({ name: p.name, paid: !!p.paid, createdAt: p.created_at })),
+    paymentsEnabled:  paystack.available(),
   });
 });
 
@@ -443,23 +448,81 @@ router.post('/public/plan/:tripId/join', async (req, res) => {
   }
 
   const { name } = req.body;
-  await db.participants.insert({ id: uuid(), trip_id: trip.id, name: name?.trim() || null });
+  const participantId = uuid();
+  await db.participants.insert({ id: participantId, trip_id: trip.id, name: name?.trim() || null });
   const participants = await db.participants.get(trip.id);
 
-  return res.json({ ok: true, count: participants.length });
+  return res.json({ ok: true, count: participants.length, participantId });
 });
 
 // GET /api/public/plan/:tripId/participants
-// Returns live participant count and first-names — polled every 15 s from PlanView.
+// Returns live participant count, names, and payment stats — polled every 20 s from PlanView.
 router.get('/public/plan/:tripId/participants', async (req, res) => {
   const trip = await db.trips.get(req.params.tripId);
   if (!trip) return res.status(404).json({ error: 'Plan not found.' });
 
   const participants = await db.participants.get(trip.id);
+  const stats = await db.participants.stats(trip.id);
   return res.json({
-    count: participants.length,
-    names: participants.map(p => p.name).filter(Boolean),
+    count:          participants.length,
+    paidCount:      stats.paidCount,
+    totalCollected: stats.totalCollected,
+    names:          participants.map(p => p.name).filter(Boolean),
   });
+});
+
+// POST /api/public/plan/:tripId/pay
+// Squad member initiates Paystack payment for their share.
+// Returns { authorization_url } — frontend redirects the browser there.
+router.post('/public/plan/:tripId/pay', async (req, res) => {
+  if (!paystack.available()) {
+    return res.status(503).json({ error: 'Payments are not enabled yet. Check back soon!' });
+  }
+
+  const trip = await db.trips.get(req.params.tripId);
+  if (!trip) return res.status(404).json({ error: 'Plan not found.' });
+  if (trip.status !== 'awaiting_group') return res.status(403).json({ error: 'Plan is not yet confirmed.' });
+
+  const { participantId, email, name } = req.body;
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ error: 'A valid email address is required to process payment.' });
+  }
+  if (!participantId) {
+    return res.status(400).json({ error: 'participantId is required.' });
+  }
+
+  const plan = trip.plan ? JSON.parse(trip.plan) : null;
+  const amount = plan?.cost_breakdown?.per_person;
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ error: 'Could not determine payment amount from this plan.' });
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app';
+  const callbackUrl = `${frontendUrl}/plan/${trip.id}?paid=1`;
+
+  try {
+    const { reference, authorization_url } = await paystack.initializeWebPayment({
+      tripId:        trip.id,
+      participantId,
+      email:         email.trim().toLowerCase(),
+      name:          name?.trim() || null,
+      amountNGN:     amount,
+      callbackUrl,
+    });
+
+    await db.participants.updatePayment({
+      id:            participantId,
+      email:         email.trim().toLowerCase(),
+      amount,
+      paystack_ref:  reference,
+      paystack_url:  authorization_url,
+    });
+
+    return res.json({ authorization_url, reference });
+  } catch (err) {
+    console.error('[api/public/pay]', err.message);
+    return res.status(500).json({ error: 'Failed to create payment link. Please try again.' });
+  }
 });
 
 // ── Notification routes ───────────────────────────────────────────────────────
@@ -527,7 +590,9 @@ router.get('/auth/plans', requireAuth, async (req, res) => {
     status:           t.status,
     plan:             t.plan ? JSON.parse(t.plan) : null,
     createdAt:        t.created_at,
-    participantCount: Number(t.participant_count ?? 0),
+    participantCount: Number(t.participant_count  ?? 0),
+    paidCount:        Number(t.paid_count         ?? 0),
+    totalCollected:   Number(t.total_collected    ?? 0),
   }));
   return res.json({ plans });
 });

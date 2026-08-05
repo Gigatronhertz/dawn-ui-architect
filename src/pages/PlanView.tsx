@@ -1,10 +1,11 @@
 /**
  * PlanView — public, auth-free squad plan page.
  * Opened from the share link the organiser sends: /plan/:tripId
- * Squad members can view the full confirmed plan and tap "I'm in!".
+ * Squad members can view the full confirmed plan, say "I'm in!",
+ * and pay their per-person share via Paystack.
  */
 import { useEffect, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { api, type PublicPlanResponse, type PlanDay } from "@/lib/api";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -81,33 +82,177 @@ function DayAccordion({ day }: { day: PlanDay }) {
   );
 }
 
-// ── Join section ──────────────────────────────────────────────────────────────
+// ── PaymentSection ────────────────────────────────────────────────────────────
+
+type PayState = "idle" | "form" | "loading" | "redirecting";
+
+function PaymentSection({
+  tripId,
+  participantId,
+  perPerson,
+  justPaid,
+  paymentsEnabled,
+}: {
+  tripId: string;
+  participantId: string;
+  perPerson: number;
+  justPaid: boolean;
+  paymentsEnabled: boolean;
+}) {
+  const [payState, setPayState] = useState<PayState>(justPaid ? "redirecting" : "idle");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+
+  if (justPaid || payState === "redirecting") {
+    return (
+      <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 p-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-google-green/15 grid place-items-center text-xl shrink-0">✅</div>
+          <div>
+            <div className="font-display font-semibold text-google-green">Payment confirmed!</div>
+            <p className="text-sm text-muted-foreground mt-0.5">You're all set. See you on the trip! 🎉</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!paymentsEnabled) {
+    return (
+      <div className="rounded-2xl bg-secondary/60 ring-hairline p-4 text-sm text-muted-foreground text-center">
+        Online payments coming soon — the organiser will send payment details directly.
+      </div>
+    );
+  }
+
+  async function handlePay(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.includes("@")) { setError("Enter a valid email address."); return; }
+    setPayState("loading");
+    setError("");
+    try {
+      const { authorization_url } = await api.initPayment(tripId, { participantId, email: email.trim() });
+      setPayState("redirecting");
+      window.location.href = authorization_url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Payment failed. Please try again.");
+      setPayState("form");
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-primary/10 ring-1 ring-primary/20 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="font-display font-semibold">Pay your share</div>
+          <div className="text-sm text-muted-foreground">Secure payment via Paystack</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="font-display text-2xl font-semibold text-primary">{fmtNGN(perPerson)}</div>
+          <div className="text-[10px] text-muted-foreground">per person</div>
+        </div>
+      </div>
+
+      {payState === "idle" && (
+        <button
+          onClick={() => setPayState("form")}
+          className="w-full rounded-full bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+        >
+          Pay now →
+        </button>
+      )}
+
+      {payState === "form" && (
+        <form onSubmit={handlePay} className="space-y-2">
+          <input
+            type="email"
+            autoFocus
+            required
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="Your email (for payment receipt)"
+            className="w-full rounded-xl bg-background ring-hairline px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition placeholder:text-muted-foreground/60"
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="flex-1 rounded-full bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+            >
+              Pay {fmtNGN(perPerson)} →
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPayState("idle"); setError(""); }}
+              className="rounded-full bg-secondary text-foreground px-4 py-3 text-sm font-medium hover:bg-secondary/60 transition"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {payState === "loading" && (
+        <div className="flex items-center justify-center py-3 gap-3 text-sm text-muted-foreground">
+          <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+          Opening secure payment…
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── JoinSection ───────────────────────────────────────────────────────────────
 
 type JoinState = "idle" | "name-input" | "loading" | "joined" | "error";
 
 function JoinSection({
   tripId,
   initialCount,
+  initialPaidCount,
+  initialTotalCollected,
   initialNames,
+  perPerson,
+  squadSize,
+  paymentsEnabled,
+  justPaid,
 }: {
   tripId: string;
   initialCount: number;
+  initialPaidCount: number;
+  initialTotalCollected: number;
   initialNames: (string | null)[];
+  perPerson: number;
+  squadSize: number | null;
+  paymentsEnabled: boolean;
+  justPaid: boolean;
 }) {
+  const storageKey = `msgo_pid_${tripId}`;
   const [count, setCount] = useState(initialCount);
+  const [paidCount, setPaidCount] = useState(initialPaidCount);
+  const [totalCollected, setTotalCollected] = useState(initialTotalCollected);
   const [names, setNames] = useState<(string | null)[]>(initialNames);
-  const [joinState, setJoinState] = useState<JoinState>("idle");
+
+  // Persist participantId in localStorage so they can pay after refreshing
+  const [participantId, setParticipantId] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem(storageKey) : null
+  );
+  const [joinState, setJoinState] = useState<JoinState>(
+    participantId ? "joined" : "idle"
+  );
   const [nameInput, setNameInput] = useState("");
   const [error, setError] = useState("");
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Poll for new joiners every 20 s
+  // Poll for new joiners and payment updates every 20 s
   useEffect(() => {
     function poll() {
       pollRef.current = setTimeout(async () => {
         try {
           const data = await api.getParticipants(tripId);
           setCount(data.count);
+          setPaidCount(data.paidCount);
+          setTotalCollected(data.totalCollected);
           setNames(data.names);
         } catch { /* swallow poll errors */ }
         poll();
@@ -121,9 +266,11 @@ function JoinSection({
     setJoinState("loading");
     setError("");
     try {
-      const { count: newCount } = await api.joinPlan(tripId, nameInput.trim() || undefined);
+      const { count: newCount, participantId: pid } = await api.joinPlan(tripId, nameInput.trim() || undefined);
       setCount(newCount);
       if (nameInput.trim()) setNames(prev => [...prev, nameInput.trim()]);
+      localStorage.setItem(storageKey, pid);
+      setParticipantId(pid);
       setJoinState("joined");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -132,11 +279,36 @@ function JoinSection({
   }
 
   const displayNames = names.filter(Boolean) as string[];
+  const target = squadSize ? perPerson * squadSize : 0;
+  const progressPct = target > 0 ? Math.min(100, (totalCollected / target) * 100) : 0;
 
   return (
-    <Card className="text-center">
-      {/* Count */}
-      <div className="mb-4">
+    <Card>
+      {/* Payment progress bar — shown once there are payers */}
+      {paidCount > 0 && (
+        <div className="mb-5 pb-5 border-b border-border">
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="font-medium">{fmtNGN(totalCollected)} collected</span>
+            {target > 0 && (
+              <span className="text-muted-foreground text-xs">{paidCount} / {squadSize || "?"} paid</span>
+            )}
+          </div>
+          <div className="h-2 rounded-full bg-secondary/60 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-primary transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          {target > 0 && (
+            <div className="text-[11px] text-muted-foreground mt-1.5">
+              Target: {fmtNGN(target)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Squad count */}
+      <div className="text-center mb-4">
         <div className="text-5xl mb-2">🙌</div>
         <div className="font-display text-2xl font-semibold">
           {count === 0 ? "Be the first in!" : `${count} ${count === 1 ? "person" : "people"} already in`}
@@ -149,13 +321,20 @@ function JoinSection({
         )}
       </div>
 
-      {/* CTA */}
-      {joinState === "joined" ? (
-        <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/25 px-5 py-4">
-          <div className="text-google-green font-display font-semibold text-lg">✓ You're in!</div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {nameInput.trim() ? `Welcome, ${nameInput.trim()}!` : "Welcome to the squad."}
-          </p>
+      {/* Join CTA */}
+      {joinState === "joined" || participantId ? (
+        <div className="space-y-3">
+          <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 px-4 py-3 text-center">
+            <div className="text-google-green font-semibold text-sm">✓ You're in the squad!</div>
+          </div>
+          {/* Payment section appears after joining */}
+          <PaymentSection
+            tripId={tripId}
+            participantId={participantId!}
+            perPerson={perPerson}
+            justPaid={justPaid}
+            paymentsEnabled={paymentsEnabled}
+          />
         </div>
       ) : joinState === "name-input" ? (
         <div className="space-y-3">
@@ -268,6 +447,9 @@ function LoadingSkeleton() {
 
 export default function PlanView() {
   const { tripId } = useParams<{ tripId: string }>();
+  const [searchParams] = useSearchParams();
+  const justPaid = searchParams.get("paid") === "1";
+
   const [data, setData] = useState<PublicPlanResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -307,6 +489,17 @@ export default function PlanView() {
       </header>
 
       <div className="mx-auto max-w-lg px-4 pb-24 space-y-4">
+        {/* Payment success banner */}
+        {justPaid && (
+          <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 px-5 py-4 flex items-center gap-3">
+            <span className="text-2xl">🎉</span>
+            <div>
+              <div className="font-display font-semibold text-google-green">Payment confirmed!</div>
+              <p className="text-sm text-muted-foreground">You're all set. See you on the trip!</p>
+            </div>
+          </div>
+        )}
+
         {loading && <LoadingSkeleton />}
 
         {error && !loading && (
@@ -358,16 +551,21 @@ export default function PlanView() {
                 <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <div className="text-muted-foreground text-[11px] uppercase tracking-wider mb-0.5">Transport</div>
-                    <div className="font-medium tabular-nums">{fmtNGN(cb.transport_total / Math.max(1, data.squadSize || 1))}/p</div>
+                    <div className="font-medium tabular-nums">
+                      {fmtNGN(cb.transport_total / Math.max(1, data.squadSize || 1))}/p
+                    </div>
                   </div>
                   <div>
                     <div className="text-muted-foreground text-[11px] uppercase tracking-wider mb-0.5">Lodging</div>
-                    <div className="font-medium tabular-nums">{fmtNGN(cb.lodging_total / Math.max(1, data.squadSize || 1))}/p</div>
+                    <div className="font-medium tabular-nums">
+                      {fmtNGN(cb.lodging_total / Math.max(1, data.squadSize || 1))}/p
+                    </div>
                   </div>
                 </div>
                 {data.squadSize && (
                   <div className="mt-3 pt-3 border-t border-border text-sm text-muted-foreground">
-                    Full squad total: <span className="font-display font-semibold text-foreground">{fmtNGN(cb.total)}</span>
+                    Full squad total:{" "}
+                    <span className="font-display font-semibold text-foreground">{fmtNGN(cb.total)}</span>
                   </div>
                 )}
               </Card>
@@ -453,12 +651,18 @@ export default function PlanView() {
               </Card>
             )}
 
-            {/* Squad participation */}
-            {tripId && (
+            {/* Squad participation + payment */}
+            {tripId && cb && (
               <JoinSection
                 tripId={tripId}
                 initialCount={data.participantCount}
+                initialPaidCount={data.paidCount}
+                initialTotalCollected={data.totalCollected}
                 initialNames={data.participants.map(p => p.name)}
+                perPerson={cb.per_person}
+                squadSize={data.squadSize}
+                paymentsEnabled={data.paymentsEnabled}
+                justPaid={justPaid}
               />
             )}
 

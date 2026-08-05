@@ -51,6 +51,8 @@ export type UserPlan = {
   plan:             GeminiPlan | null;
   createdAt:        number;
   participantCount: number;
+  paidCount:        number;
+  totalCollected:   number;
 };
 
 /** Returned by GET /api/public/plan/:tripId — safe to show without auth */
@@ -66,10 +68,18 @@ export type PublicPlanResponse = {
   days_plan:        PlanDay[];
   cost_breakdown:   GeminiPlan['cost_breakdown'];
   participantCount: number;
-  participants:     { name: string | null; createdAt: number }[];
+  paidCount:        number;
+  totalCollected:   number;
+  paymentsEnabled:  boolean;
+  participants:     { name: string | null; paid: boolean; createdAt: number }[];
 };
 
-export type ParticipantsResponse = { count: number; names: string[] };
+export type ParticipantsResponse = {
+  count:          number;
+  paidCount:      number;
+  totalCollected: number;
+  names:          string[];
+};
 
 /** Returned by POST /api/plan — job is created, work runs in background */
 export type CreatePlanResponse = { tripId: string; status: 'generating' };
@@ -175,12 +185,15 @@ export const api = {
   /** Fetch the public (confirmed) plan — no auth needed. */
   getPublicPlan:  (tripId: string) =>
     get<PublicPlanResponse>(`/api/public/plan/${tripId}`),
-  /** Squad member joins the plan — no auth needed. */
+  /** Squad member joins the plan — no auth needed. Returns participantId for payment. */
   joinPlan: (tripId: string, name?: string) =>
-    post<{ ok: boolean; count: number }>(`/api/public/plan/${tripId}/join`, { name: name || null }),
-  /** Poll for live participant count. */
+    post<{ ok: boolean; count: number; participantId: string }>(`/api/public/plan/${tripId}/join`, { name: name || null }),
+  /** Poll for live participant count and payment stats. */
   getParticipants: (tripId: string) =>
     get<ParticipantsResponse>(`/api/public/plan/${tripId}/participants`),
+  /** Initiate Paystack payment for a squad member's share. Returns authorization_url. */
+  initPayment: (tripId: string, opts: { participantId: string; email: string; name?: string }) =>
+    post<{ authorization_url: string; reference: string }>(`/api/public/plan/${tripId}/pay`, opts),
 
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
   registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),

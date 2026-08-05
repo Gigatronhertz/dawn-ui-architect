@@ -2,6 +2,9 @@ const axios = require('axios');
 
 const BASE = 'https://api.paystack.co';
 
+/** True when PAYSTACK_SECRET_KEY is configured. Use to gate the /pay endpoint gracefully. */
+const available = () => !!process.env.PAYSTACK_SECRET_KEY;
+
 function headers() {
   return { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' };
 }
@@ -49,4 +52,37 @@ async function verifyPayment(reference) {
 const fmtNGN = (n) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
-module.exports = { initializePayment, verifyPayment, fmtNGN };
+/**
+ * Initialize a payment for a web squad member (participants table).
+ * Uses a reference prefixed WEBSQ- so the webhook can identify it.
+ */
+async function initializeWebPayment({ tripId, participantId, email, name, amountNGN, callbackUrl }) {
+  const amountKobo = Math.round(amountNGN * 100);
+  const reference  = `WEBSQ-${tripId.slice(0, 8)}-${participantId.slice(0, 8)}-${Date.now()}`;
+
+  const res = await axios.post(
+    `${BASE}/transaction/initialize`,
+    {
+      email,
+      amount:       amountKobo,
+      reference,
+      callback_url: callbackUrl,
+      currency:     'NGN',
+      metadata: {
+        payment_type:   'web_squad',
+        participant_id: participantId,
+        trip_id:        tripId,
+        name:           name || null,
+        custom_fields: [
+          { display_name: 'Name',    variable_name: 'name',    value: name || '—' },
+          { display_name: 'Trip ID', variable_name: 'trip_id', value: tripId },
+        ],
+      },
+    },
+    { headers: headers() }
+  );
+
+  return { reference, authorization_url: res.data.data.authorization_url };
+}
+
+module.exports = { available, initializePayment, initializeWebPayment, verifyPayment, fmtNGN };

@@ -136,21 +136,40 @@ export default function MyPlans() {
                   ) : p.status === 'awaiting_group' ? (
                     <div className="rounded-3xl bg-card ring-hairline shadow-card p-6 space-y-4">
                       <PlanCard p={p} s={s} date={date} perPerson={perPerson} total={total} />
-                      {/* Share link + participant count */}
-                      <div className="border-t border-border pt-4 flex items-center justify-between gap-4 flex-wrap">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="text-base">🙌</span>
-                          {(p.participantCount ?? 0) > 0
-                            ? <span><span className="font-semibold text-foreground">{p.participantCount}</span> {p.participantCount === 1 ? "person" : "people"} in</span>
-                            : <span>No-one has joined yet</span>
-                          }
+                      {/* Share link + participant count + payment progress */}
+                      <div className="border-t border-border pt-4 space-y-3">
+                        <div className="flex items-center justify-between gap-4 flex-wrap">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span className="text-base">🙌</span>
+                            {(p.participantCount ?? 0) > 0
+                              ? <span><span className="font-semibold text-foreground">{p.participantCount}</span> {p.participantCount === 1 ? "person" : "people"} in</span>
+                              : <span>No-one has joined yet</span>
+                            }
+                          </div>
+                          <Link
+                            to={`/plan/${p.tripId}`}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-4 py-2 text-xs font-semibold hover:bg-primary/15 transition"
+                          >
+                            View squad page →
+                          </Link>
                         </div>
-                        <Link
-                          to={`/plan/${p.tripId}`}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-4 py-2 text-xs font-semibold hover:bg-primary/15 transition"
-                        >
-                          View squad page →
-                        </Link>
+                        {/* Payment collection progress */}
+                        {(p.paidCount ?? 0) > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                              <span>{p.paidCount} / {p.squadSize || "?"} paid</span>
+                              <span className="font-medium text-foreground">{fmtNGN(p.totalCollected ?? 0)} collected</span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-secondary/60 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-primary transition-all"
+                                style={{
+                                  width: `${p.squadSize && p.paidCount ? Math.min(100, (p.paidCount / p.squadSize) * 100) : 0}%`
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
