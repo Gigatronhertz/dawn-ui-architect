@@ -1157,8 +1157,13 @@ function LockBanner({ tripId }: { tripId: string }) {
   async function handleSignIn() {
     setState('signing-in');
     try {
-      await signIn();
-      // useEffect above will detect user change and call linkPlan
+      // signIn returns the Firebase User — get the token from it directly
+      // rather than waiting for the React context to re-render (which races with linkPlan)
+      const firebaseUser = await signIn();
+      const token = await firebaseUser.getIdToken();
+      if (!token) throw new Error('No token after sign-in');
+      await api.linkPlan(tripId, token);
+      setState('linked');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[sign-in]', msg);
