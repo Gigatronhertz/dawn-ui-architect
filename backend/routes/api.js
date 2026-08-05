@@ -11,7 +11,8 @@ const { getLines } = require('../utils/logger');
 const router = Router();
 
 // POST /api/plan
-// Called by the web form after intake. Returns tripId + full Gemini plan.
+// Creates a trip job and returns tripId immediately.
+// Actual AI + scraping runs in the background — client polls GET /api/plan/:tripId.
 router.post('/plan', async (req, res) => {
   const { origin, destination, budget, days, squadSize, accommodationType, dateFlexibility, dealbreakers, transport, vibe, specificDates } = req.body;
 
@@ -22,47 +23,43 @@ router.post('/plan', async (req, res) => {
   const tripId = uuid();
 
   await db.trips.insert({ id: tripId, organiser_phone: `web_${tripId}` });
-  await db.trips.update({
-    id: tripId,
-    origin,
-    destination,
-    budget: Number(budget),
-    days: Number(days),
-    squad_size: Number(squadSize),
-    accommodation: accommodationType || 'Hotel',
-    date_flexibility: dateFlexibility || 'Flexible',
-    specific_dates: specificDates || null,
-    dealbreakers: dealbreakers || null,
-    plan: null,
-    selected_date: null,
-    selected_hotel: null,
-    group_id: null,
-    status: 'generating',
-  });
+  await db.raw(
+    `UPDATE trips SET
+       origin=?, destination=?, budget=?, days=?, squad_size=?,
+       accommodation=?, date_flexibility=?, specific_dates=?, dealbreakers=?,
+       status=?, intake_json=?
+     WHERE id=?`,
+    [
+      origin, destination, Number(budget), Number(days), Number(squadSize),
+      accommodationType || 'Hotel', dateFlexibility || 'Flexible',
+      specificDates || null, dealbreakers || null,
+      'generating', JSON.stringify(req.body),
+      tripId,
+    ]
+  );
 
-  try {
-    const intake = await db.trips.get(tripId);
-    // Merge transport mode from request body — not stored in DB but needed by scrapers
-    const { plan, scraped } = await generateTripPlan({ ...intake, transport: transport || 'Charter bus', vibe: vibe || null });
+  // Return the job ID immediately — the client will poll for completion
+  res.json({ tripId, status: 'generating' });
 
-    await db.trips.update({
-      id: tripId, plan: JSON.stringify(plan), status: 'plan_review',
-      origin: null, destination: null, budget: null, days: null, squad_size: null,
-      accommodation: null, date_flexibility: null, specific_dates: null,
-      dealbreakers: null, selected_date: null, selected_hotel: null, group_id: null,
-    });
-
-    return res.json({ tripId, plan, scraped });
-  } catch (err) {
-    console.error('[api/plan]', err.message);
-    await db.trips.update({
-      id: tripId, status: 'error', plan: null, origin: null, destination: null,
-      budget: null, days: null, squad_size: null, accommodation: null,
-      date_flexibility: null, specific_dates: null, dealbreakers: null,
-      selected_date: null, selected_hotel: null, group_id: null,
-    });
-    return res.status(500).json({ error: 'Plan generation failed. Please try again.' });
-  }
+  // ── Background work (response already sent — no await) ──────────────────────
+  ;(async () => {
+    try {
+      const intake = await db.trips.get(tripId);
+      const { plan, scraped } = await generateTripPlan({
+        ...intake,
+        transport: transport || 'Charter bus',
+        vibe: vibe || null,
+      });
+      await db.raw(
+        `UPDATE trips SET plan=?, scraped=?, status=? WHERE id=?`,
+        [JSON.stringify(plan), JSON.stringify(scraped), 'plan_review', tripId]
+      );
+      console.log(`[api/plan] ${tripId} done`);
+    } catch (err) {
+      console.error('[api/plan/bg]', err.message);
+      await db.raw(`UPDATE trips SET status=? WHERE id=?`, ['error', tripId]);
+    }
+  })();
 });
 
 // POST /api/confirm
@@ -115,11 +112,26 @@ router.post('/confirm', async (req, res) => {
 });
 
 // GET /api/plan/:tripId
-// Returns the stored plan for a given trip — used if the organiser refreshes mid-flow.
+// Polled by the client every 3 s. Returns status and — when done — plan + scraped data.
+// Also returns intake_json so the browser can restore state after a page refresh.
 router.get('/plan/:tripId', async (req, res) => {
   const trip = await db.trips.get(req.params.tripId);
-  if (!trip || !trip.plan) return res.status(404).json({ error: 'Not found.' });
-  res.json({ tripId: trip.id, plan: JSON.parse(trip.plan), status: trip.status });
+  if (!trip) return res.status(404).json({ error: 'Not found.' });
+
+  const resp = {
+    tripId: trip.id,
+    status: trip.status,
+    intake: trip.intake_json ? JSON.parse(trip.intake_json) : null,
+  };
+
+  if (trip.status === 'plan_review' && trip.plan) {
+    resp.plan    = JSON.parse(trip.plan);
+    resp.scraped = trip.scraped ? JSON.parse(trip.scraped) : null;
+  } else if (trip.status === 'error') {
+    resp.error = 'Plan generation failed. Please try again.';
+  }
+
+  return res.json(resp);
 });
 
 // POST /api/agents

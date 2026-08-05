@@ -87,8 +87,18 @@ const SCHEMA = [
   )`,
 ];
 
+// Safe schema migrations — new columns added after initial release.
+// Each statement is run once; duplicate-column errors are swallowed.
+const MIGRATIONS = [
+  `ALTER TABLE trips ADD COLUMN scraped      TEXT`,
+  `ALTER TABLE trips ADD COLUMN intake_json  TEXT`,
+];
+
 const ready = (async () => {
   for (const sql of SCHEMA) await client.execute(sql);
+  for (const sql of MIGRATIONS) {
+    try { await client.execute(sql); } catch (_) { /* column already exists — safe to ignore */ }
+  }
   // Seed attractions once — INSERT OR IGNORE is idempotent
   const existing = await client.execute('SELECT COUNT(*) as n FROM attractions');
   if ((existing.rows[0]?.n ?? 0) === 0) {

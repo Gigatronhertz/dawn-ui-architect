@@ -41,6 +41,19 @@ export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[];
 export type PlanResponse = { tripId: string; plan: GeminiPlan; scraped?: ScrapedData };
 export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] };
 
+/** Returned by POST /api/plan — job is created, work runs in background */
+export type CreatePlanResponse = { tripId: string; status: 'generating' };
+
+/** Polled via GET /api/plan/:tripId */
+export type PollPlanResponse = {
+  tripId:  string;
+  status:  'generating' | 'plan_review' | 'error';
+  plan?:   GeminiPlan;
+  scraped?: ScrapedData | null;
+  intake?: IntakeData | null;
+  error?:  string;
+};
+
 export type AgentProfile = {
   phone: string;
   agencyName: string;
@@ -97,6 +110,11 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export const api = {
+  /** Fire-and-forget: creates the job, returns tripId immediately. */
+  createPlan:   (intake: IntakeData) => post<CreatePlanResponse>('/api/plan', intake),
+  /** Poll until status is 'plan_review' or 'error'. */
+  pollPlan:     (tripId: string)     => get<PollPlanResponse>(`/api/plan/${tripId}`),
+  /** @deprecated Use createPlan + pollPlan instead. Kept for any legacy callers. */
   generatePlan: (intake: IntakeData) => post<PlanResponse>('/api/plan', intake),
   getGigmBuses: (from: string, to: string, date?: string) =>
     get<{ from: string; to: string; count: number; trips: GIGMTrip[] }>(

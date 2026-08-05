@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
 
@@ -117,7 +117,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           Tell us about the trip.
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          10 quick questions. Gemini builds the full itinerary with live prices. You edit before it goes to the squad.
+          10 quick questions. AI builds the full itinerary with live prices. You edit before it goes to the squad.
         </p>
       </div>
 
@@ -265,13 +265,13 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
 
       <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          Takes ~30 seconds. Gemini prices hotels and transport with live data.
+          Takes ~20 seconds. AI builds your plan with live prices from GIGM, Google Travel &amp; Booking.com.
         </p>
         <button
           onClick={() => onSubmit(form, phone)}
           className="group inline-flex items-center gap-2 rounded-full bg-gradient-primary text-primary-foreground px-6 py-3 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform w-full sm:w-auto justify-center"
         >
-          Generate plan with Gemini
+          Generate my squad plan
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14M13 5l7 7-7 7" />
           </svg>
@@ -282,32 +282,98 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
 }
 
 /* ─── step 2: generating ────────────────────────────────────────────────────── */
-const PHASES = ["Analyzing route…", "Pricing hotels with Gemini…", "Building day-by-day itinerary…", "Calculating per-person cost…"];
+const PHASES = [
+  { title: "Analyzing your route…",         sub: "Mapping distances and transport options" },
+  { title: "Fetching live prices…",          sub: "Checking GIGM buses, flights & hotels" },
+  { title: "Building your itinerary…",       sub: "Creating a day-by-day plan for your squad" },
+  { title: "Calculating squad costs…",       sub: "Working out the per-person breakdown" },
+];
 
 function GeneratingStep() {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % PHASES.length), 800);
+    const t = setInterval(() => setIdx((i) => (i + 1) % PHASES.length), 3000);
     return () => clearInterval(t);
   }, []);
 
   return (
     <Card className="min-h-[400px] grid place-items-center text-center">
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-xs w-full mx-auto">
         <div className="w-16 h-16 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow animate-float mx-auto">
           <svg viewBox="0 0 24 24" className="w-8 h-8 text-primary-foreground" fill="currentColor">
             <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" />
           </svg>
         </div>
         <div>
-          <p className="font-display text-xl font-semibold">{PHASES[idx]}</p>
-          <p className="text-sm text-muted-foreground mt-2">Your plan will be ready in about 15 seconds.</p>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-primary/60 mb-2">
+            Step {idx + 1} of {PHASES.length}
+          </div>
+          <p className="font-display text-xl font-semibold">{PHASES[idx].title}</p>
+          <p className="text-sm text-muted-foreground mt-2">{PHASES[idx].sub}</p>
+        </div>
+        {/* Step dots */}
+        <div className="flex items-center justify-center gap-1.5">
+          {PHASES.map((_, i) => (
+            <div
+              key={i}
+              className={`rounded-full transition-all duration-500 ${
+                i === idx ? "w-4 h-1.5 bg-primary" : i < idx ? "w-1.5 h-1.5 bg-primary/40" : "w-1.5 h-1.5 bg-border"
+              }`}
+            />
+          ))}
         </div>
         <div className="mx-auto max-w-xs h-1.5 rounded-full bg-secondary overflow-hidden">
           <div className="h-full bg-gradient-primary animate-[typing_12s_linear_forwards]" />
         </div>
+        <p className="text-xs text-muted-foreground">Usually ready in 15–25 seconds.</p>
       </div>
     </Card>
+  );
+}
+
+/* ─── cost breakdown accordion ──────────────────────────────────────────────── */
+type BreakdownItem = { label: string; value: number; icon: string; colorClass: string };
+
+function CostBreakdown({ items, total }: { items: BreakdownItem[]; total: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-t border-border">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-5 py-2.5 text-left flex items-center justify-between text-[11px] text-muted-foreground hover:bg-secondary/30 transition"
+      >
+        <span className="flex items-center gap-1.5">
+          <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" />
+          </svg>
+          Per-person breakdown
+        </span>
+        <svg viewBox="0 0 24 24" className={`w-3 h-3 transition-transform duration-200 ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="px-5 pb-4 space-y-2.5 animate-rise">
+          {items.map(item => {
+            const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+            return (
+              <div key={item.label} className="flex items-center gap-2 text-[12px]">
+                <span className="text-sm shrink-0 w-5 text-center">{item.icon}</span>
+                <span className="flex-1 text-muted-foreground truncate">{item.label}</span>
+                <span className="tabular-nums font-medium text-foreground shrink-0">{fmtNGN(item.value)}</span>
+                <div className="w-16 h-1 rounded-full bg-secondary overflow-hidden shrink-0">
+                  <div
+                    className={`h-full ${item.colorClass} transition-all duration-500`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-muted-foreground/60 w-7 text-right shrink-0">{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -341,7 +407,7 @@ function PlanStep({
     const opts: HotelOpt[] = [];
     if (initialPlan?.hotel) {
       const aiUrl = `https://www.google.com/search?q=${encodeURIComponent(initialPlan.hotel.name + ' hotel ' + intake.destination)}`;
-      opts.push({ key: 'ai', name: initialPlan.hotel.name, area: initialPlan.hotel.area, price: initialPlan.hotel.price_per_night, rating: initialPlan.hotel.rating, source: 'Gemini AI', badge: 'AI Pick', perks: initialPlan.hotel.perks || [], url: aiUrl });
+      opts.push({ key: 'ai', name: initialPlan.hotel.name, area: initialPlan.hotel.area, price: initialPlan.hotel.price_per_night, rating: initialPlan.hotel.rating, source: 'AI Pick', badge: 'AI Pick', perks: initialPlan.hotel.perks || [], url: aiUrl });
     }
     (scraped?.gtHotels ?? []).forEach((h: GTHotel, i: number) => {
       if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase())) {
@@ -356,12 +422,7 @@ function PlanStep({
     return opts;
   }, [initialPlan, scraped, intake.destination]);
 
-  const extraCost = useMemo(
-    () => days.reduce((sum, d) => sum + d.activities.reduce((s, a) => s + a.cost_per_person, 0), 0),
-    [days]
-  );
-  const perPerson = initialPlan.cost_breakdown.per_person + Math.round(extraCost * 0.1);
-  const squadTotal = perPerson * intake.squadSize;
+  // ── Cost derivations live below, after transport/hotel are resolved ──────────
 
   const placesItems = useMemo(() => {
     const attrs: Attraction[] = scraped?.localAttractions ?? [];
@@ -395,6 +456,7 @@ function PlanStep({
     setDirty(true);
   };
 
+  // ── Resolved transport & hotel — always reflect the latest user selection ─────
   const selBus    = selectedBusIdx    !== null ? busOffers[selectedBusIdx]       : null;
   const selFlight = selectedFlightIdx !== null ? flightOffers[selectedFlightIdx] : null;
   const selHotel  = allHotelOptions.find(o => o.key === selectedHotelKey);
@@ -406,7 +468,33 @@ function PlanStep({
   const hotel = (selHotel && selHotel.key !== 'ai' && selHotel.price)
     ? { ...initialPlan.hotel, name: selHotel.name, area: selHotel.area, price_per_night: selHotel.price, rating: selHotel.rating ?? initialPlan.hotel.rating, perks: selHotel.perks }
     : initialPlan.hotel;
-  const finalPlan: GeminiPlan = { ...initialPlan, days, transport, hotel, cost_breakdown: { ...initialPlan.cost_breakdown, per_person: perPerson } };
+
+  // ── Accurate live cost breakdown — recomputed from selections ─────────────────
+  const activitiesPerPerson = days.reduce(
+    (sum, d) => sum + d.activities.reduce((s, a) => s + (a.cost_per_person || 0), 0), 0
+  );
+  const foodPerPerson   = Math.round((initialPlan.cost_breakdown.food_total   || 0) / Math.max(intake.squadSize, 1));
+  const bufferPerPerson = Math.round((initialPlan.cost_breakdown.buffer       || 0) / Math.max(intake.squadSize, 1));
+  const perPerson       = (transport.price_per_person || 0)
+                        + (hotel.price_per_night || 0) * (intake.days || 1)
+                        + activitiesPerPerson
+                        + foodPerPerson
+                        + bufferPerPerson;
+  const transportTotal  = (transport.price_per_person || 0) * (intake.squadSize || 1);
+  const lodgingTotal    = (hotel.price_per_night || 0) * (intake.days || 1) * (intake.squadSize || 1);
+  const squadTotal      = perPerson * (intake.squadSize || 1);
+  const isDirty         = dirty || selectedBusIdx !== null || selectedFlightIdx !== null || selectedHotelKey !== 'ai';
+
+  const finalPlan: GeminiPlan = {
+    ...initialPlan, days, transport, hotel,
+    cost_breakdown: {
+      ...initialPlan.cost_breakdown,
+      transport_total: transportTotal,
+      lodging_total:   lodgingTotal,
+      per_person:      perPerson,
+      total:           squadTotal,
+    },
+  };
 
   return (
     <div className="space-y-5">
@@ -414,9 +502,9 @@ function PlanStep({
       <Card className="p-0 overflow-hidden">
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
           {[
-            { label: "Transport", val: fmtNGN(initialPlan.cost_breakdown.transport_total), sub: `${initialPlan.transport.operator} · ${intake.squadSize}×`, color: "text-google-blue" },
-            { label: "Lodging", val: fmtNGN(initialPlan.cost_breakdown.lodging_total), sub: `${initialPlan.hotel.name.split(" ")[0]} · ${intake.days} nights`, color: "text-google-purple" },
-            { label: "Per person", val: fmtNGN(perPerson), sub: dirty ? "Updated · live" : "All-in estimate", color: "text-primary" },
+            { label: "Transport", val: fmtNGN(transportTotal), sub: `${transport.operator} · ${intake.squadSize}×`, color: "text-google-blue" },
+            { label: "Lodging", val: fmtNGN(lodgingTotal), sub: `${hotel.name.split(" ")[0]} · ${intake.days} nights`, color: "text-google-purple" },
+            { label: "Per person", val: fmtNGN(perPerson), sub: isDirty ? "Updated · live" : "AI estimate", color: "text-primary" },
             { label: "Squad total", val: fmtNGN(squadTotal), sub: `${intake.squadSize} people · all-in`, color: "text-google-green" },
           ].map((c) => (
             <div key={c.label} className="p-4 md:p-6 text-center">
@@ -426,6 +514,16 @@ function PlanStep({
             </div>
           ))}
         </div>
+        <CostBreakdown
+          total={perPerson}
+          items={[
+            { label: "Transport", value: transport.price_per_person || 0, icon: "🚌", colorClass: "bg-google-blue" },
+            { label: `Lodging · ${intake.days} night${intake.days === 1 ? "" : "s"}`, value: (hotel.price_per_night || 0) * (intake.days || 1), icon: "🏨", colorClass: "bg-google-purple" },
+            { label: "Activities", value: activitiesPerPerson, icon: "🎯", colorClass: "bg-accent" },
+            { label: "Food est.", value: foodPerPerson, icon: "🍽️", colorClass: "bg-google-green" },
+            { label: "Buffer", value: bufferPerPerson, icon: "🔒", colorClass: "bg-muted-foreground" },
+          ]}
+        />
       </Card>
 
       {/* Map */}
@@ -433,7 +531,7 @@ function PlanStep({
         <div className="p-4 border-b border-border flex items-center justify-between">
           <div>
             <div className="font-display font-semibold text-sm">Route map · {intake.origin} → {intake.destination}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{initialPlan.transport.operator} · departs {initialPlan.transport.depart_time} from {initialPlan.transport.pickup}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{transport.operator} · departs {transport.depart_time} from {transport.pickup}</div>
           </div>
           <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" />Live
@@ -452,7 +550,7 @@ function PlanStep({
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-foreground" />{intake.origin}</span>
                   <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary animate-pulse" />{intake.destination}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-google-purple" />{initialPlan.hotel.name.split(" ")[0]}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-google-purple" />{hotel.name.split(" ")[0]}</span>
                 </div>
                 <span className="font-display font-semibold text-foreground">{initialPlan.offline_note?.split("·")[0] || "~128 km"}</span>
               </div>
@@ -519,7 +617,7 @@ function PlanStep({
               <button type="button"
                 onClick={() => { setSelectedBusIdx(null); setSelectedFlightIdx(null); }}
                 className={`w-full text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedBusIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
-                <span className="font-medium">🤖 Let Gemini decide</span>
+                <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator} · {initialPlan.transport.type}</span>
               </button>
             </div>
@@ -559,7 +657,7 @@ function PlanStep({
               <button type="button"
                 onClick={() => { setSelectedFlightIdx(null); setSelectedBusIdx(null); }}
                 className={`w-full text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedFlightIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
-                <span className="font-medium">🤖 Let Gemini decide</span>
+                <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator}</span>
               </button>
             </div>
@@ -608,7 +706,7 @@ function PlanStep({
 
                     {/* Add from Gemini suggestions */}
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-wider text-google-pink mb-2">✨ Gemini suggests</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-google-pink mb-2">✨ AI suggests</div>
                       <div className="grid grid-cols-2 gap-2">
                         {initialPlan.highlights.map((h, hi) => (
                           <button
@@ -715,7 +813,7 @@ function PlanStep({
         </div>
         {allHotelOptions.length <= 1 && (
           <p className="text-xs text-muted-foreground mt-3">
-            Live hotel data is loading — only the Gemini pick is available right now.
+            Live hotel data is loading — only the AI pick is available right now.
           </p>
         )}
       </Card>
@@ -852,29 +950,87 @@ export default function Start() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
+  // ── Poll timer ref — cleaned up on unmount ────────────────────────────────────
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (pollTimerRef.current) clearTimeout(pollTimerRef.current); }, []);
+
+  // ── Polling engine ────────────────────────────────────────────────────────────
+  // Recursive setTimeout — stops on plan_review, error, or timeout (120 s).
+  function schedulePoll(id: string, knownIntake: IntakeData | null, attempts = 0) {
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    if (attempts > 40) {
+      setError("Plan generation timed out. Please try again.");
+      setStep("intake");
+      return;
+    }
+    const delay = attempts === 0 ? 1500 : 3000; // first check sooner on resume
+    pollTimerRef.current = setTimeout(async () => {
+      try {
+        const result = await api.pollPlan(id);
+
+        if (result.status === "plan_review" && result.plan) {
+          const eff = knownIntake ?? (result.intake as IntakeData | null);
+          if (eff) setIntake(eff);
+          setPlan(result.plan);
+          setScraped(result.scraped ?? null);
+          setStep("plan");
+
+          // GIGM buses — fire separately after plan lands
+          if (eff && !/flight/i.test(eff.transport || "")) {
+            setBusLoading(true);
+            api.getGigmBuses(eff.origin!, eff.destination!, eff.specificDates || undefined)
+              .then(d => { if (d.trips?.length) setScraped(s => s ? { ...s, gigmTrips: d.trips } : s); })
+              .catch(() => {})
+              .finally(() => setBusLoading(false));
+          }
+          return;
+        }
+
+        if (result.status === "error") {
+          setError(result.error || "Plan generation failed. Please try again.");
+          setStep("intake");
+          return;
+        }
+
+        // Still generating — schedule next poll
+        schedulePoll(id, knownIntake, attempts + 1);
+      } catch {
+        // Network hiccup — retry
+        schedulePoll(id, knownIntake, attempts + 1);
+      }
+    }, delay);
+  }
+
+  // ── Resume from URL (?job=<tripId>) on page load ──────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobId = params.get("job");
+    if (!jobId) return;
+    setTripId(jobId);
+    setStep("generating");
+    schedulePoll(jobId, null); // intake will be fetched from the server
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Plan creation ─────────────────────────────────────────────────────────────
   async function handleIntakeSubmit(data: IntakeData, organisersPhone: string) {
     setIntake(data);
     setPhone(organisersPhone);
     setScraped(null);
-    setStep("generating");
     setError(null);
-    try {
-      const result = await api.generatePlan(data);
-      setTripId(result.tripId);
-      setPlan(result.plan);
-      setScraped(result.scraped ?? null);
-      setStep("plan");
+    setStep("generating"); // show spinner immediately
 
-      // Fire GIGM separately after plan arrives — Chrome is free from GT hotel scraping
-      if (!/flight/i.test(data.transport || '')) {
-        setBusLoading(true);
-        api.getGigmBuses(data.origin!, data.destination!, data.specificDates || undefined)
-          .then(d => {
-            if (d.trips?.length) setScraped(s => s ? { ...s, gigmTrips: d.trips } : s);
-          })
-          .catch(() => {})
-          .finally(() => setBusLoading(false));
-      }
+    try {
+      // POST /api/plan now returns in ~100 ms with just a tripId
+      const { tripId: newTripId } = await api.createPlan(data);
+      setTripId(newTripId);
+
+      // Persist the job in the URL so refresh / close → reopen still works
+      const url = new URL(window.location.href);
+      url.searchParams.set("job", newTripId);
+      window.history.replaceState({}, "", url.toString());
+
+      // Start polling
+      schedulePoll(newTripId, data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setStep("intake");
@@ -911,7 +1067,15 @@ export default function Start() {
             MySquadGo
           </Link>
           {step !== "intake" && step !== "generating" && (
-            <button onClick={() => setStep("intake")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              onClick={() => {
+                setStep("intake");
+                const url = new URL(window.location.href);
+                url.searchParams.delete("job");
+                window.history.replaceState({}, "", url.toString());
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
               ← Start over
             </button>
           )}
@@ -932,15 +1096,32 @@ export default function Start() {
               </div>
             ))}
             <span className="ml-1 text-xs text-muted-foreground">
-              {step === "intake" ? "1 — Tell us the details" : step === "generating" ? "2 — Gemini is building…" : "3 — Review & edit"}
+              {step === "intake" ? "1 — Tell us the details" : step === "generating" ? "2 — AI is building your plan…" : "3 — Review & edit"}
             </span>
           </div>
         )}
 
         {/* Error banner */}
         {error && (
-          <div className="mb-5 rounded-2xl bg-destructive/10 ring-1 ring-destructive/20 px-5 py-3 text-sm text-destructive">
-            {error}
+          <div className="mb-5 rounded-2xl bg-destructive/10 ring-1 ring-destructive/20 px-5 py-4 flex items-start gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-destructive">Something went wrong</p>
+              <p className="text-xs text-destructive/70 mt-0.5 break-words">{error}</p>
+            </div>
+            {intake && (
+              <button
+                onClick={() => {
+                  setError(null);
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete("job");
+                  window.history.replaceState({}, "", url.toString());
+                  handleIntakeSubmit(intake, phone);
+                }}
+                className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-destructive text-white hover:opacity-80 active:scale-95 transition whitespace-nowrap"
+              >
+                Try again
+              </button>
+            )}
           </div>
         )}
 
