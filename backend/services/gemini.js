@@ -21,7 +21,7 @@ function getClient() {
 
 function getModel() {
   return getClient().getGenerativeModel({
-    model: 'gemini-1.5-flash',               // free tier — no billing needed
+    model: 'gemini-2.0-flash',               // free tier — no billing needed
     generationConfig: { responseMimeType: 'application/json' },
   });
 }
