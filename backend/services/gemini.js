@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 const {
   geocodeCity, getRoadDistance,
   searchHotels: googleHotels, searchHolidayRentals, searchActivities,
@@ -13,17 +13,10 @@ const GIGM = require('./gigm');
 const db   = require('../db/client');
 const { cityToState, formatAttractionsForPrompt } = require('./attractions');
 
-let genAI;
-function getClient() {
-  if (!genAI) genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  return genAI;
-}
-
-function getModel() {
-  return getClient().getGenerativeModel({
-    model: 'gemini-2.0-flash',               // free tier — no billing needed
-    generationConfig: { responseMimeType: 'application/json' },
-  });
+let _groq;
+function getGroq() {
+  if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  return _groq;
 }
 
 const fmtNGN = (n) =>
@@ -212,7 +205,6 @@ function buildContextBlock(ctx, intake) {
 
 // ── Main plan generation ───────────────────────────────────────────────────────
 async function generateTripPlan(intake) {
-  const model = getModel();
 
   // Fetch live data in parallel — takes ~2-4s, runs while user sees "Generating…"
   const ctx = await fetchRealWorldContext(intake);
@@ -310,10 +302,14 @@ INSTRUCTIONS:
   }
 }`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
-  // responseMimeType:'application/json' guarantees raw JSON — no markdown fences.
-  // We still strip them defensively in case a model version slips them in anyway.
+  const completion = await getGroq().chat.completions.create({
+    model: 'llama-3.3-70b-versatile',   // free tier — 14,400 req/day, no card needed
+    messages: [{ role: 'user', content: prompt }],
+    response_format: { type: 'json_object' },
+    temperature: 0.7,
+  });
+  const text = completion.choices[0].message.content.trim();
+  // response_format:json_object guarantees raw JSON, but strip fences defensively
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const plan = JSON.parse(cleaned);
   return {
