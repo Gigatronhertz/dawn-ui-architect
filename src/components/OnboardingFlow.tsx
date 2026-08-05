@@ -10,7 +10,7 @@ const steps = [
     n: "02",
     emoji: "✨",
     title: "AI generates the draft plan",
-    desc: "Gemini builds the full itinerary, surfaces hotel options, and calculates the per-person cost. You review and edit before anyone else sees it.",
+    desc: "Karije builds the full itinerary, surfaces hotel options, and calculates the per-person cost. You review and edit before anyone else sees it.",
     accent: "bg-google-yellow",
   },
   {
