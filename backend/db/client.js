@@ -98,6 +98,12 @@ const SCHEMA = [
     added_at      INTEGER NOT NULL DEFAULT (unixepoch()),
     UNIQUE(trip_id, phone)
   )`,
+  `CREATE TABLE IF NOT EXISTS participants (
+    id         TEXT PRIMARY KEY,
+    trip_id    TEXT NOT NULL,
+    name       TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
 ];
 
 // Safe schema migrations — new columns added after initial release.
@@ -369,9 +375,27 @@ async function getUser(id) {
 
 async function getUserPlans(userId) {
   const res = await client.execute({
-    sql: `SELECT id, origin, destination, days, squad_size, status, plan, created_at
-          FROM trips WHERE user_id = ? ORDER BY created_at DESC`,
+    sql: `SELECT t.id, t.origin, t.destination, t.days, t.squad_size, t.status, t.plan, t.created_at,
+          (SELECT COUNT(*) FROM participants p WHERE p.trip_id = t.id) AS participant_count
+          FROM trips t WHERE t.user_id = ? ORDER BY t.created_at DESC`,
     args: [userId],
+  });
+  return res.rows;
+}
+
+// ── Participant helpers ────────────────────────────────────────────────────
+
+async function insertParticipant({ id, trip_id, name }) {
+  await client.execute({
+    sql: 'INSERT INTO participants (id, trip_id, name) VALUES (?, ?, ?)',
+    args: [id, trip_id, name ?? null],
+  });
+}
+
+async function getParticipants(tripId) {
+  const res = await client.execute({
+    sql: 'SELECT id, name, created_at FROM participants WHERE trip_id = ? ORDER BY created_at ASC',
+    args: [tripId],
   });
   return res.rows;
 }
@@ -386,5 +410,6 @@ module.exports = {
   waitlist:    { insert: insertWaitlist, list: listWaitlist },
   agents:      { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
   attractions: { byState: getAttractionsByState },
-  users:       { upsert: upsertUser, get: getUser, plans: getUserPlans },
+  users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },
+  participants: { insert: insertParticipant, get: getParticipants },
 };

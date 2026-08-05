@@ -971,12 +971,23 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan }: {
   botNumber: string; destination: string; instructions: string[]; tripId: string; squadSize: number; finalPlan?: GeminiPlan | null;
 }) {
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const number = botNumber.startsWith("+") ? botNumber : `+${botNumber}`;
+  const planUrl = `${window.location.origin}/plan/${tripId}`;
+  const waShareText = encodeURIComponent(
+    `🛫 I've planned our squad trip to ${destination}! Check it out and say you're in:\n${planUrl}`
+  );
 
   const copy = () => {
     navigator.clipboard.writeText(number);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(planUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   };
 
   return (
@@ -1013,6 +1024,35 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan }: {
           </div>
         </div>
       )}
+
+      {/* Share with squad — primary CTA */}
+      <div className="rounded-2xl bg-primary/10 ring-1 ring-primary/20 p-5 mb-6">
+        <div className="text-xs font-semibold uppercase tracking-wider text-primary mb-1">Share with your squad</div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Send this link to your group — they can view the full plan and say "I'm in!"
+        </p>
+        <div className="font-mono text-xs text-foreground/60 bg-secondary/60 rounded-xl px-3 py-2 mb-3 truncate select-all">
+          {planUrl}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={copyLink}
+            className={`flex-1 rounded-full py-2.5 text-sm font-medium ring-hairline transition ${
+              linkCopied ? "bg-google-green/10 text-google-green ring-google-green/20" : "bg-card text-foreground hover:bg-secondary"
+            }`}
+          >
+            {linkCopied ? "✓ Copied!" : "Copy link"}
+          </button>
+          <a
+            href={`https://wa.me/?text=${waShareText}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 rounded-full py-2.5 text-sm font-medium text-center bg-whatsapp text-white hover:opacity-90 transition"
+          >
+            Share on WhatsApp
+          </a>
+        </div>
+      </div>
 
       {/* Bot number */}
       <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 mb-6 flex items-center justify-between gap-4">

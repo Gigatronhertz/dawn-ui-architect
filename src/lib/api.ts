@@ -42,15 +42,34 @@ export type PlanResponse = { tripId: string; plan: GeminiPlan; scraped?: Scraped
 export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[] };
 
 export type UserPlan = {
-  tripId:      string;
-  origin:      string | null;
-  destination: string | null;
-  days:        number | null;
-  squadSize:   number | null;
-  status:      string;
-  plan:        GeminiPlan | null;
-  createdAt:   number;
+  tripId:           string;
+  origin:           string | null;
+  destination:      string | null;
+  days:             number | null;
+  squadSize:        number | null;
+  status:           string;
+  plan:             GeminiPlan | null;
+  createdAt:        number;
+  participantCount: number;
 };
+
+/** Returned by GET /api/public/plan/:tripId — safe to show without auth */
+export type PublicPlanResponse = {
+  tripId:           string;
+  origin:           string | null;
+  destination:      string | null;
+  days:             number | null;
+  squadSize:        number | null;
+  hotel:            GeminiPlan['hotel'];
+  transport:        GeminiPlan['transport'];
+  highlights:       string[];
+  days_plan:        PlanDay[];
+  cost_breakdown:   GeminiPlan['cost_breakdown'];
+  participantCount: number;
+  participants:     { name: string | null; createdAt: number }[];
+};
+
+export type ParticipantsResponse = { count: number; names: string[] };
 
 /** Returned by POST /api/plan — job is created, work runs in background */
 export type CreatePlanResponse = { tripId: string; status: 'generating' };
@@ -152,6 +171,16 @@ export const api = {
     get<{ uid: string; email: string; name: string | null; photoUrl: string | null; planCount: number }>(
       '/api/auth/me', bearer(token)
     ),
+
+  /** Fetch the public (confirmed) plan — no auth needed. */
+  getPublicPlan:  (tripId: string) =>
+    get<PublicPlanResponse>(`/api/public/plan/${tripId}`),
+  /** Squad member joins the plan — no auth needed. */
+  joinPlan: (tripId: string, name?: string) =>
+    post<{ ok: boolean; count: number }>(`/api/public/plan/${tripId}/join`, { name: name || null }),
+  /** Poll for live participant count. */
+  getParticipants: (tripId: string) =>
+    get<ParticipantsResponse>(`/api/public/plan/${tripId}/participants`),
 
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
   registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),

@@ -400,6 +400,68 @@ router.post('/waitlist', async (req, res) => {
   return res.json({ ok: true });
 });
 
+// ── Public plan routes (no auth — squad-facing) ───────────────────────────────
+
+// GET /api/public/plan/:tripId
+// Returns the public-safe subset of a confirmed plan for the squad share page.
+// Only works after the organiser confirms (status = awaiting_group).
+router.get('/public/plan/:tripId', async (req, res) => {
+  const trip = await db.trips.get(req.params.tripId);
+  if (!trip) return res.status(404).json({ error: 'Plan not found.' });
+  if (trip.status !== 'awaiting_group') {
+    return res.status(403).json({ error: 'This plan has not been shared yet — ask the organiser to confirm it first.' });
+  }
+
+  const plan = trip.plan ? JSON.parse(trip.plan) : null;
+  if (!plan) return res.status(404).json({ error: 'Plan data is missing.' });
+
+  const participants = await db.participants.get(trip.id);
+
+  return res.json({
+    tripId:           trip.id,
+    origin:           trip.origin,
+    destination:      trip.destination,
+    days:             trip.days,
+    squadSize:        trip.squad_size,
+    hotel:            plan.hotel,
+    transport:        plan.transport,
+    highlights:       plan.highlights || [],
+    days_plan:        plan.days || [],
+    cost_breakdown:   plan.cost_breakdown,
+    participantCount: participants.length,
+    participants:     participants.map(p => ({ name: p.name, createdAt: p.created_at })),
+  });
+});
+
+// POST /api/public/plan/:tripId/join
+// Squad member taps "I'm in!" — no auth required.
+router.post('/public/plan/:tripId/join', async (req, res) => {
+  const trip = await db.trips.get(req.params.tripId);
+  if (!trip) return res.status(404).json({ error: 'Plan not found.' });
+  if (trip.status !== 'awaiting_group') {
+    return res.status(403).json({ error: 'This plan has not been confirmed yet.' });
+  }
+
+  const { name } = req.body;
+  await db.participants.insert({ id: uuid(), trip_id: trip.id, name: name?.trim() || null });
+  const participants = await db.participants.get(trip.id);
+
+  return res.json({ ok: true, count: participants.length });
+});
+
+// GET /api/public/plan/:tripId/participants
+// Returns live participant count and first-names — polled every 15 s from PlanView.
+router.get('/public/plan/:tripId/participants', async (req, res) => {
+  const trip = await db.trips.get(req.params.tripId);
+  if (!trip) return res.status(404).json({ error: 'Plan not found.' });
+
+  const participants = await db.participants.get(trip.id);
+  return res.json({
+    count: participants.length,
+    names: participants.map(p => p.name).filter(Boolean),
+  });
+});
+
 // ── Notification routes ───────────────────────────────────────────────────────
 
 // POST /api/notify/subscribe
@@ -457,14 +519,15 @@ router.get('/auth/plans', requireAuth, async (req, res) => {
   const { uid } = req.user;
   const rows = await db.users.plans(uid);
   const plans = rows.map(t => ({
-    tripId:      t.id,
-    origin:      t.origin,
-    destination: t.destination,
-    days:        t.days,
-    squadSize:   t.squad_size,
-    status:      t.status,
-    plan:        t.plan ? JSON.parse(t.plan) : null,
-    createdAt:   t.created_at,
+    tripId:           t.id,
+    origin:           t.origin,
+    destination:      t.destination,
+    days:             t.days,
+    squadSize:        t.squad_size,
+    status:           t.status,
+    plan:             t.plan ? JSON.parse(t.plan) : null,
+    createdAt:        t.created_at,
+    participantCount: Number(t.participant_count ?? 0),
   }));
   return res.json({ plans });
 });

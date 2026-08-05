@@ -7,14 +7,14 @@ const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  generating:    { label: "Generating…",  color: "text-google-blue bg-google-blue/10" },
-  plan_review:   { label: "Ready",        color: "text-google-green bg-google-green/10" },
-  awaiting_group:{ label: "Confirmed",    color: "text-primary bg-primary/10" },
-  error:         { label: "Failed",       color: "text-destructive bg-destructive/10" },
+  generating:     { label: "Generating…", color: "text-google-blue bg-google-blue/10" },
+  plan_review:    { label: "Ready",       color: "text-google-green bg-google-green/10" },
+  awaiting_group: { label: "Confirmed",   color: "text-primary bg-primary/10" },
+  error:          { label: "Failed",      color: "text-destructive bg-destructive/10" },
 };
 
 export default function MyPlans() {
-  const { user, loading, signIn, signOut, getIdToken } = useAuth();
+  const { user, loading, signOut, getIdToken } = useAuth();
   const navigate = useNavigate();
   const [plans, setPlans] = useState<UserPlan[]>([]);
   const [fetching, setFetching] = useState(false);
@@ -133,6 +133,26 @@ export default function MyPlans() {
                     >
                       <PlanCard p={p} s={s} date={date} perPerson={perPerson} total={total} />
                     </Link>
+                  ) : p.status === 'awaiting_group' ? (
+                    <div className="rounded-3xl bg-card ring-hairline shadow-card p-6 space-y-4">
+                      <PlanCard p={p} s={s} date={date} perPerson={perPerson} total={total} />
+                      {/* Share link + participant count */}
+                      <div className="border-t border-border pt-4 flex items-center justify-between gap-4 flex-wrap">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="text-base">🙌</span>
+                          {(p.participantCount ?? 0) > 0
+                            ? <span><span className="font-semibold text-foreground">{p.participantCount}</span> {p.participantCount === 1 ? "person" : "people"} in</span>
+                            : <span>No-one has joined yet</span>
+                          }
+                        </div>
+                        <Link
+                          to={`/plan/${p.tripId}`}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-4 py-2 text-xs font-semibold hover:bg-primary/15 transition"
+                        >
+                          View squad page →
+                        </Link>
+                      </div>
+                    </div>
                   ) : (
                     <div className="rounded-3xl bg-card ring-hairline shadow-card p-6">
                       <PlanCard p={p} s={s} date={date} perPerson={perPerson} total={total} />
