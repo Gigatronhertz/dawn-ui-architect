@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
+import { api, session, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { signInWithGoogleRedirect } from "@/lib/firebase";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
@@ -1130,21 +1129,16 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
 }
 
 /* ─── lock-in banner ─────────────────────────────────────────────────────────── */
-const PENDING_LINK_KEY = 'msgo_pending_link';
-
 function LockBanner({ tripId }: { tripId: string }) {
-  const { user, signIn, getIdToken } = useAuth();
-  const [state, setState] = useState<'idle' | 'signing-in' | 'linking' | 'linked' | 'error'>('idle');
+  const { user, getIdToken } = useAuth();
+  const [state, setState] = useState<'idle' | 'linking' | 'linked' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Auto-link when:
-  // (a) user was already signed in when the component mounted, or
-  // (b) we just came back from a Google redirect (sessionStorage has our tripId)
+  // If user is already signed in when this banner mounts, link the plan immediately.
+  // This also fires when the user returns from the OAuth redirect (AuthContext
+  // reads the ?token= param from the URL on mount and updates user).
   useEffect(() => {
     if (!user || state !== 'idle') return;
-    const pending = sessionStorage.getItem(PENDING_LINK_KEY);
-    // Always link — either they were already signed in, or they just redirected back
-    if (pending) sessionStorage.removeItem(PENDING_LINK_KEY);
     linkPlan();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -1152,7 +1146,7 @@ function LockBanner({ tripId }: { tripId: string }) {
   async function linkPlan() {
     setState('linking');
     try {
-      const token = await getIdToken();
+      const token = getIdToken();
       if (!token) throw new Error('No token');
       await api.linkPlan(tripId, token);
       setState('linked');
@@ -1162,31 +1156,12 @@ function LockBanner({ tripId }: { tripId: string }) {
     }
   }
 
-  async function handleSignIn() {
-    setState('signing-in');
-    try {
-      // signIn returns the Firebase User — get the token from it directly
-      // rather than waiting for the React context to re-render (which races with linkPlan)
-      const firebaseUser = await signIn();
-      const token = await firebaseUser.getIdToken();
-      if (!token) throw new Error('No token after sign-in');
-      await api.linkPlan(tripId, token);
-      setState('linked');
-    } catch (err: unknown) {
-      const code = (err as { code?: string })?.code ?? '';
-      // Ad blockers and strict privacy shields kill the popup's network requests.
-      // Fall back to a full-page redirect — bypasses the blocker entirely.
-      if (code === 'auth/network-request-failed' || code === 'auth/popup-blocked') {
-        sessionStorage.setItem(PENDING_LINK_KEY, tripId); // resume link after redirect
-        await signInWithGoogleRedirect();
-        return; // page navigates away
-      }
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[sign-in]', msg);
-      setErrorMsg(msg);
-      setState('error');
-    }
-  }
+  // The OAuth sign-in URL — backend handles the full Google OAuth flow server-side.
+  // No Firebase SDK calls in the browser = no ad-blocker issues.
+  const signInUrl = session.googleAuthUrl({
+    tripId,
+    redirect: window.location.href, // come back to this exact page after sign-in
+  });
 
   if (state === 'linked') {
     return (
@@ -1224,8 +1199,7 @@ function LockBanner({ tripId }: { tripId: string }) {
     );
   }
 
-  if (user) {
-    // Logged in but not yet linked (linking in progress)
+  if (user || state === 'linking') {
     return (
       <Card className="flex items-center gap-4">
         <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
@@ -1234,7 +1208,7 @@ function LockBanner({ tripId }: { tripId: string }) {
     );
   }
 
-  // Default: not logged in → show CTA
+  // Default: not signed in → link directly to the backend OAuth route
   return (
     <Card>
       <div className="flex flex-col sm:flex-row sm:items-center gap-5">
@@ -1247,26 +1221,19 @@ function LockBanner({ tripId }: { tripId: string }) {
             Sign in with Google to save this plan to your account. Close the tab, come back later — it'll be right here.
           </p>
         </div>
-        <button
-          onClick={handleSignIn}
-          disabled={state === 'signing-in'}
-          className="shrink-0 inline-flex items-center gap-2.5 rounded-full px-5 py-3 text-sm font-medium bg-card ring-hairline hover:bg-secondary active:scale-95 transition disabled:opacity-60 whitespace-nowrap"
+        <a
+          href={signInUrl}
+          className="shrink-0 inline-flex items-center gap-2.5 rounded-full px-5 py-3 text-sm font-medium bg-card ring-hairline hover:bg-secondary active:scale-95 transition whitespace-nowrap"
         >
-          {state === 'signing-in' ? (
-            <><span className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />Signing in…</>
-          ) : (
-            <>
-              {/* Google "G" logo */}
-              <svg viewBox="0 0 24 24" className="w-4 h-4" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Continue with Google
-            </>
-          )}
-        </button>
+          {/* Google "G" logo */}
+          <svg viewBox="0 0 24 24" className="w-4 h-4" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </a>
       </div>
     </Card>
   );
@@ -1276,7 +1243,7 @@ function LockBanner({ tripId }: { tripId: string }) {
 type Step = "intake" | "generating" | "plan" | "confirm";
 
 export default function Start() {
-  const { user, signIn, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [step, setStep] = useState<Step>("intake");
   const [intake, setIntake] = useState<IntakeData | null>(null);
   const [phone, setPhone] = useState<string>("");

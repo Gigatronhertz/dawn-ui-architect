@@ -2,8 +2,9 @@ require('./utils/logger'); // must be first — patches console.* before any oth
 require('dotenv').config();
 const express = require('express');
 const db = require('./db/client');
-const webhookRouter = require('./webhook');
-const apiRouter = require('./routes/api');
+const webhookRouter    = require('./webhook');
+const apiRouter        = require('./routes/api');
+const { router: authRouter } = require('./routes/googleAuth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +37,9 @@ app.get('/', (req, res) => res.json({ status: 'ok', service: 'MySquadGo backend'
 
 // REST API (web form flow)
 app.use('/api', apiRouter);
+
+// Server-side Google OAuth (bypasses Firebase client SDK / ad-blocker issues)
+app.use('/auth', authRouter);
 
 // WhatsApp webhook + payment routes
 app.use('/', webhookRouter);

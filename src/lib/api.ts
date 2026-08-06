@@ -153,6 +153,27 @@ async function get<T>(path: string, headers?: Record<string, string>): Promise<T
 
 function bearer(token: string) { return { Authorization: `Bearer ${token}` }; }
 
+// ── Session token helpers ──────────────────────────────────────────────────
+const TOKEN_KEY = 'msgo_token';
+
+export const session = {
+  /** Store the JWT returned by /auth/google/callback */
+  save:   (token: string) => localStorage.setItem(TOKEN_KEY, token),
+  /** Retrieve the stored JWT (null if not signed in) */
+  get:    ()              => localStorage.getItem(TOKEN_KEY),
+  /** Remove the JWT (sign out) */
+  clear:  ()              => localStorage.removeItem(TOKEN_KEY),
+  /** Build the backend Google OAuth URL with an optional tripId to link */
+  googleAuthUrl: (opts?: { tripId?: string; redirect?: string }) => {
+    const base = `${API_URL}/auth/google`;
+    const params = new URLSearchParams();
+    if (opts?.tripId)   params.set('tripId',   opts.tripId);
+    if (opts?.redirect) params.set('redirect', opts.redirect);
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+  },
+};
+
 export const api = {
   /** Fire-and-forget: creates the job, returns tripId immediately. */
   createPlan:   (intake: IntakeData) => post<CreatePlanResponse>('/api/plan', intake),
