@@ -4,7 +4,8 @@ const express = require('express');
 const db = require('./db/client');
 const webhookRouter    = require('./webhook');
 const apiRouter        = require('./routes/api');
-const { router: authRouter } = require('./routes/googleAuth');
+const { router: authRouter }  = require('./routes/googleAuth');
+const { router: magicRouter } = require('./routes/magicAuth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,8 +39,9 @@ app.get('/', (req, res) => res.json({ status: 'ok', service: 'MySquadGo backend'
 // REST API (web form flow)
 app.use('/api', apiRouter);
 
-// Server-side Google OAuth (bypasses Firebase client SDK / ad-blocker issues)
+// Auth routes — Google OAuth + magic links
 app.use('/auth', authRouter);
+app.use('/auth', magicRouter);
 
 // WhatsApp webhook + payment routes
 app.use('/', webhookRouter);

@@ -85,6 +85,15 @@ const SCHEMA = [
     photo_url   TEXT,
     created_at  INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  `CREATE TABLE IF NOT EXISTS magic_links (
+    token      TEXT PRIMARY KEY,
+    email      TEXT NOT NULL,
+    trip_id    TEXT,
+    redirect   TEXT,
+    expires_at INTEGER NOT NULL,
+    used       INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
   `CREATE TABLE IF NOT EXISTS members (
     id            TEXT PRIMARY KEY,
     trip_id       TEXT NOT NULL,

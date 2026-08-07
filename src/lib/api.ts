@@ -218,6 +218,10 @@ export const api = {
   initPayment: (tripId: string, opts: { participantId: string; email: string; name?: string }) =>
     post<{ authorization_url: string; reference: string }>(`/api/public/plan/${tripId}/pay`, opts),
 
+  /** Send a magic sign-in link to the given email. Returns preview URL if Resend not configured. */
+  sendMagicLink: (opts: { email: string; tripId?: string; redirect?: string }) =>
+    post<{ ok: boolean; preview?: string }>('/auth/magic', opts),
+
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
   registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),
   getAgent: (phone: string) => get<{ agent: AgentProfile }>(`/api/agents/${encodeURIComponent(phone)}`),

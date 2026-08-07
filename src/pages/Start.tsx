@@ -1131,12 +1131,12 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
 /* ─── lock-in banner ─────────────────────────────────────────────────────────── */
 function LockBanner({ tripId }: { tripId: string }) {
   const { user, getIdToken } = useAuth();
-  const [state, setState] = useState<'idle' | 'linking' | 'linked' | 'error'>('idle');
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'linking' | 'linked' | 'error'>('idle');
+  const [email, setEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // If user is already signed in when this banner mounts, link the plan immediately.
-  // This also fires when the user returns from the OAuth redirect (AuthContext
-  // reads the ?token= param from the URL on mount and updates user).
+  // Auto-link when user is already signed in (or just returned from magic link).
   useEffect(() => {
     if (!user || state !== 'idle') return;
     linkPlan();
@@ -1156,12 +1156,23 @@ function LockBanner({ tripId }: { tripId: string }) {
     }
   }
 
-  // The OAuth sign-in URL — backend handles the full Google OAuth flow server-side.
-  // No Firebase SDK calls in the browser = no ad-blocker issues.
-  const signInUrl = session.googleAuthUrl({
-    tripId,
-    redirect: window.location.href, // come back to this exact page after sign-in
-  });
+  async function sendLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.includes('@')) return;
+    setState('sending');
+    try {
+      const res = await api.sendMagicLink({
+        email,
+        tripId,
+        redirect: window.location.href,
+      });
+      if (res.preview) setPreviewUrl(res.preview); // Resend not configured — show link directly
+      setState('sent');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to send link.');
+      setState('error');
+    }
+  }
 
   if (state === 'linked') {
     return (
@@ -1174,12 +1185,29 @@ function LockBanner({ tripId }: { tripId: string }) {
             <Link to="/my-plans" className="underline underline-offset-2 hover:text-foreground transition-colors">My Plans</Link>
           </p>
         </div>
-        <Link
-          to="/my-plans"
-          className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition"
-        >
+        <Link to="/my-plans" className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition">
           View all →
         </Link>
+      </Card>
+    );
+  }
+
+  if (state === 'sent') {
+    return (
+      <Card className="flex items-start gap-4">
+        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center text-xl shrink-0">📬</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-display font-semibold text-sm">Check your email</div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            We sent a sign-in link to <span className="font-medium text-foreground">{email}</span>.
+            Click it to save your plan. Link expires in 15 minutes.
+          </p>
+          {previewUrl && (
+            <a href={previewUrl} className="mt-2 block text-xs text-primary underline underline-offset-2 break-all">
+              (Email not configured — click here to sign in directly)
+            </a>
+          )}
+        </div>
       </Card>
     );
   }
@@ -1192,7 +1220,7 @@ function LockBanner({ tripId }: { tripId: string }) {
           <div className="font-display font-semibold text-sm text-destructive">Couldn't save plan</div>
           <p className="text-xs text-muted-foreground mt-0.5">{errorMsg}</p>
         </div>
-        <button onClick={linkPlan} className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition">
+        <button onClick={() => setState('idle')} className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition">
           Retry
         </button>
       </Card>
@@ -1208,33 +1236,35 @@ function LockBanner({ tripId }: { tripId: string }) {
     );
   }
 
-  // Default: not signed in → link directly to the backend OAuth route
+  // Default: not signed in → magic link email form
   return (
     <Card>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">🔐</span>
-            <div className="font-display font-semibold">Lock in your plan</div>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Sign in with Google to save this plan to your account. Close the tab, come back later — it'll be right here.
-          </p>
-        </div>
-        <a
-          href={signInUrl}
-          className="shrink-0 inline-flex items-center gap-2.5 rounded-full px-5 py-3 text-sm font-medium bg-card ring-hairline hover:bg-secondary active:scale-95 transition whitespace-nowrap"
-        >
-          {/* Google "G" logo */}
-          <svg viewBox="0 0 24 24" className="w-4 h-4" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-          </svg>
-          Continue with Google
-        </a>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-lg">🔐</span>
+        <div className="font-display font-semibold">Save your plan</div>
       </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Enter your email and we'll send you a sign-in link. No password, no Google — just click the link.
+      </p>
+      <form onSubmit={sendLink} className="flex gap-2">
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          required
+          className="flex-1 min-w-0 rounded-full px-4 py-2.5 text-sm bg-secondary ring-hairline focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+        <button
+          type="submit"
+          disabled={state === 'sending'}
+          className="shrink-0 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium bg-foreground text-background hover:opacity-80 active:scale-95 transition disabled:opacity-60"
+        >
+          {state === 'sending'
+            ? <><span className="w-3.5 h-3.5 rounded-full border-2 border-background/40 border-t-background animate-spin" />Sending…</>
+            : 'Send link ✉️'}
+        </button>
+      </form>
     </Card>
   );
 }

@@ -30,7 +30,8 @@
       "Bash(curl -s \"https://dawn-ui-architect.onrender.com/api/logs?n=100\")",
       "Bash(curl -s \"https://dawn-ui-architect.onrender.com/api/logs?n=80\")",
       "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(l['ts'], l['level'], l['msg']\\) for l in data['lines'] if 'gigm' in l['msg'].lower\\(\\) or 'gigm' in l['msg']]\")",
-      "PowerShell(npm install *)"
+      "PowerShell(npm install *)",
+      "Bash(npx tsc *)"
     ]
   }
 }
