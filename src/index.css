@@ -14,24 +14,24 @@
 
 @layer base {
   :root {
-    /* ── Surfaces ── */
-    --background:           40 47% 94%;   /* #F7F1E7 parchment */
-    --foreground:          129 22% 24%;   /* #2F4A33 forest green */
-    --card:                 43 100% 99%;  /* #FFFDF8 near-white */
-    --card-foreground:     129 22% 24%;
-    --popover:              43 100% 99%;
-    --popover-foreground:  129 22% 24%;
+    /* ── Surfaces — white base, parchment used as accent only ── */
+    --background:            0 0% 100%;   /* pure white */
+    --foreground:          129 22% 18%;   /* #2F4A33 forest green (slightly darker) */
+    --card:                  0 0% 100%;   /* white cards */
+    --card-foreground:     129 22% 18%;
+    --popover:               0 0% 100%;
+    --popover-foreground:  129 22% 18%;
 
     /* ── Primary action — terracotta ── */
     --primary:              27 58% 44%;   /* #B0682F */
-    --primary-foreground:   40 47% 94%;   /* parchment on terracotta */
-    --primary-soft:         27 58% 95%;
+    --primary-foreground:    0 0% 100%;   /* white on terracotta */
+    --primary-soft:         27 50% 96%;
 
     /* ── Secondary / muted surfaces ── */
-    --secondary:            40 18% 88%;
-    --secondary-foreground: 129 22% 24%;
-    --muted:                40 18% 89%;
-    --muted-foreground:     35 16% 48%;   /* #8A7A63 warm grey */
+    --secondary:             0 0% 97%;
+    --secondary-foreground: 129 22% 18%;
+    --muted:                 0 0% 96%;
+    --muted-foreground:    220 10% 50%;   /* neutral grey — readable, not sepia */
 
     /* ── Accent — forest green (icon fills, solid blocks) ── */
     --accent:              129 22% 24%;   /* #2F4A33 */
@@ -39,9 +39,9 @@
 
     /* ── Utility ── */
     --destructive:           0 84% 60%;
-    --destructive-foreground: 40 47% 94%;
-    --border:               38 32% 84%;   /* #E3D9C8 warm border */
-    --input:                38 32% 84%;
+    --destructive-foreground: 0 0% 100%;
+    --border:              220 13% 91%;   /* clean light border */
+    --input:               220 13% 91%;
     --ring:                 27 58% 44%;   /* terracotta focus ring */
     --radius: 0.5rem;
 
@@ -53,11 +53,11 @@
     --warm-grey:            35 16% 48%;   /* #8A7A63 */
     --whatsapp:            142 70% 49%;
 
-    /* ── Gradients — warm, not neon ── */
+    /* ── Gradients ── */
     --gradient-hero:
-      radial-gradient(65% 55% at 80% 20%, hsl(27 58% 44% / 0.07) 0%, transparent 65%),
-      radial-gradient(55% 45% at 15% 85%, hsl(129 22% 24% / 0.05) 0%, transparent 65%),
-      hsl(var(--background));
+      radial-gradient(65% 55% at 80% 20%, hsl(27 58% 44% / 0.06) 0%, transparent 65%),
+      radial-gradient(55% 45% at 15% 85%, hsl(129 22% 24% / 0.04) 0%, transparent 65%),
+      hsl(0 0% 100%);
     --gradient-primary: linear-gradient(135deg, hsl(27 58% 48%), hsl(22 62% 40%));
     --gradient-text:    linear-gradient(135deg, hsl(129 22% 24%) 0%, hsl(129 18% 36%) 100%);
 
@@ -81,23 +81,23 @@
   }
 
   .dark {
-    --background:          129 22% 12%;
+    --background:          220 20% 9%;
     --foreground:           40 47% 94%;
-    --card:                129 18% 16%;
+    --card:                220 18% 12%;
     --card-foreground:      40 47% 94%;
-    --popover:             129 18% 16%;
+    --popover:             220 18% 12%;
     --popover-foreground:   40 47% 94%;
     --primary:              27 58% 54%;
-    --primary-foreground:   40 47% 94%;
+    --primary-foreground:    0 0% 100%;
     --primary-soft:         27 30% 18%;
-    --secondary:           129 14% 20%;
+    --secondary:           220 14% 16%;
     --secondary-foreground: 40 47% 94%;
-    --muted:               129 14% 20%;
-    --muted-foreground:    117 13% 65%;
-    --accent:              129 22% 24%;
+    --muted:               220 14% 16%;
+    --muted-foreground:    220 10% 58%;
+    --accent:              129 22% 30%;
     --accent-foreground:    40 47% 94%;
-    --border:              129 16% 22%;
-    --input:               129 16% 22%;
+    --border:              220 14% 18%;
+    --input:               220 14% 18%;
     --ring:                 27 58% 54%;
   }
 }
