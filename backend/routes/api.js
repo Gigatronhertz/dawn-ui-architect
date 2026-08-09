@@ -440,6 +440,30 @@ router.post('/waitlist', async (req, res) => {
   return res.json({ ok: true });
 });
 
+// POST /api/agency-leads
+// Captures an agency / Pro plan early-access enquiry.
+// Upserts on email — re-submitting updates the record.
+router.post('/agency-leads', async (req, res) => {
+  const { name, agencyName, phone, email } = req.body;
+  if (!name || typeof name !== 'string' || name.trim().length < 2) {
+    return res.status(400).json({ error: 'Name is required.' });
+  }
+  if (!phone || typeof phone !== 'string' || phone.trim().length < 5) {
+    return res.status(400).json({ error: 'A valid phone number is required.' });
+  }
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ error: 'A valid email address is required.' });
+  }
+  await db.agencyLeads.insert({
+    name:        name.trim(),
+    agency_name: typeof agencyName === 'string' ? agencyName.trim() : null,
+    phone:       phone.trim().replace(/\s+/g, ''),
+    email:       email.trim().toLowerCase(),
+    source:      'web',
+  });
+  return res.json({ ok: true });
+});
+
 // ── Public plan routes (no auth — squad-facing) ───────────────────────────────
 
 // GET /api/public/plan/:tripId

@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
-const links = [
-  { label: "Features", href: "#features" },
-  { label: "Safety", href: "#trust" },
-  { label: "How it works", href: "#how" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Bot", href: "#bot" },
+const navLinks = [
+  { label: "Services", href: "#services" },
+  { label: "Pro Plan", href: "#agencies" },
 ];
 
 export const Nav = () => {
+  const { user, signOut } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
@@ -34,17 +34,19 @@ export const Nav = () => {
             scrolled ? "glass ring-hairline shadow-soft" : ""
           }`}
         >
-          <a href="#" className="flex items-center gap-2 font-display font-semibold text-base">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 font-display font-semibold text-base">
             <span className="grid place-items-center w-8 h-8 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft">
               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
               </svg>
             </span>
             <span>MySquadGo</span>
-          </a>
+          </Link>
 
+          {/* Centre links — desktop only */}
           <nav className="hidden md:flex items-center gap-1">
-            {links.map((l) => (
+            {navLinks.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
@@ -55,15 +57,41 @@ export const Nav = () => {
             ))}
           </nav>
 
-          <Link
-            to="/demo"
-            className="inline-flex items-center gap-1.5 rounded-full bg-foreground text-background px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            Try the demo
-            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M13 5l7 7-7 7" />
-            </svg>
-          </Link>
+          {/* Right-side actions */}
+          <div className="flex items-center gap-1">
+            {user ? (
+              <>
+                <Link
+                  to="/my-plans"
+                  className="hidden sm:inline-flex px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-full transition-colors"
+                >
+                  My Plans
+                </Link>
+                <button
+                  onClick={signOut}
+                  className="hidden sm:inline-flex px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-full transition-colors"
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/my-plans"
+                className="hidden sm:inline-flex px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-full transition-colors"
+              >
+                Log in
+              </Link>
+            )}
+            <Link
+              to="/start"
+              className="inline-flex items-center gap-1.5 rounded-full bg-foreground text-background px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Demo
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M13 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
         </div>
       </div>
     </header>

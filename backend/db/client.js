@@ -94,6 +94,16 @@ const SCHEMA = [
     used       INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  `CREATE TABLE IF NOT EXISTS agency_leads (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    agency_name TEXT,
+    phone       TEXT NOT NULL,
+    email       TEXT NOT NULL,
+    source      TEXT NOT NULL DEFAULT 'web',
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+    UNIQUE(email)
+  )`,
   `CREATE TABLE IF NOT EXISTS members (
     id            TEXT PRIMARY KEY,
     trip_id       TEXT NOT NULL,
@@ -315,6 +325,26 @@ async function listWaitlist() {
   return res.rows;
 }
 
+// ── Agency leads helpers ───────────────────────────────────────────────────
+
+async function insertAgencyLead({ name, agency_name, phone, email, source = 'web' }) {
+  await client.execute({
+    sql: `INSERT INTO agency_leads (name, agency_name, phone, email, source)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(email) DO UPDATE SET
+            name        = excluded.name,
+            agency_name = excluded.agency_name,
+            phone       = excluded.phone,
+            source      = excluded.source`,
+    args: [name, agency_name || null, phone, email, source],
+  });
+}
+
+async function listAgencyLeads() {
+  const res = await client.execute('SELECT * FROM agency_leads ORDER BY created_at DESC');
+  return res.rows;
+}
+
 // ── Attractions helpers ────────────────────────────────────────────────────
 
 async function getAttractionsByState(state) {
@@ -459,6 +489,7 @@ module.exports = {
   trips:       { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
   members:     { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
   waitlist:    { insert: insertWaitlist, list: listWaitlist },
+  agencyLeads: { insert: insertAgencyLead, list: listAgencyLeads },
   agents:      { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
   attractions: { byState: getAttractionsByState },
   users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },

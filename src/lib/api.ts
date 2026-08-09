@@ -231,6 +231,10 @@ export const api = {
     post<{ ok: boolean; preview?: string }>('/auth/magic', opts),
 
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
+
+  /** Submit an agency / pro plan lead. */
+  submitAgencyLead: (payload: { name: string; agencyName: string; phone: string; email: string }) =>
+    post<{ ok: boolean }>('/api/agency-leads', payload),
   registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),
   getAgent: (phone: string) => get<{ agent: AgentProfile }>(`/api/agents/${encodeURIComponent(phone)}`),
   getDashboard: (phone: string) => get<DashboardData>(`/api/dashboard/${encodeURIComponent(phone)}`),
