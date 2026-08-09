@@ -4,8 +4,9 @@ const express = require('express');
 const db = require('./db/client');
 const webhookRouter    = require('./webhook');
 const apiRouter        = require('./routes/api');
-const { router: authRouter }  = require('./routes/googleAuth');
-const { router: magicRouter } = require('./routes/magicAuth');
+const { router: authRouter }   = require('./routes/googleAuth');
+const { router: magicRouter }  = require('./routes/magicAuth');
+const { router: emailRouter }  = require('./routes/emailAuth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,14 +35,15 @@ app.use((req, res, next) => {
 });
 
 // Health check
-app.get('/', (req, res) => res.json({ status: 'ok', service: 'MySquadGo backend' }));
+app.get('/', (req, res) => res.json({ status: 'ok', service: 'Karije backend' }));
 
 // REST API (web form flow)
 app.use('/api', apiRouter);
 
-// Auth routes — Google OAuth + magic links
+// Auth routes — Google OAuth + magic links + email/password
 app.use('/auth', authRouter);
 app.use('/auth', magicRouter);
+app.use('/auth', emailRouter);
 
 // WhatsApp webhook + payment routes
 app.use('/', webhookRouter);
@@ -52,7 +54,7 @@ process.on('unhandledRejection', (err) => console.error('[unhandled]', err?.mess
 
 db.ready.then(() => {
   app.listen(PORT, () => {
-    console.log(`\n🚀 MySquadGo backend running on port ${PORT}`);
+    console.log(`\n🚀 Karije backend running on port ${PORT}`);
     console.log(`   Webhook URL: http://localhost:${PORT}/webhook`);
     console.log(`   (expose with: ngrok http ${PORT})\n`);
   });

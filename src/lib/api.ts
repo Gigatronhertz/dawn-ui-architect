@@ -230,6 +230,14 @@ export const api = {
   sendMagicLink: (opts: { email: string; tripId?: string; redirect?: string }) =>
     post<{ ok: boolean; preview?: string }>('/auth/magic', opts),
 
+  /** Create a new Karije account (email + password). Sends a verification email. */
+  signup: (opts: { email: string; password: string; tripId?: string }) =>
+    post<{ ok: boolean; preview?: string }>('/auth/signup', opts),
+
+  /** Sign in with email + password. Returns a JWT on success. */
+  login: (opts: { email: string; password: string }) =>
+    post<{ ok: boolean; token: string }>('/auth/login', opts),
+
   /** Create or update the agency profile tied to the authenticated user. */
   setupPro: (
     payload: { agencyName: string; tagline?: string; phone: string; waNumber?: string; serviceFee?: number; color?: string; planType?: string },

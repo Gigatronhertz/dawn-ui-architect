@@ -142,6 +142,9 @@ const MIGRATIONS = [
   `ALTER TABLE participants ADD COLUMN paystack_ref TEXT`,
   `ALTER TABLE participants ADD COLUMN paystack_url TEXT`,
   `ALTER TABLE participants ADD COLUMN paid_at      INTEGER`,
+  // Phase 7 — email + password auth
+  `ALTER TABLE users ADD COLUMN password_hash   TEXT`,
+  `ALTER TABLE users ADD COLUMN email_verified  INTEGER NOT NULL DEFAULT 0`,
 ];
 
 const ready = (async () => {

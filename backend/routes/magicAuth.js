@@ -20,7 +20,7 @@ const router = Router();
 
 const BACKEND  = () => (process.env.BACKEND_URL  || 'https://dawn-ui-architect.onrender.com').replace(/\/$/, '');
 const FRONTEND = () => (process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app').replace(/\/$/, '');
-const FROM     = () =>  process.env.EMAIL_FROM   || 'MySquadGo <onboarding@resend.dev>';
+const FROM     = () =>  process.env.EMAIL_FROM   || 'Karije <onboarding@resend.dev>';
 const TTL_MS   = 15 * 60 * 1000; // 15 minutes
 
 // ── POST /auth/magic ───────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ router.post('/magic', async (req, res) => {
       await resend.emails.send({
         from: FROM(),
         to:   email.trim(),
-        subject: 'Sign in to MySquadGo',
+        subject: 'Sign in to Karije',
         html: magicLinkEmail(verifyUrl),
       });
       console.log(`[auth/magic] sign-in link sent to ${email}`);
@@ -116,26 +116,25 @@ function magicLinkEmail(url) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign in to MySquadGo</title></head>
-<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px">
+<title>Sign in to Karije</title></head>
+<body style="margin:0;padding:0;background:#f5f2ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px">
     <tr><td align="center">
-      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)">
-        <tr><td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px;text-align:center">
-          <div style="font-size:32px;margin-bottom:8px">✈️</div>
-          <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700">Sign in to MySquadGo</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,.8);font-size:14px">Click the button below — link expires in 15 minutes</p>
+      <table width="100%" style="max-width:480px;background:#fff">
+        <tr><td style="background:#2F4A33;padding:32px;text-align:center">
+          <h1 style="margin:0;color:#F7F1E7;font-size:20px;font-weight:400;letter-spacing:0.18em;font-family:Georgia,'Times New Roman',serif">KARIJE</h1>
+          <p style="margin:10px 0 0;color:rgba(247,241,231,.65);font-size:13px;font-weight:300">Your sign-in link — expires in 15 minutes</p>
         </td></tr>
-        <tr><td style="padding:36px 32px;text-align:center">
+        <tr><td style="padding:40px 36px;text-align:center">
           <a href="${url}"
-             style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;padding:15px 40px;border-radius:100px;font-weight:700;font-size:16px;box-shadow:0 4px 14px rgba(99,102,241,.4)">
+             style="display:inline-block;background:#2F4A33;color:#F7F1E7;text-decoration:none;padding:15px 44px;font-size:14px;letter-spacing:0.1em;font-weight:400">
             Sign in →
           </a>
-          <p style="margin:24px 0 0;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
-          <p style="margin:8px 0 0;font-size:12px;word-break:break-all"><a href="${url}" style="color:#6366f1">${url}</a></p>
+          <p style="margin:24px 0 0;font-size:12px;color:#9ca3af">Or copy into your browser:</p>
+          <p style="margin:8px 0 0;font-size:11px;word-break:break-all"><a href="${url}" style="color:#B0682F">${url}</a></p>
         </td></tr>
-        <tr><td style="padding:20px 32px;border-top:1px solid #f3f4f6;text-align:center">
-          <p style="margin:0;font-size:11px;color:#d1d5db">If you didn't request this, ignore this email.</p>
+        <tr><td style="padding:18px 36px;border-top:1px solid #f0ebe1;text-align:center">
+          <p style="margin:0;font-size:11px;color:#d1d5db;font-weight:300">If you didn't request this, ignore this email.</p>
         </td></tr>
       </table>
     </td></tr>

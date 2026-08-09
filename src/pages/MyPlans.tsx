@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, session, type UserPlan } from "@/lib/api";
+import { api, type UserPlan } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
 
 const fmtNGN = (n: number) =>
@@ -14,17 +14,31 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   error:          { label: "Failed",      color: "text-destructive bg-destructive/10" },
 };
 
+type AuthMode = "signin" | "signup" | "magic";
+type SubmitState = "idle" | "busy" | "done" | "err";
+
 export default function MyPlans() {
   const { user, loading, signOut, getIdToken } = useAuth();
   const navigate = useNavigate();
-  const [plans, setPlans] = useState<UserPlan[]>([]);
-  const [fetching, setFetching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
 
-  // ── Magic-link login state ────────────────────────────────────────────────
-  const [loginEmail, setLoginEmail]   = useState("");
-  const [loginState, setLoginState]   = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [loginError, setLoginError]   = useState("");
+  const [plans, setPlans]     = useState<UserPlan[]>([]);
+  const [fetching, setFetching] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  // ── Auth form state ───────────────────────────────────────────────────────
+  const [authMode, setAuthMode]       = useState<AuthMode>("signin");
+  const [email, setEmail]             = useState("");
+  const [password, setPassword]       = useState("");
+  const [confirm, setConfirm]         = useState("");
+  const [showPass, setShowPass]       = useState(false);
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [submitErr, setSubmitErr]     = useState("");
+  const [sentTo, setSentTo]           = useState("");
+
+  // URL params passed back from /auth/verify-email or on auth_error
+  const verified  = searchParams.get("verified") === "1";
+  const authError = searchParams.get("auth_error");
 
   useEffect(() => {
     document.title = "My Plans · Karije";
@@ -41,6 +55,70 @@ export default function MyPlans() {
       .finally(() => setFetching(false));
   }, [user, getIdToken]);
 
+  function resetForm(mode: AuthMode) {
+    setAuthMode(mode);
+    setPassword("");
+    setConfirm("");
+    setSubmitState("idle");
+    setSubmitErr("");
+    setSentTo("");
+  }
+
+  // ── Sign-in handler ───────────────────────────────────────────────────────
+  async function handleSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !password) return;
+    setSubmitState("busy");
+    setSubmitErr("");
+    try {
+      const { token } = await api.login({ email: email.trim(), password });
+      // Hand the JWT to AuthContext via the URL param it already reads on mount
+      navigate(`/my-plans?token=${encodeURIComponent(token)}`, { replace: true });
+    } catch (err) {
+      setSubmitErr(err instanceof Error ? err.message : "Sign in failed.");
+      setSubmitState("err");
+    }
+  }
+
+  // ── Sign-up handler ───────────────────────────────────────────────────────
+  async function handleSignUp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !password) return;
+    if (password !== confirm) {
+      setSubmitErr("Passwords don't match.");
+      setSubmitState("err");
+      return;
+    }
+    setSubmitState("busy");
+    setSubmitErr("");
+    try {
+      const res = await api.signup({ email: email.trim(), password });
+      setSentTo(email.trim());
+      setSubmitState("done");
+      // Dev mode — show preview link in console for local testing
+      if (res.preview) console.info("[signup] verify link:", res.preview);
+    } catch (err) {
+      setSubmitErr(err instanceof Error ? err.message : "Sign up failed.");
+      setSubmitState("err");
+    }
+  }
+
+  // ── Magic-link handler ────────────────────────────────────────────────────
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubmitState("busy");
+    setSubmitErr("");
+    try {
+      await api.sendMagicLink({ email: email.trim(), redirect: "/my-plans" });
+      setSentTo(email.trim());
+      setSubmitState("done");
+    } catch (err) {
+      setSubmitErr(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setSubmitState("err");
+    }
+  }
+
   // ── Loading spinner (auth check still running) ────────────────────────────
   if (loading) {
     return (
@@ -50,30 +128,51 @@ export default function MyPlans() {
     );
   }
 
-  // ── Not logged in — show login form inline ────────────────────────────────
+  // ── Not logged in — show auth form inline ─────────────────────────────────
   if (!user) {
-    async function sendLink(e: React.FormEvent) {
-      e.preventDefault();
-      if (!loginEmail.trim()) return;
-      setLoginState("sending");
-      setLoginError("");
-      try {
-        await api.sendMagicLink({ email: loginEmail.trim(), redirect: "/my-plans" });
-        setLoginState("sent");
-      } catch (err) {
-        setLoginError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-        setLoginState("error");
-      }
+    const isBusy = submitState === "busy";
+
+    // "Check your inbox" state — shown after successful signup or magic-link send
+    if (submitState === "done") {
+      const isSignup = authMode === "signup";
+      return (
+        <main className="min-h-screen bg-background">
+          <header className="pt-8 pb-6">
+            <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
+              <KarijeLogo />
+              <Link to="/" className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
+            </div>
+          </header>
+          <div className="mx-auto max-w-sm px-6 pb-24">
+            <div className="border border-border p-8 text-center mt-8">
+              <div className="text-4xl mb-4">{isSignup ? "📬" : "✉️"}</div>
+              <div className="font-marcellus text-xl text-foreground mb-3">
+                {isSignup ? "Verify your email" : "Check your inbox"}
+              </div>
+              <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed">
+                {isSignup
+                  ? <>We sent a verification link to <strong className="text-foreground">{sentTo}</strong>. Click it to activate your account, then sign in.</>
+                  : <>We sent a sign-in link to <strong className="text-foreground">{sentTo}</strong>. Tap it to access your plans.</>
+                }
+              </p>
+              <button
+                onClick={() => { setSubmitState("idle"); setSentTo(""); }}
+                className="mt-6 text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Use a different email
+              </button>
+            </div>
+          </div>
+        </main>
+      );
     }
 
     return (
       <main className="min-h-screen bg-background">
-        <header className="relative pt-8 pb-6">
+        <header className="pt-8 pb-6">
           <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
             <KarijeLogo />
-            <Link to="/" className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors">
-              ← Home
-            </Link>
+            <Link to="/" className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
           </div>
         </header>
 
@@ -81,82 +180,203 @@ export default function MyPlans() {
           {/* Eyebrow */}
           <div className="flex items-center gap-4 mb-6">
             <span className="h-px w-8 bg-primary" />
-            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-              Your account
-            </span>
+            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Your account</span>
           </div>
 
-          <h1 className="font-marcellus text-3xl text-foreground mb-2">Sign in</h1>
-          <p className="font-jost font-light text-sm text-muted-foreground mb-8 leading-relaxed">
-            We'll send a link to your email — tap it and you're in. No password.
+          {/* Verified banner */}
+          {verified && (
+            <div className="mb-6 border border-primary/30 bg-primary/5 px-4 py-3 flex items-center gap-3">
+              <span className="text-lg">✅</span>
+              <p className="font-jost font-light text-sm text-foreground">Email verified! Sign in below to access your plans.</p>
+            </div>
+          )}
+
+          {/* Auth error banner */}
+          {authError && (
+            <div className="mb-6 border border-destructive/30 bg-destructive/5 px-4 py-3">
+              <p className="font-jost font-light text-sm text-destructive">
+                {authError === "token_expired" ? "That link has expired. Request a new one below." :
+                 authError === "token_used"    ? "That link has already been used. Request a fresh one." :
+                                                 "Something went wrong with the sign-in link. Try again."}
+              </p>
+            </div>
+          )}
+
+          {/* Mode heading */}
+          <h1 className="font-marcellus text-3xl text-foreground mb-1">
+            {authMode === "signin" ? "Sign in" : authMode === "signup" ? "Create account" : "Email link"}
+          </h1>
+          <p className="font-jost font-light text-sm text-muted-foreground mb-7 leading-relaxed">
+            {authMode === "signin"
+              ? "Use your email and password to access your plans."
+              : authMode === "signup"
+              ? "Set up your Karije account. We'll send a verification email."
+              : "We'll send a sign-in link — no password needed."}
           </p>
 
-          {loginState === "sent" ? (
-            <div className="border border-border p-6 text-center">
-              <div className="text-3xl mb-3">📬</div>
-              <div className="font-marcellus text-lg text-foreground mb-2">Check your inbox</div>
-              <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed">
-                We sent a sign-in link to <strong className="text-foreground">{loginEmail}</strong>.
-                Tap it to sign in and see your plans.
-              </p>
+          {/* Tab switcher */}
+          <div className="flex gap-1 mb-7 border-b border-border">
+            {(["signin", "signup"] as const).map((mode) => (
               <button
-                onClick={() => { setLoginState("idle"); setLoginEmail(""); }}
-                className="mt-5 text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors"
+                key={mode}
+                onClick={() => resetForm(mode)}
+                className={`pb-2.5 text-xs font-jost font-medium mr-4 border-b-2 transition-colors ${
+                  authMode === mode
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
               >
-                Use a different email
+                {mode === "signin" ? "Sign in" : "Create account"}
               </button>
-            </div>
-          ) : (
-            <form onSubmit={sendLink} className="space-y-3">
+            ))}
+          </div>
+
+          {/* ── Sign-in form ── */}
+          {authMode === "signin" && (
+            <form onSubmit={handleSignIn} className="space-y-3">
               <input
                 type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                disabled={loginState === "sending"}
+                disabled={isBusy}
                 className="w-full border border-border px-4 py-3 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
               />
+              <div className="relative">
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                  disabled={isBusy}
+                  className="w-full border border-border px-4 py-3 pr-12 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-jost font-light"
+                >
+                  {showPass ? "Hide" : "Show"}
+                </button>
+              </div>
 
-              {loginError && (
-                <p className="text-xs text-destructive font-jost font-light">{loginError}</p>
+              {submitErr && (
+                <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>
               )}
 
               <button
                 type="submit"
-                disabled={loginState === "sending" || !loginEmail.trim()}
+                disabled={isBusy || !email.trim() || !password}
                 className="w-full bg-forest text-parchment py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loginState === "sending" ? "Sending…" : "Send sign-in link"}
+                {isBusy ? "Signing in…" : "Sign in"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => resetForm("magic")}
+                className="w-full py-2 text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors text-center"
+              >
+                Forgot password? Use email link instead →
               </button>
             </form>
           )}
 
-          {/* Google OAuth option */}
-          <div className="mt-5 flex items-center gap-4">
-            <span className="flex-1 h-px bg-border" />
-            <span className="text-[10px] font-jost font-light text-muted-foreground">or</span>
-            <span className="flex-1 h-px bg-border" />
-          </div>
+          {/* ── Sign-up form ── */}
+          {authMode === "signup" && (
+            <form onSubmit={handleSignUp} className="space-y-3">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                disabled={isBusy}
+                className="w-full border border-border px-4 py-3 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
+              />
+              <div className="relative">
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password (min. 8 characters)"
+                  required
+                  minLength={8}
+                  disabled={isBusy}
+                  className="w-full border border-border px-4 py-3 pr-12 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-jost font-light"
+                >
+                  {showPass ? "Hide" : "Show"}
+                </button>
+              </div>
+              <input
+                type={showPass ? "text" : "password"}
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Confirm password"
+                required
+                disabled={isBusy}
+                className="w-full border border-border px-4 py-3 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
+              />
 
-          <a
-            href={session.googleAuthUrl({ redirect: "/my-plans" })}
-            className="mt-4 w-full flex items-center justify-center gap-3 border border-border py-3 text-sm font-jost font-light text-foreground hover:border-primary hover:text-primary transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Continue with Google
-          </a>
+              {submitErr && (
+                <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isBusy || !email.trim() || password.length < 8 || !confirm}
+                className="w-full bg-forest text-parchment py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isBusy ? "Creating account…" : "Create account"}
+              </button>
+            </form>
+          )}
+
+          {/* ── Magic-link form ── */}
+          {authMode === "magic" && (
+            <form onSubmit={handleMagicLink} className="space-y-3">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                disabled={isBusy}
+                className="w-full border border-border px-4 py-3 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
+              />
+
+              {submitErr && (
+                <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isBusy || !email.trim()}
+                className="w-full bg-forest text-parchment py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isBusy ? "Sending…" : "Send sign-in link"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => resetForm("signin")}
+                className="w-full py-2 text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors text-center"
+              >
+                ← Back to sign in
+              </button>
+            </form>
+          )}
 
           <p className="mt-8 text-center text-xs font-jost font-light text-muted-foreground">
             Want to plan first?{" "}
-            <Link to="/start" className="text-primary hover:underline">
-              Plan a trip →
-            </Link>
+            <Link to="/start" className="text-primary hover:underline">Plan a trip →</Link>
           </p>
         </div>
       </main>
