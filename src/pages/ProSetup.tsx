@@ -1,21 +1,96 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { api, type AgentProfile } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
 
+// ── Magic-link sign-in sub-form ──────────────────────────────────────────────
+type MagicState = "idle" | "sending" | "sent" | "error";
+
+const SignInFirst = () => {
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<MagicState>("idle");
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setState("sending");
+    try {
+      await api.sendMagicLink({ email: email.trim(), redirect: window.location.href });
+      setState("sent");
+    } catch {
+      setState("error");
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-background grid place-items-center px-6">
+      <div className="w-full max-w-sm">
+        <Link to="/" className="flex items-center gap-2 font-display font-semibold justify-center mb-8">
+          <span className="grid place-items-center w-8 h-8 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft">
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
+            </svg>
+          </span>
+          <span>MySquadGo <span className="ml-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground text-background">Pro</span></span>
+        </Link>
+
+        <div className="rounded-3xl bg-card ring-hairline shadow-card p-8 text-center">
+          <div className="text-3xl mb-3">🔐</div>
+          <h1 className="font-display text-2xl font-semibold">Sign in to continue</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            We'll send a sign-in link to your email. No password needed.
+          </p>
+
+          {state === "sent" ? (
+            <div className="mt-6 rounded-2xl bg-primary/10 ring-1 ring-primary/20 px-5 py-4 text-sm">
+              <div className="font-semibold text-foreground">Check your inbox</div>
+              <p className="text-muted-foreground mt-1">We sent a link to <strong>{email}</strong>. Click it to sign in and continue your setup.</p>
+            </div>
+          ) : (
+            <form onSubmit={send} className="mt-6 space-y-3">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                disabled={state === "sending"}
+                className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              {state === "error" && (
+                <p className="text-xs text-destructive">Something went wrong. Try again.</p>
+              )}
+              <button
+                type="submit"
+                disabled={state === "sending" || !email.trim()}
+                className="w-full rounded-full bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:scale-[1.01] transition-transform disabled:opacity-50"
+              >
+                {state === "sending" ? "Sending…" : "Send sign-in link →"}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+};
+
+// ── Colour swatches ───────────────────────────────────────────────────────────
 const COLORS = [
-  { name: "Indigo", value: "#6366f1" },
+  { name: "Indigo",  value: "#6366f1" },
   { name: "Emerald", value: "#10b981" },
-  { name: "Rose", value: "#f43f5e" },
-  { name: "Amber", value: "#f59e0b" },
-  { name: "Sky", value: "#0ea5e9" },
-  { name: "Orange", value: "#f97316" },
+  { name: "Rose",    value: "#f43f5e" },
+  { name: "Amber",   value: "#f59e0b" },
+  { name: "Sky",     value: "#0ea5e9" },
+  { name: "Orange",  value: "#f97316" },
 ];
 
-const LS_KEY = "msq_agent";
-
+// ── Main page ─────────────────────────────────────────────────────────────────
 const ProSetup = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user, loading, getIdToken } = useAuth();
+
   const [form, setForm] = useState({
     agencyName: "",
     tagline: "",
@@ -28,67 +103,55 @@ const ProSetup = () => {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
 
-  // Pre-fill from localStorage if returning to edit; respect ?plan= param for Growth CTA
+  // Pre-fill plan from URL (?plan=growth) and any existing saved form
   useEffect(() => {
     const urlPlan = searchParams.get("plan") === "growth" ? "growth" : null;
-    const saved = localStorage.getItem(LS_KEY);
-    if (saved) {
-      try {
-        const a = JSON.parse(saved) as AgentProfile & { initials: string };
+    if (urlPlan) setForm((f) => ({ ...f, plan: urlPlan }));
+
+    // Load any existing agency profile for this user
+    if (!user) return;
+    const token = getIdToken();
+    if (!token) return;
+    api.getProMe(token)
+      .then(({ agent }) => {
         setForm({
-          agencyName: a.agencyName || "",
-          tagline: a.tagline || "",
-          phone: a.phone || "",
-          waNumber: a.waNumber || "",
-          serviceFee: String(a.serviceFee || 10000),
-          color: a.color || "#6366f1",
-          plan: urlPlan ?? (a.planType as "starter" | "growth") ?? "starter",
+          agencyName: agent.agencyName  || agent.agency_name || "",
+          tagline:    agent.tagline                          || "",
+          phone:      agent.phone                           || "",
+          waNumber:   agent.waNumber    || agent.wa_number  || "",
+          serviceFee: String(agent.serviceFee ?? agent.service_fee ?? 10000),
+          color:      agent.color                           || "#6366f1",
+          plan:       (urlPlan ?? agent.planType ?? agent.plan_type ?? "starter") as "starter" | "growth",
         });
-      } catch { /* ignore corrupt data */ }
-    } else if (urlPlan) {
-      setForm((f) => ({ ...f, plan: urlPlan }));
-    }
-  }, [searchParams]);
+      })
+      .catch(() => { /* first time — no profile yet */ });
+  }, [user, getIdToken, searchParams]);
 
   const initials = form.agencyName
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "?";
+    .trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.phone.trim() || !form.agencyName.trim()) return;
+    const token = getIdToken();
+    if (!token) { setError("Not signed in."); return; }
+
     setStatus("loading");
     setError("");
     try {
-      const sanitisedPhone = form.phone.trim().replace(/\s+/g, "");
-      await api.registerAgent({
-        phone: sanitisedPhone,
-        agencyName: form.agencyName.trim(),
-        waNumber: (form.waNumber.trim() || sanitisedPhone),
-        serviceFee: Number(form.serviceFee) || 10000,
-        color: form.color,
-        planType: form.plan,
-        tagline: form.tagline.trim(),
-      });
-      localStorage.setItem(
-        LS_KEY,
-        JSON.stringify({
-          phone: sanitisedPhone,
-          agencyName: form.agencyName.trim(),
-          waNumber: form.waNumber.trim() || sanitisedPhone,
-          serviceFee: Number(form.serviceFee) || 10000,
-          color: form.color,
-          planType: form.plan,
-          tagline: form.tagline.trim(),
-          initials,
-        })
+      await api.setupPro(
+        {
+          agencyName:  form.agencyName.trim(),
+          tagline:     form.tagline.trim(),
+          phone:       form.phone.trim().replace(/\s+/g, ""),
+          waNumber:    form.waNumber.trim().replace(/\s+/g, "") || undefined,
+          serviceFee:  Number(form.serviceFee) || 10000,
+          color:       form.color,
+          planType:    form.plan,
+        },
+        token,
       );
       navigate("/pro/dashboard");
     } catch (err: unknown) {
@@ -97,6 +160,19 @@ const ProSetup = () => {
     }
   };
 
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-background grid place-items-center">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </main>
+    );
+  }
+
+  // ── Not signed in ──────────────────────────────────────────────────────────
+  if (!user) return <SignInFirst />;
+
+  // ── Setup form ─────────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 glass border-b border-border/50">
@@ -110,7 +186,10 @@ const ProSetup = () => {
             MySquadGo
             <span className="ml-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground text-background">Pro</span>
           </Link>
-          <Link to="/pro" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:block text-xs text-muted-foreground truncate max-w-[200px]">{user.email}</span>
+            <Link to="/pro/dashboard" className="text-xs text-muted-foreground hover:text-foreground">Dashboard →</Link>
+          </div>
         </div>
       </header>
 
@@ -123,7 +202,7 @@ const ProSetup = () => {
             {initials}
           </div>
           <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight">Set up your agency</h1>
-          <p className="mt-2 text-muted-foreground text-sm">Takes 2 minutes. Clients never see MySquadGo.</p>
+          <p className="mt-2 text-muted-foreground text-sm">Takes 2 minutes. Your clients never see MySquadGo.</p>
         </div>
 
         <form onSubmit={submit} className="space-y-5">
@@ -155,13 +234,14 @@ const ProSetup = () => {
             </div>
           </div>
 
-          {/* Contact */}
+          {/* WhatsApp contact */}
           <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
-            <div className="font-semibold text-sm">Your contact</div>
+            <div className="font-semibold text-sm">WhatsApp contact</div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              This is the number your clients message and where the bot sends trip updates. <strong>Not used for sign-in</strong> — you sign in with {user.email}.
+            </p>
             <div>
-              <label className="text-xs text-muted-foreground block mb-1.5">
-                Your phone number * <span className="opacity-50">(used as your login)</span>
-              </label>
+              <label className="text-xs text-muted-foreground block mb-1.5">Your WhatsApp number *</label>
               <input
                 required
                 type="tel"
@@ -173,7 +253,7 @@ const ProSetup = () => {
             </div>
             <div>
               <label className="text-xs text-muted-foreground block mb-1.5">
-                Client WhatsApp number <span className="opacity-50">(if different from above)</span>
+                Client-facing number <span className="opacity-50">(if different from above)</span>
               </label>
               <input
                 type="tel"
@@ -188,9 +268,7 @@ const ProSetup = () => {
           {/* Service fee */}
           <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
             <div className="font-semibold text-sm">Your service fee</div>
-            <p className="text-xs text-muted-foreground">
-              Charged per trip, split invisibly across squad members on Paystack. You keep 100%.
-            </p>
+            <p className="text-xs text-muted-foreground">Charged per trip, split invisibly across squad members on Paystack. You keep 100%.</p>
             <div className="flex items-center gap-3">
               <span className="font-display text-lg font-semibold shrink-0">₦</span>
               <input
@@ -245,7 +323,7 @@ const ProSetup = () => {
             <div className="grid grid-cols-2 gap-3">
               {([
                 { key: "starter", label: "Pro Starter", price: "₦10,000/mo", desc: "Up to 3 active trips" },
-                { key: "growth", label: "Pro Growth", price: "₦20,000/mo", desc: "Unlimited trips + analytics" },
+                { key: "growth",  label: "Pro Growth",  price: "₦20,000/mo", desc: "Unlimited trips + analytics" },
               ] as const).map((p) => (
                 <button
                   key={p.key}
@@ -258,21 +336,21 @@ const ProSetup = () => {
                   }`}
                 >
                   <div className="font-semibold text-sm">{p.label}</div>
-                  <div className={`font-display text-lg font-semibold mt-1 tabular-nums`}>{p.price}</div>
+                  <div className="font-display text-lg font-semibold mt-1 tabular-nums">{p.price}</div>
                   <div className={`text-[11px] mt-0.5 ${form.plan === p.key ? "opacity-70" : "text-muted-foreground"}`}>{p.desc}</div>
                 </button>
               ))}
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
           <button
             type="submit"
             disabled={status === "loading" || !form.phone.trim() || !form.agencyName.trim()}
             className="w-full rounded-full bg-foreground text-background py-4 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           >
-            {status === "loading" ? "Setting up..." : "Launch my agency →"}
+            {status === "loading" ? "Saving…" : "Launch my agency →"}
           </button>
 
           <p className="text-center text-xs text-muted-foreground pb-8">

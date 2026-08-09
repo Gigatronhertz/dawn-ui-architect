@@ -617,6 +617,80 @@ router.post('/notify/subscribe', async (req, res) => {
   return res.json({ ok: true });
 });
 
+// ── Pro agency routes (JWT auth required) ────────────────────────────────────
+
+// POST /api/pro/setup
+// Create or update the agency profile tied to the authenticated user.
+// Body: { agencyName, tagline?, phone, waNumber?, serviceFee?, color?, planType? }
+router.post('/pro/setup', requireAuth, async (req, res) => {
+  const { uid, email, name } = req.user;
+  const { agencyName, tagline, phone, waNumber, serviceFee, color, planType } = req.body;
+
+  if (!agencyName || typeof agencyName !== 'string' || !agencyName.trim()) {
+    return res.status(400).json({ error: 'agencyName is required.' });
+  }
+  if (!phone || typeof phone !== 'string' || phone.trim().length < 5) {
+    return res.status(400).json({ error: 'A valid WhatsApp phone number is required.' });
+  }
+
+  const cleanPhone    = phone.trim().replace(/\s+/g, '');
+  const cleanWaNumber = waNumber?.trim()?.replace(/\s+/g, '') || cleanPhone;
+  const fee           = Math.max(0, Number(serviceFee) || 10000);
+  const agentId       = `agent_${cleanPhone}`;
+
+  await db.agents.upsert({
+    id:          agentId,
+    phone:       cleanPhone,
+    agency_name: agencyName.trim(),
+    wa_number:   cleanWaNumber,
+    service_fee: fee,
+    color:       typeof color === 'string' ? color : '#6366f1',
+    plan_type:   planType === 'growth' ? 'growth' : 'starter',
+    tagline:     typeof tagline === 'string' ? tagline.trim() : '',
+  });
+
+  // Link the agent record to this JWT user
+  await db.agents.linkToUser({ phone: cleanPhone, user_id: uid, email });
+
+  const agent = await db.agents.get(cleanPhone);
+  return res.json({ ok: true, agent });
+});
+
+// GET /api/pro/me
+// Returns the agency profile for the authenticated user, or 404 if not set up yet.
+router.get('/pro/me', requireAuth, async (req, res) => {
+  const { uid, email } = req.user;
+  let agent = await db.agents.getByUser(uid);
+  if (!agent && email) agent = await db.agents.getByEmail(email);
+  if (!agent) return res.status(404).json({ error: 'No agency profile found.' });
+  return res.json({ agent });
+});
+
+// GET /api/pro/dashboard
+// Returns the full dashboard (agent + trips + summary) for the authenticated user.
+router.get('/pro/dashboard', requireAuth, async (req, res) => {
+  const { uid, email } = req.user;
+
+  let agent = await db.agents.getByUser(uid);
+  if (!agent && email) agent = await db.agents.getByEmail(email);
+  if (!agent) return res.status(404).json({ error: 'No agency profile found. Please complete setup first.' });
+
+  const trips = await db.agents.dashboardByUser(uid, agent.phone);
+
+  const activeStatuses = new Set(['awaiting_group', 'voting_dates', 'voting_hotel', 'payment']);
+  const monthStart = Math.floor(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000);
+
+  const summary = {
+    active_trips:     trips.filter(t => activeStatuses.has(t.status)).length,
+    trips_completed:  trips.filter(t => t.status === 'active').length,
+    total_collected:  trips.reduce((s, t) => s + (Number(t.total_collected) || 0), 0),
+    pending_payments: trips.filter(t => t.status === 'payment').reduce((s, t) => s + Math.max(0, (t.squad_size || 0) - t.paid_count), 0),
+    revenue_mtd:      trips.filter(t => t.created_at >= monthStart).reduce((s, t) => s + (Number(t.total_collected) || 0), 0),
+  };
+
+  return res.json({ agent, trips, summary });
+});
+
 // ── Auth routes ───────────────────────────────────────────────────────────────
 
 // POST /api/auth/link-plan

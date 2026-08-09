@@ -132,6 +132,9 @@ const MIGRATIONS = [
   `ALTER TABLE trips ADD COLUMN intake_json   TEXT`,
   `ALTER TABLE trips ADD COLUMN user_id       TEXT`,
   `ALTER TABLE trips ADD COLUMN notify_email  TEXT`,
+  // Phase C — link agents to JWT users
+  `ALTER TABLE agents ADD COLUMN user_id TEXT`,
+  `ALTER TABLE agents ADD COLUMN email   TEXT`,
   // Phase 6 — payment columns on participants
   `ALTER TABLE participants ADD COLUMN email        TEXT`,
   `ALTER TABLE participants ADD COLUMN paid         INTEGER NOT NULL DEFAULT 0`,
@@ -400,6 +403,53 @@ async function getAgentDashboard(phone) {
   return res.rows;
 }
 
+/** Link an existing agent record to a JWT user (by phone as key). */
+async function linkAgentToUser({ phone, user_id, email }) {
+  await client.execute({
+    sql: `UPDATE agents SET user_id = ?, email = ? WHERE phone = ?`,
+    args: [user_id, email ? email.toLowerCase() : null, phone],
+  });
+}
+
+/** Look up an agent by their JWT user_id. */
+async function getAgentByUser(userId) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM agents WHERE user_id = ?',
+    args: [userId],
+  });
+  return res.rows[0] ?? null;
+}
+
+/** Look up an agent by email (fallback when user_id not set yet). */
+async function getAgentByEmail(email) {
+  const res = await client.execute({
+    sql: 'SELECT * FROM agents WHERE email = ?',
+    args: [email.toLowerCase()],
+  });
+  return res.rows[0] ?? null;
+}
+
+/**
+ * Dashboard trips for an authenticated Pro user.
+ * Matches trips by user_id (web-created) OR organiser_phone (WhatsApp-created).
+ */
+async function getAgentDashboardByUser(userId, phone) {
+  const res = await client.execute({
+    sql: `SELECT
+      t.id, t.origin, t.destination, t.days, t.squad_size, t.status, t.created_at,
+      COUNT(m.id)                                                     AS total_members,
+      COALESCE(SUM(CASE WHEN m.paid = 1 THEN 1 ELSE 0 END), 0)      AS paid_count,
+      COALESCE(SUM(CASE WHEN m.paid = 1 THEN m.amount ELSE 0 END),0) AS total_collected
+    FROM trips t
+    LEFT JOIN members m ON m.trip_id = t.id
+    WHERE t.user_id = ? OR (? IS NOT NULL AND t.organiser_phone = ?)
+    GROUP BY t.id
+    ORDER BY t.created_at DESC`,
+    args: [userId, phone || null, phone || null],
+  });
+  return res.rows;
+}
+
 // ── User helpers ───────────────────────────────────────────────────────────
 
 async function upsertUser({ id, email, name, photo_url }) {
@@ -490,7 +540,15 @@ module.exports = {
   members:     { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
   waitlist:    { insert: insertWaitlist, list: listWaitlist },
   agencyLeads: { insert: insertAgencyLead, list: listAgencyLeads },
-  agents:      { upsert: upsertAgent, get: getAgent, dashboard: getAgentDashboard },
+  agents:      {
+    upsert:        upsertAgent,
+    get:           getAgent,
+    dashboard:     getAgentDashboard,
+    linkToUser:    linkAgentToUser,
+    getByUser:     getAgentByUser,
+    getByEmail:    getAgentByEmail,
+    dashboardByUser: getAgentDashboardByUser,
+  },
   attractions: { byState: getAttractionsByState },
   users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },
   participants: {

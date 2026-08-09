@@ -230,6 +230,20 @@ export const api = {
   sendMagicLink: (opts: { email: string; tripId?: string; redirect?: string }) =>
     post<{ ok: boolean; preview?: string }>('/auth/magic', opts),
 
+  /** Create or update the agency profile tied to the authenticated user. */
+  setupPro: (
+    payload: { agencyName: string; tagline?: string; phone: string; waNumber?: string; serviceFee?: number; color?: string; planType?: string },
+    token: string,
+  ) => post<{ ok: boolean; agent: AgentProfile }>('/api/pro/setup', payload, bearer(token)),
+
+  /** Get the agency profile for the authenticated user (404 if not set up). */
+  getProMe: (token: string) =>
+    get<{ agent: AgentProfile & { agency_name: string; plan_type: string; service_fee: number; wa_number?: string } }>('/api/pro/me', bearer(token)),
+
+  /** Get the full agency dashboard (agent + trips + summary) for the authenticated user. */
+  getProDashboard: (token: string) =>
+    get<DashboardData>('/api/pro/dashboard', bearer(token)),
+
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
 
   /** Submit an agency / pro plan lead. */
