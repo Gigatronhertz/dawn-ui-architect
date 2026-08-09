@@ -47,6 +47,10 @@ async function revealPlanToGroup(groupId, trip) {
   const plan = JSON.parse(trip.plan || '{}');
   const { hotel, cost_breakdown: cost, date_options: dates } = plan;
 
+  // Look up organiser name from conversations table if available
+  const conv = await db.conv.get(trip.organiser_phone);
+  const organiserName = conv?.name || null;
+
   await sendText(
     groupId,
     M.GROUP_REVEAL(
@@ -55,7 +59,8 @@ async function revealPlanToGroup(groupId, trip) {
       trip.days,
       trip.squad_size,
       hotel.name,
-      cost.per_person
+      cost.per_person,
+      organiserName
     )
   );
 

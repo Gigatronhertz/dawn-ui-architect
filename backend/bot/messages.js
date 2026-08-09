@@ -4,7 +4,7 @@ const M = {
   // ── Intake ─────────────────────────────────────────────────────────────────
 
   WELCOME: (name) =>
-    `Hey${name ? ` ${name}` : ''}! 👋 I'm MySquadGo — powered by Gemini.\n\nI'll sort the itinerary, hotels, group coordination, and money for your squad trip. All of it. For free to start.\n\nLet's get into it. *Where is everyone travelling from?* (e.g. Lagos, Abuja, Port Harcourt)`,
+    `Hey${name ? ` ${name}` : ''}! 👋 I'm Karije — your AI trip planner.\n\nI'll sort the itinerary, hotels, group coordination, and money for your squad trip. All of it. For free to start.\n\nLet's get into it. *Where is everyone travelling from?* (e.g. Lagos, Abuja, Port Harcourt)`,
 
   Q2_DESTINATION:
     `Nice. *Where are you all heading?* (e.g. Ibadan, Calabar, Abuja, Accra)`,
@@ -31,7 +31,7 @@ const M = {
     `Last one. *Any dealbreakers the squad needs to know about?* (e.g. "must have AC", "halal food only", "no shared rooms")\n\nType *none* if there aren't any.`,
 
   GENERATING: (destination) =>
-    `Sorting the ${destination} trip now... ✨\n\nGemini is pricing hotels, checking operators, and building the itinerary. Give me 15 seconds.`,
+    `Sorting the ${destination} trip now... ✨\n\nKarije is pricing hotels, checking operators, and building the itinerary. Give me 15 seconds.`,
 
   // ── Plan review ────────────────────────────────────────────────────────────
 
@@ -42,14 +42,14 @@ const M = {
     `\nType *confirm* to lock this in and get your group link.\nOr tell me what to change — hotel, budget, transport, anything.`,
 
   PLAN_CONFIRMED: (destination) =>
-    `Locked. ✅\n\nHere's how to get the bot into your WhatsApp group:\n\n1. Open your squad's WhatsApp group (or create one)\n2. Go to *Group Info → Add Participants*\n3. Add this number: *+${process.env.WA_DISPLAY_NUMBER || '234XXXXXXXXXX'}*\n\nThe moment I join, I'll reveal the full plan to the squad and kick off the votes. They won't know you already sorted everything 👀\n\nSend me *ready* once you've added me to the group.`,
+    `Locked. ✅\n\nHere's how to get Karije into your WhatsApp group:\n\n1. Open your squad's WhatsApp group (or create one)\n2. Go to *Group Info → Add Participants*\n3. Add this number: *+${process.env.WA_DISPLAY_NUMBER || '234XXXXXXXXXX'}*\n\nThe moment I join, I'll reveal the full plan to the squad and kick off the votes. They won't know you already sorted everything 👀\n\nSend me *ready* once you've added me to the group.`,
 
   // ── Group reveal ───────────────────────────────────────────────────────────
 
-  GROUP_REVEAL: (destination, origin, days, squadSize, hotelName, perPerson) =>
-    `👋 Hey squad! MySquadGo here.\n\n` +
+  GROUP_REVEAL: (destination, origin, days, squadSize, hotelName, perPerson, organiserName) =>
+    `👋 Hey squad! Karije here.\n\n` +
     `${origin ? `${origin.split(',')[0].trim()} → ` : ''}${destination} · ${days} day${days > 1 ? 's' : ''} · ${squadSize} squad 🚌\n\n` +
-    `Tunde's been planning something... and it's ready. 👀\n\n` +
+    `${organiserName ? `${organiserName} has` : 'Your organiser has'} been planning something... and it's ready. 👀\n\n` +
     `🏨 ${hotelName}\n💰 Est. *${new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(perPerson)}/person* all-in\n\n` +
     `Now two quick squad questions before we lock it:\n` +
     `1️⃣ Which dates work for everyone?\n` +
@@ -175,7 +175,7 @@ const M = {
   // At this point the bot has never spoken to them — this is the first touch.
   WEB_PLAN_CONFIRMED: (destination, botNumber) =>
     `Hey! 👋 Your *${destination}* trip plan is locked.\n\n` +
-    `Now add me to your squad's WhatsApp group and I'll reveal the full plan — hotel, transport, cost breakdown, everything.\n\n` +
+    `Now add Karije to your squad's WhatsApp group and I'll reveal the full plan — hotel, transport, cost breakdown, everything.\n\n` +
     `Here's how:\n` +
     `1. Open your squad's group (or create one)\n` +
     `2. Tap *Group Info → Add Participants*\n` +
