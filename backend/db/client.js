@@ -2,6 +2,7 @@ const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs = require('fs');
 const { SEED_DATA } = require('../services/attractions');
+const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
 
 const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -104,6 +105,30 @@ const SCHEMA = [
     created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
     UNIQUE(email)
   )`,
+  `CREATE TABLE IF NOT EXISTS experiences (
+    id                       TEXT PRIMARY KEY,
+    name                     TEXT NOT NULL,
+    tagline                  TEXT NOT NULL DEFAULT '',
+    description              TEXT NOT NULL DEFAULT '',
+    price_per_person_per_day INTEGER NOT NULL DEFAULT 0,
+    max_days                 INTEGER NOT NULL DEFAULT 1,
+    category                 TEXT NOT NULL DEFAULT 'leisure',
+    location                 TEXT NOT NULL DEFAULT '',
+    image_id                 TEXT NOT NULL DEFAULT '',
+    color_fallback           TEXT NOT NULL DEFAULT '#2F4A33',
+    included                 TEXT NOT NULL DEFAULT '[]',
+    schedule                 TEXT NOT NULL DEFAULT '[]',
+    schedule_overrides       TEXT NOT NULL DEFAULT '{}',
+    highlights               TEXT NOT NULL DEFAULT '[]',
+    group_min                INTEGER NOT NULL DEFAULT 2,
+    group_max                INTEGER NOT NULL DEFAULT 40,
+    notes                    TEXT,
+    state                    TEXT NOT NULL DEFAULT 'Lagos',
+    published                INTEGER NOT NULL DEFAULT 1,
+    sort_order               INTEGER NOT NULL DEFAULT 0,
+    created_at               INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at               INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
   `CREATE TABLE IF NOT EXISTS members (
     id            TEXT PRIMARY KEY,
     trip_id       TEXT NOT NULL,
@@ -163,6 +188,31 @@ const ready = (async () => {
       });
     }
     console.log(`[db] Seeded ${SEED_DATA.length} attractions`);
+  }
+  // Seed experiences once — INSERT OR IGNORE is idempotent
+  const expExisting = await client.execute('SELECT COUNT(*) as n FROM experiences');
+  if ((expExisting.rows[0]?.n ?? 0) === 0) {
+    console.log('[db] Seeding experiences table…');
+    for (const exp of LAGOS_EXPERIENCES_SEED) {
+      await client.execute({
+        sql: `INSERT OR IGNORE INTO experiences
+              (id, name, tagline, description, price_per_person_per_day, max_days, category,
+               location, image_id, color_fallback, included, schedule, schedule_overrides,
+               highlights, group_min, group_max, notes, state)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        args: [
+          exp.id, exp.name, exp.tagline, exp.description,
+          exp.pricePerPersonPerDay, exp.maxDays, exp.category, exp.location,
+          exp.imageId, exp.colorFallback,
+          JSON.stringify(exp.included  || []),
+          JSON.stringify(exp.schedule  || []),
+          JSON.stringify(exp.scheduleOverrides || {}),
+          JSON.stringify(exp.highlights || []),
+          exp.groupMin, exp.groupMax, exp.notes || null, 'Lagos',
+        ],
+      });
+    }
+    console.log(`[db] Seeded ${LAGOS_EXPERIENCES_SEED.length} experiences`);
   }
 })().catch((err) => {
   console.error('[db] schema init failed:', err.message);
@@ -534,10 +584,101 @@ async function getParticipantStats(tripId) {
   return { paidCount: Number(row?.paid_count ?? 0), totalCollected: Number(row?.total_collected ?? 0) };
 }
 
+// ── Experience helpers ─────────────────────────────────────────────────────
+
+/** Parse a raw DB row into a camelCase experience object. */
+function parseExpRow(row) {
+  if (!row) return null;
+  return {
+    id:                   row.id,
+    name:                 row.name,
+    tagline:              row.tagline,
+    description:          row.description,
+    pricePerPersonPerDay: Number(row.price_per_person_per_day),
+    maxDays:              Number(row.max_days),
+    category:             row.category,
+    location:             row.location,
+    imageId:              row.image_id,
+    colorFallback:        row.color_fallback,
+    included:             JSON.parse(row.included            || '[]'),
+    schedule:             JSON.parse(row.schedule            || '[]'),
+    scheduleOverrides:    JSON.parse(row.schedule_overrides  || '{}'),
+    highlights:           JSON.parse(row.highlights          || '[]'),
+    groupMin:             Number(row.group_min),
+    groupMax:             Number(row.group_max),
+    notes:                row.notes || null,
+    state:                row.state,
+    published:            Boolean(row.published),
+    sortOrder:            Number(row.sort_order || 0),
+    createdAt:            Number(row.created_at),
+    updatedAt:            Number(row.updated_at),
+  };
+}
+
+async function getExperiences({ state = 'Lagos', all = false } = {}) {
+  const rows = await rawAll(
+    all
+      ? 'SELECT * FROM experiences WHERE state = ? ORDER BY sort_order, created_at'
+      : 'SELECT * FROM experiences WHERE state = ? AND published = 1 ORDER BY sort_order, created_at',
+    [state]
+  );
+  return rows.map(parseExpRow);
+}
+
+async function upsertExperience(exp) {
+  const existing = await raw('SELECT id FROM experiences WHERE id = ?', [exp.id]);
+  if (existing) {
+    await client.execute({
+      sql: `UPDATE experiences SET
+              name=?, tagline=?, description=?, price_per_person_per_day=?, max_days=?,
+              category=?, location=?, image_id=?, color_fallback=?,
+              included=?, schedule=?, schedule_overrides=?, highlights=?,
+              group_min=?, group_max=?, notes=?, state=?, published=?, sort_order=?,
+              updated_at=unixepoch()
+            WHERE id=?`,
+      args: [
+        exp.name, exp.tagline || '', exp.description || '',
+        exp.pricePerPersonPerDay || 0, exp.maxDays || 1,
+        exp.category || 'leisure', exp.location || '', exp.imageId || '', exp.colorFallback || '#2F4A33',
+        JSON.stringify(exp.included            || []),
+        JSON.stringify(exp.schedule            || []),
+        JSON.stringify(exp.scheduleOverrides   || {}),
+        JSON.stringify(exp.highlights          || []),
+        exp.groupMin || 2, exp.groupMax || 40,
+        exp.notes || null, exp.state || 'Lagos',
+        exp.published !== false ? 1 : 0, exp.sortOrder || 0,
+        exp.id,
+      ],
+    });
+  } else {
+    await client.execute({
+      sql: `INSERT INTO experiences
+              (id, name, tagline, description, price_per_person_per_day, max_days, category,
+               location, image_id, color_fallback, included, schedule, schedule_overrides,
+               highlights, group_min, group_max, notes, state, published, sort_order)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [
+        exp.id, exp.name, exp.tagline || '', exp.description || '',
+        exp.pricePerPersonPerDay || 0, exp.maxDays || 1,
+        exp.category || 'leisure', exp.location || '', exp.imageId || '', exp.colorFallback || '#2F4A33',
+        JSON.stringify(exp.included            || []),
+        JSON.stringify(exp.schedule            || []),
+        JSON.stringify(exp.scheduleOverrides   || {}),
+        JSON.stringify(exp.highlights          || []),
+        exp.groupMin || 2, exp.groupMax || 40,
+        exp.notes || null, exp.state || 'Lagos',
+        exp.published !== false ? 1 : 0, exp.sortOrder || 0,
+      ],
+    });
+  }
+  return raw('SELECT * FROM experiences WHERE id = ?', [exp.id]).then(parseExpRow);
+}
+
 module.exports = {
   ready,
   raw,
   rawAll,
+  parseExpRow,
   conv:        { get: getConv, upsert: upsertConv, reset: resetConv },
   trips:       { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
   members:     { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
@@ -552,7 +693,8 @@ module.exports = {
     getByEmail:    getAgentByEmail,
     dashboardByUser: getAgentDashboardByUser,
   },
-  attractions: { byState: getAttractionsByState },
+  attractions:  { byState: getAttractionsByState },
+  experiences:  { list: getExperiences, upsert: upsertExperience },
   users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },
   participants: {
     insert: insertParticipant,

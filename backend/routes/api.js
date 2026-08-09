@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { v4: uuid } = require('uuid');
+const Groq = require('groq-sdk');
 const db = require('../db/client');
 const { generateTripPlan } = require('../services/gemini');
 const { sendText } = require('../services/whatsapp');
@@ -11,6 +12,9 @@ const { requireAuth }        = require('../middleware/auth');
 const { sendPlanReadyEmail } = require('../services/email');
 const { sendPlanReadyPush  } = require('../services/webPush');
 const paystack               = require('../services/paystack');
+
+let _groq;
+const getGroq = () => { if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); return _groq; };
 
 const router = Router();
 
@@ -747,6 +751,91 @@ router.get('/auth/me', requireAuth, async (req, res) => {
     photoUrl: picture || user?.photo_url || null,
     planCount: rows.length,
   });
+});
+
+// ── GET /api/experiences ────────────────────────────────────────────────────
+// Public endpoint — returns published experiences for a given state.
+router.get('/experiences', async (req, res) => {
+  try {
+    const { state = 'Lagos' } = req.query;
+    const experiences = await db.experiences.list({ state, all: false });
+    res.json({ experiences });
+  } catch (err) {
+    console.error('[api/experiences]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/explore-plan ──────────────────────────────────────────────────
+// AI-generated single-day intrastate plan using local attractions from DB.
+router.post('/explore-plan', async (req, res) => {
+  const { state = 'Lagos', vibe = 'Chill & scenic', groupSize = 6, budget = 'medium' } = req.body || {};
+
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(503).json({ error: 'AI planning is not configured on this server.' });
+  }
+
+  // Pull attractions for the state from DB
+  const { cityToState } = require('../services/attractions');
+  const rawAttractions = await db.attractions.byState(state).catch(() => []);
+  const attrLines = rawAttractions.length > 0
+    ? rawAttractions.map(a =>
+        `- ${a.name}${a.fee_max > 0 ? ` (entry: ₦${Number(a.fee_min).toLocaleString()}–₦${Number(a.fee_max).toLocaleString()})` : ' (free entry)'}`
+      ).join('\n')
+    : `Well-known spots in ${state}, Nigeria`;
+
+  const budgetLabel = budget === 'low'  ? 'budget-conscious (under ₦10,000/person)' :
+                      budget === 'high' ? 'premium (₦30,000+/person)'                :
+                                         'comfortable mid-range (₦10,000–₦25,000/person)';
+
+  const prompt = `You are a Nigerian travel expert planning a curated single-day experience for ${groupSize} people exploring ${state}.
+
+Vibe: ${vibe}
+Budget: ${budgetLabel}
+
+Verified local attractions in ${state}:
+${attrLines}
+
+Create a specific, authentic day plan using real places — not generic filler. Prioritise experiences that work well for groups.
+
+Return ONLY valid JSON (no markdown fences, no extra text) matching this exact shape:
+{
+  "title": "A catchy 3-6 word day title",
+  "tagline": "One punchy sentence describing the day",
+  "schedule": [
+    { "time": "HH:MM", "activity": "Name of the stop/activity", "details": "1-2 sentences of specific detail" }
+  ],
+  "highlights": ["key highlight 1", "key highlight 2", "key highlight 3"],
+  "estimatedCostPerPerson": <integer in NGN — realistic total>,
+  "included": ["what is included in the curated package"],
+  "notes": "Optional tip or caveat (null if none)"
+}
+
+Include 5–7 schedule items. Use real ${state} street names, markets, and landmark names where applicable.`;
+
+  try {
+    const groq = getGroq();
+    const completion = await groq.chat.completions.create({
+      model:       'llama-3.3-70b-versatile',
+      messages:    [{ role: 'user', content: prompt }],
+      temperature: 0.75,
+      max_tokens:  1400,
+    });
+
+    const raw = completion.choices[0].message.content || '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('[explore-plan] no JSON in response:', raw.slice(0, 200));
+      return res.status(500).json({ error: 'AI returned an unexpected format. Try again.' });
+    }
+
+    const plan = JSON.parse(jsonMatch[0]);
+    return res.json({ ok: true, plan, state });
+
+  } catch (err) {
+    console.error('[explore-plan] AI call failed:', err.message);
+    return res.status(500).json({ error: 'Plan generation failed. Please try again.' });
+  }
 });
 
 module.exports = router;

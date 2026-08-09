@@ -2,9 +2,28 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { KarijeLogo } from "@/components/Nav";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
+import { api } from "@/lib/api";
+import type { AIPlan } from "@/lib/experienceTypes";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type ExploreStep = "browse" | "detail" | "share";
+type ExploreStep = "browse" | "detail" | "share" | "ai-form" | "ai-result";
+
+type AiVibe  = "Chill" | "Nightlife" | "Foodie" | "Adventure" | "Cultural";
+type Budget  = "low" | "medium" | "high";
+
+const VIBE_OPTIONS: { value: AiVibe; emoji: string; label: string }[] = [
+  { value: "Chill",     emoji: "🌊", label: "Chill & relax" },
+  { value: "Nightlife", emoji: "🎉", label: "Nightlife" },
+  { value: "Foodie",    emoji: "🍽️", label: "Foodie tour" },
+  { value: "Adventure", emoji: "⛵", label: "Adventure" },
+  { value: "Cultural",  emoji: "🎭", label: "Cultural" },
+];
+
+const BUDGET_OPTIONS: { value: Budget; label: string; sub: string }[] = [
+  { value: "low",    label: "Budget",   sub: "Under ₦15k/person" },
+  { value: "medium", label: "Mid-range", sub: "₦15k–40k/person" },
+  { value: "high",   label: "Premium",  sub: "₦40k+/person" },
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatNGN(amount: number): string {
@@ -155,19 +174,59 @@ function RangeSlider({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Explore() {
-  const [step, setStep] = useState<ExploreStep>("browse");
+  const [step, setStep]     = useState<ExploreStep>("browse");
   const [selected, setSelected] = useState<Experience | null>(null);
-  const [days, setDays] = useState(1);
+  const [days, setDays]     = useState(1);
   const [squadSize, setSquadSize] = useState(6);
 
+  // Experiences from API (falls back to local seed)
+  const [experiences, setExperiences] = useState<Experience[]>(LAGOS_EXPERIENCES);
+
+  // AI planning state
+  const [aiVibe, setAiVibe]       = useState<AiVibe>("Chill");
+  const [aiGroupSize, setAiGroup] = useState(6);
+  const [aiBudget, setAiBudget]   = useState<Budget>("medium");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError]     = useState("");
+  const [aiPlan, setAiPlan]       = useState<AIPlan | null>(null);
+
+  // Fetch curated experiences from API on mount
   useEffect(() => {
-    document.title = step === "browse"
-      ? "Explore Lagos · Karije"
-      : step === "detail" && selected
-      ? `${selected.name} · Karije`
-      : "Trip ready · Karije";
+    api.getExperiences("Lagos")
+      .then(d => { if (d.experiences?.length) setExperiences(d.experiences); })
+      .catch(() => {/* silently keep local fallback */});
+  }, []);
+
+  useEffect(() => {
+    const titles: Record<ExploreStep, string> = {
+      browse:     "Explore Lagos · Karije",
+      detail:     selected ? `${selected.name} · Karije` : "Explore Lagos · Karije",
+      share:      "Trip ready · Karije",
+      "ai-form":  "AI Day Plan · Karije",
+      "ai-result":"Your Lagos plan · Karije",
+    };
+    document.title = titles[step];
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step, selected]);
+
+  async function handleAiPlan() {
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const res = await api.explorePlan({
+        state: "Lagos",
+        vibe: aiVibe,
+        groupSize: aiGroupSize,
+        budget: aiBudget,
+      });
+      setAiPlan(res.plan);
+      setStep("ai-result");
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   function handleSelect(exp: Experience) {
     setSelected(exp);
@@ -225,25 +284,22 @@ export default function Explore() {
                 </svg>
                 Curated experiences
               </div>
-              <div
-                className="flex items-center gap-2 px-4 py-2 border border-border text-sm font-jost font-light text-muted-foreground/50 cursor-not-allowed select-none"
-                title="Coming soon"
+              <button
+                onClick={() => setStep("ai-form")}
+                className="flex items-center gap-2 px-4 py-2 border border-border text-sm font-jost font-light text-muted-foreground hover:border-forest hover:text-forest transition-colors"
               >
                 <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
                   <path d="M12 6v6l4 2" />
                 </svg>
                 AI-planned
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 font-medium">
-                  Soon
-                </span>
-              </div>
+              </button>
             </div>
           </div>
 
           {/* Experience grid — 2-up on mobile, 3-up on desktop */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {LAGOS_EXPERIENCES.map((exp) => (
+            {experiences.map((exp) => (
               <ExperienceCard
                 key={exp.id}
                 exp={exp}
@@ -619,6 +675,262 @@ export default function Explore() {
               className="hover:text-foreground transition-colors"
             >
               ← Browse more experiences
+            </button>
+            <Link to="/start" className="hover:text-foreground transition-colors">
+              Plan a different trip type
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Step: AI form ─────────────────────────────────────────────────────────
+  if (step === "ai-form") {
+    return (
+      <main className="min-h-screen bg-background">
+        <PageHeader onBack={() => setStep("browse")} />
+
+        <div className="mx-auto max-w-xl px-6 pb-24">
+          <div className="py-8 border-b border-border mb-8">
+            <div className="flex items-center gap-4 mb-5">
+              <span className="h-px w-8 bg-primary" />
+              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                AI day plan · Lagos
+              </span>
+            </div>
+            <h1 className="font-marcellus text-3xl text-foreground mb-2">
+              What kind of day are you after?
+            </h1>
+            <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed">
+              Tell us your vibe, group size, and budget — we'll build a custom day plan for your squad.
+            </p>
+          </div>
+
+          {/* Vibe */}
+          <div className="mb-8">
+            <div className="flex items-center gap-4 mb-4">
+              <span className="h-px w-6 bg-primary" />
+              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                Vibe
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {VIBE_OPTIONS.map(({ value, emoji, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setAiVibe(value)}
+                  className={`p-4 border text-left transition-colors ${
+                    aiVibe === value
+                      ? "border-forest bg-forest/5 text-forest"
+                      : "border-border text-foreground hover:border-forest/50"
+                  }`}
+                >
+                  <span className="text-xl block mb-1.5">{emoji}</span>
+                  <span className="font-jost font-medium text-sm">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Group size */}
+          <div className="mb-8">
+            <div className="flex items-center gap-4 mb-4">
+              <span className="h-px w-6 bg-primary" />
+              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                Group size
+              </span>
+            </div>
+            <RangeSlider
+              label="How many people?"
+              value={aiGroupSize}
+              min={2}
+              max={40}
+              onChange={setAiGroup}
+              format={(v) => `${v} people`}
+            />
+          </div>
+
+          {/* Budget */}
+          <div className="mb-10">
+            <div className="flex items-center gap-4 mb-4">
+              <span className="h-px w-6 bg-primary" />
+              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                Budget
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2.5">
+              {BUDGET_OPTIONS.map(({ value, label, sub }) => (
+                <button
+                  key={value}
+                  onClick={() => setAiBudget(value)}
+                  className={`p-4 border text-left transition-colors ${
+                    aiBudget === value
+                      ? "border-forest bg-forest/5 text-forest"
+                      : "border-border text-foreground hover:border-forest/50"
+                  }`}
+                >
+                  <div className="font-jost font-medium text-sm mb-0.5">{label}</div>
+                  <div className="text-[11px] font-jost font-light opacity-60">{sub}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {aiError && (
+            <p className="text-xs text-red-500 mb-4">{aiError}</p>
+          )}
+
+          <button
+            onClick={handleAiPlan}
+            disabled={aiLoading}
+            className="w-full bg-forest text-parchment py-4 font-jost font-medium text-sm tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-60"
+          >
+            {aiLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-parchment/30 border-t-parchment rounded-full animate-spin" />
+                Building your plan…
+              </span>
+            ) : "Build my Lagos plan →"}
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Step: AI result ───────────────────────────────────────────────────────
+  if (step === "ai-result" && aiPlan) {
+    const waText = encodeURIComponent(
+      `Hey squad! 🎉\n\nKarije built us a custom Lagos day plan:\n\n` +
+      `*${aiPlan.title}*\n${aiPlan.tagline}\n\n` +
+      `👥 ${aiGroupSize} people · 💰 ~${formatNGN(aiPlan.estimatedCostPerPerson)}/person\n\n` +
+      aiPlan.schedule.map((s) => `${s.time}  ${s.activity}`).join("\n") +
+      `\n\nPlanned with Karije 🌍`
+    );
+
+    return (
+      <main className="min-h-screen bg-background">
+        <PageHeader onBack={() => setStep("ai-form")} />
+
+        <div className="mx-auto max-w-2xl px-6 pb-24">
+          {/* Eyebrow */}
+          <div className="flex items-center gap-4 mb-6 mt-4">
+            <span className="h-px w-8 bg-primary" />
+            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+              Your AI day plan · Lagos
+            </span>
+          </div>
+
+          <h1 className="font-marcellus text-3xl text-foreground mb-2 leading-snug">{aiPlan.title}</h1>
+          <p className="font-jost font-light text-base text-muted-foreground mb-8 leading-relaxed">{aiPlan.tagline}</p>
+
+          {/* Cost summary */}
+          <div className="border border-border p-5 mb-8 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-jost font-light text-muted-foreground uppercase tracking-wide mb-0.5">Est. per person</div>
+              <div className="font-marcellus text-2xl text-foreground">{formatNGN(aiPlan.estimatedCostPerPerson)}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] font-jost font-light text-muted-foreground uppercase tracking-wide mb-0.5">Squad total</div>
+              <div className="font-marcellus text-2xl text-foreground">{formatNGN(aiPlan.estimatedCostPerPerson * aiGroupSize)}</div>
+            </div>
+          </div>
+
+          {/* Highlights */}
+          {aiPlan.highlights.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <span className="h-px w-6 bg-primary" />
+                <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Highlights</span>
+              </div>
+              <ul className="space-y-2.5">
+                {aiPlan.highlights.map((h, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="text-primary mt-0.5 text-[8px] shrink-0">◆</span>
+                    <span className="font-jost font-light text-sm text-foreground">{h}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Schedule */}
+          <div className="mb-8">
+            <div className="flex items-center gap-4 mb-4">
+              <span className="h-px w-6 bg-primary" />
+              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Day schedule</span>
+            </div>
+            <div className="space-y-0">
+              {aiPlan.schedule.map((slot, i) => (
+                <div key={i} className="flex gap-5 py-3 border-b border-border last:border-0">
+                  <div className="w-14 shrink-0 pt-0.5">
+                    <span className="text-[11px] font-jost font-light text-muted-foreground tabular-nums">{slot.time}</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-jost font-medium text-sm text-foreground">{slot.activity}</div>
+                    {slot.details && (
+                      <div className="font-jost font-light text-xs text-muted-foreground mt-0.5">{slot.details}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Included */}
+          {aiPlan.included.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <span className="h-px w-6 bg-primary" />
+                <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">What's included</span>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-y-2.5 gap-x-6">
+                {aiPlan.included.map((item) => (
+                  <div key={item} className="flex items-start gap-2.5">
+                    <svg className="w-4 h-4 text-forest mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                    <span className="font-jost font-light text-sm text-foreground">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {aiPlan.notes && (
+            <div className="mb-8 p-4 border-l-2 border-primary bg-primary/5">
+              <p className="font-jost font-light text-xs text-foreground/70 leading-relaxed">{aiPlan.notes}</p>
+            </div>
+          )}
+
+          {/* Share actions */}
+          <div className="space-y-3 mb-10">
+            <a
+              href={`https://wa.me/?text=${waText}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-3 bg-[#25D366] text-white py-4 font-jost font-medium text-sm tracking-[0.06em] hover:opacity-90 transition-opacity"
+            >
+              <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+              Share to WhatsApp group
+            </a>
+            <button
+              onClick={() => { setAiPlan(null); setStep("ai-form"); }}
+              className="w-full border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-primary hover:text-primary transition-colors"
+            >
+              ↺ Generate a different plan
+            </button>
+          </div>
+
+          {/* Nav */}
+          <div className="flex flex-col sm:flex-row gap-4 text-sm font-jost font-light text-muted-foreground">
+            <button
+              onClick={() => setStep("browse")}
+              className="hover:text-foreground transition-colors"
+            >
+              ← Browse curated experiences instead
             </button>
             <Link to="/start" className="hover:text-foreground transition-colors">
               Plan a different trip type

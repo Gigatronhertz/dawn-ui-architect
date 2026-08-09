@@ -14,6 +14,7 @@ import ProSetup from "./pages/ProSetup.tsx";
 import ProDashboard from "./pages/ProDashboard.tsx";
 import MyPlans from "./pages/MyPlans.tsx";
 import PlanView from "./pages/PlanView.tsx";
+import Admin from "./pages/Admin.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/pro" element={<ProDemo />} />
             <Route path="/pro/setup" element={<ProSetup />} />
             <Route path="/pro/dashboard" element={<ProDashboard />} />
+            <Route path="/admin" element={<Admin />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -238,6 +238,14 @@ export const api = {
   login: (opts: { email: string; password: string }) =>
     post<{ ok: boolean; token: string }>('/auth/login', opts),
 
+  /** Fetch published curated experiences for a state. */
+  getExperiences: (state = 'Lagos') =>
+    get<{ experiences: import('./experienceTypes').Experience[] }>(`/api/experiences?state=${encodeURIComponent(state)}`),
+
+  /** AI-generated single-day intrastate plan. */
+  explorePlan: (opts: { state: string; vibe: string; groupSize: number; budget: 'low' | 'medium' | 'high' }) =>
+    post<{ ok: boolean; plan: import('./experienceTypes').AIPlan; state: string }>('/api/explore-plan', opts),
+
   /** Create or update the agency profile tied to the authenticated user. */
   setupPro: (
     payload: { agencyName: string; tagline?: string; phone: string; waNumber?: string; serviceFee?: number; color?: string; planType?: string },
