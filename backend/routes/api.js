@@ -46,14 +46,34 @@ router.post('/plan', async (req, res) => {
   res.json({ tripId, status: 'generating' });
 
   // ── Background work (response already sent — no await) ──────────────────────
+  const roundTrip = req.body.roundTrip === true;
+
   ;(async () => {
     try {
       const intake = await db.trips.get(tripId);
-      const { plan, scraped } = await generateTripPlan({
+      let { plan, scraped } = await generateTripPlan({
         ...intake,
         transport: transport || 'Charter bus',
         vibe: vibe || null,
       });
+
+      // Round trip: double transport cost, recalculate totals
+      if (roundTrip && plan?.cost_breakdown && plan?.transport) {
+        const cb     = plan.cost_breakdown;
+        const newTransportTotal = (cb.transport_total || 0) * 2;
+        const perPersonDiff     = (cb.transport_total || 0) / Math.max(Number(squadSize), 1);
+        plan = {
+          ...plan,
+          transport: { ...plan.transport, price_per_person: (plan.transport.price_per_person || 0) * 2 },
+          cost_breakdown: {
+            ...cb,
+            transport_total: newTransportTotal,
+            total:           (cb.total || 0) + (cb.transport_total || 0),
+            per_person:      (cb.per_person || 0) + perPersonDiff,
+          },
+        };
+      }
+
       await db.raw(
         `UPDATE trips SET plan=?, scraped=?, status=? WHERE id=?`,
         [JSON.stringify(plan), JSON.stringify(scraped), 'plan_review', tripId]

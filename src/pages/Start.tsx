@@ -77,6 +77,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
     transport: "Charter bus",
     vibe: "Chill & scenic",
     specificDates: "",
+    roundTrip: false,
   });
 
   const set = <K extends keyof IntakeData>(k: K, v: IntakeData[K]) =>
@@ -135,11 +136,26 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
             ✈️ Flight
           </button>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          {transportMode === 'bus'
-            ? `GIGM live prices · ${GIGM_CITIES.length} cities covered`
-            : `Google Travel + Amadeus · ${FLIGHT_CITIES.length} airports covered`}
-        </p>
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-[11px] text-muted-foreground">
+            {transportMode === 'bus'
+              ? `GIGM live prices · ${GIGM_CITIES.length} cities covered`
+              : `Google Travel + Amadeus · ${FLIGHT_CITIES.length} airports covered`}
+          </p>
+          {/* Round trip toggle */}
+          <button
+            type="button"
+            onClick={() => set("roundTrip", !form.roundTrip)}
+            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ring-hairline transition ${
+              form.roundTrip
+                ? "bg-primary text-primary-foreground shadow-glow"
+                : "bg-card text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span>↩</span>
+            Round trip
+          </button>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-5">
@@ -596,17 +612,21 @@ function PlanStep({
     : initialPlan.hotel;
 
   // ── Accurate live cost breakdown — recomputed from selections ─────────────────
+  // Round trip doubles the transport price (same route back, same operator/price).
+  const tripMultiplier      = intake.roundTrip ? 2 : 1;
+  const transportPerPerson  = (transport.price_per_person || 0) * tripMultiplier;
+
   const activitiesPerPerson = days.reduce(
     (sum, d) => sum + d.activities.reduce((s, a) => s + (a.cost_per_person || 0), 0), 0
   );
   const foodPerPerson   = Math.round((initialPlan.cost_breakdown.food_total   || 0) / Math.max(intake.squadSize, 1));
   const bufferPerPerson = Math.round((initialPlan.cost_breakdown.buffer       || 0) / Math.max(intake.squadSize, 1));
-  const perPerson       = (transport.price_per_person || 0)
+  const perPerson       = transportPerPerson
                         + (hotel.price_per_night || 0) * (intake.days || 1)
                         + activitiesPerPerson
                         + foodPerPerson
                         + bufferPerPerson;
-  const transportTotal  = (transport.price_per_person || 0) * (intake.squadSize || 1);
+  const transportTotal  = transportPerPerson * (intake.squadSize || 1);
   const lodgingTotal    = (hotel.price_per_night || 0) * (intake.days || 1) * (intake.squadSize || 1);
   const squadTotal      = perPerson * (intake.squadSize || 1);
   const isDirty         = dirty || selectedBusIdx !== null || selectedFlightIdx !== null || selectedHotelKey !== 'ai';
@@ -628,22 +648,33 @@ function PlanStep({
       <Card className="p-0 overflow-hidden">
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
           {[
-            { label: "Transport", val: fmtNGN(transportTotal), sub: `${transport.operator} · ${intake.squadSize}×`, color: "text-google-blue" },
-            { label: "Lodging", val: fmtNGN(lodgingTotal), sub: `${hotel.name.split(" ")[0]} · ${intake.days} nights`, color: "text-google-purple" },
-            { label: "Per person", val: fmtNGN(perPerson), sub: isDirty ? "Updated · live" : "AI estimate", color: "text-primary" },
-            { label: "Squad total", val: fmtNGN(squadTotal), sub: `${intake.squadSize} people · all-in`, color: "text-google-green" },
+            {
+              label: "Transport",
+              val: fmtNGN(transportTotal),
+              sub: `${transport.operator} · ${intake.squadSize}×`,
+              badge: intake.roundTrip ? "↩ Return included" : null,
+              color: "text-google-blue",
+            },
+            { label: "Lodging", val: fmtNGN(lodgingTotal), sub: `${hotel.name.split(" ")[0]} · ${intake.days} nights`, badge: null, color: "text-google-purple" },
+            { label: "Per person", val: fmtNGN(perPerson), sub: isDirty ? "Updated · live" : "AI estimate", badge: null, color: "text-primary" },
+            { label: "Squad total", val: fmtNGN(squadTotal), sub: `${intake.squadSize} people · all-in`, badge: null, color: "text-google-green" },
           ].map((c) => (
             <div key={c.label} className="p-4 md:p-6 text-center">
               <div className={`text-[10px] font-semibold uppercase tracking-wider ${c.color} mb-1`}>{c.label}</div>
               <div className="font-display text-lg md:text-2xl font-semibold tabular-nums">{c.val}</div>
               <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{c.sub}</div>
+              {c.badge && (
+                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-semibold">
+                  {c.badge}
+                </div>
+              )}
             </div>
           ))}
         </div>
         <CostBreakdown
           total={perPerson}
           items={[
-            { label: "Transport", value: transport.price_per_person || 0, icon: "🚌", colorClass: "bg-google-blue" },
+            { label: intake.roundTrip ? "Transport (× 2 return)" : "Transport", value: transportPerPerson, icon: "🚌", colorClass: "bg-google-blue" },
             { label: `Lodging · ${intake.days} night${intake.days === 1 ? "" : "s"}`, value: (hotel.price_per_night || 0) * (intake.days || 1), icon: "🏨", colorClass: "bg-google-purple" },
             { label: "Activities", value: activitiesPerPerson, icon: "🎯", colorClass: "bg-accent" },
             { label: "Food est.", value: foodPerPerson, icon: "🍽️", colorClass: "bg-google-green" },

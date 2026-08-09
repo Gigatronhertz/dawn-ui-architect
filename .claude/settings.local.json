@@ -32,7 +32,8 @@
       "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(l['ts'], l['level'], l['msg']\\) for l in data['lines'] if 'gigm' in l['msg'].lower\\(\\) or 'gigm' in l['msg']]\")",
       "PowerShell(npm install *)",
       "Bash(npx tsc *)",
-      "Bash(git commit -m 'Fix routing: smart resume, confirmed-trip restore, MyPlans user shape *)"
+      "Bash(git commit -m 'Fix routing: smart resume, confirmed-trip restore, MyPlans user shape *)",
+      "Bash(git commit -m 'Phase A: round trip toggle — doubles transport cost for return journey *)"
     ]
   }
 }

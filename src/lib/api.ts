@@ -13,6 +13,7 @@ export type IntakeData = {
   transport?: string;
   vibe?: string;
   specificDates?: string;
+  roundTrip?: boolean;
 };
 
 export type Attraction = { id: number; state: string; name: string; fee_min: number; fee_max: number; fee_note: string | null };
