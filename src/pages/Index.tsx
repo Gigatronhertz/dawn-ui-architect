@@ -47,7 +47,7 @@ const Services = () => (
     <div className="mx-auto max-w-6xl px-6">
       <div className="text-center max-w-2xl mx-auto mb-16">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">What we do</span>
-        <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight mt-3 leading-[1.05]">
+        <h2 className="font-display text-2xl md:text-4xl font-semibold tracking-tight mt-3 leading-[1.05]">
           Everything a squad trip needs,<br className="hidden sm:block" /> in one place.
         </h2>
         <p className="mt-4 text-muted-foreground">
@@ -83,15 +83,14 @@ const Services = () => (
 );
 
 // ── Photo destinations grid ───────────────────────────────────────────────────
+// Verified Unsplash CDN IDs (full internal photo IDs — free to use)
 const destinations = [
-  // Actual Nigeria photos (shot on location)
-  { id: "OxesnxkySD0", label: "Enugu",           sub: "Coal City, Nigeria",      tall: true  },
-  { id: "xKPkKkreVK0", label: "Eastern Nigeria", sub: "Imo State Road Trip",     tall: false },
-  // Squad / trip vibe photos
-  { id: "t_XeExafoSM", label: "Beach Weekend",   sub: "Lagos Shoreline",         tall: false },
-  { id: "lAQ7q8ADZSI", label: "Road Trip",        sub: "Calabar Adventure",       tall: false },
-  { id: "SPS796v4KmM", label: "West Africa",      sub: "Crew Goals",              tall: false },
-  { id: "eTpb0CNJ91A", label: "City Nights",      sub: "Night Out, Lagos",        tall: true  },
+  { id: "1577900190299-7316c32fe85f", label: "Enugu",           sub: "Coal City, Nigeria",  tall: true  },
+  { id: "1560118386-f35cf6a0791d",    label: "Eastern Nigeria", sub: "Imo State Road Trip",  tall: false },
+  { id: "1773146916270-e811bff4e923", label: "Beach Weekend",   sub: "Lagos Shoreline",      tall: false },
+  { id: "1761986756798-a13b39989361", label: "Road Trip",       sub: "Calabar Adventure",    tall: false },
+  { id: "1509099896299-af46ad97ff57", label: "West Africa",     sub: "Crew Goals",           tall: false },
+  { id: "1761986758241-77549539536a", label: "Road Trip Crew",  sub: "Adventure Van Life",   tall: true  },
 ];
 
 function imgUrl(id: string, w = 600, h = 450) {
@@ -103,7 +102,7 @@ const DestinationsGrid = () => (
     <div className="mx-auto max-w-6xl px-6">
       <div className="text-center max-w-2xl mx-auto mb-10">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Where squads go</span>
-        <h2 className="font-display text-3xl md:text-5xl font-semibold tracking-tight mt-3 leading-[1.05]">
+        <h2 className="font-display text-2xl md:text-4xl font-semibold tracking-tight mt-3 leading-[1.05]">
           Nigeria is waiting.
         </h2>
         <p className="mt-4 text-muted-foreground">
@@ -182,7 +181,7 @@ const AgenciesSection = () => (
         {/* Left: copy */}
         <div>
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Pro Plan</span>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight mt-3 leading-[1.05]">
+          <h2 className="font-display text-2xl md:text-4xl font-semibold tracking-tight mt-3 leading-[1.05]">
             Running a travel business?
           </h2>
           <p className="mt-4 text-muted-foreground text-[15px] leading-relaxed">

@@ -30,7 +30,7 @@ export const HowItWorks = () => (
     <div className="mx-auto max-w-6xl px-6">
       <div className="text-center max-w-2xl mx-auto">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">How it works</span>
-        <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tight mt-3 leading-[1.05]">
+        <h2 className="font-display text-2xl md:text-4xl font-semibold tracking-tight mt-3 leading-[1.05]">
           Four steps. No spreadsheet.
         </h2>
       </div>
@@ -44,7 +44,7 @@ export const HowItWorks = () => (
             <div className={`absolute top-0 left-0 h-1 w-16 ${p.accent} rounded-br-full`} />
             <div className="flex items-baseline gap-4">
               <span className="font-display text-sm font-semibold text-muted-foreground tabular-nums">{p.n}</span>
-              <h3 className="font-display text-2xl md:text-3xl font-semibold tracking-tight">{p.title}</h3>
+              <h3 className="font-display text-xl md:text-2xl font-semibold tracking-tight">{p.title}</h3>
             </div>
             <p className="mt-4 text-[15px] md:text-base text-muted-foreground leading-relaxed pl-10">
               {p.desc}
