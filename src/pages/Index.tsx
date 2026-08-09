@@ -82,6 +82,91 @@ const Services = () => (
   </section>
 );
 
+// ── Photo destinations grid ───────────────────────────────────────────────────
+const destinations = [
+  // Actual Nigeria photos (shot on location)
+  { id: "OxesnxkySD0", label: "Enugu",           sub: "Coal City, Nigeria",      tall: true  },
+  { id: "xKPkKkreVK0", label: "Eastern Nigeria", sub: "Imo State Road Trip",     tall: false },
+  // Squad / trip vibe photos
+  { id: "t_XeExafoSM", label: "Beach Weekend",   sub: "Lagos Shoreline",         tall: false },
+  { id: "lAQ7q8ADZSI", label: "Road Trip",        sub: "Calabar Adventure",       tall: false },
+  { id: "SPS796v4KmM", label: "West Africa",      sub: "Crew Goals",              tall: false },
+  { id: "eTpb0CNJ91A", label: "City Nights",      sub: "Night Out, Lagos",        tall: true  },
+];
+
+function imgUrl(id: string, w = 600, h = 450) {
+  return `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
+}
+
+const DestinationsGrid = () => (
+  <section className="py-16 md:py-24 overflow-hidden">
+    <div className="mx-auto max-w-6xl px-6">
+      <div className="text-center max-w-2xl mx-auto mb-10">
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Where squads go</span>
+        <h2 className="font-display text-3xl md:text-5xl font-semibold tracking-tight mt-3 leading-[1.05]">
+          Nigeria is waiting.
+        </h2>
+        <p className="mt-4 text-muted-foreground">
+          From Obudu to Elegushi Beach — your squad can go anywhere. We'll plan every detail.
+        </p>
+      </div>
+
+      {/* Desktop: masonry-style grid */}
+      <div className="hidden md:grid grid-cols-3 gap-3" style={{ gridAutoRows: "220px" }}>
+        {destinations.map((d) => (
+          <div
+            key={d.id}
+            className={`relative rounded-2xl overflow-hidden group cursor-default ${d.tall ? "row-span-2" : ""}`}
+          >
+            <img
+              src={imgUrl(d.id, d.tall ? 600 : 600, d.tall ? 900 : 440)}
+              alt={d.label}
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+            <div className="absolute bottom-4 left-4 text-white">
+              <div className="font-display font-semibold">{d.label}</div>
+              <div className="text-[11px] opacity-75 mt-0.5">{d.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile: horizontal scroll */}
+      <div className="md:hidden -mx-6 overflow-x-auto flex gap-3 px-6 pb-2 snap-x snap-mandatory">
+        {destinations.map((d) => (
+          <div
+            key={d.id}
+            className="flex-none w-56 h-48 rounded-2xl overflow-hidden relative snap-start"
+          >
+            <img
+              src={imgUrl(d.id, 400, 320)}
+              alt={d.label}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <div className="absolute bottom-3 left-3 text-white">
+              <div className="font-semibold text-sm">{d.label}</div>
+              <div className="text-[10px] opacity-75">{d.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-8 text-center">
+        <Link
+          to="/start"
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-primary text-primary-foreground px-7 py-3.5 text-[15px] font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform"
+        >
+          Plan your trip now →
+        </Link>
+      </div>
+    </div>
+  </section>
+);
+
 // ── Agencies / Pro section ────────────────────────────────────────────────────
 const proBenefits = [
   { icon: "🏷️", text: "Branded plan pages with your agency name and logo" },
@@ -152,6 +237,7 @@ const Index = () => {
       <Nav />
       <Hero />
       <Services />
+      <DestinationsGrid />
       <HowItWorks />
       <AgenciesSection />
       <Footer />
