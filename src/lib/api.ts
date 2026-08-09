@@ -87,12 +87,19 @@ export type CreatePlanResponse = { tripId: string; status: 'generating' };
 
 /** Polled via GET /api/plan/:tripId */
 export type PollPlanResponse = {
-  tripId:  string;
-  status:  'generating' | 'plan_review' | 'error';
-  plan?:   GeminiPlan;
-  scraped?: ScrapedData | null;
-  intake?: IntakeData | null;
-  error?:  string;
+  tripId:       string;
+  status:       'generating' | 'plan_review' | 'awaiting_group' | 'error';
+  plan?:        GeminiPlan;
+  scraped?:     ScrapedData | null;
+  intake?:      IntakeData | null;
+  error?:       string;
+  // Present when status === 'awaiting_group' (trip already confirmed)
+  confirmed?:    boolean;
+  botNumber?:    string;
+  destination?:  string | null;
+  squadSize?:    number | null;
+  selectedDate?: string | null;
+  instructions?: string[];
 };
 
 export type AgentProfile = {

@@ -27,9 +27,10 @@ export default function MyPlans() {
 
   useEffect(() => {
     if (!user) return;
+    const token = getIdToken();
+    if (!token) { setError("Not signed in."); return; }
     setFetching(true);
-    getIdToken()
-      .then(token => token ? api.getMyPlans(token) : Promise.reject(new Error("No token")))
+    api.getMyPlans(token)
       .then(data => setPlans(data.plans))
       .catch(err => setError(err.message))
       .finally(() => setFetching(false));
@@ -57,11 +58,12 @@ export default function MyPlans() {
           </Link>
 
           <div className="flex items-center gap-3">
-            {user.photoURL && (
-              <img src={user.photoURL} alt={user.displayName || "You"} className="w-8 h-8 rounded-full ring-hairline" referrerPolicy="no-referrer" />
+            {user.picture && (
+              <img src={user.picture} alt={user.name || "You"} className="w-8 h-8 rounded-full ring-hairline" referrerPolicy="no-referrer" />
             )}
+            <span className="hidden sm:block text-xs text-muted-foreground truncate max-w-[160px]">{user.email}</span>
             <button
-              onClick={() => signOut().then(() => navigate("/"))}
+              onClick={() => { signOut(); navigate("/"); }}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               Sign out
@@ -76,7 +78,7 @@ export default function MyPlans() {
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-1">Your account</div>
           <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight">My Plans</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {user.displayName ? `Welcome back, ${user.displayName.split(" ")[0]}.` : "Welcome back."} All your saved squad plans are here.
+            {user.name ? `Welcome back, ${user.name.split(" ")[0]}.` : "Welcome back."} All your saved squad plans are here.
           </p>
         </div>
 

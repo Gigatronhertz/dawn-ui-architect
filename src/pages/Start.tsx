@@ -1356,13 +1356,46 @@ export default function Start() {
   }
 
   // ── Resume from URL (?job=<tripId>) on page load ──────────────────────────────
+  // First checks the trip's current status so we don't show the generating spinner
+  // for trips that are already confirmed (e.g. returning from the magic-link email).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const jobId = params.get("job");
     if (!jobId) return;
     setTripId(jobId);
-    setStep("generating");
-    schedulePoll(jobId, null); // intake will be fetched from the server
+
+    api.pollPlan(jobId).then((result) => {
+      if (result.status === "awaiting_group" && result.confirmed && result.plan) {
+        // Already confirmed — restore confirm step directly, no spinner
+        setConfirmedPlan(result.plan);
+        setConfirmData({
+          botNumber:    result.botNumber    ?? "234XXXXXXXXXX",
+          destination:  result.destination  ?? "",
+          squadSize:    result.squadSize    ?? 1,
+          dmSent:       false,
+          instructions: result.instructions ?? [],
+          selectedDate: result.selectedDate ?? null,
+        });
+        setStep("confirm");
+      } else if (result.status === "plan_review" && result.plan) {
+        // Plan ready but not yet confirmed
+        if (result.intake) setIntake(result.intake);
+        setPlan(result.plan);
+        setScraped(result.scraped ?? null);
+        setStep("plan");
+      } else if (result.status === "generating") {
+        // Still generating — start the polling loop
+        setStep("generating");
+        schedulePoll(jobId, null);
+      } else if (result.status === "error") {
+        setError(result.error ?? "Plan generation failed. Please try again.");
+        setStep("intake");
+      }
+    }).catch(() => {
+      // Can't reach backend — fall back to polling loop
+      setStep("generating");
+      schedulePoll(jobId, null);
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Plan creation ─────────────────────────────────────────────────────────────
@@ -1447,11 +1480,11 @@ export default function Start() {
             {user ? (
               <div className="flex items-center gap-2">
                 <Link to="/my-plans" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  {user.photoURL ? (
-                    <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full ring-hairline" referrerPolicy="no-referrer" />
+                  {user.picture ? (
+                    <img src={user.picture} alt="" className="w-6 h-6 rounded-full ring-hairline" referrerPolicy="no-referrer" />
                   ) : (
                     <span className="w-6 h-6 rounded-full bg-primary/15 grid place-items-center text-primary text-[10px] font-semibold">
-                      {(user.displayName || user.email || "U")[0].toUpperCase()}
+                      {(user.name || user.email || "U")[0].toUpperCase()}
                     </span>
                   )}
                   <span className="hidden sm:inline">My Plans</span>
@@ -1474,6 +1507,21 @@ export default function Start() {
 
       <div className="relative mx-auto max-w-3xl px-6 pb-24">
         {/* Progress pills */}
+        {/* Signed-in banner — shown on intake step only when user has an account */}
+        {step === "intake" && user && (
+          <div className="mb-5 rounded-2xl bg-primary/8 ring-1 ring-primary/15 px-5 py-3 flex items-center justify-between gap-4">
+            <p className="text-sm text-foreground/80">
+              Signed in as <span className="font-medium text-foreground">{user.email}</span>
+            </p>
+            <Link
+              to="/my-plans"
+              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition whitespace-nowrap"
+            >
+              My Plans →
+            </Link>
+          </div>
+        )}
+
         {step !== "confirm" && (
           <div className="flex items-center gap-2 mb-8">
             {(["intake", "generating", "plan"] as const).map((s, i) => (

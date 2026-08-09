@@ -164,6 +164,21 @@ router.get('/plan/:tripId', async (req, res) => {
   if (trip.status === 'plan_review' && trip.plan) {
     resp.plan    = JSON.parse(trip.plan);
     resp.scraped = trip.scraped ? JSON.parse(trip.scraped) : null;
+  } else if (trip.status === 'awaiting_group' && trip.plan) {
+    // Trip already confirmed — return enough data to restore the confirm step
+    const botNumber = process.env.WA_DISPLAY_NUMBER || '234XXXXXXXXXX';
+    resp.plan         = JSON.parse(trip.plan);
+    resp.confirmed    = true;
+    resp.botNumber    = botNumber;
+    resp.destination  = trip.destination;
+    resp.squadSize    = trip.squad_size;
+    resp.selectedDate = trip.selected_date || null;
+    resp.instructions = [
+      `Open your squad's WhatsApp group (or create one).`,
+      `Tap Group Info → Add Participants.`,
+      `Add: +${botNumber}`,
+      `The bot will reveal the plan the moment it joins.`,
+    ];
   } else if (trip.status === 'error') {
     resp.error = 'Plan generation failed. Please try again.';
   }
