@@ -743,80 +743,87 @@ function PlanStep({
           )}
 
           {isBusMode && busOffers.length > 0 && (
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
               {busOffers.map((bus, i) => (
                 <button key={i} type="button"
                   onClick={() => { setSelectedBusIdx(i === selectedBusIdx ? null : i); setSelectedFlightIdx(null); }}
-                  className={`w-full text-left rounded-xl p-4 ring-hairline transition ${selectedBusIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-display text-sm font-semibold">{bus.departureTime?.slice(0, 5) || '—'} · {bus.class}</div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5">
-                        {intake.specificDates ? new Date(intake.specificDates).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Flexible date'} · {bus.terminal || intake.origin} · {bus.seatsAvailable} seats
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                      <div>
-                        <div className="font-display text-base font-semibold text-primary">{fmtNGN(bus.price)}</div>
-                        <div className="text-[10px] text-muted-foreground">per seat</div>
-                      </div>
-                      <a href="https://www.gigm.com/book-a-seat" target="_blank" rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition">
-                        Book →
-                      </a>
-                    </div>
-                  </div>
+                  className={`relative text-left rounded-xl p-4 ring-hairline transition flex flex-col aspect-[4/5] ${selectedBusIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                  {/* Selected checkmark */}
                   {selectedBusIdx === i && (
-                    <div className="mt-2 text-[11px] text-primary font-medium">✓ Selected — applied to your plan</div>
+                    <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
                   )}
+                  <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+                    {intake.specificDates
+                      ? new Date(intake.specificDates).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })
+                      : 'GIGM'}
+                  </div>
+                  <div className="font-display text-2xl font-semibold mt-2 tabular-nums leading-none">
+                    {bus.departureTime?.slice(0, 5) || '—'}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-1">{bus.class}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{bus.seatsAvailable} seats left</div>
+                  <div className="mt-auto pt-3 border-t border-border/50">
+                    <div className="font-display text-base font-semibold text-primary tabular-nums">{fmtNGN(bus.price)}</div>
+                    <div className="text-[10px] text-muted-foreground">per seat</div>
+                    <a href="https://www.gigm.com/book-a-seat" target="_blank" rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition">
+                      Book →
+                    </a>
+                  </div>
                 </button>
               ))}
+              {/* AI pick — spans full width */}
               <button type="button"
                 onClick={() => { setSelectedBusIdx(null); setSelectedFlightIdx(null); }}
-                className={`w-full text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedBusIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                className={`col-span-2 text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedBusIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                 <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator} · {initialPlan.transport.type}</span>
+                {selectedBusIdx === null && <span className="ml-2 text-[11px] text-primary font-medium">✓ Active</span>}
               </button>
             </div>
           )}
 
           {!isBusMode && flightOffers.length > 0 && (
-            <div className="space-y-2">
-              {flightOffers.slice(0, 5).map((f, i) => {
+            <div className="grid grid-cols-2 gap-3">
+              {flightOffers.slice(0, 4).map((f, i) => {
                 const flightUrl = `https://www.google.com/travel/flights?hl=en&curr=NGN&q=${encodeURIComponent('flights from ' + intake.origin + ' to ' + intake.destination)}`;
                 return (
                   <button key={i} type="button"
                     onClick={() => { setSelectedFlightIdx(i === selectedFlightIdx ? null : i); setSelectedBusIdx(null); }}
-                    className={`w-full text-left rounded-xl p-4 ring-hairline transition ${selectedFlightIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-display text-sm font-semibold">{f.airline || 'Unknown airline'}</div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5">{f.stops === 0 ? 'Nonstop' : `${f.stops} stop`} · {f.duration || '—'}</div>
-                      </div>
-                      <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                        <div>
-                          <div className="font-display text-base font-semibold text-primary">{fmtNGN(f.price)}</div>
-                          <div className="text-[10px] text-muted-foreground">per person</div>
-                        </div>
-                        <a href={flightUrl} target="_blank" rel="noopener noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition">
-                          Search →
-                        </a>
-                      </div>
-                    </div>
+                    className={`relative text-left rounded-xl p-4 ring-hairline transition flex flex-col aspect-[4/5] ${selectedFlightIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                     {selectedFlightIdx === i && (
-                      <div className="mt-2 text-[11px] text-primary font-medium">✓ Selected — applied to your plan</div>
+                      <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
                     )}
+                    <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">✈️ Flight</div>
+                    <div className="font-display text-sm font-semibold mt-2 leading-snug truncate pr-6">
+                      {f.airline || 'Unknown'}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      {f.stops === 0 ? 'Nonstop' : `${f.stops} stop${f.stops > 1 ? 's' : ''}`}
+                    </div>
+                    {f.duration && (
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{f.duration}</div>
+                    )}
+                    <div className="mt-auto pt-3 border-t border-border/50">
+                      <div className="font-display text-base font-semibold text-primary tabular-nums">{fmtNGN(f.price)}</div>
+                      <div className="text-[10px] text-muted-foreground">per person</div>
+                      <a href={flightUrl} target="_blank" rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition">
+                        Search →
+                      </a>
+                    </div>
                   </button>
                 );
               })}
+              {/* AI pick — spans full width */}
               <button type="button"
                 onClick={() => { setSelectedFlightIdx(null); setSelectedBusIdx(null); }}
-                className={`w-full text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedFlightIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                className={`col-span-2 text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedFlightIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                 <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator}</span>
+                {selectedFlightIdx === null && <span className="ml-2 text-[11px] text-primary font-medium">✓ Active</span>}
               </button>
             </div>
           )}
@@ -925,47 +932,49 @@ function PlanStep({
       <Card>
         <SectionLabel>Accommodation</SectionLabel>
         <h2 className="font-display text-base font-semibold mb-4">Pick your hotel.</h2>
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
           {allHotelOptions.map(opt => (
             <button key={opt.key} type="button"
               onClick={() => setSelectedHotelKey(opt.key)}
-              className={`w-full text-left rounded-xl p-4 ring-hairline transition ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="font-display text-sm font-semibold flex items-center gap-1.5 flex-wrap">
-                    <span className="truncate">{opt.name}</span>
-                    {opt.badge && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground shrink-0">{opt.badge}</span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-                    <span>{opt.area || '—'}</span>
-                    {opt.rating && <span>⭐ {opt.rating}</span>}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary">{opt.source}</span>
-                  </div>
-                  {opt.perks.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {opt.perks.map(pk => <span key={pk} className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary/60 text-muted-foreground">{pk}</span>)}
-                    </div>
-                  )}
-                </div>
-                <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                  <div>
-                    <div className="font-display text-base font-semibold">{opt.price ? fmtNGN(opt.price) : '—'}</div>
-                    <div className="text-[10px] text-muted-foreground">per night</div>
-                  </div>
-                  {opt.url && (
-                    <a href={opt.url} target="_blank" rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition whitespace-nowrap">
-                      {opt.source === 'Booking.com' ? 'Book →' : 'View →'}
-                    </a>
-                  )}
-                </div>
-              </div>
+              className={`relative text-left rounded-xl p-4 ring-hairline transition flex flex-col aspect-[4/5] ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+              {/* Selected checkmark */}
               {selectedHotelKey === opt.key && (
-                <div className="mt-2 text-[11px] text-primary font-medium">✓ Selected — applied to your plan</div>
+                <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
               )}
+
+              {/* Source label + badge */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+                  🏨 {opt.source}
+                </span>
+                {opt.badge && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{opt.badge}</span>
+                )}
+              </div>
+
+              {/* Hotel name */}
+              <div className="font-display text-sm font-semibold mt-2 leading-snug line-clamp-2 pr-6">
+                {opt.name}
+              </div>
+
+              {/* Area + rating */}
+              <div className="text-[11px] text-muted-foreground mt-1 truncate">{opt.area || '—'}</div>
+              {opt.rating && (
+                <div className="text-[11px] text-muted-foreground mt-0.5">⭐ {opt.rating}</div>
+              )}
+
+              {/* Price at bottom */}
+              <div className="mt-auto pt-3 border-t border-border/50">
+                <div className="font-display text-base font-semibold tabular-nums">{opt.price ? fmtNGN(opt.price) : '—'}</div>
+                <div className="text-[10px] text-muted-foreground">per night</div>
+                {opt.url && (
+                  <a href={opt.url} target="_blank" rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition whitespace-nowrap">
+                    {opt.source === 'Booking.com' ? 'Book →' : 'View →'}
+                  </a>
+                )}
+              </div>
             </button>
           ))}
         </div>

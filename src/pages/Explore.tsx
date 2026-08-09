@@ -72,62 +72,42 @@ function ExperienceCard({ exp, onSelect }: { exp: Experience; onSelect: () => vo
   return (
     <button
       onClick={onSelect}
-      className="group border border-border text-left flex flex-col overflow-hidden hover:border-primary hover:shadow-card transition-all"
+      className="group relative aspect-square overflow-hidden text-left"
+      style={{ backgroundColor: exp.colorFallback }}
     >
-      {/* Photo */}
-      <div
-        className="relative h-44 overflow-hidden"
-        style={{ backgroundColor: exp.colorFallback }}
-      >
-        <img
-          src={cdnImg(exp.imageId, 600, 350)}
-          alt={exp.name}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-          loading="lazy"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-        {/* Category tag */}
-        <span className={`absolute top-3 left-3 text-[10px] font-jost font-medium tracking-wide px-2 py-1 ${CAT_COLOR[exp.category]}`}>
+      {/* Full-bleed photo */}
+      <img
+        src={cdnImg(exp.imageId, 600, 600)}
+        alt={exp.name}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
+        loading="lazy"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      />
+
+      {/* Gradient overlay — heavier at bottom */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
+
+      {/* Top row: category + day cap */}
+      <div className="absolute top-0 left-0 right-0 flex items-start justify-between p-3">
+        <span className={`text-[10px] font-jost font-medium tracking-wide px-2 py-1 ${CAT_COLOR[exp.category]}`}>
           {CAT_LABEL[exp.category]}
         </span>
-        {/* Day cap badge */}
-        {exp.maxDays === 1 && (
-          <span className="absolute top-3 right-3 text-[10px] font-jost font-light px-2 py-1 bg-black/40 text-white">
-            1 day
-          </span>
-        )}
-        {exp.maxDays > 1 && (
-          <span className="absolute top-3 right-3 text-[10px] font-jost font-light px-2 py-1 bg-black/40 text-white">
-            Up to {exp.maxDays} days
-          </span>
-        )}
+        <span className="text-[10px] font-jost font-light px-2 py-1 bg-black/50 text-white/90">
+          {exp.maxDays === 1 ? "1 day" : `↑ ${exp.maxDays} days`}
+        </span>
       </div>
 
-      {/* Content */}
-      <div className="p-5 flex-1 flex flex-col gap-3">
-        <div>
-          <h3 className="font-marcellus text-lg text-foreground">{exp.name}</h3>
-          <p className="text-[11px] font-jost font-light text-muted-foreground mt-0.5">
-            📍 {exp.location}
-          </p>
-        </div>
-        <p className="text-sm font-jost font-light text-muted-foreground leading-relaxed flex-1">
-          {exp.tagline}
-        </p>
-
-        {/* Price + CTA row */}
-        <div className="flex items-center justify-between pt-2 border-t border-border">
-          <div>
-            <span className="font-marcellus text-base text-foreground">
-              {formatNGN(exp.pricePerPersonPerDay)}
-            </span>
-            <span className="text-[11px] font-jost font-light text-muted-foreground">
-              {" "}/person/day
-            </span>
-          </div>
-          <span className="text-xs font-jost font-medium text-primary group-hover:underline">
-            See details →
+      {/* Bottom: name, location, price */}
+      <div className="absolute bottom-0 left-0 right-0 p-4">
+        <h3 className="font-marcellus text-base leading-snug text-white">{exp.name}</h3>
+        <p className="text-[11px] font-jost font-light text-white/60 mt-0.5 truncate">📍 {exp.location}</p>
+        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/15">
+          <span className="font-marcellus text-sm text-white">
+            {formatNGN(exp.pricePerPersonPerDay)}
+            <span className="text-[10px] font-jost font-light text-white/55">/p·day</span>
+          </span>
+          <span className="text-[11px] font-jost font-light text-white/70 group-hover:text-white transition">
+            Explore →
           </span>
         </div>
       </div>
@@ -261,8 +241,8 @@ export default function Explore() {
             </div>
           </div>
 
-          {/* Experience grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Experience grid — 2-up on mobile, 3-up on desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {LAGOS_EXPERIENCES.map((exp) => (
               <ExperienceCard
                 key={exp.id}

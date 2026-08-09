@@ -454,25 +454,44 @@ export default function MyPlans() {
         )}
 
         {!fetching && plans.length > 0 && (
-          <ol className="space-y-3">
+          <ol className="grid grid-cols-2 gap-3">
             {plans.map((p) => {
               const s = STATUS_LABEL[p.status] ?? { label: p.status, color: "text-muted-foreground bg-secondary" };
               const perPerson = p.plan?.cost_breakdown?.per_person;
-              const total     = p.plan?.cost_breakdown?.total;
-              const date = new Date(p.createdAt * 1000).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+              const date = new Date(p.createdAt * 1000).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
+              // Awaiting-group plans have more content (participants + payment bar) — they go full-width
+              const isActive = p.status === 'awaiting_group';
               return (
-                <li key={p.tripId}>
+                <li key={p.tripId} className={isActive ? "col-span-2" : ""}>
                   {p.status === 'plan_review' ? (
                     <Link
                       to={`/start/trip?job=${p.tripId}`}
-                      className="block rounded-3xl bg-card ring-hairline shadow-card p-6 hover:shadow-md transition-shadow"
+                      className="group flex flex-col aspect-[4/5] bg-card ring-hairline shadow-card p-4 hover:border-primary hover:shadow-md transition-all overflow-hidden"
                     >
-                      <PlanCard p={p} s={s} date={date} perPerson={perPerson} total={total} />
+                      <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </Link>
                   ) : p.status === 'awaiting_group' ? (
-                    <div className="rounded-3xl bg-card ring-hairline shadow-card p-6 space-y-4">
-                      <PlanCard p={p} s={s} date={date} perPerson={perPerson} total={total} />
-                      {/* Share link + participant count + payment progress */}
+                    <div className="bg-card ring-hairline shadow-card p-5 space-y-4">
+                      {/* Compact trip header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${s.color}`}>{s.label}</span>
+                            <span className="text-[11px] text-muted-foreground">{date}</span>
+                          </div>
+                          <div className="font-display font-semibold truncate">{p.origin || "—"} → {p.destination || "—"}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {p.days ? `${p.days}d` : "—"}{p.squadSize ? ` · ${p.squadSize} people` : ""}
+                          </div>
+                        </div>
+                        {perPerson && (
+                          <div className="text-right shrink-0">
+                            <div className="font-display font-semibold text-primary">{fmtNGN(perPerson)}</div>
+                            <div className="text-[10px] text-muted-foreground">/person</div>
+                          </div>
+                        )}
+                      </div>
+                      {/* Squad + payment */}
                       <div className="border-t border-border pt-4 space-y-3">
                         <div className="flex items-center justify-between gap-4 flex-wrap">
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -489,7 +508,6 @@ export default function MyPlans() {
                             View squad page →
                           </Link>
                         </div>
-                        {/* Payment collection progress */}
                         {(p.paidCount ?? 0) > 0 && (
                           <div>
                             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
@@ -499,9 +517,7 @@ export default function MyPlans() {
                             <div className="h-1.5 rounded-full bg-secondary/60 overflow-hidden">
                               <div
                                 className="h-full rounded-full bg-gradient-primary transition-all"
-                                style={{
-                                  width: `${p.squadSize && p.paidCount ? Math.min(100, (p.paidCount / p.squadSize) * 100) : 0}%`
-                                }}
+                                style={{ width: `${p.squadSize && p.paidCount ? Math.min(100, (p.paidCount / p.squadSize) * 100) : 0}%` }}
                               />
                             </div>
                           </div>
@@ -509,8 +525,8 @@ export default function MyPlans() {
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-3xl bg-card ring-hairline shadow-card p-6">
-                      <PlanCard p={p} s={s} date={date} perPerson={perPerson} total={total} />
+                    <div className="flex flex-col aspect-[4/5] bg-card ring-hairline shadow-card p-4 overflow-hidden">
+                      <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </div>
                   )}
                 </li>
@@ -523,39 +539,52 @@ export default function MyPlans() {
   );
 }
 
-function PlanCard({ p, s, date, perPerson, total }: {
+/** Square card for the 2-col plans grid — fills parent which has aspect-[4/5] */
+function PlanCardSquare({ p, s, date, perPerson }: {
   p: UserPlan;
   s: { label: string; color: string };
   date: string;
   perPerson?: number;
-  total?: number;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${s.color}`}>
-            {s.label}
-          </span>
-          <span className="text-[11px] text-muted-foreground">{date}</span>
-        </div>
-        <div className="font-display font-semibold truncate">
-          {p.origin || "—"} → {p.destination || "—"}
-        </div>
-        <div className="text-sm text-muted-foreground mt-0.5">
-          {p.days ? `${p.days} day${p.days === 1 ? "" : "s"}` : "—"}
-          {p.squadSize ? ` · ${p.squadSize} people` : ""}
-          {p.plan?.hotel ? ` · ${p.plan.hotel.name.split(" ").slice(0, 2).join(" ")}` : ""}
-        </div>
+    <div className="flex flex-col h-full">
+      {/* Status + date */}
+      <div className="flex items-center gap-1.5 flex-wrap mb-2">
+        <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${s.color}`}>
+          {s.label}
+        </span>
+        <span className="text-[10px] text-muted-foreground">{date}</span>
       </div>
-      {(perPerson || total) && (
-        <div className="text-right shrink-0">
-          {perPerson && (
-            <div className="font-display font-semibold text-primary">{fmtNGN(perPerson)}<span className="text-[10px] font-normal text-muted-foreground">/p</span></div>
-          )}
-          {total && (
-            <div className="text-[11px] text-muted-foreground">Squad: {fmtNGN(total)}</div>
-          )}
+
+      {/* Route */}
+      <div className="font-marcellus text-base leading-snug">
+        <span className="text-foreground">{p.origin || "—"}</span>
+        <span className="text-muted-foreground/60 mx-1 text-sm">→</span>
+        <span className="text-foreground">{p.destination || "—"}</span>
+      </div>
+
+      {/* Meta */}
+      <div className="text-[11px] text-muted-foreground mt-1.5">
+        {p.days ? `${p.days}d` : "—"}{p.squadSize ? ` · ${p.squadSize} pax` : ""}
+      </div>
+      {p.plan?.hotel && (
+        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+          🏨 {p.plan.hotel.name.split(" ").slice(0, 2).join(" ")}
+        </div>
+      )}
+
+      {/* Price at bottom */}
+      {perPerson && (
+        <div className="mt-auto pt-2.5 border-t border-border/60">
+          <div className="font-marcellus text-lg text-primary tabular-nums leading-none">{fmtNGN(perPerson)}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">/person</div>
+        </div>
+      )}
+
+      {/* Tap hint for plan_review */}
+      {p.status === 'plan_review' && (
+        <div className="mt-1 text-[10px] text-primary font-jost font-medium group-hover:underline">
+          Review plan →
         </div>
       )}
     </div>
