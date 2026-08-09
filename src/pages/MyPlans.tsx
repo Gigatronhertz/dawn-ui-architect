@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, type UserPlan } from "@/lib/api";
+import { KarijeLogo } from "@/components/Nav";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
@@ -21,7 +22,7 @@ export default function MyPlans() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "My Plans · MySquadGo";
+    document.title = "My Plans · Karije";
     if (!loading && !user) navigate("/start", { replace: true });
   }, [loading, user, navigate]);
 
@@ -48,14 +49,7 @@ export default function MyPlans() {
     <main className="min-h-screen bg-hero-mesh">
       <header className="pt-8 pb-6">
         <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 font-display font-semibold">
-            <span className="grid place-items-center w-8 h-8 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft">
-              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
-              </svg>
-            </span>
-            MySquadGo
-          </Link>
+          <KarijeLogo />
 
           <div className="flex items-center gap-3">
             {user.picture && (

@@ -1,6 +1,6 @@
 const messages = [
   { from: "user", text: "Tunde what you cooking 👀", who: "Ada 🌶️", time: "10:41" },
-  { from: "bot", text: "👋 Hey Ibadan Squad! MySquadGo here.\nTunde's been planning something... 👀", time: "10:41" },
+  { from: "bot", text: "👋 Hey Ibadan Squad! Karije here.\nSomeone's been planning something... 👀", time: "10:41" },
   { from: "bot", text: "Your trip is ready:\n📍 Lagos → Ibadan · 2 days · 8 squad\n🏨 Premier Hotel Ibadan · ₦48k/night\n💰 Est. ₦18,500/person all-in", time: "10:42" },
   { from: "user", text: "Let's GOOOO 🔥🔥", who: "Kemi 🎧", time: "10:43" },
   { from: "bot", text: "Two quick squad votes:\n🗳️ Aug 9–11 · 5 votes ← winning\n🗳️ Aug 16–18 · 3 votes\n🗳️ Aug 23–25 · 0 votes", time: "10:44" },
@@ -27,7 +27,7 @@ export const BotPreview = () => (
           <span className="text-muted-foreground">already lives.</span>
         </h2>
         <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
-          No new app. No accounts. MySquadGo runs the trip inside the WhatsApp group you're already chatting in — and it arrives knowing the plan.
+          No new app. No accounts. Karije runs the trip inside the WhatsApp group you're already chatting in — and it arrives knowing the plan.
         </p>
 
         <ul className="mt-8 space-y-3.5">
@@ -57,7 +57,7 @@ export const BotPreview = () => (
               <div className="font-display font-semibold text-sm">Ibadan Squad 🚌</div>
               <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-whatsapp" />
-                MySquadGo Bot · 12 members
+                Karije Bot · 12 members
               </div>
             </div>
           </div>
@@ -75,7 +75,7 @@ export const BotPreview = () => (
                 }`}>
                   {m.who && <div className="text-[11px] font-semibold text-google-blue mb-0.5">{m.who}</div>}
                   {!m.who && m.from === "bot" && (
-                    <div className="text-[11px] font-semibold text-primary mb-0.5 flex items-center gap-1">🤖 MySquadGo Bot</div>
+                    <div className="text-[11px] font-semibold text-primary mb-0.5 flex items-center gap-1">🤖 Karije Bot</div>
                   )}
                   {m.text}
                 </div>

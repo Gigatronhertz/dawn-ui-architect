@@ -6,7 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index.tsx";
 import Demo from "./pages/Demo.tsx";
+import TripType from "./pages/TripType.tsx";
 import Start from "./pages/Start.tsx";
+import Explore from "./pages/Explore.tsx";
 import ProDemo from "./pages/ProDemo.tsx";
 import ProSetup from "./pages/ProSetup.tsx";
 import ProDashboard from "./pages/ProDashboard.tsx";
@@ -25,7 +27,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/start" element={<Start />} />
+            <Route path="/start" element={<TripType />} />
+            <Route path="/start/trip" element={<Start />} />
+            <Route path="/start/explore" element={<Explore />} />
             <Route path="/my-plans" element={<MyPlans />} />
             <Route path="/plan/:tripId" element={<PlanView />} />
             <Route path="/demo" element={<Demo />} />

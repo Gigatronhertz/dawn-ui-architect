@@ -31,7 +31,7 @@ const SignInFirst = () => {
               <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
             </svg>
           </span>
-          <span>MySquadGo <span className="ml-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground text-background">Pro</span></span>
+          <span>Karije <span className="ml-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground text-background">Pro</span></span>
         </Link>
 
         <div className="rounded-3xl bg-card ring-hairline shadow-card p-8 text-center">
@@ -183,7 +183,7 @@ const ProSetup = () => {
                 <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
               </svg>
             </span>
-            MySquadGo
+            Karije
             <span className="ml-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground text-background">Pro</span>
           </Link>
           <div className="flex items-center gap-3">
@@ -202,7 +202,7 @@ const ProSetup = () => {
             {initials}
           </div>
           <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight">Set up your agency</h1>
-          <p className="mt-2 text-muted-foreground text-sm">Takes 2 minutes. Your clients never see MySquadGo.</p>
+          <p className="mt-2 text-muted-foreground text-sm">Takes 2 minutes. Your clients never see Karije.</p>
         </div>
 
         <form onSubmit={submit} className="space-y-5">

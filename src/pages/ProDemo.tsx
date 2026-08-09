@@ -54,7 +54,7 @@ const tripMembers: Record<string, { name: string; paid: boolean }[]> = {
 
 const ProDemo = () => {
   useEffect(() => {
-    document.title = "MySquadGo Pro — Run your travel business properly";
+    document.title = "Karije Pro — Run your travel business properly";
   }, []);
 
   const [showInvisible, setShowInvisible] = useState(false);
@@ -68,12 +68,9 @@ const ProDemo = () => {
       {/* Top bar */}
       <header className="sticky top-0 z-50 glass border-b border-border/50">
         <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 font-display font-semibold">
-            <span className="grid place-items-center w-7 h-7 rounded-lg bg-gradient-primary text-primary-foreground">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" /></svg>
-            </span>
-            MySquadGo
-            <span className="ml-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground text-background">Pro</span>
+          <Link to="/" className="flex items-center gap-2 font-marcellus text-xl text-forest tracking-logo" style={{ textIndent: "0.1em" }}>
+            Karije
+            <span className="ml-1 text-[10px] font-jost font-bold uppercase tracking-wider px-1.5 py-0.5 bg-foreground text-background">Pro</span>
           </Link>
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
         </div>
@@ -90,7 +87,7 @@ const ProDemo = () => {
               <span className="text-muted-foreground">properly.</span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-lg">
-              Stop building itineraries in Word. Stop chasing 15 people for transfers. MySquadGo Pro replaces all of it — fully branded as <span className="font-semibold text-foreground">your agency</span>.
+              Stop building itineraries in Word. Stop chasing 15 people for transfers. Karije Pro replaces all of it — fully branded as <span className="font-semibold text-foreground">your agency</span>.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#dashboard" className="rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90">See the dashboard</a>
@@ -144,7 +141,7 @@ const ProDemo = () => {
             <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
             <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
             <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-            <div className="ml-3 text-[10px] opacity-50">chiomatravel.mysquadgo.com / dashboard</div>
+            <div className="ml-3 text-[10px] opacity-50">chiomatravel.karije.com / dashboard</div>
           </div>
           <div className="rounded-2xl bg-background text-foreground p-5 md:p-7">
             {/* topline */}
@@ -245,7 +242,7 @@ const ProDemo = () => {
       </Section>
 
       {/* White label */}
-      <Section eyebrow="White label" title="Your clients never see MySquadGo." sub="Itinerary, WhatsApp messages, payment page, booking page — all branded as your agency. We get paid quietly in the background.">
+      <Section eyebrow="White label" title="Your clients never see Karije." sub="Itinerary, WhatsApp messages, payment page, booking page — all branded as your agency. We get paid quietly in the background.">
         <div className="grid md:grid-cols-2 gap-6">
           {/* Branded itinerary */}
           <div className="rounded-3xl bg-card ring-hairline p-6 shadow-card">
@@ -258,7 +255,7 @@ const ProDemo = () => {
                 </div>
               </div>
               <button onClick={() => setShowInvisible(!showInvisible)} className="text-[10px] text-muted-foreground hover:text-foreground underline">
-                {showInvisible ? "Hide" : "Show"} where MySquadGo is
+                {showInvisible ? "Hide" : "Show"} where Karije is
               </button>
             </div>
 
@@ -284,7 +281,7 @@ const ProDemo = () => {
 
               <div className="mt-5 pt-4 border-t border-border text-[10px] text-muted-foreground flex items-center justify-between">
                 <span>Questions? +234 802 ••• 4421 · Chioma Travels</span>
-                {showInvisible && <Chip tone="brand">↑ no MySquadGo anywhere</Chip>}
+                {showInvisible && <Chip tone="brand">↑ no Karije anywhere</Chip>}
               </div>
             </div>
           </div>
@@ -307,7 +304,7 @@ const ProDemo = () => {
                   <span className="text-foreground/80">{k}</span>
                   <div className="flex items-center gap-2">
                     {showInvisible && tag === "kept" && <Chip tone="good">100% to Chioma</Chip>}
-                    {showInvisible && tag === "invisible" && <Chip tone="brand">MySquadGo</Chip>}
+                    {showInvisible && tag === "invisible" && <Chip tone="brand">Karije</Chip>}
                     <span className="tabular-nums font-semibold">{v}</span>
                   </div>
                 </div>
@@ -409,7 +406,7 @@ const ProDemo = () => {
             </div>
           </div>
 
-          <p className="mt-4 text-xs text-muted-foreground">MySquadGo doesn't appear anywhere your clients can see. We're the engine. You're the brand.</p>
+          <p className="mt-4 text-xs text-muted-foreground">Karije doesn't appear anywhere your clients can see. We're the engine. You're the brand.</p>
         </div>
       </Section>
 
@@ -422,7 +419,7 @@ const ProDemo = () => {
             { i: "👥", t: "Client profiles", d: "Trip history, payment status, notes — 'always pays late', 'vegetarian'." },
             { i: "🧱", t: "Trip templates", d: "Save full configs. New trip in one click — just change dates." },
             { i: "📊", t: "Revenue dashboard", d: "Monthly earnings, most profitable routes, service fees vs platform fees." },
-            { i: "🌐", t: "Custom booking page", d: "chiomatravel.mysquadgo.com. Looks fully owned by you." },
+            { i: "🌐", t: "Custom booking page", d: "chiomatravel.karije.com. Looks fully owned by you." },
           ].map((f) => (
             <div key={f.t} className="rounded-2xl bg-card ring-hairline p-5">
               <div className="text-2xl mb-2">{f.i}</div>
@@ -447,7 +444,7 @@ const ProDemo = () => {
             </div>
             <p className="text-sm text-muted-foreground mt-2">Move from WhatsApp chaos to a proper system.</p>
             <ul className="mt-6 space-y-2.5 text-[13px]">
-              {["Up to 3 active trips", "Branded itineraries (no MySquadGo)", "Service fee collection — keep 100%", "Paystack contribution links", "Auto reminders", "Trip templates (5)", "Verified Pro badge + directory listing", "WhatsApp bot fully branded"].map((f) => (
+              {["Up to 3 active trips", "Branded itineraries (no Karije branding)", "Service fee collection — keep 100%", "Paystack contribution links", "Auto reminders", "Trip templates (5)", "Verified Pro badge + directory listing", "WhatsApp bot fully branded"].map((f) => (
                 <li key={f} className="flex gap-2"><span className="text-primary">✓</span>{f}</li>
               ))}
             </ul>
@@ -465,7 +462,7 @@ const ProDemo = () => {
             </div>
             <p className="text-sm opacity-90 mt-2">When 3 trips a month isn't enough anymore.</p>
             <ul className="mt-6 space-y-2.5 text-[13px]">
-              {["Unlimited active trips", "Everything in Starter", "Full client dashboard with payment tracking", "Revenue analytics & route profitability", "Unlimited trip templates", "Multiple agent seats (assistant / partner)", "Priority WhatsApp support", "Custom subdomain — chiomatravel.mysquadgo.com"].map((f) => (
+              {["Unlimited active trips", "Everything in Starter", "Full client dashboard with payment tracking", "Revenue analytics & route profitability", "Unlimited trip templates", "Multiple agent seats (assistant / partner)", "Priority WhatsApp support", "Custom subdomain — chiomatravel.karije.com"].map((f) => (
                 <li key={f} className="flex gap-2"><span>✓</span>{f}</li>
               ))}
             </ul>
@@ -491,7 +488,7 @@ const ProDemo = () => {
           {[
             { n: "01", t: "Agency setup", d: "Name, logo, WhatsApp number, brand color, default service fee. Once." },
             { n: "02", t: "First branded trip", d: "Bot walks you through. You see exactly what your client will receive." },
-            { n: "03", t: "Public profile live", d: "mysquadgo.com/chioma — drop in your bio. Clients book directly." },
+            { n: "03", t: "Public profile live", d: "karije.com/chioma — drop in your bio. Clients book directly." },
           ].map((s) => (
             <div key={s.n} className="rounded-2xl bg-card ring-hairline p-5">
               <div className="font-display text-3xl font-semibold text-primary tabular-nums">{s.n}</div>

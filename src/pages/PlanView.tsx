@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { api, type PublicPlanResponse, type PlanDay } from "@/lib/api";
+import { KarijeLogo } from "@/components/Nav";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -455,8 +456,8 @@ export default function PlanView() {
 
   useEffect(() => {
     document.title = data?.destination
-      ? `${data.destination} Squad Trip · MySquadGo`
-      : "Squad Trip · MySquadGo";
+      ? `${data.destination} Squad Trip · Karije`
+      : "Squad Trip · Karije";
   }, [data]);
 
   const cb = data?.cost_breakdown;
@@ -465,7 +466,7 @@ export default function PlanView() {
     <main className="min-h-screen bg-hero-mesh print:bg-white print:min-h-0">
       {/* Print-only header */}
       <div className="hidden print:flex items-center gap-3 px-8 pt-6 pb-4 border-b border-border mb-4">
-        <div className="font-display font-bold text-lg">MySquadGo</div>
+        <div className="font-display font-bold text-lg">Karije</div>
         <span className="text-muted-foreground">·</span>
         <div className="font-semibold">
           {data?.origin} → {data?.destination} Trip Itinerary
@@ -478,14 +479,7 @@ export default function PlanView() {
       {/* Screen header */}
       <header className="pt-6 pb-2 print:hidden">
         <div className="mx-auto max-w-lg px-4">
-          <Link to="/" className="inline-flex items-center gap-2 font-display font-semibold text-sm">
-            <span className="grid place-items-center w-7 h-7 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
-              </svg>
-            </span>
-            MySquadGo
-          </Link>
+          <KarijeLogo size="sm" />
         </div>
       </header>
 

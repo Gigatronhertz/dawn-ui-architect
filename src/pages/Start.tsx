@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, session, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { KarijeLogo } from "@/components/Nav";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
@@ -1317,7 +1318,7 @@ export default function Start() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Plan your trip · MySquadGo";
+    document.title = "Plan your trip · Karije";
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
@@ -1483,14 +1484,7 @@ export default function Start() {
       {/* Header */}
       <header className="relative pt-8 pb-6">
         <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 font-display font-semibold">
-            <span className="grid place-items-center w-8 h-8 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft">
-              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
-              </svg>
-            </span>
-            MySquadGo
-          </Link>
+          <KarijeLogo />
           <div className="flex items-center gap-3">
             {/* Start over — shown on plan/confirm steps */}
             {step !== "intake" && step !== "generating" && (
@@ -1525,12 +1519,12 @@ export default function Start() {
                 </button>
               </div>
             ) : step === "intake" ? (
-              <button
-                onClick={() => signIn().catch(() => {})}
+              <Link
+                to="/my-plans"
                 className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Sign in
-              </button>
+              </Link>
             ) : null}
           </div>
         </div>

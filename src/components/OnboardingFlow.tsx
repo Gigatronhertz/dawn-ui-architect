@@ -64,7 +64,7 @@ export const OnboardingFlow = () => (
         <div className="grid sm:grid-cols-3 gap-3">
           {[
             { emoji: "📱", title: "Open WhatsApp", desc: "Go to your existing squad group, or start a new one for this trip." },
-            { emoji: "🔗", title: "Tap the link we send", desc: "One tap adds MySquadGo to the group as a member. No searching, no QR code." },
+            { emoji: "🔗", title: "Tap the link we send", desc: "One tap adds Karije to the group as a member. No searching, no QR code." },
             { emoji: "🤖", title: "Bot enters the group", desc: "It already knows the plan. First message is the big reveal to the squad." },
           ].map((s) => (
             <div key={s.title} className="rounded-2xl bg-card ring-hairline p-4 flex gap-3">
@@ -86,7 +86,7 @@ export const OnboardingFlow = () => (
           </p>
         </div>
         <a
-          href="https://wa.me/2349000000000?text=Hey%20MySquadGo%21%20Let%27s%20plan%20a%20trip"
+          href="https://wa.me/2349000000000?text=Hey%20Karije%21%20Let%27s%20plan%20a%20trip"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-full bg-whatsapp text-white px-6 py-3 text-sm font-medium whitespace-nowrap hover:scale-[1.02] transition-transform"

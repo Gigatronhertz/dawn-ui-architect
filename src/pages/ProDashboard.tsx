@@ -174,7 +174,7 @@ const ProDashboard = () => {
   }, [getIdToken, navigate]);
 
   useEffect(() => {
-    document.title = "Pro Dashboard · MySquadGo";
+    document.title = "Pro Dashboard · Karije";
     if (!authLoading && !user) {
       navigate("/pro/setup");
     }

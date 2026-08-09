@@ -38,7 +38,7 @@ export const Transparency = () => (
           <span className="text-muted-foreground">go sideways.</span>
         </h2>
         <p className="mt-5 text-muted-foreground">
-          Group trips are messy. Here's how MySquadGo handles the real-world edge cases.
+          Group trips are messy. Here's how Karije handles the real-world edge cases.
         </p>
       </div>
 

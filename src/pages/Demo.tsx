@@ -143,8 +143,8 @@ const INITIAL_CHAT: ChatMsg[] = [
 ];
 
 const BOT_SEQUENCE: ChatMsg[] = [
-  { from: "system", text: "Tunde 🦁 added MySquadGo Bot to the group", time: "10:41" },
-  { from: "bot", text: "👋 Hey Ibadan Squad! MySquadGo here.\nTunde's been planning something... 👀", time: "10:41" },
+  { from: "system", text: "Tunde 🦁 added Karije Bot to the group", time: "10:41" },
+  { from: "bot", text: "👋 Hey Ibadan Squad! Karije here.\nTunde's been planning something... 👀", time: "10:41" },
   { from: "bot", text: "Your Ibadan trip is ready. Here's what we've got:\n📍 Lagos → Ibadan · 2 days · 8 squad\n🏨 Premier Hotel Ibadan · ₦48k/night\n💰 Est. ₦18,500/person all-in\n\nTwo quick questions for the squad before we lock it 👇", time: "10:42", highlight: true },
 ];
 
@@ -187,7 +187,7 @@ function WhatsAppView({ onNext, onBack }: { onNext: () => void; onBack: () => vo
                 <div className="font-display font-semibold text-sm">Ibadan Squad 🚌</div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-whatsapp" />
-                  {step >= 1 ? "12 members · MySquadGo Bot" : "11 members"}
+                  {step >= 1 ? "12 members · Karije Bot" : "11 members"}
                 </div>
               </div>
             </div>
@@ -215,7 +215,7 @@ function WhatsAppView({ onNext, onBack }: { onNext: () => void; onBack: () => vo
                         : "bg-secondary text-foreground rounded-bl-sm"
                     }`}>
                       {m.who && <div className="text-[11px] font-semibold text-google-blue mb-0.5">{m.who}</div>}
-                      {!m.who && m.from === "bot" && <div className="text-[11px] font-semibold text-primary mb-0.5 flex items-center gap-1">🤖 MySquadGo Bot</div>}
+                      {!m.who && m.from === "bot" && <div className="text-[11px] font-semibold text-primary mb-0.5 flex items-center gap-1">🤖 Karije Bot</div>}
                       {m.text}
                       <div className={`text-[10px] mt-1 ${isUser || m.highlight ? "opacity-70" : "text-muted-foreground"}`}>{m.time}</div>
                     </div>
@@ -249,7 +249,7 @@ function WhatsAppView({ onNext, onBack }: { onNext: () => void; onBack: () => vo
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-2">What just happened</div>
             <ul className="space-y-2.5 text-sm text-foreground/90">
               <li className="flex gap-2"><span className="text-primary">①</span> Tunde planned the trip privately in 2 minutes</li>
-              <li className="flex gap-2"><span className="text-primary">②</span> He added <strong>MySquadGo Bot</strong> to the squad group</li>
+              <li className="flex gap-2"><span className="text-primary">②</span> He added <strong>Karije Bot</strong> to the squad group</li>
               <li className="flex gap-2"><span className="text-primary">③</span> Bot's first message is the plan reveal — not a form</li>
               <li className="flex gap-2"><span className="text-primary">④</span> Squad votes on dates + hotel, bot collects contributions</li>
             </ul>
@@ -1189,14 +1189,14 @@ function DuringTripView({ intake, onNext, onBack }: { intake: Intake; onNext: ()
   const opName = operatorsFor(intake.transport).find(o => o.id === intake.operatorId)?.brand ?? intake.transport;
 
   const FEED_SEQ: TripPing[] = useMemo(() => [
-    { kind: "depart", who: "MySquadGo Bot", emoji: "🚌", text: `🌅 Good morning squad! Day 1 — ${opName} departs 7:00am sharp.\nFirst stop: Agodi Gardens · 11:00am.\nFull itinerary 👉 [link]`, time: "Day 1 · 06:00" },
-    { kind: "uber", who: "MySquadGo Bot", emoji: "🛡️", text: `🛡️ Safety check-in: tap below so loved ones back home know you're good. Quick, one tap.`, time: "Day 1 · 10:42" },
-    { kind: "stop", who: "MySquadGo Bot", emoji: "📍", text: `📍 Stop reached: Agodi Gardens. Tap once everyone is together — no spam after.`, time: "Day 1 · 11:08" },
-    { kind: "photo", who: "MySquadGo Bot", emoji: "📸", text: `📸 Cocoa House looks 🔥 — drop a few shots for the recap reel whenever.`, time: "Day 1 · 16:35" },
+    { kind: "depart", who: "Karije Bot", emoji: "🚌", text: `🌅 Good morning squad! Day 1 — ${opName} departs 7:00am sharp.\nFirst stop: Agodi Gardens · 11:00am.\nFull itinerary 👉 [link]`, time: "Day 1 · 06:00" },
+    { kind: "uber", who: "Karije Bot", emoji: "🛡️", text: `🛡️ Safety check-in: tap below so loved ones back home know you're good. Quick, one tap.`, time: "Day 1 · 10:42" },
+    { kind: "stop", who: "Karije Bot", emoji: "📍", text: `📍 Stop reached: Agodi Gardens. Tap once everyone is together — no spam after.`, time: "Day 1 · 11:08" },
+    { kind: "photo", who: "Karije Bot", emoji: "📸", text: `📸 Cocoa House looks 🔥 — drop a few shots for the recap reel whenever.`, time: "Day 1 · 16:35" },
     { kind: "expense", who: "Tunde 🦁", emoji: "💸", text: `Logged ₦5,000 for lunch — split 12 ways = ₦417 each. Settled at end of trip ✅`, time: "Day 1 · 13:42" },
-    { kind: "uber", who: "MySquadGo Bot", emoji: "🛡️", text: `🛡️ Night move to Amala Skye. Quick safety tap so we know the whole squad rolled out together.`, time: "Day 1 · 19:50" },
-    { kind: "update", who: "MySquadGo Bot", emoji: "🔁", text: `🔁 Itinerary update: tomorrow's brunch pushed to 10am (chef's request). Map pin refreshed.`, time: "Day 1 · 22:10" },
-    { kind: "packup", who: "MySquadGo Bot", emoji: "🎒", text: `🎒 Last morning! Quick reminder before you check out — sweep the room, grab everything you came with: chargers, ID, that one slipper under the bed 👀`, time: "Day 2 · 09:30" },
+    { kind: "uber", who: "Karije Bot", emoji: "🛡️", text: `🛡️ Night move to Amala Skye. Quick safety tap so we know the whole squad rolled out together.`, time: "Day 1 · 19:50" },
+    { kind: "update", who: "Karije Bot", emoji: "🔁", text: `🔁 Itinerary update: tomorrow's brunch pushed to 10am (chef's request). Map pin refreshed.`, time: "Day 1 · 22:10" },
+    { kind: "packup", who: "Karije Bot", emoji: "🎒", text: `🎒 Last morning! Quick reminder before you check out — sweep the room, grab everything you came with: chargers, ID, that one slipper under the bed 👀`, time: "Day 2 · 09:30" },
   ], [opName]);
 
   const [shown, setShown] = useState(1);
@@ -1524,7 +1524,7 @@ const Demo = () => {
   };
 
   useEffect(() => {
-    document.title = "MySquadGo — Interactive Demo";
+    document.title = "Karije — Interactive Demo";
   }, []);
 
   useEffect(() => {
@@ -1558,11 +1558,8 @@ const Demo = () => {
 
       <header className="relative pt-8 pb-6">
         <div className="mx-auto max-w-4xl px-6 flex items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-2 font-display font-semibold">
-            <span className="grid place-items-center w-8 h-8 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft">
-              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" /></svg>
-            </span>
-            MySquadGo
+          <Link to="/" className="flex items-center gap-2 font-marcellus text-xl text-forest tracking-logo" style={{ textIndent: "0.1em" }}>
+            Karije
           </Link>
           <div className="flex items-center gap-2">
             {auto ? (

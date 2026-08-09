@@ -28,7 +28,7 @@ const plans = [
     cadence: "per month",
     tag: "Solo agent",
     desc: "Branded as your agency. Move from WhatsApp chaos to a real system.",
-    features: ["Up to 3 active trips", "Branded itineraries (no MySquadGo)", "Service fee — keep 100%", "Trip templates (5)", "Verified Pro badge"],
+    features: ["Up to 3 active trips", "Branded itineraries (no Karije branding)", "Service fee — keep 100%", "Trip templates (5)", "Verified Pro badge"],
     cta: "Start Pro Starter",
     style: "ring",
     href: "/pro",
@@ -39,7 +39,7 @@ const plans = [
     cadence: "per month",
     tag: "Scaling",
     desc: "Unlimited trips, revenue analytics, custom subdomain. For agents at 4+ trips/month.",
-    features: ["Unlimited active trips", "Client dashboard + payment tracking", "Revenue analytics", "Multiple agent seats", "chiomatravel.mysquadgo.com"],
+    features: ["Unlimited active trips", "Client dashboard + payment tracking", "Revenue analytics", "Multiple agent seats", "chiomatravel.karije.com"],
     cta: "Go Growth",
     style: "dark",
     href: "/pro",
@@ -185,7 +185,7 @@ export const Pricing = () => (
                 </div>
               ))}
             </div>
-            <div className="pt-3 border-t border-white/10 text-[10px] opacity-40">Planned by Amaka via MySquadGo</div>
+            <div className="pt-3 border-t border-white/10 text-[10px] opacity-40">Planned by Amaka via Karije</div>
           </div>
         </div>
       </div>
