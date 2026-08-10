@@ -126,10 +126,24 @@ async function fetchRealWorldContext(intake) {
   };
 }
 
-// Build the context block injected into the Gemini prompt
+// Build the context block injected into the Gemini prompt.
+// ORDER MATTERS — attractions come first so the AI treats them as the primary
+// activity source, not a supplement to Google Places.
 function buildContextBlock(ctx, intake) {
   const sections = [];
 
+  // ── 1. ACTIVITY MENU (curated attractions) — always first ─────────────────
+  // This is the primary source for all non-meal, non-travel activity slots.
+  const attrStr = formatAttractionsForPrompt(ctx.localAttractions);
+  if (attrStr) {
+    sections.push(
+      `🏛️  ACTIVITY MENU for ${intake.destination} — build ALL activity slots in the day schedule FROM THIS LIST ONLY.\n` +
+      `    Every attraction, park, market, museum, beach or entertainment venue in the itinerary MUST appear here by exact name.\n` +
+      `    Do NOT invent or substitute venue names. Entry fees are confirmed — use them exactly as stated:\n${attrStr}`
+    );
+  }
+
+  // ── 2. Transport ──────────────────────────────────────────────────────────
   if (ctx.road) {
     sections.push(
       `🗺️  Real road distance (Google Maps): ${ctx.road.distanceText}, ~${ctx.road.durationText} by road.`
@@ -146,7 +160,7 @@ function buildContextBlock(ctx, intake) {
     sections.push(formatFlightsForPrompt(ctx.flights).replace('✈️  Flights', `✈️  Flights (${src})`));
   }
 
-  // Hotels: Google Travel (scraped live) + Booking.com (availability) + Google Places (ratings)
+  // ── 3. Hotels ─────────────────────────────────────────────────────────────
   const gtHotelStr = GT.formatHotelsForPrompt(ctx.gtHotels || []);
   const bHotelStr  = formatBookingHotelsForPrompt(ctx.bHotels, ctx.nights);
   const gHotelStr  = formatHotelsForPrompt(ctx.gHotels);
@@ -167,7 +181,7 @@ function buildContextBlock(ctx, intake) {
     );
   }
 
-  // Holiday rentals: Google Travel (scraped) + Booking.com + Google Places
+  // ── 4. Holiday rentals ────────────────────────────────────────────────────
   const gtRentalStr = GT.formatRentalsForPrompt(ctx.gtRentals || []);
   const bRentalStr  = formatBookingHotelsForPrompt(ctx.bApartments, ctx.nights);
   const gRentalStr  = formatRentalsForPrompt(ctx.gRentals);
@@ -188,21 +202,17 @@ function buildContextBlock(ctx, intake) {
     );
   }
 
+  // ── 5. Google Places (food & nightlife names only) ────────────────────────
   const actStr = formatActivitiesForPrompt(ctx.activities);
   if (actStr) {
-    sections.push(`📍  Real venues near ${intake.destination} (Google Places — use these exact names in the itinerary):\n${actStr}`);
-  }
-
-  const attrStr = formatAttractionsForPrompt(ctx.localAttractions);
-  if (attrStr) {
     sections.push(
-      `🏛️  Tourist attractions in ${intake.destination} state (curated with real entry fees — USE THESE in the day itinerary, not invented places):\n${attrStr}`
+      `🍽️  Nearby restaurants & nightlife (Google Places) — use for MEAL STOPS ONLY, not as activity venues:\n${actStr}`
     );
   }
 
   if (!sections.length) return '';
 
-  return `\n## REAL-WORLD DATA (prioritise this — do not invent hotel names or prices when real data is provided)\n${sections.join('\n\n')}\n`;
+  return `\n## REAL-WORLD DATA — follow strictly; do not invent names or fees when real data is provided\n${sections.join('\n\n')}\n`;
 }
 
 // ── Main plan generation ───────────────────────────────────────────────────────
@@ -234,16 +244,20 @@ Trip details:
 - Transport: ${transportHint}
 ${contextBlock}
 INSTRUCTIONS:
-1. Pick the hotel from the "Real hotels" list above if provided — use the EXACT name and address. If NO real hotel data was scraped (all hotel sections are absent), do NOT invent a hotel name. Instead set hotel.name to "See Hotels.ng or Booking.com for current availability" and hotel.price_per_night to a mid-range estimate (₦25,000–₦60,000/night for Abuja, ₦20,000–₦50,000/night for other cities).
-2. If holiday rentals are listed and the accommodation preference is "Shortlet", pick from that list.
-3. ATTRACTION COSTS — STRICT RULE: Use only the attractions from the "Tourist attractions" list above. Use the EXACT venue name and the EXACT entry fee stated. If the fee is listed as "Free" or 0, set cost_per_person to 0. NEVER invent or adjust an attraction's entry fee. Include 2–4 attractions per day depending on duration.
-4. RESTAURANT/FOOD COSTS — use venue names from Google Places data when provided. If no Places data, describe the type and area (e.g. "Local bukka lunch near Wuse Market", "Rooftop bar in Maitama area") — do NOT invent specific restaurant names. Set cost_per_person to a realistic range midpoint for a meal: ₦3,000–₦6,000 budget, ₦6,000–₦15,000 mid-range, ₦15,000+ upscale. Append "(est.)" to the title of any item whose cost is an estimate rather than a confirmed fee.
-5. Use the real road distance/time for transport. Honour the user's transport mode choice. If GIGM bus data is provided, use those exact prices, times, and terminal names.
-6. Price levels for hotels: PRICE_LEVEL_INEXPENSIVE ≈ ₦8,000–₦20,000/night, MODERATE ≈ ₦20,000–₦50,000/night, EXPENSIVE ≈ ₦50,000–₦150,000/night.
-7. All prices must be in Nigerian Naira (NGN) and realistic for 2025.
-8. Match activity style and tone to the squad vibe.
-9. In cost_breakdown: transport_total and lodging_total are confirmed if real data was used; food_total and activities_total are estimates — reflect this in the offline_note.
-10. Return ONLY valid JSON — no markdown, no explanation.
+1. Pick the hotel from the "Hotels" section above if provided — use the EXACT name and address. If NO hotel data was scraped, do NOT invent a name. Set hotel.name to "See Hotels.ng or Booking.com for current availability" and estimate price_per_night (₦25,000–₦60,000 Abuja, ₦20,000–₦50,000 other cities).
+2. If shortlet/rental listings are provided and accommodation preference is "Shortlet", pick from that list instead.
+3. DAY SCHEDULE — STRICT SOURCE RULE:
+   a. Every non-travel, non-hotel, non-meal slot MUST use a venue from the ACTIVITY MENU above — exact name, exact entry fee.
+   b. Pick 2–3 activity venues per full day. For a half-day (arrival/departure day) pick 1.
+   c. Select venues that match the squad vibe: Chill → parks, lakes, beaches; Adventure → waterfalls, hikes, wildlife; Cultural → museums, palaces, markets, craft villages; Foodie → markets + food areas + art; Nightlife → entertainment parks, beach clubs, food strips.
+   d. If the fee_note says "Free" or the fee is 0, set cost_per_person to 0. If it gives a range (e.g. ₦500–₦1,000), use the midpoint (750).
+   e. NEVER invent an activity venue name that is not in the ACTIVITY MENU. If the menu is empty for this destination, write activities as area descriptions only (e.g. "Explore central market area").
+4. MEAL SLOTS — 1 per day (lunch or dinner). Use a Google Places name if one was provided in the "Restaurants & nightlife" section. If none, describe type and area (e.g. "Lunch at a local bukka near Wuse Market (est.)", "Dinner at a rooftop bar, Maitama area (est.)"). Append "(est.)" to any meal cost. Realistic meal costs: ₦3,000–₦6,000 budget, ₦6,000–₦15,000 mid-range, ₦15,000+ upscale.
+5. TRANSPORT — use real GIGM data (prices, times, terminal names) if provided. Otherwise use the road distance and realistic NGN fares for the chosen mode.
+6. Hotel price levels: INEXPENSIVE ≈ ₦8,000–₦20,000/night, MODERATE ≈ ₦20,000–₦50,000/night, EXPENSIVE ≈ ₦50,000–₦150,000/night.
+7. All costs in NGN, realistic for 2025. Squad vibe must shape tone AND venue selection.
+8. In cost_breakdown: transport_total and lodging_total are confirmed when real data was used; food_total and activities_total are estimates. Note this honestly in offline_note.
+9. Return ONLY valid JSON — no markdown fences, no explanation outside the JSON object.
 
 {
   "hotel": {
@@ -266,11 +280,21 @@ INSTRUCTIONS:
   "days": [
     {
       "day": 1,
-      "title": "Arrival & city pulse",
+      "title": "Arrival & first impressions",
       "activities": [
-        { "time": "13:00", "title": "Check-in at hotel", "cost_per_person": 0 },
-        { "time": "16:00", "title": "Real venue name from Places data", "cost_per_person": 2000 },
-        { "time": "20:00", "title": "Real restaurant name from Places data", "cost_per_person": 4500 }
+        { "time": "14:00", "title": "Check-in at hotel", "cost_per_person": 0 },
+        { "time": "16:30", "title": "[EXACT name from ACTIVITY MENU, e.g. Millennium Park]", "cost_per_person": 0 },
+        { "time": "19:30", "title": "Dinner near [area] (est.)", "cost_per_person": 6000 }
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Full exploration day",
+      "activities": [
+        { "time": "09:00", "title": "[EXACT name from ACTIVITY MENU, e.g. Kofar Mata Dye Pits]", "cost_per_person": 0 },
+        { "time": "12:30", "title": "Lunch at [area or Google Places name] (est.)", "cost_per_person": 5000 },
+        { "time": "14:30", "title": "[EXACT name from ACTIVITY MENU, e.g. Kurmi Market]", "cost_per_person": 0 },
+        { "time": "17:30", "title": "[EXACT name from ACTIVITY MENU, e.g. Emir's Palace, Kano]", "cost_per_person": 1500 }
       ]
     }
   ],
@@ -309,7 +333,7 @@ INSTRUCTIONS:
     model: 'llama-3.3-70b-versatile',   // free tier — 14,400 req/day, no card needed
     messages: [{ role: 'user', content: prompt }],
     response_format: { type: 'json_object' },
-    temperature: 0.7,
+    temperature: 0.4,
   });
   const text = completion.choices[0].message.content.trim();
   // response_format:json_object guarantees raw JSON, but strip fences defensively
