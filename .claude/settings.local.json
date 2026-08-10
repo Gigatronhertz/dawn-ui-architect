@@ -36,7 +36,9 @@
       "Bash(git commit -m 'Phase A: round trip toggle — doubles transport cost for return journey *)",
       "Bash(git commit -m 'Clean hero: remove floating preview card, two focused CTAs *)",
       "Bash(git commit -m 'Mobile nav, split hero with photos, destination image grid *)",
-      "Bash(git commit -m 'UI: square card grid across Explore, Start transport/hotel, MyPlans *)"
+      "Bash(git commit -m 'UI: square card grid across Explore, Start transport/hotel, MyPlans *)",
+      "Bash(node --check backend/services/gemini.js)",
+      "Bash(node --check backend/services/attractions.js)"
     ]
   }
 }
