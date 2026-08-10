@@ -119,10 +119,27 @@ const SEED_DATA = [
   // Zamfara
   ['Zamfara', 'Kwatarkwashi Rock',            0,      0,     'Nominal'],
   ['Zamfara', 'Kanoma Hills',                 0,      0,     'Nominal'],
-  // FCT / Abuja
-  ['FCT', 'Millennium Park',                  0,      0,     'Free'],
-  ['FCT', 'National Children\'s Park & Zoo',  0,      0,     'Nominal'],
-  ['FCT', 'Discovery Museum',                 0,      0,     null],
+  // FCT / Abuja — 20 verified venues with real entry fees
+  ['FCT', 'Millennium Park',                      0,      0,     'Free — large green park in central Abuja'],
+  ['FCT', 'National Children\'s Park & Zoo',      500,    500,   '~₦500 adults; animals, rides, open spaces'],
+  ['FCT', 'Discovery Museum',                     500,    1000,  '₦500–₦1,000'],
+  ['FCT', 'Nigerian National Mosque',             0,      0,     'Free — visitors welcome outside prayer times; guided tours available'],
+  ['FCT', 'National Christian Centre (NCCC)',     0,      0,     'Free — landmark cathedral; guided tours on request'],
+  ['FCT', 'Unity Fountain',                       0,      0,     'Free — illuminated fountain near Three Arms Zone; best at night'],
+  ['FCT', 'Aso Rock Scenic Viewpoint',            0,      0,     'Free — roadside viewpoint on Airport Road; interior access restricted'],
+  ['FCT', 'Jabi Lake Mall & Lakeside Walk',       0,      2000,  'Free entry to mall & lake path; boat rides ₦1,000–₦2,000/person'],
+  ['FCT', 'Arts & Crafts Village, Gilmore',       0,      0,     'Free entry — indigenous crafts, textiles, bronze sculptures; bring cash for vendors'],
+  ['FCT', 'Silverbird Galleria, Central Area',    0,      5000,  'Free entry to mall; cinema tickets ₦3,500–₦5,000'],
+  ['FCT', 'Ceddi Plaza, Wuse II',                 0,      5000,  'Free entry; bowling alley ₦3,000–₦5,000 per game'],
+  ['FCT', 'Wuse Market',                          0,      0,     'Free — largest retail market in Abuja; fabric, electronics, food'],
+  ['FCT', 'Nike Art Gallery, Garki',              0,      0,     'Free — four-storey gallery of contemporary Nigerian art and sculpture'],
+  ['FCT', 'Ladi Kwali Pottery Centre, Wuse',      0,      500,   'Free–₦500 — traditional Gwari pottery workshops and displays'],
+  ['FCT', 'Wonderland Fun Park, Wuse II',         2000,   5000,  '₦2,000–₦5,000 all-in wristband for rides and games'],
+  ['FCT', 'Transcorp Hilton Pool Day Pass',       10000,  15000, '₦10,000–₦15,000 — pool access at Abuja\'s most iconic hotel'],
+  ['FCT', 'Usuma Dam Recreational Area',          0,      0,     'Free — scenic lake and picnic spot ~30 min from CBD; popular weekend escape'],
+  ['FCT', 'Mpape Rock Plateau',                   0,      0,     'Free — panoramic views over Abuja skyline; best for sunrise or sunset'],
+  ['FCT', 'Zuma Rock Viewpoint (40 min drive)',   0,      0,     'Free — monolith on Abuja–Kaduna Expressway near Suleja; stop on the way in/out'],
+  ['FCT', 'Gurara Waterfalls Day Trip (90 min)',  500,    500,   '₦500 entry in Niger State — popular half-day trip from Abuja; bring swimwear'],
 ];
 
 // City name (as used in GIGM/flight dropdowns) → state name (as stored in attractions table)

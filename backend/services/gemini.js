@@ -49,9 +49,11 @@ async function fetchRealWorldContext(intake) {
   const gtFlightsRaw = isFlightMode
     ? await GT.scrapeFlights(intake.origin, intake.destination, depDate).catch(() => null)
     : null;
-  // GIGM is called separately from the frontend after plan generation completes
-  // (avoids Browserless contention with GT hotel scraper and keeps plan generation fast)
-  const gigmTripsRaw = [];
+  // GIGM — bus mode only, runs AFTER GT scrapers so both don't fight over Browserless at once.
+  // scrapeGIGM returns [] on any failure — non-fatal, prompt falls back gracefully.
+  const gigmTripsRaw = isBusMode
+    ? await GIGM.scrapeGIGM(intake.origin, intake.destination, depDate).catch(() => [])
+    : [];
 
   // Look up attractions from DB (fast — local/Turso query)
   const destState = cityToState(intake.destination);
@@ -217,7 +219,7 @@ async function generateTripPlan(intake) {
       : `USER CHOSE FLIGHT MODE. Use Air Peace / Ibom Air for this route — user explicitly chose to fly.`
     : `USER CHOSE BUS MODE. Use GIGM as the primary transport operator. Estimate realistic NGN bus fares for this route.`;
 
-  const prompt = `You are MySquadGo's West African group trip planner. Generate a detailed, realistic trip plan.
+  const prompt = `You are Karije's West African group trip planner. Generate a detailed, realistic trip plan.
 
 Trip details:
 - From: ${intake.origin}
@@ -232,15 +234,16 @@ Trip details:
 - Transport: ${transportHint}
 ${contextBlock}
 INSTRUCTIONS:
-1. Pick the hotel from the "Real hotels" list above if provided — use the EXACT name and address. Only invent a hotel if none were returned.
+1. Pick the hotel from the "Real hotels" list above if provided — use the EXACT name and address. If NO real hotel data was scraped (all hotel sections are absent), do NOT invent a hotel name. Instead set hotel.name to "See Hotels.ng or Booking.com for current availability" and hotel.price_per_night to a mid-range estimate (₦25,000–₦60,000/night for Abuja, ₦20,000–₦50,000/night for other cities).
 2. If holiday rentals are listed and the accommodation preference is "Shortlet", pick from that list.
-3. Use real tourist attractions from the "Tourist attractions" list above — include 2–3 in the itinerary with the EXACT names and the real entry fee as the cost_per_person.
-4. Supplement with restaurants and venues from the Google Places data. Use exact names.
-5. Use the real road distance/time for transport. Honour the user's transport mode choice.
-6. Price levels: PRICE_LEVEL_INEXPENSIVE ≈ ₦8,000–₦20,000/night, MODERATE ≈ ₦20,000–₦50,000/night, EXPENSIVE ≈ ₦50,000–₦150,000/night.
+3. ATTRACTION COSTS — STRICT RULE: Use only the attractions from the "Tourist attractions" list above. Use the EXACT venue name and the EXACT entry fee stated. If the fee is listed as "Free" or 0, set cost_per_person to 0. NEVER invent or adjust an attraction's entry fee. Include 2–4 attractions per day depending on duration.
+4. RESTAURANT/FOOD COSTS — use venue names from Google Places data when provided. If no Places data, describe the type and area (e.g. "Local bukka lunch near Wuse Market", "Rooftop bar in Maitama area") — do NOT invent specific restaurant names. Set cost_per_person to a realistic range midpoint for a meal: ₦3,000–₦6,000 budget, ₦6,000–₦15,000 mid-range, ₦15,000+ upscale. Append "(est.)" to the title of any item whose cost is an estimate rather than a confirmed fee.
+5. Use the real road distance/time for transport. Honour the user's transport mode choice. If GIGM bus data is provided, use those exact prices, times, and terminal names.
+6. Price levels for hotels: PRICE_LEVEL_INEXPENSIVE ≈ ₦8,000–₦20,000/night, MODERATE ≈ ₦20,000–₦50,000/night, EXPENSIVE ≈ ₦50,000–₦150,000/night.
 7. All prices must be in Nigerian Naira (NGN) and realistic for 2025.
 8. Match activity style and tone to the squad vibe.
-9. Return ONLY valid JSON — no markdown, no explanation.
+9. In cost_breakdown: transport_total and lodging_total are confirmed if real data was used; food_total and activities_total are estimates — reflect this in the offline_note.
+10. Return ONLY valid JSON — no markdown, no explanation.
 
 {
   "hotel": {
@@ -286,7 +289,7 @@ INSTRUCTIONS:
     "per_person": 38375
   },
   "highlights": ["real venue 1", "real venue 2", "real venue 3"],
-  "offline_note": "Hotel name — full address. Tel: phone number. Transport operator pickup: location, time.",
+  "offline_note": "Hotel: [name] — [address]. Tel: [phone if available]. Transport: [operator], departs [terminal] at [time]. Attraction fees confirmed from curated list; food costs are estimates.",
   "data_sources": {
     "hotels_from_google_travel": ${(ctx.gtHotels || []).length > 0},
     "hotels_from_booking": ${ctx.bHotels.length > 0},
