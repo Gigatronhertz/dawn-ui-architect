@@ -126,27 +126,28 @@ const SEED_DATA = [
   ['Enugu', 'Enugu State Zoo',                       500,   1000,  '₦500–₦1,000; animals native to Southeast Nigeria; family attraction'],
   ['Enugu', 'Independence Layout Restaurant Strip',  0,     0,     'Free — Enugu\'s premier food and bar street; local peppersoup, Igbo cuisine, nightlife'],
 
-  // ── FCT / Abuja ─────────────────────────────────────────────────────────
-  ['FCT', 'Millennium Park',                         0,     0,     'Free — large landscaped park in central Abuja; best on weekend mornings'],
-  ['FCT', 'National Children\'s Park & Zoo',         500,   500,   '~₦500 adults; animals, rides, open green spaces; family attraction'],
-  ['FCT', 'Discovery Museum',                        500,   1000,  '₦500–₦1,000; interactive exhibits on Nigerian history and science'],
-  ['FCT', 'Nigerian National Mosque',                0,     0,     'Free — visitors welcome outside prayer times; one of the largest mosques in Africa'],
-  ['FCT', 'National Christian Centre (NCCC)',        0,     0,     'Free — landmark cathedral; guided tours on request; striking modern architecture'],
-  ['FCT', 'Unity Fountain',                          0,     0,     'Free — illuminated fountain near Three Arms Zone; best at night; popular weekend spot'],
-  ['FCT', 'Aso Rock Scenic Viewpoint',               0,     0,     'Free — roadside viewpoint on Airport Road; interior access restricted to residents'],
-  ['FCT', 'Jabi Lake Mall & Lakeside Walk',          0,     2000,  'Free entry to mall and lake path; boat rides ₦1,000–₦2,000/person'],
-  ['FCT', 'Arts & Crafts Village, Gilmore',          0,     0,     'Free entry — indigenous crafts, textiles, bronze sculptures; bring cash for vendors'],
-  ['FCT', 'Silverbird Galleria, Central Area',       0,     5000,  'Free entry to mall; cinema tickets ₦3,500–₦5,000; restaurants on site'],
-  ['FCT', 'Ceddi Plaza, Wuse II',                    0,     5000,  'Free entry; bowling alley ₦3,000–₦5,000 per game; restaurants and lounge'],
-  ['FCT', 'Wuse Market',                             0,     0,     'Free — largest retail market in Abuja; fabric, electronics, food, household goods'],
-  ['FCT', 'Nike Art Gallery, Garki',                 0,     0,     'Free — four-storey gallery of contemporary Nigerian art and sculpture'],
-  ['FCT', 'Ladi Kwali Pottery Centre, Wuse',         0,     500,   'Free–₦500 — traditional Gwari pottery workshops and displays; buy direct from potters'],
-  ['FCT', 'Wonderland Fun Park, Wuse II',            2000,  5000,  '₦2,000–₦5,000 all-in wristband for rides and games; good for groups'],
-  ['FCT', 'Transcorp Hilton Pool Day Pass',          10000, 15000, '₦10,000–₦15,000 — pool access at Abuja\'s most iconic hotel; café and bar included'],
-  ['FCT', 'Usuma Dam Recreational Area',             0,     0,     'Free — scenic lake and picnic spot ~30 min from CBD; popular weekend escape'],
-  ['FCT', 'Mpape Rock Plateau',                      0,     0,     'Free — panoramic views over Abuja skyline; best for sunrise or sunset hikes'],
-  ['FCT', 'Zuma Rock Viewpoint (40 min drive)',      0,     0,     'Free — monolith on Abuja–Kaduna Expressway near Suleja; great roadside photo stop'],
-  ['FCT', 'Gurara Waterfalls Day Trip (90 min)',     500,   500,   '₦500 entry in Niger State — popular half-day trip from Abuja; bring swimwear'],
+  // ── Abuja (FCT) ──────────────────────────────────────────────────────────
+  // State key = 'Abuja' to match the destination name used in the planner dropdowns
+  ['Abuja', 'Millennium Park',                         0,     0,     'Free — large landscaped park in central Abuja; best on weekend mornings'],
+  ['Abuja', 'National Children\'s Park & Zoo',         500,   500,   '~₦500 adults; animals, rides, open green spaces; family attraction'],
+  ['Abuja', 'Discovery Museum',                        500,   1000,  '₦500–₦1,000; interactive exhibits on Nigerian history and science'],
+  ['Abuja', 'Nigerian National Mosque',                0,     0,     'Free — visitors welcome outside prayer times; one of the largest mosques in Africa'],
+  ['Abuja', 'National Christian Centre (NCCC)',        0,     0,     'Free — landmark cathedral; guided tours on request; striking modern architecture'],
+  ['Abuja', 'Unity Fountain',                          0,     0,     'Free — illuminated fountain near Three Arms Zone; best at night; popular weekend spot'],
+  ['Abuja', 'Aso Rock Scenic Viewpoint',               0,     0,     'Free — roadside viewpoint on Airport Road; interior access restricted to residents'],
+  ['Abuja', 'Jabi Lake Mall & Lakeside Walk',          0,     2000,  'Free entry to mall and lake path; boat rides ₦1,000–₦2,000/person'],
+  ['Abuja', 'Arts & Crafts Village, Gilmore',          0,     0,     'Free entry — indigenous crafts, textiles, bronze sculptures; bring cash for vendors'],
+  ['Abuja', 'Silverbird Galleria, Central Area',       0,     5000,  'Free entry to mall; cinema tickets ₦3,500–₦5,000; restaurants on site'],
+  ['Abuja', 'Ceddi Plaza, Wuse II',                    0,     5000,  'Free entry; bowling alley ₦3,000–₦5,000 per game; restaurants and lounge'],
+  ['Abuja', 'Wuse Market',                             0,     0,     'Free — largest retail market in Abuja; fabric, electronics, food, household goods'],
+  ['Abuja', 'Nike Art Gallery, Garki',                 0,     0,     'Free — four-storey gallery of contemporary Nigerian art and sculpture'],
+  ['Abuja', 'Ladi Kwali Pottery Centre, Wuse',         0,     500,   'Free–₦500 — traditional Gwari pottery workshops and displays; buy direct from potters'],
+  ['Abuja', 'Wonderland Fun Park, Wuse II',            2000,  5000,  '₦2,000–₦5,000 all-in wristband for rides and games; good for groups'],
+  ['Abuja', 'Transcorp Hilton Pool Day Pass',          10000, 15000, '₦10,000–₦15,000 — pool access at Abuja\'s most iconic hotel; café and bar included'],
+  ['Abuja', 'Usuma Dam Recreational Area',             0,     0,     'Free — scenic lake and picnic spot ~30 min from CBD; popular weekend escape'],
+  ['Abuja', 'Mpape Rock Plateau',                      0,     0,     'Free — panoramic views over Abuja skyline; best for sunrise or sunset hikes'],
+  ['Abuja', 'Zuma Rock Viewpoint (40 min drive)',      0,     0,     'Free — monolith on Abuja–Kaduna Expressway near Suleja; great roadside photo stop'],
+  ['Abuja', 'Gurara Waterfalls Day Trip (90 min)',     500,   500,   '₦500 entry in Niger State — popular half-day trip from Abuja; bring swimwear'],
 
   // ── Gombe ────────────────────────────────────────────────────────────────
   ['Gombe', 'Dadin Kowa Dam & Lake',                 0,     0,     'Free — large reservoir; boat rides; fishing; picnic area; good for bird watching'],
@@ -354,7 +355,7 @@ const SEED_DATA = [
 const CITY_TO_STATE = {
   // Major cities already in frontend dropdowns
   'Lagos':          'Lagos',
-  'Abuja':          'FCT',
+  'Abuja':          'Abuja',   // seed uses 'Abuja' (not 'FCT') to match planner destination name
   'Ibadan':         'Oyo',
   'Port Harcourt':  'Rivers',
   'Benin City':     'Edo',
