@@ -35,15 +35,28 @@ const fmtNGN = (n: number) =>
 
 function attractionEmoji(name: string): string {
   const n = name.toLowerCase();
-  if (/waterfall|spring|lake|river|beach|bay/.test(n)) return '🌊';
-  if (/park|garden|reserve|forest|wildlife/.test(n)) return '🌿';
-  if (/hill|mountain|plateau|peak|rock/.test(n)) return '⛰️';
-  if (/museum|palace|castle|bunker|wall|tomb|heritage|moat/.test(n)) return '🏛️';
+  if (/waterfall|spring|lake|river|beach|bay|creek/.test(n)) return '🌊';
+  if (/park|garden|reserve|forest|wildlife|nature/.test(n)) return '🌿';
+  if (/hill|mountain|plateau|peak|rock|summit/.test(n)) return '⛰️';
+  if (/museum|palace|castle|bunker|wall|tomb|heritage|moat|fort|monument/.test(n)) return '🏛️';
+  if (/market|craft|village|cultural centre/.test(n)) return '🏪';
+  if (/zoo|safari|ranch|game/.test(n)) return '🦁';
   if (/cave/.test(n)) return '🪨';
-  if (/zoo/.test(n)) return '🦁';
   if (/festival/.test(n)) return '🎉';
   if (/dam/.test(n)) return '💧';
+  if (/beach club|nightlife|bar|strip/.test(n)) return '🌙';
+  if (/stadium|arena/.test(n)) return '🏟️';
+  if (/resort|spa/.test(n)) return '🏖️';
   return '📍';
+}
+
+function attractionCategory(name: string): string {
+  const n = name.toLowerCase();
+  if (/market|craft|palace|museum|fort|wall|heritage|tomb|cultural|monument|moat|emir|shrine/.test(n)) return 'Cultural';
+  if (/waterfall|beach|lake|park|garden|reserve|nature|wildlife|hill|mountain|plateau|rock|cave|dam|spring|river/.test(n)) return 'Adventure';
+  if (/bar|club|strip|night|entertainment|amusement|resort/.test(n)) return 'Nightlife';
+  if (/food|restaurant|cuisine|bukka/.test(n)) return 'Foodie';
+  return 'Chill';
 }
 
 /* ─── shared UI ─────────────────────────────────────────────────────────────── */
@@ -534,7 +547,7 @@ function PlanStep({
   const [days, setDays] = useState<PlanDay[]>(initialPlan.days);
   const [openDay, setOpenDay] = useState<number>(0);
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [mapsOpen, setMapsOpen] = useState<number | null>(null);
+  const [venueSearch, setVenueSearch] = useState("");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
@@ -574,11 +587,14 @@ function PlanStep({
         id: `attr-${a.id}`,
         emoji: attractionEmoji(a.name),
         title: a.name,
-        tag: a.fee_note || (a.fee_max > 0 ? `₦${a.fee_min.toLocaleString()}–₦${a.fee_max.toLocaleString()}` : 'Free'),
+        // category shown as the tag so the search input can filter by vibe
+        tag: attractionCategory(a.name),
+        // fee_note used as subtitle; cost is midpoint for addActivity
+        feeNote: a.fee_note || (a.fee_max > 0 ? `₦${a.fee_min.toLocaleString()}–₦${a.fee_max.toLocaleString()}` : 'Free'),
         cost: a.fee_max > 0 ? Math.round((a.fee_min + a.fee_max) / 2) : 0,
       }));
     }
-    return MAPS_PLACES;
+    return MAPS_PLACES.map(p => ({ ...p, feeNote: p.tag, tag: p.tag }));
   }, [scraped]);
 
   const addActivity = (dayIdx: number, a: { id: string; title: string; cost: number; emoji: string }) => {
@@ -869,56 +885,62 @@ function PlanStep({
                       ))}
                     </ul>
 
-                    {/* Add from AI suggestions */}
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-wider text-google-pink mb-2">✨ AI suggests</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {initialPlan.highlights.map((h, hi) => (
-                          <button
-                            key={hi}
-                            onClick={() => addActivity(di, { id: `h${hi}`, title: h, cost: 2500, emoji: "✨" })}
-                            className="text-left rounded-xl bg-card ring-hairline p-2.5 hover:bg-secondary transition text-xs"
-                          >
-                            <div className="font-medium truncate">{h}</div>
-                            <div className="text-muted-foreground mt-0.5">{fmtNGN(2500)}/person · tap to add</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Add from Places */}
-                    <div>
-                      <button
-                        onClick={() => setMapsOpen(mapsOpen === di ? null : di)}
-                        className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-google-blue/15 text-google-blue hover:bg-google-blue/25 transition inline-flex items-center gap-1.5"
-                      >
-                        🗺️ Add from Places
-                      </button>
-                      {mapsOpen === di && (
-                        <div className="mt-3 rounded-xl ring-hairline bg-card p-3 animate-rise">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">📍 Nearby — {intake.destination}</div>
-                            <button onClick={() => setMapsOpen(null)} className="text-[10px] text-muted-foreground hover:text-foreground">close</button>
-                          </div>
-                          <ul className="space-y-1">
-                            {placesItems.map((p) => (
-                              <li key={p.id} className="flex items-center gap-2 text-[12px] rounded-lg p-1.5 hover:bg-secondary/60 transition">
-                                <span className="text-base shrink-0">{p.emoji}</span>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium truncate">{p.title}</div>
-                                  <div className="text-[10px] text-muted-foreground">{p.tag}{p.cost > 0 ? ` · ${fmtNGN(p.cost)}/person` : ' · Free'}</div>
-                                </div>
-                                <button
-                                  onClick={() => { addActivity(di, { id: p.id, title: p.title, cost: p.cost, emoji: p.emoji }); setMapsOpen(null); }}
-                                  className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground text-background shrink-0 hover:opacity-80 transition"
-                                >
-                                  + Add
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
+                    {/* Venue picker — seeded DB attractions for this destination */}
+                    <div className="rounded-xl ring-hairline bg-card p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          📍 Add a venue
+                          {placesItems.length > 0 && (
+                            <span className="ml-1.5 font-normal normal-case text-primary/70">
+                              — {placesItems.length} spots in {intake.destination}
+                            </span>
+                          )}
                         </div>
-                      )}
+                      </div>
+
+                      {/* Search */}
+                      <input
+                        type="text"
+                        placeholder={`Search ${intake.destination} venues…`}
+                        value={venueSearch}
+                        onChange={(e) => setVenueSearch(e.target.value)}
+                        className="w-full text-[12px] px-3 py-1.5 rounded-lg bg-secondary ring-hairline focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+                      />
+
+                      {/* Venue list — scrollable, all seeded attractions for destination */}
+                      <ul className="space-y-0.5 max-h-52 overflow-y-auto pr-0.5">
+                        {placesItems
+                          .filter(p => {
+                            if (!venueSearch) return true;
+                            const q = venueSearch.toLowerCase();
+                            return p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q);
+                          })
+                          .map((p) => (
+                            <li key={p.id} className="flex items-center gap-2 text-[12px] rounded-lg px-2 py-1.5 hover:bg-secondary/70 transition group">
+                              <span className="text-base shrink-0 leading-none">{p.emoji}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium truncate leading-tight">{p.title}</div>
+                                <div className="text-[10px] text-muted-foreground leading-tight">
+                                  <span className="text-primary/60 font-medium">{p.tag}</span>
+                                  {' · '}
+                                  {'feeNote' in p ? (p as { feeNote: string }).feeNote : (p.cost > 0 ? `₦${p.cost.toLocaleString()}/person` : 'Free')}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => addActivity(di, { id: p.id, title: p.title, cost: p.cost, emoji: p.emoji })}
+                                className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground shrink-0 transition opacity-0 group-hover:opacity-100"
+                              >
+                                + Add
+                              </button>
+                            </li>
+                          ))}
+                        {venueSearch && placesItems.filter(p => {
+                          const q = venueSearch.toLowerCase();
+                          return p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q);
+                        }).length === 0 && (
+                          <li className="text-[12px] text-muted-foreground px-2 py-3 text-center">No venues match "{venueSearch}"</li>
+                        )}
+                      </ul>
                     </div>
                   </div>
                 )}
