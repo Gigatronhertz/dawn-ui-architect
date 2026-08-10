@@ -923,7 +923,7 @@ function PlanStep({
                                 <div className="text-[10px] text-muted-foreground leading-tight">
                                   <span className="text-primary/60 font-medium">{p.tag}</span>
                                   {' · '}
-                                  {'feeNote' in p ? (p as { feeNote: string }).feeNote : (p.cost > 0 ? `₦${p.cost.toLocaleString()}/person` : 'Free')}
+                                  {p.feeNote}
                                 </div>
                               </div>
                               <button
