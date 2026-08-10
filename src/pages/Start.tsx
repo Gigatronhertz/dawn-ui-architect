@@ -548,6 +548,7 @@ function PlanStep({
   const [openDay, setOpenDay] = useState<number>(0);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [venueSearch, setVenueSearch] = useState("");
+  const [vibeFilter, setVibeFilter] = useState<string>("All");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
@@ -898,6 +899,23 @@ function PlanStep({
                         </div>
                       </div>
 
+                      {/* Vibe filter chips */}
+                      <div className="flex gap-1.5 flex-wrap">
+                        {['All','Cultural','Adventure','Chill','Foodie','Nightlife'].map(v => (
+                          <button
+                            key={v}
+                            onClick={() => setVibeFilter(v)}
+                            className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
+                              vibeFilter === v
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                            }`}
+                          >
+                            {v === 'All' ? '🌍 All' : v === 'Cultural' ? '🏛️ Cultural' : v === 'Adventure' ? '⛰️ Adventure' : v === 'Chill' ? '🌿 Chill' : v === 'Foodie' ? '🍲 Foodie' : '🌙 Nightlife'}
+                          </button>
+                        ))}
+                      </div>
+
                       {/* Search */}
                       <input
                         type="text"
@@ -911,9 +929,10 @@ function PlanStep({
                       <ul className="space-y-0.5 max-h-52 overflow-y-auto pr-0.5">
                         {placesItems
                           .filter(p => {
-                            if (!venueSearch) return true;
+                            const matchesVibe = vibeFilter === 'All' || p.tag === vibeFilter;
                             const q = venueSearch.toLowerCase();
-                            return p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q);
+                            const matchesSearch = !venueSearch || p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q);
+                            return matchesVibe && matchesSearch;
                           })
                           .map((p) => (
                             <li key={p.id} className="flex items-center gap-2 text-[12px] rounded-lg px-2 py-1.5 hover:bg-secondary/70 transition group">
@@ -934,11 +953,15 @@ function PlanStep({
                               </button>
                             </li>
                           ))}
-                        {venueSearch && placesItems.filter(p => {
+                        {placesItems.filter(p => {
+                          const matchesVibe = vibeFilter === 'All' || p.tag === vibeFilter;
                           const q = venueSearch.toLowerCase();
-                          return p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q);
+                          const matchesSearch = !venueSearch || p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q);
+                          return matchesVibe && matchesSearch;
                         }).length === 0 && (
-                          <li className="text-[12px] text-muted-foreground px-2 py-3 text-center">No venues match "{venueSearch}"</li>
+                          <li className="text-[12px] text-muted-foreground px-2 py-3 text-center">
+                            No {vibeFilter !== 'All' ? vibeFilter.toLowerCase() : ''} venues{venueSearch ? ` matching "${venueSearch}"` : ''} in {intake.destination}
+                          </li>
                         )}
                       </ul>
                     </div>
