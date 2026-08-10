@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, session, type GeminiPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
+import { api, session, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { KarijeLogo } from "@/components/Nav";
 
@@ -525,11 +525,11 @@ function PlanStep({
   onConfirm,
 }: {
   tripId: string;
-  plan: GeminiPlan;
+  plan: TripPlan;
   intake: IntakeData;
   scraped?: ScrapedData | null;
   busLoading?: boolean;
-  onConfirm: (finalPlan: GeminiPlan, selectedDate?: string) => void;
+  onConfirm: (finalPlan: TripPlan, selectedDate?: string) => void;
 }) {
   const [days, setDays] = useState<PlanDay[]>(initialPlan.days);
   const [openDay, setOpenDay] = useState<number>(0);
@@ -632,7 +632,7 @@ function PlanStep({
   const squadTotal      = perPerson * (intake.squadSize || 1);
   const isDirty         = dirty || selectedBusIdx !== null || selectedFlightIdx !== null || selectedHotelKey !== 'ai';
 
-  const finalPlan: GeminiPlan = {
+  const finalPlan: TripPlan = {
     ...initialPlan, days, transport, hotel,
     cost_breakdown: {
       ...initialPlan.cost_breakdown,
@@ -869,7 +869,7 @@ function PlanStep({
                       ))}
                     </ul>
 
-                    {/* Add from Gemini suggestions */}
+                    {/* Add from AI suggestions */}
                     <div>
                       <div className="text-[11px] font-semibold uppercase tracking-wider text-google-pink mb-2">✨ AI suggests</div>
                       <div className="grid grid-cols-2 gap-2">
@@ -1030,7 +1030,7 @@ function PlanStep({
 
 /* ─── step 4: confirm ────────────────────────────────────────────────────────── */
 function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, selectedDate }: {
-  botNumber: string; destination: string; instructions: string[]; tripId: string; squadSize: number; finalPlan?: GeminiPlan | null; selectedDate?: string | null;
+  botNumber: string; destination: string; instructions: string[]; tripId: string; squadSize: number; finalPlan?: TripPlan | null; selectedDate?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -1319,10 +1319,10 @@ export default function Start() {
   const [intake, setIntake] = useState<IntakeData | null>(null);
   const [phone, setPhone] = useState<string>("");
   const [tripId, setTripId] = useState<string | null>(null);
-  const [plan, setPlan] = useState<GeminiPlan | null>(null);
+  const [plan, setPlan] = useState<TripPlan | null>(null);
   const [scraped, setScraped] = useState<ScrapedData | null>(null);
   const [busLoading, setBusLoading] = useState(false);
-  const [confirmedPlan, setConfirmedPlan] = useState<GeminiPlan | null>(null);
+  const [confirmedPlan, setConfirmedPlan] = useState<TripPlan | null>(null);
   const [confirmData, setConfirmData] = useState<{ botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[]; selectedDate?: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -1465,7 +1465,7 @@ export default function Start() {
     }
   }
 
-  async function handleConfirm(finalPlan: GeminiPlan, selectedDate?: string) {
+  async function handleConfirm(finalPlan: TripPlan, selectedDate?: string) {
     if (!tripId) return;
     setError(null);
     try {

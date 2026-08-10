@@ -3,7 +3,7 @@
  * Uses puppeteer-extra + stealth plugin to bypass bot detection.
  *
  * Gracefully non-fatal: if Chrome isn't available every function returns []/null
- * so the rest of the Gemini pipeline still works.
+ * so the rest of the AI planner pipeline still works.
  *
  * Env vars:
  *   PUPPETEER_EXECUTABLE_PATH  — path to Chrome/Chromium binary (required on Render)

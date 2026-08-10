@@ -21,7 +21,7 @@ export type Attraction = { id: number; state: string; name: string; fee_min: num
 export type Activity = { time: string; title: string; cost_per_person: number };
 export type PlanDay = { day: number; title: string; activities: Activity[] };
 
-export type GeminiPlan = {
+export type TripPlan = {
   hotel: { name: string; area: string; price_per_night: number; rating: number; perks: string[] };
   transport: { operator: string; type: string; price_per_person: number; depart_time: string; arrive_time: string; pickup: string };
   days: PlanDay[];
@@ -39,7 +39,7 @@ export type BHotel = { id: number; name: string; rating: number | null; address:
 export type GIGMTrip = { operator: string; departureTime: string | null; arrivalTime: string | null; price: number; class: string; seatsAvailable: number; terminal: string | null };
 export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[]; bHotels: BHotel[]; gtRentals: GTRental[]; bApartments: BHotel[]; gigmTrips: GIGMTrip[]; localAttractions?: Attraction[] };
 
-export type PlanResponse = { tripId: string; plan: GeminiPlan; scraped?: ScrapedData };
+export type PlanResponse = { tripId: string; plan: TripPlan; scraped?: ScrapedData };
 export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[]; selectedDate?: string | null };
 
 export type UserPlan = {
@@ -49,7 +49,7 @@ export type UserPlan = {
   days:             number | null;
   squadSize:        number | null;
   status:           string;
-  plan:             GeminiPlan | null;
+  plan:             TripPlan | null;
   createdAt:        number;
   participantCount: number;
   paidCount:        number;
@@ -63,11 +63,11 @@ export type PublicPlanResponse = {
   destination:      string | null;
   days:             number | null;
   squadSize:        number | null;
-  hotel:            GeminiPlan['hotel'];
-  transport:        GeminiPlan['transport'];
+  hotel:            TripPlan['hotel'];
+  transport:        TripPlan['transport'];
   highlights:       string[];
   days_plan:        PlanDay[];
-  cost_breakdown:   GeminiPlan['cost_breakdown'];
+  cost_breakdown:   TripPlan['cost_breakdown'];
   participantCount: number;
   selectedDate:     string | null;
   paidCount:        number;
@@ -90,7 +90,7 @@ export type CreatePlanResponse = { tripId: string; status: 'generating' };
 export type PollPlanResponse = {
   tripId:       string;
   status:       'generating' | 'plan_review' | 'awaiting_group' | 'error';
-  plan?:        GeminiPlan;
+  plan?:        TripPlan;
   scraped?:     ScrapedData | null;
   intake?:      IntakeData | null;
   error?:       string;
@@ -193,7 +193,7 @@ export const api = {
     get<{ from: string; to: string; count: number; trips: GIGMTrip[] }>(
       `/api/gigm-test?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${date ? `&date=${date}` : ''}`
     ),
-  confirmPlan: (tripId: string, plan: GeminiPlan, phone?: string, selectedDate?: string) =>
+  confirmPlan: (tripId: string, plan: TripPlan, phone?: string, selectedDate?: string) =>
     post<ConfirmResponse>('/api/confirm', { tripId, plan, phone, selectedDate: selectedDate || null }),
   /** Save a push subscription and/or email address to notify when the plan is ready. */
   subscribeNotify: (tripId: string, opts: { subscription?: object; email?: string }) =>

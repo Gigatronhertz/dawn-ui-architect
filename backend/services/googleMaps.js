@@ -171,7 +171,7 @@ function priceLevelToNGN(priceLevel) {
   return map[priceLevel] ?? null;
 }
 
-// Format a hotel list into a compact Gemini context string.
+// Format a hotel list into a compact context string for the AI planner.
 function formatHotelsForPrompt(hotels) {
   if (!hotels.length) return null;
   return hotels.map(h =>

@@ -1,7 +1,7 @@
 const { v4: uuid } = require('uuid');
 const db = require('../../db/client');
 const { sendText } = require('../../services/whatsapp');
-const { generateTripPlan, formatPlanSummary } = require('../../services/gemini');
+const { generateTripPlan, formatPlanSummary } = require('../../services/planGenerator');
 const M = require('../messages');
 
 const ACCOMMODATION_MAP = { '1': 'Hotel', '2': 'Shortlet', '3': 'Budget guesthouse', '4': 'Surprise me' };
@@ -139,7 +139,7 @@ async function handleIntake(conv, message) {
         await db.conv.upsert({ phone, name: conv.name, state: 'plan_review', trip_id: tripId, temp: '{}' });
         return sendText(phone, formatPlanSummary(plan, trip) + M.PLAN_CONFIRM_PROMPT);
       } catch (err) {
-        console.error('[gemini]', err.message);
+        console.error('[planner]', err.message);
         await db.conv.upsert({ phone, name: conv.name, state: 'intake_q8', trip_id: tripId, temp: JSON.stringify(temp) });
         return sendText(phone, M.PLAN_ERROR);
       }

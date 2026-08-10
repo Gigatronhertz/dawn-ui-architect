@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { WaitlistForm } from "@/components/WaitlistForm";
-import { api, type GeminiPlan, type ScrapedData } from "@/lib/api";
+import { api, type TripPlan, type ScrapedData } from "@/lib/api";
 
 /* ---------------- types ---------------- */
 type Intake = {
@@ -432,7 +432,7 @@ const MAPS_PLACES: Suggestion[] = [
   { id: "m-shrine", title: "Mapo Hill shrine", tag: "Cultural", cost: 1200, emoji: "🕯️", blurb: "Sacred site beside Mapo Hall — quick visit." },
 ];
 
-function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: GeminiPlan) => void; onBack: () => void }) {
+function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: TripPlan) => void; onBack: () => void }) {
   const [phase, setPhase] = useState(0); // 0 = generating, 1 = done, 2 = error
   const phases = [
     "Checking live flight prices…",
@@ -442,7 +442,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
     "Calculating costs & squad split…",
   ];
   const [pIdx, setPIdx] = useState(0);
-  const [realPlan, setRealPlan] = useState<GeminiPlan | null>(null);
+  const [realPlan, setRealPlan] = useState<TripPlan | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
@@ -500,7 +500,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
     return opts;
   }, [scraped, intake.accommodationType]);
 
-  const buildFinalPlan = (): GeminiPlan => {
+  const buildFinalPlan = (): TripPlan => {
     const base = realPlan!;
     const selHotel = allHotelOptions.find(o => o.key === selectedHotelKey);
     const hotel = (selHotel && selHotel.key !== 'ai' && selHotel.price)
@@ -983,7 +983,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: G
 }
 
 /* ---------------- step 4: voting ---------------- */
-function VoteView({ intake, plan, onNext, onBack }: { intake: Intake; plan: GeminiPlan | null; onNext: () => void; onBack: () => void }) {
+function VoteView({ intake, plan, onNext, onBack }: { intake: Intake; plan: TripPlan | null; onNext: () => void; onBack: () => void }) {
   const dateOptions = plan?.date_options ?? DATE_OPTIONS;
 
   // pre-seed votes so the UI feels alive
@@ -1091,7 +1091,7 @@ function VoteView({ intake, plan, onNext, onBack }: { intake: Intake; plan: Gemi
 }
 
 /* ---------------- step 5: contributions ---------------- */
-function ContributionsView({ intake, plan: realPlan, onNext, onBack }: { intake: Intake; plan: GeminiPlan | null; onNext: () => void; onBack: () => void }) {
+function ContributionsView({ intake, plan: realPlan, onNext, onBack }: { intake: Intake; plan: TripPlan | null; onNext: () => void; onBack: () => void }) {
   const fallback = useMemo(() => buildPlan(intake), [intake]);
   const plan = { perPerson: realPlan?.cost_breakdown.per_person ?? fallback.perPerson, total: realPlan?.cost_breakdown.total ?? fallback.total };
   const [members, setMembers] = useState<Member[]>(() =>
@@ -1513,7 +1513,7 @@ const AUTO_DELAYS = [6500, 7000, 8000, 5500, 6000, 9000];
 const Demo = () => {
   const [step, setStep] = useState(0);
   const [intake, setIntake] = useState<Intake | null>(null);
-  const [plan, setPlan] = useState<GeminiPlan | null>(null);
+  const [plan, setPlan] = useState<TripPlan | null>(null);
   const [auto, setAuto] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const navigate = useNavigate();

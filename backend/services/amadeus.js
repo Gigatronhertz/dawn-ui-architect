@@ -183,7 +183,7 @@ function parseDuration(iso) {
   return Number(h) * 60 + Number(m);
 }
 
-// ── Format for Gemini prompt ───────────────────────────────────────────────────
+// ── Format for AI planner prompt ──────────────────────────────────────────────
 function formatFlightsForPrompt(result) {
   if (!result) return null;
   const fmtNGN = n => `₦${Number(n).toLocaleString('en-NG')}`;

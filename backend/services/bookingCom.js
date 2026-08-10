@@ -143,7 +143,7 @@ function getDates(intake) {
   };
 }
 
-// ── Format for Gemini prompt ───────────────────────────────────────────────────
+// ── Format for AI planner prompt ──────────────────────────────────────────────
 function formatBookingHotelsForPrompt(hotels, nights) {
   if (!hotels.length) return null;
   const fmtNGN = n => n ? `₦${Number(n).toLocaleString('en-NG')}` : 'price TBC';

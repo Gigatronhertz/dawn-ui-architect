@@ -29,7 +29,7 @@ const KarijeLogo = () => (
   </svg>
 );
 
-export const PoweredByGemini = () => {
+export const PoweredByKarije = () => {
   const row = [...capabilities, ...capabilities];
 
   return (

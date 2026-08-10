@@ -1,7 +1,7 @@
 const { v4: uuid } = require('uuid');
 const db = require('../../db/client');
 const { sendText, sendList } = require('../../services/whatsapp');
-const { formatPlanSummary } = require('../../services/gemini');
+const { formatPlanSummary } = require('../../services/planGenerator');
 const { initializePayment, fmtNGN } = require('../../services/paystack');
 const M = require('../messages');
 

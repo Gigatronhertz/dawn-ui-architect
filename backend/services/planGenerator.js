@@ -22,7 +22,7 @@ function getGroq() {
 const fmtNGN = (n) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
-// ── Fetch real-world data to ground the Gemini plan ───────────────────────────
+// ── Fetch real-world data to ground the AI plan ───────────────────────────────
 // All calls run in parallel. Any individual failure is non-fatal — the plan
 // generation continues with whatever context was successfully retrieved.
 async function fetchRealWorldContext(intake) {
@@ -38,7 +38,7 @@ async function fetchRealWorldContext(intake) {
   // Transport mode: bus → run GIGM, skip flights; flight → run flights, skip GIGM
   const isFlightMode = /flight/i.test(intake.transport || '');
   const isBusMode    = !isFlightMode;
-  console.log(`[gemini] Transport mode: ${isFlightMode ? 'flight' : 'bus'} (intake.transport="${intake.transport}")`);
+  console.log(`[planner] Transport mode: ${isFlightMode ? 'flight' : 'bus'} (intake.transport="${intake.transport}")`);
 
   // Run GT hotel/rental scrapers — needed regardless of transport mode
   const gtHotelsRaw  = await GT.scrapeHotels(intake.destination, checkin, checkout, intake.squad_size).catch(() => []);
@@ -60,7 +60,7 @@ async function fetchRealWorldContext(intake) {
   const localAttractions = destState
     ? await db.attractions.byState(destState).catch(() => [])
     : [];
-  console.log(`[gemini/context] attractions for ${intake.destination} (${destState}): ${localAttractions.length}`);
+  console.log(`[planner/context] attractions for ${intake.destination} (${destState}): ${localAttractions.length}`);
 
   // All other API calls can run in parallel — they don't use Chrome
   const [
@@ -93,8 +93,8 @@ async function fetchRealWorldContext(intake) {
 
   // Log what each source returned so failures are visible in Render logs
   const logCount = (label, r) => {
-    if (r.status === 'rejected') console.warn(`[gemini/context] ${label}: ERROR — ${r.reason?.message}`);
-    else console.log(`[gemini/context] ${label}: ${Array.isArray(r.value) ? r.value.length + ' results' : r.value ? JSON.stringify(r.value).slice(0, 80) : 'null'}`);
+    if (r.status === 'rejected') console.warn(`[planner/context] ${label}: ERROR — ${r.reason?.message}`);
+    else console.log(`[planner/context] ${label}: ${Array.isArray(r.value) ? r.value.length + ' results' : r.value ? JSON.stringify(r.value).slice(0, 80) : 'null'}`);
   };
   const gigmTrips = { status: 'fulfilled', value: gigmTripsRaw };
 
@@ -126,7 +126,7 @@ async function fetchRealWorldContext(intake) {
   };
 }
 
-// Build the context block injected into the Gemini prompt.
+// Build the context block injected into the AI prompt.
 // ORDER MATTERS — attractions come first so the AI treats them as the primary
 // activity source, not a supplement to Google Places.
 function buildContextBlock(ctx, intake) {
@@ -330,7 +330,7 @@ INSTRUCTIONS:
 }`;
 
   const completion = await getGroq().chat.completions.create({
-    model: 'llama-3.3-70b-versatile',   // free tier — 14,400 req/day, no card needed
+    model: 'llama-3.3-70b-versatile',   // Groq — 14,400 req/day free tier
     messages: [{ role: 'user', content: prompt }],
     response_format: { type: 'json_object' },
     temperature: 0.4,
