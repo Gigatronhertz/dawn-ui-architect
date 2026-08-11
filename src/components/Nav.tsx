@@ -58,9 +58,9 @@ export const KarijeLogo = ({
 
 // ── Nav links ──────────────────────────────────────────────────────────────
 const navLinks = [
-  { label: "Services",  href: "#services" },
+  { label: "Services",  href: "/#services" },
   { label: "Pricing",   href: "/pricing" },
-  { label: "Pro Plan",  href: "#agencies" },
+  { label: "Pro Plan",  href: "/#agencies" },
 ];
 
 // ── Main Nav ───────────────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ export const Nav = () => {
                 </>
               ) : (
                 <Link
-                  to="/my-plans"
+                  to="/login"
                   className="hidden md:inline-flex items-center px-4 py-1.5 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Log in
@@ -258,7 +258,7 @@ export const Nav = () => {
             </>
           ) : (
             <Link
-              to="/my-plans"
+              to="/login"
               onClick={close}
               className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-primary transition-colors"
             >

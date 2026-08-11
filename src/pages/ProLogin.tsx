@@ -111,9 +111,9 @@ export default function ProLogin() {
 
         {/* ── Card ──────────────────────────────────────────────────────────── */}
         <div className="rounded-3xl bg-card ring-hairline shadow-card p-8">
-          <h1 className="font-display text-2xl font-semibold text-center">Welcome back</h1>
+          <h1 className="font-display text-2xl font-semibold text-center">Agency login</h1>
           <p className="text-sm text-muted-foreground text-center mt-1 mb-6">
-            Sign in to your Karije Pro account
+            Sign in as a travel agency or events planner
           </p>
 
           {/* Mode toggle */}

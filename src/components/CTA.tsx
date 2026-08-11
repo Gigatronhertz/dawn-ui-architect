@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { KarijeLogo } from "@/components/Nav";
 
@@ -40,9 +41,9 @@ export const Footer = () => (
       <KarijeLogo size="sm" />
       <p className="text-xs text-muted-foreground">© 2026 Karije. Made for West African squads. 🇳🇬 🇬🇭 🇸🇳 🇨🇮</p>
       <div className="flex gap-5 text-xs text-muted-foreground">
-        <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-        <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-        <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+        <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+        <Link to="/terms"   className="hover:text-foreground transition-colors">Terms</Link>
+        <a href="mailto:hello@karije.com" className="hover:text-foreground transition-colors">Contact</a>
       </div>
     </div>
   </footer>

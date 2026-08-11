@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, type UserPlan } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
@@ -128,8 +128,11 @@ export default function MyPlans() {
     );
   }
 
-  // ── Not logged in — show auth form inline ─────────────────────────────────
-  if (!user) {
+  // ── Not logged in — redirect to dedicated login page ─────────────────────
+  if (!user) return <Navigate to="/login?next=/my-plans" replace />;
+
+  // (dead code below — kept for safety until we confirm the redirect works)
+  if (false) {
     const isBusy = submitState === "busy";
 
     // "Check your inbox" state — shown after successful signup or magic-link send

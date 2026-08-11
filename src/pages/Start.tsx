@@ -21,6 +21,42 @@ const FLIGHT_CITIES = [
   'Port Harcourt','Sokoto','Uyo','Warri','Yola',
 ];
 
+// ── City coordinates for dynamic route map ───────────────────────────────────
+const CITY_COORDS: Record<string, [number, number]> = {
+  'Abeokuta':     [7.1475,  3.3619],
+  'Abuja':        [9.0765,  7.3986],
+  'Akure':        [7.2526,  5.1938],
+  'Asaba':        [6.1814,  6.7463],
+  'Benin City':   [6.3350,  5.6286],
+  'Calabar':      [4.9517,  8.3220],
+  'Enugu':        [6.4584,  7.5464],
+  'Ibadan':       [7.3775,  3.9470],
+  'Ilorin':       [8.5003,  4.5500],
+  'Jos':          [9.8965,  8.8583],
+  'Kaduna':       [10.5222, 7.4383],
+  'Kano':         [11.9964, 8.5167],
+  'Lagos':        [6.5244,  3.3792],
+  'Maiduguri':    [11.8469, 13.1571],
+  'Onitsha':      [6.1429,  6.7866],
+  'Owerri':       [5.4836,  7.0333],
+  'Port Harcourt':[4.8156,  7.0498],
+  'Sokoto':       [13.0622, 5.2339],
+  'Uyo':          [5.0167,  7.9333],
+  'Warri':        [5.5167,  5.7500],
+  'Yola':         [9.2370,  12.4680],
+};
+
+function buildRouteMapUrl(origin: string, destination: string): string {
+  const o = CITY_COORDS[origin]      ?? [9.0765, 7.3986];  // fallback Abuja
+  const d = CITY_COORDS[destination] ?? CITY_COORDS[origin] ?? [6.5244, 3.3792];
+  const pad = 0.6;
+  const west  = (Math.min(o[1], d[1]) - pad).toFixed(4);
+  const east  = (Math.max(o[1], d[1]) + pad).toFixed(4);
+  const south = (Math.min(o[0], d[0]) - pad).toFixed(4);
+  const north = (Math.max(o[0], d[0]) + pad).toFixed(4);
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${west}%2C${south}%2C${east}%2C${north}&layer=mapnik&marker=${d[0]}%2C${d[1]}`;
+}
+
 const MAPS_PLACES = [
   { id: "p1", title: "Local cultural centre", tag: "Culture", cost: 1500, emoji: "🏛️", blurb: "Heritage tours and local craft exhibitions." },
   { id: "p2", title: "Top-rated amala spot", tag: "Foodie", cost: 2500, emoji: "🍲", blurb: "Legendary street spot — locals queue out the door." },
@@ -716,10 +752,10 @@ function PlanStep({
           {mapLoaded ? (
             <>
               <iframe
-                title="Route map"
+                title={`Route map · ${intake.origin} → ${intake.destination}`}
                 className="w-full h-64 md:h-80 block"
                 loading="lazy"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=2.95%2C6.30%2C4.10%2C7.55&layer=mapnik&marker=7.3775%2C3.9470"
+                src={buildRouteMapUrl(intake.origin!, intake.destination!)}
               />
               <div className="absolute bottom-0 inset-x-0 flex flex-wrap items-center justify-between gap-2 bg-card/85 backdrop-blur px-4 py-2 text-xs">
                 <div className="flex items-center gap-3 text-muted-foreground">
@@ -781,11 +817,11 @@ function PlanStep({
                   <div className="text-[11px] text-muted-foreground mt-0.5">{bus.seatsAvailable} seats left</div>
                   <div className="mt-auto pt-3 border-t border-border/50">
                     <div className="font-display text-base font-semibold text-primary tabular-nums">{fmtNGN(bus.price)}</div>
-                    <div className="text-[10px] text-muted-foreground">per seat</div>
+                    <div className="text-[10px] text-muted-foreground">per seat · applied above ↑</div>
                     <a href="https://www.gigm.com/book-a-seat" target="_blank" rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
-                      className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition">
-                      Book →
+                      className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition">
+                      Book on GIGM ↗
                     </a>
                   </div>
                 </button>

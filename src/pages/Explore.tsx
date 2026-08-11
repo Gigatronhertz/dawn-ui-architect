@@ -173,11 +173,22 @@ function RangeSlider({
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+// Cities with curated experience data vs cities that use AI-only
+const CITIES_WITH_DATA = ["Lagos"];
+const ALL_EXPLORE_CITIES = [
+  "Lagos", "Abuja", "Port Harcourt", "Ibadan", "Enugu",
+  "Calabar", "Benin City", "Kano", "Kaduna", "Jos",
+  "Abeokuta", "Ilorin", "Akure", "Owerri", "Warri",
+];
+
 export default function Explore() {
   const [step, setStep]     = useState<ExploreStep>("browse");
   const [selected, setSelected] = useState<Experience | null>(null);
   const [days, setDays]     = useState(1);
   const [squadSize, setSquadSize] = useState(6);
+  const [city, setCity]     = useState("Lagos");
+
+  const hasData = CITIES_WITH_DATA.includes(city);
 
   // Experiences from API (falls back to local seed)
   const [experiences, setExperiences] = useState<Experience[]>(LAGOS_EXPERIENCES);
@@ -190,31 +201,39 @@ export default function Explore() {
   const [aiError, setAiError]     = useState("");
   const [aiPlan, setAiPlan]       = useState<AIPlan | null>(null);
 
-  // Fetch curated experiences from API on mount
+  // Fetch curated experiences whenever city changes
   useEffect(() => {
-    api.getExperiences("Lagos")
+    if (!hasData) return;
+    api.getExperiences(city)
       .then(d => { if (d.experiences?.length) setExperiences(d.experiences); })
       .catch(() => {/* silently keep local fallback */});
-  }, []);
+  }, [city, hasData]);
+
+  // Reset to browse when city changes
+  useEffect(() => {
+    setStep("browse");
+    setSelected(null);
+    setAiPlan(null);
+  }, [city]);
 
   useEffect(() => {
     const titles: Record<ExploreStep, string> = {
-      browse:     "Explore Lagos · Karije",
-      detail:     selected ? `${selected.name} · Karije` : "Explore Lagos · Karije",
+      browse:     `Explore ${city} · Karije`,
+      detail:     selected ? `${selected.name} · Karije` : `Explore ${city} · Karije`,
       share:      "Trip ready · Karije",
-      "ai-form":  "AI Day Plan · Karije",
-      "ai-result":"Your Lagos plan · Karije",
+      "ai-form":  `AI Day Plan · ${city} · Karije`,
+      "ai-result":`Your ${city} plan · Karije`,
     };
     document.title = titles[step];
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [step, selected]);
+  }, [step, selected, city]);
 
   async function handleAiPlan() {
     setAiLoading(true);
     setAiError("");
     try {
       const res = await api.explorePlan({
-        state: "Lagos",
+        state: city,
         vibe: aiVibe,
         groupSize: aiGroupSize,
         budget: aiBudget,
@@ -253,24 +272,24 @@ export default function Explore() {
                 Explore within a state
               </span>
             </div>
-            <h1 className="font-marcellus text-3xl md:text-4xl text-foreground mb-6">
-              Lagos experiences
-            </h1>
-
-            {/* State selector */}
-            <div className="flex gap-2 flex-wrap mb-6">
-              <span className="bg-forest text-parchment px-4 py-1.5 text-sm font-jost font-medium">
-                Lagos ✓
-              </span>
-              {["Abuja", "Rivers", "Delta", "Oyo", "Anambra"].map((s) => (
-                <span
-                  key={s}
-                  className="border border-border px-4 py-1.5 text-sm font-jost font-light text-muted-foreground/60 cursor-not-allowed select-none"
-                  title="Coming soon"
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+              <h1 className="font-marcellus text-3xl md:text-4xl text-foreground">
+                Explore {city}
+              </h1>
+              {/* City picker */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-jost font-light text-muted-foreground">City:</span>
+                <select
+                  value={city}
+                  onChange={e => setCity(e.target.value)}
+                  className="border border-border bg-background px-3 py-1.5 text-sm font-jost font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 appearance-none pr-7 cursor-pointer"
+                  style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238E93AA' stroke-width='1.5' stroke-linecap='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center", backgroundSize: "14px" }}
                 >
-                  {s} <span className="text-[10px]">· soon</span>
-                </span>
-              ))}
+                  {ALL_EXPLORE_CITIES.map(c => (
+                    <option key={c} value={c}>{c}{!CITIES_WITH_DATA.includes(c) ? " (AI)" : ""}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Mode toggle */}
@@ -297,16 +316,38 @@ export default function Explore() {
             </div>
           </div>
 
-          {/* Experience grid — 2-up on mobile, 3-up on desktop */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {experiences.map((exp) => (
-              <ExperienceCard
-                key={exp.id}
-                exp={exp}
-                onSelect={() => handleSelect(exp)}
-              />
-            ))}
-          </div>
+          {/* No curated data for this city — prompt AI planner */}
+          {!hasData ? (
+            <div className="border border-border p-10 text-center">
+              <div className="text-4xl mb-4">🗺️</div>
+              <h2 className="font-marcellus text-2xl text-foreground mb-3">
+                Curated experiences for {city} coming soon
+              </h2>
+              <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
+                We're building a hand-picked collection of {city} experiences. In the meantime, our AI can put together a custom day plan for your squad right now.
+              </p>
+              <button
+                onClick={() => setStep("ai-form")}
+                className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
+              >
+                Get an AI day plan for {city}
+                <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            /* Experience grid — 2-up on mobile, 3-up on desktop */
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {experiences.map((exp) => (
+                <ExperienceCard
+                  key={exp.id}
+                  exp={exp}
+                  onSelect={() => handleSelect(exp)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </main>
     );
