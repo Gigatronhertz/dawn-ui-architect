@@ -737,7 +737,7 @@ export default function Explore() {
             <div className="flex items-center gap-4 mb-5">
               <span className="h-px w-8 bg-primary" />
               <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-                AI day plan · Lagos
+                AI day plan · {city}
               </span>
             </div>
             <h1 className="font-marcellus text-3xl text-foreground mb-2">
@@ -832,7 +832,7 @@ export default function Explore() {
                 <span className="w-4 h-4 border-2 border-parchment/30 border-t-parchment rounded-full animate-spin" />
                 Building your plan…
               </span>
-            ) : "Build my Lagos plan →"}
+            ) : `Build my ${city} plan →`}
           </button>
         </div>
       </main>
@@ -842,12 +842,17 @@ export default function Explore() {
   // ── Step: AI result ───────────────────────────────────────────────────────
   if (step === "ai-result" && aiPlan) {
     const waText = encodeURIComponent(
-      `Hey squad! 🎉\n\nKarije built us a custom Lagos day plan:\n\n` +
+      `Hey squad! 🎉\n\nKarije built us a custom ${city} day plan:\n\n` +
       `*${aiPlan.title}*\n${aiPlan.tagline}\n\n` +
       `👥 ${aiGroupSize} people · 💰 ~${formatNGN(aiPlan.estimatedCostPerPerson)}/person\n\n` +
       aiPlan.schedule.map((s) => `${s.time}  ${s.activity}`).join("\n") +
-      `\n\nPlanned with Karije 🌍`
+      `\n\nPlanned with Karije — karije.com 🌍`
     );
+    const copyText =
+      `${aiPlan.title} · ${city}\n` +
+      `${aiGroupSize} people · ~${formatNGN(aiPlan.estimatedCostPerPerson)}/person\n\n` +
+      aiPlan.schedule.map((s) => `${s.time}  ${s.activity}`).join("\n") +
+      `\n\nPlanned with Karije — karije.com`;
 
     return (
       <main className="min-h-screen bg-background">
@@ -858,7 +863,7 @@ export default function Explore() {
           <div className="flex items-center gap-4 mb-6 mt-4">
             <span className="h-px w-8 bg-primary" />
             <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-              Your AI day plan · Lagos
+              Your AI day plan · {city}
             </span>
           </div>
 
@@ -957,6 +962,12 @@ export default function Explore() {
               </svg>
               Share to WhatsApp group
             </a>
+            <button
+              onClick={() => navigator.clipboard?.writeText(copyText).catch(() => {})}
+              className="w-full flex items-center justify-center gap-2 border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-primary hover:text-primary transition-colors"
+            >
+              Copy plan summary
+            </button>
             <button
               onClick={() => { setAiPlan(null); setStep("ai-form"); }}
               className="w-full border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-primary hover:text-primary transition-colors"

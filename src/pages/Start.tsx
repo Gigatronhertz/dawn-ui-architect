@@ -373,7 +373,7 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent'>('idle');
 
   // Push state
-  const [pushState, setPushState]   = useState<'idle' | 'subscribing' | 'granted' | 'blocked'>('idle');
+  const [pushState, setPushState]   = useState<'idle' | 'subscribing' | 'granted' | 'blocked' | 'unavailable'>('idle');
 
   useEffect(() => {
     const t = setInterval(() => setIdx(i => (i + 1) % PHASES.length), 3000);
@@ -415,7 +415,7 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
       await navigator.serviceWorker.ready;
 
       const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-      if (!vapidKey) { setPushState('blocked'); return; }
+      if (!vapidKey) { setPushState('unavailable'); return; }
 
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -499,6 +499,8 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
                 <span className="text-base shrink-0 w-5 text-center">🔔</span>
                 {pushState === 'granted' ? (
                   <span className="text-xs text-google-green font-medium">✓ Browser notification set</span>
+                ) : pushState === 'unavailable' ? (
+                  <span className="text-xs text-muted-foreground">Notifications not available</span>
                 ) : pushState === 'blocked' ? (
                   <span className="text-xs text-muted-foreground">Blocked — enable in browser settings</span>
                 ) : (
@@ -566,6 +568,22 @@ function CostBreakdown({ items, total }: { items: BreakdownItem[]; total: number
       )}
     </div>
   );
+}
+
+/* ─── date option label → ISO date parser ──────────────────────────────────── */
+function parseDateOptionLabel(label: string): string {
+  // Handles AI labels like "Fri 9 – Sun 11 Aug" or "Fri 16 – Sun 18 Aug"
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const parts = label.trim().split(/\s+/);
+  const lastWord = parts[parts.length - 1];
+  const monthIdx = MONTHS.indexOf(lastWord);
+  const dayMatch = label.match(/\d+/);
+  if (monthIdx === -1 || !dayMatch) return "";
+  const day = parseInt(dayMatch[0], 10);
+  const today = new Date();
+  const date = new Date(today.getFullYear(), monthIdx, day);
+  if (date < today) date.setFullYear(today.getFullYear() + 1);
+  return date.toISOString().split("T")[0];
 }
 
 /* ─── step 3: plan editor ───────────────────────────────────────────────────── */
@@ -1078,6 +1096,31 @@ function PlanStep({
             <p className="text-sm text-muted-foreground mb-3">
               Optional — sets a live countdown on the squad page your group will see.
             </p>
+            {/* AI-suggested date chips */}
+            {initialPlan.date_options && initialPlan.date_options.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                <span className="self-center text-[10px] text-muted-foreground uppercase tracking-label shrink-0">AI picks:</span>
+                {initialPlan.date_options.map(opt => {
+                  const isoDate = parseDateOptionLabel(opt.label);
+                  const isActive = isoDate && selectedDate === isoDate;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => { if (isoDate) setSelectedDate(isoDate); }}
+                      className={`rounded-full px-3 py-1.5 text-xs transition-all border ${
+                        isActive
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-secondary/60 text-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <span className="font-medium">{opt.label}</span>
+                      <span className={`ml-1 text-[10px] ${isActive ? "opacity-75" : "opacity-50"}`}>· {opt.sub}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <input
               type="date"
               value={selectedDate}
@@ -1223,24 +1266,29 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
       </div>
 
       {/* Step-by-step */}
-      <ol className="space-y-3 mb-6">
-        {[
-          `Open your squad's WhatsApp group (or create one).`,
-          `Tap Group Info → Add Participants.`,
-          `Add: ${number}`,
-          `The bot reveals the plan the moment it joins.`,
-        ].map((s, i) => (
-          <li key={i} className="flex items-start gap-3 text-sm">
-            <span className="w-6 h-6 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-semibold shrink-0 mt-0.5">{i + 1}</span>
-            <span className="text-foreground/90">{s}</span>
-          </li>
-        ))}
-      </ol>
+      <div className="mb-6">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">How to share</div>
+        <ol className="space-y-3">
+          {[
+            { step: "Share the plan link above to your squad's WhatsApp group — everyone taps it to view the itinerary and say they're in.", tag: "Works now" },
+            { step: `For a dramatic reveal: open your squad group → Tap the group name → Add Participants → add ${number}`, tag: "Bot reveal" },
+            { step: "The bot's first message drops the plan without warning — the squad won't see it coming.", tag: null },
+          ].map(({ step, tag }, i) => (
+            <li key={i} className="flex items-start gap-3 text-sm">
+              <span className="w-6 h-6 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-semibold shrink-0 mt-0.5">{i + 1}</span>
+              <span className="text-foreground/90 leading-relaxed">
+                {step}
+                {tag && <span className={`ml-2 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${tag === "Works now" ? "bg-google-green/15 text-google-green" : "bg-secondary text-muted-foreground"}`}>{tag}</span>}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
 
       <div className="rounded-2xl bg-whatsapp/10 ring-1 ring-whatsapp/20 p-4 text-sm text-foreground/90 mb-6">
-        <span className="font-semibold text-whatsapp">The squad won't know you planned this.</span>{" "}
-        The bot's first group message is the plan reveal — they'll just see{" "}
-        <em>"Someone's been planning something... 👀"</em>
+        <span className="font-semibold text-whatsapp">They won't know you planned this.</span>{" "}
+        The bot's opening message is the reveal — squad sees{" "}
+        <em>"Someone's been planning something... 👀"</em> before the full plan drops.
       </div>
 
       <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-full bg-card ring-hairline px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors w-full sm:w-auto">
