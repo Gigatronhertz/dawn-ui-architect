@@ -93,7 +93,12 @@ const ProDemo = () => {
               <a href="#dashboard" className="rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90">See the dashboard</a>
               <a href="#try-it" className="rounded-full ring-1 ring-foreground/20 px-5 py-2.5 text-sm font-medium hover:bg-foreground/5">Brand it as yours</a>
             </div>
-            <div className="mt-6 flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="mt-4">
+              <Link to="/pro/login" className="text-[13px] text-muted-foreground hover:text-foreground transition">
+                Already a member? <span className="text-primary font-medium underline underline-offset-2">Sign in →</span>
+              </Link>
+            </div>
+            <div className="mt-5 flex items-center gap-3 text-xs text-muted-foreground">
               <div className="flex -space-x-2">
                 {["AT", "CE", "YG"].map((b, i) => (<div key={i} className="w-6 h-6 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground text-[9px] font-bold ring-2 ring-background">{b}</div>))}
               </div>

@@ -1,79 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 
-// ── Magic-link sign-in sub-form ──────────────────────────────────────────────
-type MagicState = "idle" | "sending" | "sent" | "error";
-
-const SignInFirst = () => {
-  const [email, setEmail] = useState("");
-  const [state, setState] = useState<MagicState>("idle");
-
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setState("sending");
-    try {
-      await api.sendMagicLink({ email: email.trim(), redirect: window.location.href });
-      setState("sent");
-    } catch {
-      setState("error");
-    }
-  };
-
-  return (
-    <main className="min-h-screen bg-background grid place-items-center px-6">
-      <div className="w-full max-w-sm">
-        <Link to="/" className="flex items-center gap-2 font-display font-semibold justify-center mb-8">
-          <span className="grid place-items-center w-8 h-8 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft">
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
-            </svg>
-          </span>
-          <span>Karije <span className="ml-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground text-background">Pro</span></span>
-        </Link>
-
-        <div className="rounded-3xl bg-card ring-hairline shadow-card p-8 text-center">
-          <div className="text-3xl mb-3">🔐</div>
-          <h1 className="font-display text-2xl font-semibold">Sign in to continue</h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            We'll send a sign-in link to your email. No password needed.
-          </p>
-
-          {state === "sent" ? (
-            <div className="mt-6 rounded-2xl bg-primary/10 ring-1 ring-primary/20 px-5 py-4 text-sm">
-              <div className="font-semibold text-foreground">Check your inbox</div>
-              <p className="text-muted-foreground mt-1">We sent a link to <strong>{email}</strong>. Click it to sign in and continue your setup.</p>
-            </div>
-          ) : (
-            <form onSubmit={send} className="mt-6 space-y-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                disabled={state === "sending"}
-                className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-              {state === "error" && (
-                <p className="text-xs text-destructive">Something went wrong. Try again.</p>
-              )}
-              <button
-                type="submit"
-                disabled={state === "sending" || !email.trim()}
-                className="w-full rounded-full bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:scale-[1.01] transition-transform disabled:opacity-50"
-              >
-                {state === "sending" ? "Sending…" : "Send sign-in link →"}
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-    </main>
-  );
-};
 
 // ── Colour swatches ───────────────────────────────────────────────────────────
 const COLORS = [
@@ -169,8 +98,8 @@ const ProSetup = () => {
     );
   }
 
-  // ── Not signed in ──────────────────────────────────────────────────────────
-  if (!user) return <SignInFirst />;
+  // ── Not signed in — send to the dedicated login page ─────────────────────
+  if (!user) return <Navigate to="/pro/login" replace />;
 
   // ── Setup form ─────────────────────────────────────────────────────────────
   return (

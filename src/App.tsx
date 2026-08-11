@@ -15,6 +15,7 @@ import ProDashboard from "./pages/ProDashboard.tsx";
 import MyPlans from "./pages/MyPlans.tsx";
 import PlanView from "./pages/PlanView.tsx";
 import Admin from "./pages/Admin.tsx";
+import ProLogin from "./pages/ProLogin.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/plan/:tripId" element={<PlanView />} />
             <Route path="/demo" element={<Demo />} />
             <Route path="/pro" element={<ProDemo />} />
+            <Route path="/pro/login" element={<ProLogin />} />
             <Route path="/pro/setup" element={<ProSetup />} />
             <Route path="/pro/dashboard" element={<ProDashboard />} />
             <Route path="/admin" element={<Admin />} />
