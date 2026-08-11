@@ -58,8 +58,9 @@ export const KarijeLogo = ({
 
 // ── Nav links ──────────────────────────────────────────────────────────────
 const navLinks = [
-  { label: "Services", href: "#services" },
-  { label: "Pro Plan", href: "#agencies" },
+  { label: "Services",  href: "#services" },
+  { label: "Pricing",   href: "/pricing" },
+  { label: "Pro Plan",  href: "#agencies" },
 ];
 
 // ── Main Nav ───────────────────────────────────────────────────────────────
@@ -103,15 +104,25 @@ export const Nav = () => {
 
             {/* Centre links — desktop */}
             <nav className="hidden md:flex items-center gap-1">
-              {navLinks.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  className="px-4 py-1.5 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {l.label}
-                </a>
-              ))}
+              {navLinks.map((l) =>
+                l.href.startsWith("/") ? (
+                  <Link
+                    key={l.href}
+                    to={l.href}
+                    className="px-4 py-1.5 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {l.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    className="px-4 py-1.5 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {l.label}
+                  </a>
+                )
+              )}
             </nav>
 
             {/* Right actions */}
@@ -204,17 +215,29 @@ export const Nav = () => {
 
         {/* Links */}
         <nav className="flex-1 overflow-y-auto px-5 pt-2">
-          {navLinks.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={close}
-              className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-primary transition-colors"
-            >
-              {l.label}
-              <span className="text-primary text-base">↗</span>
-            </a>
-          ))}
+          {navLinks.map((l) =>
+            l.href.startsWith("/") ? (
+              <Link
+                key={l.href}
+                to={l.href}
+                onClick={close}
+                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-primary transition-colors"
+              >
+                {l.label}
+                <span className="text-primary text-base">↗</span>
+              </Link>
+            ) : (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={close}
+                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-primary transition-colors"
+              >
+                {l.label}
+                <span className="text-primary text-base">↗</span>
+              </a>
+            )
+          )}
 
           {user ? (
             <>

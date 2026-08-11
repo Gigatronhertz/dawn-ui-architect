@@ -40,7 +40,8 @@
       "Bash(node --check backend/services/gemini.js)",
       "Bash(node --check backend/services/attractions.js)",
       "Bash(node backend/scripts/reseed-attractions.js)",
-      "Bash(git commit -m 'Force itinerary to pick from attractions DB — reorder context, tighten prompt *)"
+      "Bash(git commit -m 'Force itinerary to pick from attractions DB — reorder context, tighten prompt *)",
+      "WebSearch"
     ]
   }
 }
