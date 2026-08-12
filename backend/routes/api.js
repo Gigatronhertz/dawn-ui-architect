@@ -766,6 +766,19 @@ router.get('/experiences', async (req, res) => {
   }
 });
 
+// ── GET /api/curated-trips ──────────────────────────────────────────────────
+// Public endpoint — returns published ready-made trips, optionally one state.
+router.get('/curated-trips', async (req, res) => {
+  try {
+    const { state } = req.query;
+    const trips = await db.curatedTrips.list({ state: state || null, all: false });
+    res.json({ trips });
+  } catch (err) {
+    console.error('[api/curated-trips]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/explore-plan ──────────────────────────────────────────────────
 // AI-generated single-day intrastate plan using local attractions from DB.
 router.post('/explore-plan', async (req, res) => {

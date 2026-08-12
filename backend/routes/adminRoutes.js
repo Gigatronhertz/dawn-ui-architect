@@ -1,5 +1,5 @@
 /**
- * Karije admin API — key-protected CRUD for curated experiences.
+ * Karije admin API — key-protected CRUD for everything the single admin curates.
  *
  * All routes require the X-Admin-Key header to match ADMIN_KEY env var.
  * Default dev key: "karije-admin-dev" (override in production via ADMIN_KEY).
@@ -11,6 +11,15 @@
  *   PUT  /admin/experiences/:id          — update
  *   DELETE /admin/experiences/:id        — delete
  *   POST /admin/seed                     — re-seed Lagos defaults (idempotent)
+ *   GET  /admin/trips?state=Lagos        — list ready-made trips (incl. drafts)
+ *   POST /admin/trips                    — create
+ *   PUT  /admin/trips/:id                — update
+ *   DELETE /admin/trips/:id              — delete
+ *   GET  /admin/attractions/states       — per-state row + unpriced counts
+ *   GET  /admin/attractions?state=Lagos  — attractions for one state
+ *   POST /admin/attractions              — create
+ *   PUT  /admin/attractions/:id          — update (prices)
+ *   DELETE /admin/attractions/:id        — delete
  */
 const { Router } = require('express');
 const crypto     = require('crypto');
@@ -115,6 +124,153 @@ router.post('/seed', requireAdmin, async (req, res) => {
     res.json({ ok: true, seeded: count });
   } catch (err) {
     console.error('[admin] seed failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Ready-made trips ───────────────────────────────────────────────────────────
+
+/** Slugify a trip name into a stable, URL-safe id. */
+function slugify(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
+// ── GET /admin/trips ───────────────────────────────────────────────────────────
+router.get('/trips', requireAdmin, async (req, res) => {
+  try {
+    const { state } = req.query;
+    const trips = await db.curatedTrips.list({ state: state || null, all: true });
+    res.json({ trips });
+  } catch (err) {
+    console.error('[admin] GET trips failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /admin/trips ──────────────────────────────────────────────────────────
+router.post('/trips', requireAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (!body.name) return res.status(400).json({ error: 'Trip name is required.' });
+
+    const id = body.id || slugify(body.name) || `trip_${crypto.randomBytes(6).toString('hex')}`;
+    if (await db.curatedTrips.get(id)) {
+      return res.status(409).json({ error: `A trip with id "${id}" already exists.` });
+    }
+    const created = await db.curatedTrips.upsert({ ...body, id });
+    res.json({ ok: true, trip: created });
+  } catch (err) {
+    console.error('[admin] POST trip failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /admin/trips/:id ───────────────────────────────────────────────────────
+router.put('/trips/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!await db.curatedTrips.get(id)) {
+      return res.status(404).json({ error: 'Trip not found.' });
+    }
+    const updated = await db.curatedTrips.upsert({ ...req.body, id });
+    res.json({ ok: true, trip: updated });
+  } catch (err) {
+    console.error('[admin] PUT trip failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /admin/trips/:id ────────────────────────────────────────────────────
+router.delete('/trips/:id', requireAdmin, async (req, res) => {
+  try {
+    await db.curatedTrips.remove(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] DELETE trip failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Attractions (the price table the AI planner quotes from) ───────────────────
+
+// ── GET /admin/attractions/states ──────────────────────────────────────────────
+// Coverage overview: how many rows per state, and how many still have no price.
+// Declared before /attractions/:id-style routes so "states" is never read as an id.
+router.get('/attractions/states', requireAdmin, async (req, res) => {
+  try {
+    res.json({ states: await db.attractions.stateCounts() });
+  } catch (err) {
+    console.error('[admin] GET attraction states failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /admin/attractions?state=Lagos ─────────────────────────────────────────
+router.get('/attractions', requireAdmin, async (req, res) => {
+  try {
+    const { state } = req.query;
+    if (!state) return res.status(400).json({ error: 'A state query param is required.' });
+    res.json({ attractions: await db.attractions.byState(state) });
+  } catch (err) {
+    console.error('[admin] GET attractions failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /admin/attractions ────────────────────────────────────────────────────
+router.post('/attractions', requireAdmin, async (req, res) => {
+  try {
+    const { state, name, fee_min = 0, fee_max = 0, fee_note = null } = req.body || {};
+    if (!state || !name) return res.status(400).json({ error: 'state and name are required.' });
+
+    const attraction = await db.attractions.upsert({ state, name, fee_min, fee_max, fee_note });
+    res.json({ ok: true, attraction });
+  } catch (err) {
+    // UNIQUE(state, name) — surface the clash rather than a raw SQLite error
+    if (/UNIQUE/i.test(err.message)) {
+      return res.status(409).json({ error: 'That attraction already exists in this state.' });
+    }
+    console.error('[admin] POST attraction failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /admin/attractions/:id ─────────────────────────────────────────────────
+router.put('/attractions/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const existing = await db.attractions.get(id);
+    if (!existing) return res.status(404).json({ error: 'Attraction not found.' });
+
+    const attraction = await db.attractions.upsert({
+      id,
+      state:    req.body.state    ?? existing.state,
+      name:     req.body.name     ?? existing.name,
+      fee_min:  req.body.fee_min  ?? existing.fee_min,
+      fee_max:  req.body.fee_max  ?? existing.fee_max,
+      fee_note: req.body.fee_note ?? existing.fee_note,
+    });
+    res.json({ ok: true, attraction });
+  } catch (err) {
+    if (/UNIQUE/i.test(err.message)) {
+      return res.status(409).json({ error: 'Another attraction in this state already has that name.' });
+    }
+    console.error('[admin] PUT attraction failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /admin/attractions/:id ──────────────────────────────────────────────
+router.delete('/attractions/:id', requireAdmin, async (req, res) => {
+  try {
+    await db.attractions.remove(Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] DELETE attraction failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

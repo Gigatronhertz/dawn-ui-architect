@@ -242,6 +242,12 @@ export const api = {
   getExperiences: (state = 'Lagos') =>
     get<{ experiences: import('./experienceTypes').Experience[] }>(`/api/experiences?state=${encodeURIComponent(state)}`),
 
+  /** Fetch published ready-made trips, optionally narrowed to one state. */
+  getCuratedTrips: (state?: string) =>
+    get<{ trips: import('./tripTypes').CuratedTrip[] }>(
+      `/api/curated-trips${state ? `?state=${encodeURIComponent(state)}` : ''}`
+    ),
+
   /** AI-generated single-day intrastate plan. */
   explorePlan: (opts: { state: string; vibe: string; groupSize: number; budget: 'low' | 'medium' | 'high' }) =>
     post<{ ok: boolean; plan: import('./experienceTypes').AIPlan; state: string }>('/api/explore-plan', opts),
