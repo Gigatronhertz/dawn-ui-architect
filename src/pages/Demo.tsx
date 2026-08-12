@@ -528,7 +528,9 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
     api.generatePlan({
       origin: intake.origin,
       destination: intake.destination,
-      budget: intake.budget,
+      // The demo still asks for a whole-trip budget. Derive the nightly hotel
+      // ceiling the same way the backend used to, so demo output is unchanged.
+      hotelBudgetPerNight: Math.round((intake.budget * 0.4) / Math.max(intake.days, 1)),
       days: intake.days,
       squadSize: intake.squadSize,
       accommodationType: intake.accommodationType,

@@ -196,6 +196,10 @@ const MIGRATIONS = [
   // Phase 7 — email + password auth
   `ALTER TABLE users ADD COLUMN password_hash   TEXT`,
   `ALTER TABLE users ADD COLUMN email_verified  INTEGER NOT NULL DEFAULT 0`,
+  // Phase 8 — the web intake asks for a hotel ceiling per night instead of a
+  // whole-trip budget. The WhatsApp bot still collects `budget`, so both live
+  // side by side and planGenerator falls back when this is null.
+  `ALTER TABLE trips ADD COLUMN hotel_budget_per_night INTEGER`,
 ];
 
 const ready = (async () => {

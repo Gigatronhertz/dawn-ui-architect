@@ -4,7 +4,12 @@ console.log('[api] Backend URL:', API_URL);
 export type IntakeData = {
   origin: string;
   destination: string;
-  budget: number;
+  /**
+   * Nightly room ceiling in naira. Caps the hotel search and the AI's hotel
+   * pick — it is deliberately NOT a whole-trip budget, since transport,
+   * activity and meal prices are whatever they actually cost.
+   */
+  hotelBudgetPerNight: number;
   days: number;
   squadSize: number;
   accommodationType: string;

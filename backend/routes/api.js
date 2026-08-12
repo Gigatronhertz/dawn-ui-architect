@@ -22,9 +22,12 @@ const router = Router();
 // Creates a trip job and returns tripId immediately.
 // Actual AI + scraping runs in the background — client polls GET /api/plan/:tripId.
 router.post('/plan', async (req, res) => {
-  const { origin, destination, budget, days, squadSize, accommodationType, dateFlexibility, dealbreakers, transport, vibe, specificDates } = req.body;
+  const { origin, destination, budget, hotelBudgetPerNight, days, squadSize, accommodationType, dateFlexibility, dealbreakers, transport, vibe, specificDates } = req.body;
 
-  if (!origin || !destination || !budget || !days || !squadSize) {
+  // The web intake sends hotelBudgetPerNight; the WhatsApp bot sends budget.
+  // Either satisfies the requirement — planGenerator handles both.
+  const hotelNightly = Number(hotelBudgetPerNight) > 0 ? Number(hotelBudgetPerNight) : null;
+  if (!origin || !destination || (!budget && !hotelNightly) || !days || !squadSize) {
     return res.status(400).json({ error: 'Missing required fields.' });
   }
 
@@ -33,12 +36,13 @@ router.post('/plan', async (req, res) => {
   await db.trips.insert({ id: tripId, organiser_phone: `web_${tripId}` });
   await db.raw(
     `UPDATE trips SET
-       origin=?, destination=?, budget=?, days=?, squad_size=?,
+       origin=?, destination=?, budget=?, hotel_budget_per_night=?, days=?, squad_size=?,
        accommodation=?, date_flexibility=?, specific_dates=?, dealbreakers=?,
        status=?, intake_json=?
      WHERE id=?`,
     [
-      origin, destination, Number(budget), Number(days), Number(squadSize),
+      origin, destination, budget ? Number(budget) : null, hotelNightly,
+      Number(days), Number(squadSize),
       accommodationType || 'Hotel', dateFlexibility || 'Flexible',
       specificDates || null, dealbreakers || null,
       'generating', JSON.stringify(req.body),

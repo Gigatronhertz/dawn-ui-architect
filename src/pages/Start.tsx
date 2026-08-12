@@ -118,7 +118,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
   const [form, setForm] = useState<IntakeData>({
     origin: "Lagos",
     destination: "Abuja",
-    budget: 25000,
+    hotelBudgetPerNight: 35000,
     days: 2,
     squadSize: 8,
     accommodationType: "Hotel",
@@ -238,14 +238,18 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           </Field>
         </div>
 
-        <Field n={4} label={`Budget per person · ${fmtNGN(form.budget)}`}>
+        <Field n={4} label={`Hotel budget per night · ${fmtNGN(form.hotelBudgetPerNight)}`}>
           <input
-            type="range" min={5000} max={200000} step={1000} value={form.budget}
-            onChange={(e) => set("budget", +e.target.value)} className="w-full accent-primary"
+            type="range" min={5000} max={150000} step={1000} value={form.hotelBudgetPerNight}
+            onChange={(e) => set("hotelBudgetPerNight", +e.target.value)} className="w-full accent-primary"
           />
           <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-            <span>₦5k</span><span>₦200k</span>
+            <span>₦5k</span><span>₦150k</span>
           </div>
+          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+            Sets your room ceiling only. Transport, activities and food are priced at what they
+            actually cost — swap the hotel or edit the itinerary on the next screen to move the total.
+          </p>
         </Field>
 
         <Field n={5} label={`How many days? · ${form.days}`}>

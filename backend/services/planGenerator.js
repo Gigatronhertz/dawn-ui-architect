@@ -22,12 +22,30 @@ function getGroq() {
 const fmtNGN = (n) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
+/**
+ * The nightly room ceiling used for hotel search and quoted to the model.
+ *
+ * The web intake asks for this directly, which is the accurate path. The
+ * WhatsApp bot still asks for a whole-trip budget per person, so fall back to
+ * the old heuristic (40% of the trip budget, spread across the nights) for
+ * those. Last resort is a mid-range default so a hotel search still happens.
+ */
+function hotelNightlyCeiling(intake) {
+  const direct = Number(intake.hotel_budget_per_night);
+  if (direct > 0) return Math.round(direct);
+
+  const budget = Number(intake.budget);
+  if (budget > 0) return Math.round((budget * 0.4) / (intake.days || 1));
+
+  return 35000;
+}
+
 // ── Fetch real-world data to ground the AI plan ───────────────────────────────
 // All calls run in parallel. Any individual failure is non-fatal — the plan
 // generation continues with whatever context was successfully retrieved.
 async function fetchRealWorldContext(intake) {
   const isShortlet = (intake.accommodation || '').toLowerCase().includes('shortlet');
-  const budgetPerNight = Math.round((intake.budget * 0.4) / (intake.days || 1));
+  const budgetPerNight = hotelNightlyCeiling(intake);
   const { checkin, checkout } = getDates(intake);
 
   // Geocode destination first — needed for Google Places searches
@@ -236,7 +254,7 @@ Trip details:
 - To: ${intake.destination}
 - Duration: ${intake.days} day(s)
 - Squad size: ${intake.squad_size} people
-- Budget per person: ₦${Number(intake.budget).toLocaleString()}
+- Hotel ceiling: ₦${hotelNightlyCeiling(intake).toLocaleString()} per room per night
 - Accommodation preference: ${intake.accommodation}
 - Date preference: ${intake.date_flexibility}${intake.specific_dates ? ` (${intake.specific_dates})` : ''}
 - Dealbreakers: ${intake.dealbreakers || 'none'}
@@ -255,7 +273,8 @@ INSTRUCTIONS:
 4. MEAL SLOTS — 1 per day (lunch or dinner). Use a Google Places name if one was provided in the "Restaurants & nightlife" section. If none, describe type and area (e.g. "Lunch at a local bukka near Wuse Market (est.)", "Dinner at a rooftop bar, Maitama area (est.)"). Append "(est.)" to any meal cost. Realistic meal costs: ₦3,000–₦6,000 budget, ₦6,000–₦15,000 mid-range, ₦15,000+ upscale.
 5. TRANSPORT — use real GIGM data (prices, times, terminal names) if provided. Otherwise use the road distance and realistic NGN fares for the chosen mode.
 6. Hotel price levels: INEXPENSIVE ≈ ₦8,000–₦20,000/night, MODERATE ≈ ₦20,000–₦50,000/night, EXPENSIVE ≈ ₦50,000–₦150,000/night.
-7. All costs in NGN, realistic for 2025. Squad vibe must shape tone AND venue selection.
+6b. HOTEL CEILING — the hotel you pick must not exceed the ceiling above. Prefer the best-rated option at or under it; only exceed it if every scraped option is more expensive, and say so in offline_note. The ceiling applies to the room only — it is NOT a budget for the whole trip. Do NOT trim activities, meals or transport to fit it, and do NOT scale the total to match it.
+7. All costs in NGN, realistic for 2025. Squad vibe must shape tone AND venue selection. Price transport, activities and meals at what they actually cost — the total is whatever those real prices add up to.
 8. In cost_breakdown: transport_total and lodging_total are confirmed when real data was used; food_total and activities_total are estimates. Note this honestly in offline_note.
 9. Return ONLY valid JSON — no markdown fences, no explanation outside the JSON object.
 
