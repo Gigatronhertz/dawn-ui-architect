@@ -41,7 +41,15 @@
       "Bash(node --check backend/services/attractions.js)",
       "Bash(node backend/scripts/reseed-attractions.js)",
       "Bash(git commit -m 'Force itinerary to pick from attractions DB — reorder context, tighten prompt *)",
-      "WebSearch"
+      "WebSearch",
+      "PowerShell(Get-ChildItem backend -Recurse -File -Exclude node_modules | Where-Object { $_.FullName -notmatch 'node_modules' } | Select-Object @{n='Path';e={$_.FullName.Replace\\(\\(Get-Location\\).Path + '\\\\',''\\)}},Length | Format-Table -AutoSize)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json)",
+      "PowerShell(git stash *)",
+      "PowerShell(npx vite build 2>&1 | Select-Object -Last 15)",
+      "PowerShell($env:ADMIN_KEY='karije-admin-dev'; Start-Process -FilePath \"node\" -ArgumentList \"backend/index.js\" -WorkingDirectory \\(Get-Location\\).Path -NoNewWindow -RedirectStandardOutput \"$env:TEMP\\\\karije-out.log\" -RedirectStandardError \"$env:TEMP\\\\karije-err.log\"; Start-Sleep -Seconds 6; \"started\")",
+      "PowerShell(git check-ignore *)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 10)",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./package.json'\\).scripts,null,2\\)\\)\")"
     ]
   }
 }

@@ -6,6 +6,16 @@ import { KarijeLogo } from "@/components/Nav";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
+
+/** Venue-picker filter chips — `value` matches the tag from attractionCategory(). */
+const VIBE_FILTERS = [
+  { value: "All",       label: "🌍 All" },
+  { value: "Cultural",  label: "🏛️ Cultural" },
+  { value: "Adventure", label: "⛰️ Adventure" },
+  { value: "Chill",     label: "🌿 Chill" },
+  { value: "Foodie",    label: "🍲 Foodie" },
+  { value: "Nightlife", label: "🌙 Nightlife" },
+];
 const ACCOMMODATION_TYPES = ["Hotel", "Shortlet", "Budget guesthouse", "Surprise me"];
 const DATE_OPTIONS = ["Flexible", "I have specific dates"];
 
@@ -58,12 +68,12 @@ function buildRouteMapUrl(origin: string, destination: string): string {
 }
 
 const MAPS_PLACES = [
-  { id: "p1", title: "Local cultural centre", tag: "Culture", cost: 1500, emoji: "🏛️", blurb: "Heritage tours and local craft exhibitions." },
+  { id: "p1", title: "Local cultural centre", tag: "Cultural", cost: 1500, emoji: "🏛️", blurb: "Heritage tours and local craft exhibitions." },
   { id: "p2", title: "Top-rated amala spot", tag: "Foodie", cost: 2500, emoji: "🍲", blurb: "Legendary street spot — locals queue out the door." },
   { id: "p3", title: "Waterfront park", tag: "Chill", cost: 1000, emoji: "🌊", blurb: "Great for morning walks or evening hangouts." },
   { id: "p4", title: "Night market", tag: "Nightlife", cost: 3000, emoji: "🌙", blurb: "Street food, music, and local crafts after dark." },
   { id: "p5", title: "Nature reserve trail", tag: "Adventure", cost: 4000, emoji: "🌳", blurb: "Guided walks through forested terrain." },
-  { id: "p6", title: "Viewing tower", tag: "Viewpoint", cost: 1500, emoji: "🗼", blurb: "360° city views — best at golden hour." },
+  { id: "p6", title: "Viewing tower", tag: "Chill", cost: 1500, emoji: "🗼", blurb: "360° city views — best at golden hour." },
 ];
 
 const fmtNGN = (n: number) =>
@@ -607,6 +617,9 @@ function PlanStep({
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [venueSearch, setVenueSearch] = useState("");
   const [vibeFilter, setVibeFilter] = useState<string>("All");
+  // Day index whose "see all venues" browser is open, or null when closed.
+  const [browseDay, setBrowseDay] = useState<number | null>(null);
+  const [custom, setCustom] = useState({ time: "", title: "", cost: "" });
   const [mapLoaded, setMapLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
@@ -673,6 +686,42 @@ function PlanStep({
     );
     setDirty(true);
   };
+
+  /**
+   * Add a spot the squad already knows about. Our attractions DB only covers
+   * seeded venues, so anything else has to be typed in by hand — it still
+   * counts toward the per-person cost.
+   */
+  const addCustomActivity = (dayIdx: number) => {
+    const title = custom.title.trim();
+    if (!title) return;
+    setDays((ds) =>
+      ds.map((d, i) =>
+        i === dayIdx
+          ? {
+              ...d,
+              activities: [...d.activities, {
+                time: custom.time.trim() || "—:—",
+                title: `📍 ${title}`,
+                cost_per_person: Math.max(0, Math.round(Number(custom.cost) || 0)),
+              }],
+            }
+          : d
+      )
+    );
+    setCustom({ time: "", title: "", cost: "" });
+    setDirty(true);
+  };
+
+  /** Venue list filtered by the active vibe chip and search box. */
+  const filteredPlaces = useMemo(() => {
+    const q = venueSearch.trim().toLowerCase();
+    return placesItems.filter((p) => {
+      const matchesVibe = vibeFilter === "All" || p.tag === vibeFilter;
+      const matchesSearch = !q || p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q);
+      return matchesVibe && matchesSearch;
+    });
+  }, [placesItems, vibeFilter, venueSearch]);
 
   // ── Resolved transport & hotel — always reflect the latest user selection ─────
   const selBus    = selectedBusIdx    !== null ? busOffers[selectedBusIdx]       : null;
@@ -946,7 +995,7 @@ function PlanStep({
 
                     {/* Venue picker — seeded DB attractions for this destination */}
                     <div className="rounded-xl ring-hairline bg-card p-3 space-y-2">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           📍 Add a venue
                           {placesItems.length > 0 && (
@@ -955,21 +1004,29 @@ function PlanStep({
                             </span>
                           )}
                         </div>
+                        {placesItems.length > 0 && (
+                          <button
+                            onClick={() => setBrowseDay(di)}
+                            className="text-[10px] font-semibold text-primary hover:underline shrink-0"
+                          >
+                            See all {placesItems.length} →
+                          </button>
+                        )}
                       </div>
 
                       {/* Vibe filter chips */}
                       <div className="flex gap-1.5 flex-wrap">
-                        {['All','Cultural','Adventure','Chill','Foodie','Nightlife'].map(v => (
+                        {VIBE_FILTERS.map(({ value, label }) => (
                           <button
-                            key={v}
-                            onClick={() => setVibeFilter(v)}
+                            key={value}
+                            onClick={() => setVibeFilter(value)}
                             className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
-                              vibeFilter === v
+                              vibeFilter === value
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
                             }`}
                           >
-                            {v === 'All' ? '🌍 All' : v === 'Cultural' ? '🏛️ Cultural' : v === 'Adventure' ? '⛰️ Adventure' : v === 'Chill' ? '🌿 Chill' : v === 'Foodie' ? '🍲 Foodie' : '🌙 Nightlife'}
+                            {label}
                           </button>
                         ))}
                       </div>
@@ -983,45 +1040,88 @@ function PlanStep({
                         className="w-full text-[12px] px-3 py-1.5 rounded-lg bg-secondary ring-hairline focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
                       />
 
-                      {/* Venue list — scrollable, all seeded attractions for destination */}
-                      <ul className="space-y-0.5 max-h-52 overflow-y-auto pr-0.5">
-                        {placesItems
-                          .filter(p => {
-                            const matchesVibe = vibeFilter === 'All' || p.tag === vibeFilter;
-                            const q = venueSearch.toLowerCase();
-                            const matchesSearch = !venueSearch || p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q);
-                            return matchesVibe && matchesSearch;
-                          })
-                          .map((p) => (
-                            <li key={p.id} className="flex items-center gap-2 text-[12px] rounded-lg px-2 py-1.5 hover:bg-secondary/70 transition group">
-                              <span className="text-base shrink-0 leading-none">{p.emoji}</span>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium truncate leading-tight">{p.title}</div>
-                                <div className="text-[10px] text-muted-foreground leading-tight">
-                                  <span className="text-primary/60 font-medium">{p.tag}</span>
-                                  {' · '}
-                                  {p.feeNote}
-                                </div>
+                      {/* Top matches — the full list lives in the browser modal */}
+                      <ul className="space-y-0.5">
+                        {filteredPlaces.slice(0, 6).map((p) => (
+                          <li key={p.id} className="flex items-center gap-2 text-[12px] rounded-lg px-2 py-1.5 hover:bg-secondary/70 transition group">
+                            <span className="text-base shrink-0 leading-none">{p.emoji}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate leading-tight">{p.title}</div>
+                              <div className="text-[10px] text-muted-foreground leading-tight">
+                                <span className="text-primary/60 font-medium">{p.tag}</span>
+                                {' · '}
+                                {p.feeNote}
                               </div>
-                              <button
-                                onClick={() => addActivity(di, { id: p.id, title: p.title, cost: p.cost, emoji: p.emoji })}
-                                className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground shrink-0 transition opacity-0 group-hover:opacity-100"
-                              >
-                                + Add
-                              </button>
-                            </li>
-                          ))}
-                        {placesItems.filter(p => {
-                          const matchesVibe = vibeFilter === 'All' || p.tag === vibeFilter;
-                          const q = venueSearch.toLowerCase();
-                          const matchesSearch = !venueSearch || p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q);
-                          return matchesVibe && matchesSearch;
-                        }).length === 0 && (
+                            </div>
+                            <button
+                              onClick={() => addActivity(di, { id: p.id, title: p.title, cost: p.cost, emoji: p.emoji })}
+                              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground shrink-0 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            >
+                              + Add
+                            </button>
+                          </li>
+                        ))}
+
+                        {filteredPlaces.length === 0 && (
                           <li className="text-[12px] text-muted-foreground px-2 py-3 text-center">
                             No {vibeFilter !== 'All' ? vibeFilter.toLowerCase() : ''} venues{venueSearch ? ` matching "${venueSearch}"` : ''} in {intake.destination}
                           </li>
                         )}
                       </ul>
+
+                      {filteredPlaces.length > 6 && (
+                        <button
+                          onClick={() => setBrowseDay(di)}
+                          className="w-full text-[11px] font-semibold py-2 rounded-lg bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground transition"
+                        >
+                          See all {filteredPlaces.length} matching spots →
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Add your own — for a spot that isn't in our list */}
+                    <div className="rounded-xl ring-hairline bg-card p-3 space-y-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        ✍️ Add your own
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="14:00"
+                          value={custom.time}
+                          onChange={(e) => setCustom(c => ({ ...c, time: e.target.value }))}
+                          className="w-16 text-[12px] px-2 py-1.5 rounded-lg bg-secondary ring-hairline text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Place or activity"
+                          value={custom.title}
+                          onChange={(e) => setCustom(c => ({ ...c, title: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomActivity(di); } }}
+                          className="flex-1 min-w-0 text-[12px] px-3 py-1.5 rounded-lg bg-secondary ring-hairline focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="₦0"
+                          value={custom.cost}
+                          onChange={(e) => setCustom(c => ({ ...c, cost: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomActivity(di); } }}
+                          className="w-20 text-[12px] px-2 py-1.5 rounded-lg bg-secondary ring-hairline tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+                        />
+                        <button
+                          onClick={() => addCustomActivity(di)}
+                          disabled={!custom.title.trim()}
+                          className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 shrink-0 transition"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        Know a spot that isn't listed? Type it in — it goes on Day {d.day} and counts
+                        toward the per-person cost. Leave the price at 0 if it's free.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1151,6 +1251,182 @@ function PlanStep({
             <path d="M5 12h14M13 5l7 7-7 7" />
           </svg>
         </button>
+      </div>
+
+      {/* Full venue browser — every seeded spot for the destination, with prices */}
+      {browseDay !== null && (
+        <VenueBrowser
+          destination={intake.destination!}
+          dayNumber={days[browseDay]?.day ?? browseDay + 1}
+          places={placesItems}
+          added={days[browseDay]?.activities.map(a => a.title) ?? []}
+          onAdd={(p) => addActivity(browseDay, { id: p.id, title: p.title, cost: p.cost, emoji: p.emoji })}
+          onClose={() => setBrowseDay(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ─── venue browser modal ────────────────────────────────────────────────────── */
+
+type PlaceItem = { id: string; emoji: string; title: string; tag: string; feeNote: string; cost: number };
+
+/**
+ * The "see all" view for a destination's attractions. The inline picker only
+ * shows the top few matches; this lists every seeded spot with its price so the
+ * squad can browse the whole state before committing.
+ */
+function VenueBrowser({
+  destination, dayNumber, places, added, onAdd, onClose,
+}: {
+  destination: string;
+  dayNumber: number;
+  places: PlaceItem[];
+  added: string[];
+  onAdd: (p: PlaceItem) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const [tag, setTag] = useState("All");
+  const [sort, setSort] = useState<"name" | "price">("name");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  const shown = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    return places
+      .filter((p) => {
+        const matchesTag = tag === "All" || p.tag === tag;
+        const matchesQuery = !query || p.title.toLowerCase().includes(query) || p.tag.toLowerCase().includes(query);
+        return matchesTag && matchesQuery;
+      })
+      .sort((a, b) => sort === "price" ? a.cost - b.cost : a.title.localeCompare(b.title));
+  }, [places, q, tag, sort]);
+
+  // A venue counts as added when its title appears in the day's activity list.
+  const isAdded = (p: PlaceItem) => added.some(t => t.includes(p.title));
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`All venues in ${destination}`}
+        className="bg-card w-full max-w-2xl rounded-t-2xl sm:rounded-2xl ring-hairline flex flex-col max-h-[88vh] sm:max-h-[80vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-border space-y-3 shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="font-display font-semibold">All spots in {destination}</div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {places.length} venues · adding to Day {dayNumber}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="w-8 h-8 grid place-items-center rounded-full bg-secondary hover:bg-secondary/70 text-muted-foreground transition shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+
+          <input
+            autoFocus
+            type="text"
+            placeholder={`Search ${destination} venues…`}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="w-full text-sm px-3 py-2 rounded-lg bg-secondary ring-hairline focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+          />
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {VIBE_FILTERS.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setTag(value)}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
+                  tag === value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              onClick={() => setSort(s => s === "name" ? "price" : "name")}
+              className="ml-auto text-[10px] font-semibold px-2.5 py-1 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition"
+            >
+              {sort === "name" ? "↑ A–Z" : "↑ Cheapest"}
+            </button>
+          </div>
+        </div>
+
+        {/* List */}
+        <ul className="overflow-y-auto p-2 flex-1">
+          {shown.map((p) => {
+            const alreadyAdded = isAdded(p);
+            return (
+              <li key={p.id} className="flex items-center gap-3 text-sm rounded-lg px-2 py-2 hover:bg-secondary/60 transition">
+                <span className="text-xl shrink-0 leading-none">{p.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate leading-tight">{p.title}</div>
+                  <div className="text-[11px] text-muted-foreground leading-tight">
+                    <span className="text-primary/60 font-medium">{p.tag}</span>
+                    {' · '}
+                    {p.feeNote}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[11px] tabular-nums text-muted-foreground">
+                    {p.cost > 0 ? fmtNGN(p.cost) : "Free"}
+                  </div>
+                </div>
+                <button
+                  onClick={() => onAdd(p)}
+                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0 transition ${
+                    alreadyAdded
+                      ? 'bg-primary/15 text-primary'
+                      : 'bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground'
+                  }`}
+                >
+                  {alreadyAdded ? '✓ Added' : '+ Add'}
+                </button>
+              </li>
+            );
+          })}
+
+          {shown.length === 0 && (
+            <li className="text-sm text-muted-foreground px-2 py-10 text-center">
+              No venues{q ? ` matching "${q}"` : ''} in {destination}
+              {tag !== "All" ? ` under ${tag}` : ''}.
+            </li>
+          )}
+        </ul>
+
+        <div className="p-3 border-t border-border shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full text-sm font-medium py-2.5 rounded-xl bg-foreground text-background hover:opacity-90 transition"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );
