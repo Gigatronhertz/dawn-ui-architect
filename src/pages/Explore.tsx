@@ -4,6 +4,7 @@ import { KarijeLogo } from "@/components/Nav";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
 import { api } from "@/lib/api";
 import type { AIPlan } from "@/lib/experienceTypes";
+import type { CuratedTrip } from "@/lib/tripTypes";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ExploreStep = "browse" | "detail" | "share" | "ai-form" | "ai-result";
@@ -201,6 +202,10 @@ export default function Explore() {
   const [aiError, setAiError]     = useState("");
   const [aiPlan, setAiPlan]       = useState<AIPlan | null>(null);
 
+  // Ready-made trips whose destination is this city's state. The API resolves
+  // city → state, so "Port Harcourt" correctly returns the Rivers trips.
+  const [cityTrips, setCityTrips] = useState<CuratedTrip[]>([]);
+
   // Fetch curated experiences whenever city changes
   useEffect(() => {
     if (!hasData) return;
@@ -208,6 +213,15 @@ export default function Explore() {
       .then(d => { if (d.experiences?.length) setExperiences(d.experiences); })
       .catch(() => {/* silently keep local fallback */});
   }, [city, hasData]);
+
+  useEffect(() => {
+    let live = true;
+    setCityTrips([]);
+    api.getCuratedTrips(city)
+      .then(d => { if (live) setCityTrips(d.trips ?? []); })
+      .catch(() => {/* section just stays hidden */});
+    return () => { live = false; };
+  }, [city]);
 
   // Reset to browse when city changes
   useEffect(() => {
@@ -347,6 +361,97 @@ export default function Explore() {
                 />
               ))}
             </div>
+          )}
+
+          {/* Ready-made trips for this state — packaged alternative to planning
+              a day yourself. Hidden entirely when the state has none. */}
+          {cityTrips.length > 0 && (
+            <section className="mt-14">
+              <div className="flex items-center gap-4 mb-5">
+                <span className="h-px w-8 bg-primary" />
+                <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                  Ready-made trips
+                </span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+                <div>
+                  <h2 className="font-marcellus text-2xl text-foreground mb-1">
+                    Or let us handle {cityTrips[0].state} entirely
+                  </h2>
+                  <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-lg">
+                    {cityTrips.length} packaged trip{cityTrips.length === 1 ? "" : "s"} with transport,
+                    hotel and activities already locked in — no planning on your end.
+                  </p>
+                </div>
+                <Link
+                  to="/trips"
+                  className="text-xs font-jost font-medium text-muted-foreground hover:text-primary transition-colors shrink-0"
+                >
+                  See all trips →
+                </Link>
+              </div>
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {cityTrips.map((trip) => (
+                  <Link
+                    key={trip.id}
+                    to={`/trips?trip=${encodeURIComponent(trip.id)}`}
+                    className="group border border-border hover:border-primary/40 transition-colors relative overflow-hidden flex flex-col"
+                  >
+                    <div
+                      className="absolute top-0 left-0 right-0 h-1 z-10"
+                      style={{ backgroundColor: trip.colorFallback }}
+                    />
+
+                    {trip.imageId && (
+                      <div className="h-28 overflow-hidden" style={{ backgroundColor: trip.colorFallback }}>
+                        <img
+                          src={cdnImg(trip.imageId, 640, 360)}
+                          alt=""
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      </div>
+                    )}
+
+                    <div className="p-5 flex flex-col flex-1">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="text-2xl">{trip.emoji}</div>
+                        {trip.tag && (
+                          <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase border border-border px-2 py-1 rounded-full">
+                            {trip.tag}
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="font-marcellus text-lg text-foreground mb-1 leading-snug">
+                        {trip.name}
+                      </h3>
+                      <p className="text-[11px] font-jost font-light text-muted-foreground mb-4">
+                        {trip.days} day{trip.days === 1 ? "" : "s"} · from {trip.origin}
+                      </p>
+
+                      <div className="flex items-end justify-between border-t border-border/60 pt-3 mt-auto">
+                        <div>
+                          <div className="font-marcellus text-lg text-foreground leading-none">
+                            {formatNGN(trip.priceFrom)}
+                          </div>
+                          <div className="text-[10px] font-jost font-light text-muted-foreground mt-0.5">
+                            per person
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-jost font-medium text-muted-foreground group-hover:text-primary transition-colors">
+                          View →
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
           )}
         </div>
       </main>

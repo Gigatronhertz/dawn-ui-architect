@@ -775,7 +775,13 @@ router.get('/experiences', async (req, res) => {
 router.get('/curated-trips', async (req, res) => {
   try {
     const { state } = req.query;
-    const trips = await db.curatedTrips.list({ state: state || null, all: false });
+    // Callers pass either a city (Explore's dropdown) or a state (Trips page).
+    // Trips are stored by state, so resolve cities through the same map the
+    // planner uses; cityToState returns null for values that are already
+    // states, in which case the raw value is correct as-is.
+    const { cityToState } = require('../services/attractions');
+    const stateName = state ? (cityToState(state) || state) : null;
+    const trips = await db.curatedTrips.list({ state: stateName, all: false });
     res.json({ trips });
   } catch (err) {
     console.error('[api/curated-trips]', err.message);
@@ -792,25 +798,35 @@ router.post('/explore-plan', async (req, res) => {
     return res.status(503).json({ error: 'AI planning is not configured on this server.' });
   }
 
-  // Pull attractions for the state from DB
+  // The Explore dropdown sends a CITY name, but the attractions table is keyed
+  // by STATE — so map it before querying. Without this, anywhere whose city
+  // name differs from its state (Port Harcourt → Rivers, Ibadan → Oyo …)
+  // matches zero rows and the model invents places instead of using the seed.
+  // Falls back to the raw value for cities that are their own state (Lagos,
+  // Abuja, Enugu, Kano, Kaduna) and for callers already passing a state.
   const { cityToState } = require('../services/attractions');
-  const rawAttractions = await db.attractions.byState(state).catch(() => []);
+  const city      = state;
+  const stateName = cityToState(city) || city;
+
+  const rawAttractions = await db.attractions.byState(stateName).catch(() => []);
+  console.log(`[explore-plan] attractions for ${city} (${stateName}): ${rawAttractions.length}`);
+
   const attrLines = rawAttractions.length > 0
     ? rawAttractions.map(a =>
         `- ${a.name}${a.fee_max > 0 ? ` (entry: ₦${Number(a.fee_min).toLocaleString()}–₦${Number(a.fee_max).toLocaleString()})` : ' (free entry)'}`
       ).join('\n')
-    : `Well-known spots in ${state}, Nigeria`;
+    : `Well-known spots in ${city}, Nigeria`;
 
   const budgetLabel = budget === 'low'  ? 'budget-conscious (under ₦10,000/person)' :
                       budget === 'high' ? 'premium (₦30,000+/person)'                :
                                          'comfortable mid-range (₦10,000–₦25,000/person)';
 
-  const prompt = `You are a Nigerian travel expert planning a curated single-day experience for ${groupSize} people exploring ${state}.
+  const prompt = `You are a Nigerian travel expert planning a curated single-day experience for ${groupSize} people exploring ${city}.
 
 Vibe: ${vibe}
 Budget: ${budgetLabel}
 
-Verified local attractions in ${state}:
+Verified local attractions in ${stateName === city ? city : `${stateName} State (in and around ${city})`}:
 ${attrLines}
 
 Create a specific, authentic day plan using real places — not generic filler. Prioritise experiences that work well for groups.
@@ -828,7 +844,7 @@ Return ONLY valid JSON (no markdown fences, no extra text) matching this exact s
   "notes": "Optional tip or caveat (null if none)"
 }
 
-Include 5–7 schedule items. Use real ${state} street names, markets, and landmark names where applicable.`;
+Include 5–7 schedule items. Use real ${city} street names, markets, and landmark names where applicable.`;
 
   try {
     const groq = getGroq();

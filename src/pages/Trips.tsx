@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { KarijeLogo } from "@/components/Nav";
 import { Footer } from "@/components/CTA";
 import { api } from "@/lib/api";
@@ -201,6 +201,18 @@ export default function Trips() {
   const [loadErr,  setLoadErr]  = useState("");
   const [selected, setSelected] = useState<CuratedTrip | null>(null);
 
+  // `/trips?trip=<id>` opens one trip directly — this is how the per-city
+  // cards on /explore link through. The URL is the source of truth so the
+  // detail view survives a refresh and the back button closes it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openTrip  = (id: string) => setSearchParams({ trip: id });
+  const closeTrip = () => setSearchParams({}, { replace: true });
+
+  useEffect(() => {
+    const id = searchParams.get("trip");
+    setSelected(id ? trips.find((t) => t.id === id) ?? null : null);
+  }, [trips, searchParams]);
+
   useEffect(() => {
     document.title = "Ready-made Trips · Karije";
   }, []);
@@ -302,7 +314,7 @@ export default function Trips() {
               return (
                 <button
                   key={trip.id}
-                  onClick={() => setSelected(trip)}
+                  onClick={() => openTrip(trip.id)}
                   className="group text-left border border-border hover:border-primary/40 transition-colors relative overflow-hidden flex flex-col"
                 >
                   {/* Colour accent bar */}
@@ -390,7 +402,7 @@ export default function Trips() {
         </div>
       </div>
 
-      {selected && <TripDetail trip={selected} onClose={() => setSelected(null)} />}
+      {selected && <TripDetail trip={selected} onClose={closeTrip} />}
 
       <Footer />
     </main>
