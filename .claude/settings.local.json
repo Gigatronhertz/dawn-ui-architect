@@ -60,7 +60,9 @@
       "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 15)",
       "Bash(git fetch *)",
       "Bash(git rev-list *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)"
     ]
   }
 }
