@@ -16,6 +16,14 @@ services:
       - key: DATABASE_AUTH_TOKEN
         sync: false
 
+      # ── Admin panel (/admin) ───────────────────────────────────────────────
+      # Required in production. The dev fallback in adminRoutes.js is public,
+      # so it is refused when NODE_ENV=production — if this is unset the admin
+      # panel returns 401 for every request rather than accepting a known key.
+      # Paste the value into the Render dashboard; never commit it.
+      - key: ADMIN_KEY
+        sync: false
+
       # ── AI plan generation (Groq) ──────────────────────────────────────────
       - key: GROQ_API_KEY
         sync: false

@@ -25,10 +25,34 @@ const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
 const router = Router();
 
 // ── Auth middleware ────────────────────────────────────────────────────────────
+
+/**
+ * The expected admin key, or null when the panel should be sealed.
+ *
+ * The dev default is public — it lives in this file, in a public repo — so it
+ * is only ever honoured outside production. If ADMIN_KEY is missing in
+ * production we fail closed rather than fall back to a key anyone can read.
+ */
+function expectedAdminKey() {
+  if (process.env.ADMIN_KEY) return process.env.ADMIN_KEY;
+  if (process.env.NODE_ENV === 'production') return null;
+  return 'karije-admin-dev';
+}
+
+function checkAdminKey(key) {
+  const expected = expectedAdminKey();
+  if (!expected) {
+    console.error('[admin] ADMIN_KEY is not set in production — admin panel is disabled.');
+    return false;
+  }
+  if (!key || key.length !== expected.length) return false;
+  // Constant-time compare so a wrong key can't be recovered by timing the response.
+  return crypto.timingSafeEqual(Buffer.from(key), Buffer.from(expected));
+}
+
 function requireAdmin(req, res, next) {
-  const key      = req.headers['x-admin-key'] || req.query.adminKey;
-  const adminKey = process.env.ADMIN_KEY || 'karije-admin-dev';
-  if (!key || key !== adminKey) {
+  const key = req.headers['x-admin-key'] || req.query.adminKey;
+  if (!checkAdminKey(key)) {
     return res.status(401).json({ error: 'Invalid or missing admin key.' });
   }
   next();
@@ -37,8 +61,7 @@ function requireAdmin(req, res, next) {
 // ── POST /admin/auth/verify ────────────────────────────────────────────────────
 router.post('/auth/verify', (req, res) => {
   const { key } = req.body || {};
-  const adminKey = process.env.ADMIN_KEY || 'karije-admin-dev';
-  if (key === adminKey) return res.json({ ok: true });
+  if (checkAdminKey(key)) return res.json({ ok: true });
   return res.status(401).json({ error: 'Invalid admin key.' });
 });
 
