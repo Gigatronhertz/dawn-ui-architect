@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { KarijeLogo } from "@/components/Nav";
+import { tripImageUrl } from "@/lib/tripImage";
 import {
   type Experience,
   type DaySchedule,
@@ -166,6 +167,96 @@ function ScheduleEditor({
   );
 }
 
+// ── Per-day plan editor ────────────────────────────────────────────────────────
+
+/**
+ * Day-by-day editor for a trip's itinerary.
+ *
+ * Replaces what used to be a raw JSON textarea. Day 1 edits the base schedule;
+ * every later day either repeats Day 1 or gets its own plan. Overrides are
+ * keyed by day index (Day 2 → key 1), matching how Explore renders them —
+ * the operator never sees the key, only "Day 2".
+ */
+function DayPlanEditor({
+  maxDays,
+  schedule,
+  overrides,
+  onScheduleChange,
+  onOverridesChange,
+}: {
+  maxDays: number;
+  schedule: DaySchedule[];
+  overrides: Record<number, DaySchedule[]>;
+  onScheduleChange: (v: DaySchedule[]) => void;
+  onOverridesChange: (v: Record<number, DaySchedule[]>) => void;
+}) {
+  const days = Array.from({ length: Math.max(1, maxDays) }, (_, i) => i + 1);
+
+  function customise(dayIdx: number) {
+    // Start from a copy of Day 1 so the operator edits rather than starts blank.
+    onOverridesChange({ ...overrides, [dayIdx]: schedule.map(s => ({ ...s })) });
+  }
+
+  function resetToDay1(dayIdx: number) {
+    const next = { ...overrides };
+    delete next[dayIdx];
+    onOverridesChange(next);
+  }
+
+  return (
+    <div className="space-y-3">
+      {days.map(day => {
+        const idx        = day - 1;
+        const custom     = overrides[idx] !== undefined;
+        const isFirstDay = day === 1;
+
+        return (
+          <div key={day} className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-200">
+              <span className="font-medium text-sm text-gray-800">Day {day}</span>
+              {isFirstDay && !custom ? (
+                <span className="text-xs text-gray-400">Everyone's starting point</span>
+              ) : custom ? (
+                <button
+                  type="button"
+                  onClick={() => resetToDay1(idx)}
+                  className="text-xs text-gray-500 hover:text-red-600"
+                >
+                  ✕ Use the Day 1 plan instead
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => customise(idx)}
+                  className="text-xs text-green-700 hover:underline font-medium"
+                >
+                  + Give this day its own plan
+                </button>
+              )}
+            </div>
+
+            <div className="p-4">
+              {isFirstDay && !custom ? (
+                <ScheduleEditor label="" items={schedule} onChange={onScheduleChange} />
+              ) : custom ? (
+                <ScheduleEditor
+                  label=""
+                  items={overrides[idx]}
+                  onChange={v => onOverridesChange({ ...overrides, [idx]: v })}
+                />
+              ) : (
+                <p className="text-sm text-gray-400 py-2">
+                  Same plan as Day 1 — {schedule.length} stop{schedule.length === 1 ? "" : "s"}.
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Experiences section ────────────────────────────────────────────────────────
 
 function ExperiencesSection({ adminKey }: { adminKey: string }) {
@@ -217,6 +308,35 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
     }
   }
 
+  /**
+   * Move a trip one place earlier or later in its state's list. Swaps the two
+   * sort_order values and saves both, so the order the operator sees on the
+   * cards is the order the public page renders.
+   */
+  async function move(exp: Experience, dir: -1 | 1) {
+    const group = experiences
+      .filter(e => e.state === exp.state)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const i = group.findIndex(e => e.id === exp.id);
+    const swap = group[i + dir];
+    if (!swap) return;
+
+    // Positions can collide (seeded rows share values), so renumber the pair
+    // from their index rather than trusting the stored numbers.
+    const a = { ...exp,  sortOrder: i + dir };
+    const b = { ...swap, sortOrder: i };
+    setExperiences(prev => prev.map(e => e.id === a.id ? a : e.id === b.id ? b : e));
+
+    try {
+      await Promise.all([a, b].map(t =>
+        apiFetch(`/admin/experiences/${t.id}`, adminKey, { method: "PUT", body: JSON.stringify(t) })
+      ));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not save the new order.");
+      setExperiences(prev => prev.map(e => e.id === exp.id ? exp : e.id === swap.id ? swap : e));
+    }
+  }
+
   if (editing) {
     return (
       <ExperienceForm
@@ -229,7 +349,9 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
     );
   }
 
-  const filtered = experiences.filter(e => stateFilter === "All" || e.state === stateFilter);
+  const filtered = experiences
+    .filter(e => stateFilter === "All" || e.state === stateFilter)
+    .sort((a, b) => a.state.localeCompare(b.state) || a.sortOrder - b.sortOrder);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -273,7 +395,7 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
             <div className="h-32 relative" style={{ backgroundColor: exp.colorFallback }}>
               {exp.imageId && (
                 <img
-                  src={`https://images.unsplash.com/photo-${exp.imageId}?auto=format&fit=crop&w=480&h=200&q=70`}
+                  src={tripImageUrl(exp.imageId, 480, 200)}
                   alt={exp.name}
                   className="w-full h-full object-cover"
                   onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -286,6 +408,26 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/80 text-gray-600 font-medium">
                   {CAT_EMOJI[exp.category]} {exp.category}
                 </span>
+              </div>
+
+              {/* Reorder — what shows first on the public page */}
+              <div className="absolute top-2 right-2 flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => move(exp, -1)}
+                  title="Show this earlier"
+                  className="w-7 h-7 grid place-items-center rounded-full bg-white/90 text-gray-700 hover:bg-white hover:text-green-700 shadow-sm text-sm"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(exp, 1)}
+                  title="Show this later"
+                  className="w-7 h-7 grid place-items-center rounded-full bg-white/90 text-gray-700 hover:bg-white hover:text-green-700 shadow-sm text-sm"
+                >
+                  ↓
+                </button>
               </div>
             </div>
 
@@ -779,24 +921,8 @@ function ExperienceForm({
   const set = <K extends keyof Experience>(key: K, val: Experience[K]) =>
     setForm(f => ({ ...f, [key]: val }));
 
-  // Parse schedule_overrides JSON manually for the textarea
-  const [overridesJson, setOverridesJson] = useState(() => JSON.stringify(form.scheduleOverrides || {}, null, 2));
-  const [overridesErr, setOverridesErr]   = useState("");
-
-  function handleOverridesChange(raw: string) {
-    setOverridesJson(raw);
-    try {
-      const parsed = JSON.parse(raw);
-      set("scheduleOverrides", parsed);
-      setOverridesErr("");
-    } catch {
-      setOverridesErr("Invalid JSON — fix before saving.");
-    }
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (overridesErr) return;
     onSave(form);
   }
 
@@ -813,7 +939,7 @@ function ExperienceForm({
           {error && <span className="text-xs text-red-500">{error}</span>}
           <button
             onClick={handleSubmit}
-            disabled={busy || !!overridesErr}
+            disabled={busy}
             className="bg-[#2F4A33] text-[#F7F1E7] px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
           >
             {busy ? "Saving…" : "Save experience"}
@@ -894,11 +1020,20 @@ function ExperienceForm({
         <div className={section}>
           <h2 className="font-semibold text-gray-900">Media</h2>
           <div>
-            <label className={labelCls}>Unsplash photo ID <span className="text-gray-400 normal-case font-normal">(from URL: images.unsplash.com/photo-<strong>THIS-PART</strong>)</span></label>
-            <input value={form.imageId} onChange={e => set("imageId", e.target.value)} className={inp} placeholder="1773146916270-e811bff4e923" />
+            <label className={labelCls}>Photo</label>
+            <p className="text-xs text-gray-400 mb-1.5">
+              Paste a link to a photo of the actual place. An Unsplash photo ID still works
+              for the older trips.
+            </p>
+            <input
+              value={form.imageId}
+              onChange={e => set("imageId", e.target.value)}
+              className={inp}
+              placeholder="https://… or 1773146916270-e811bff4e923"
+            />
             {form.imageId && (
               <img
-                src={`https://images.unsplash.com/photo-${form.imageId}?auto=format&fit=crop&w=480&h=200&q=70`}
+                src={tripImageUrl(form.imageId, 480, 200)}
                 alt="preview"
                 className="mt-2 h-28 w-full object-cover rounded"
                 onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -923,25 +1058,18 @@ function ExperienceForm({
 
         {/* ── Schedule ── */}
         <div className={section}>
-          <h2 className="font-semibold text-gray-900">Day schedule</h2>
-          <p className="text-xs text-gray-400">Base schedule — used for Day 1 and as the fallback for all subsequent days.</p>
-          <ScheduleEditor label="Base schedule" items={form.schedule} onChange={v => set("schedule", v)} />
-        </div>
-
-        {/* ── Schedule overrides ── */}
-        <div className={section}>
-          <h2 className="font-semibold text-gray-900">Day overrides <span className="text-sm font-normal text-gray-400">(optional)</span></h2>
-          <p className="text-xs text-gray-400 mb-2">
-            JSON object where keys are 0-indexed day numbers (0 = Day 1, 1 = Day 2…).<br/>
-            Leave as <code>{"{}"}</code> if all days share the base schedule.
+          <h2 className="font-semibold text-gray-900">What happens each day</h2>
+          <p className="text-xs text-gray-400">
+            Day 1 is the plan everyone gets. If a later day runs differently, give it its own
+            plan — otherwise it repeats Day 1. Change the trip length above to add or remove days.
           </p>
-          <textarea
-            rows={12}
-            value={overridesJson}
-            onChange={e => handleOverridesChange(e.target.value)}
-            className={`${inp} font-mono text-xs`}
+          <DayPlanEditor
+            maxDays={form.maxDays}
+            schedule={form.schedule}
+            overrides={form.scheduleOverrides || {}}
+            onScheduleChange={v => set("schedule", v)}
+            onOverridesChange={v => set("scheduleOverrides", v)}
           />
-          {overridesErr && <p className="text-xs text-red-500 mt-1">{overridesErr}</p>}
         </div>
 
         {/* ── Settings ── */}
@@ -949,8 +1077,10 @@ function ExperienceForm({
           <h2 className="font-semibold text-gray-900">Settings</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Sort order <span className="text-gray-400 normal-case font-normal">(lower = first)</span></label>
-              <input type="number" min={0} value={form.sortOrder} onChange={e => set("sortOrder", Number(e.target.value))} className={inp} />
+              <label className={labelCls}>Position on the page</label>
+              <p className="text-sm text-gray-500 pt-2">
+                Use the ↑ ↓ arrows on the trip cards to change what shows first.
+              </p>
             </div>
             <div className="flex items-end">
               <label className="flex items-center gap-3 cursor-pointer">
@@ -973,7 +1103,7 @@ function ExperienceForm({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={busy || !!overridesErr}
+            disabled={busy}
             className="bg-[#2F4A33] text-[#F7F1E7] px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
           >
             {busy ? "Saving…" : "Save experience"}

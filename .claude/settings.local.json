@@ -62,7 +62,14 @@
       "Bash(git rev-list *)",
       "Bash(git commit *)",
       "Bash(git checkout *)",
-      "Bash(git merge *)"
+      "Bash(git merge *)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('base64url'\\)\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3000/api/experiences?state=Lagos\")",
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 12)",
+      "PowerShell(npx vite build 2>&1 | Select-Object -Last 4)",
+      "Bash(sed -i 's|src={`https://images.unsplash.com/photo-${exp.imageId}?auto=format\\\\&fit=crop\\\\&w=480\\\\&h=200\\\\&q=70`}|src={tripImageUrl\\(exp.imageId, 480, 200\\)}|' src/pages/Admin.tsx)",
+      "Bash(sed -i 's|^import { KarijeLogo } from \"@/components/Nav\";$|import { KarijeLogo } from \"@/components/Nav\";\\\\nimport { tripImageUrl } from \"@/lib/tripImage\";|' src/pages/Admin.tsx)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 10; npx vite build 2>&1 | Select-Object -Last 2)"
     ]
   }
 }

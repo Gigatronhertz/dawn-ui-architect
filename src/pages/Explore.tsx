@@ -4,6 +4,7 @@ import { KarijeLogo } from "@/components/Nav";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { tripImageUrl } from "@/lib/tripImage";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ExploreStep = "browse" | "detail" | "share";
@@ -24,9 +25,7 @@ function formatNGN(amount: number): string {
   return `₦${amount.toLocaleString("en-NG")}`;
 }
 
-function cdnImg(id: string, w: number, h: number): string {
-  return `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
-}
+const cdnImg = tripImageUrl;
 
 function getScheduleForDays(exp: Experience, days: number): DaySchedule[][] {
   const result: DaySchedule[][] = [];
