@@ -208,6 +208,16 @@ export const api = {
   linkPlan:   (tripId: string, token: string) =>
     post<{ ok: boolean }>('/api/auth/link-plan', { tripId }, bearer(token)),
 
+  /** Save a curated trip to the signed-in user's plans. */
+  addCuratedToPlan: (
+    id: string,
+    opts: { days: number; squadSize: number },
+    token: string,
+  ) =>
+    post<{ ok: boolean; tripId: string; perPerson: number; total: number; days: number }>(
+      `/api/experiences/${encodeURIComponent(id)}/add-to-plan`, opts, bearer(token)
+    ),
+
   /** Fetch all plans saved by the authenticated user. */
   getMyPlans: (token: string) =>
     get<{ plans: UserPlan[] }>('/api/auth/plans', bearer(token)),
@@ -246,16 +256,6 @@ export const api = {
   /** Fetch published curated experiences for a state. */
   getExperiences: (state = 'Lagos') =>
     get<{ experiences: import('./experienceTypes').Experience[] }>(`/api/experiences?state=${encodeURIComponent(state)}`),
-
-  /** Fetch published ready-made trips, optionally narrowed to one state. */
-  getCuratedTrips: (state?: string) =>
-    get<{ trips: import('./tripTypes').CuratedTrip[] }>(
-      `/api/curated-trips${state ? `?state=${encodeURIComponent(state)}` : ''}`
-    ),
-
-  /** AI-generated single-day intrastate plan. */
-  explorePlan: (opts: { state: string; vibe: string; groupSize: number; budget: 'low' | 'medium' | 'high' }) =>
-    post<{ ok: boolean; plan: import('./experienceTypes').AIPlan; state: string }>('/api/explore-plan', opts),
 
   /** Create or update the agency profile tied to the authenticated user. */
   setupPro: (

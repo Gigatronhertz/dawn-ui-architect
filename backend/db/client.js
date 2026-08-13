@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { SEED_DATA } = require('../services/attractions');
 const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
-const { CURATED_TRIPS_SEED } = require('../services/curatedTripsSeed');
+const { IMPORTED_TRIP_EXPERIENCES } = require('../services/curatedTripsSeed');
 
 const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -130,31 +130,9 @@ const SCHEMA = [
     created_at               INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at               INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
-  `CREATE TABLE IF NOT EXISTS curated_trips (
-    id             TEXT PRIMARY KEY,
-    name           TEXT NOT NULL,
-    tagline        TEXT NOT NULL DEFAULT '',
-    description    TEXT NOT NULL DEFAULT '',
-    origin         TEXT NOT NULL DEFAULT 'Lagos',
-    state          TEXT NOT NULL DEFAULT 'Lagos',
-    location       TEXT NOT NULL DEFAULT '',
-    days           INTEGER NOT NULL DEFAULT 2,
-    price_from     INTEGER NOT NULL DEFAULT 0,
-    tag            TEXT NOT NULL DEFAULT '',
-    emoji          TEXT NOT NULL DEFAULT '🧳',
-    image_id       TEXT NOT NULL DEFAULT '',
-    color_fallback TEXT NOT NULL DEFAULT '#2F4A33',
-    included       TEXT NOT NULL DEFAULT '[]',
-    highlights     TEXT NOT NULL DEFAULT '[]',
-    itinerary      TEXT NOT NULL DEFAULT '[]',
-    group_min      INTEGER NOT NULL DEFAULT 2,
-    group_max      INTEGER NOT NULL DEFAULT 40,
-    notes          TEXT,
-    published      INTEGER NOT NULL DEFAULT 0,
-    sort_order     INTEGER NOT NULL DEFAULT 0,
-    created_at     INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at     INTEGER NOT NULL DEFAULT (unixepoch())
-  )`,
+  // NOTE: `curated_trips` was merged into `experiences` — see curatedTripsSeed.js.
+  // The table is no longer created or read; existing databases keep their rows
+  // untouched so the old data is recoverable until it is deliberately dropped.
   `CREATE TABLE IF NOT EXISTS members (
     id            TEXT PRIMARY KEY,
     trip_id       TEXT NOT NULL,
@@ -219,17 +197,19 @@ const ready = (async () => {
     }
     console.log(`[db] Seeded ${SEED_DATA.length} attractions`);
   }
-  // Seed experiences once — INSERT OR IGNORE is idempotent
-  const expExisting = await client.execute('SELECT COUNT(*) as n FROM experiences');
-  if ((expExisting.rows[0]?.n ?? 0) === 0) {
-    console.log('[db] Seeding experiences table…');
-    for (const exp of LAGOS_EXPERIENCES_SEED) {
+  // Seed curated trips (stored in the `experiences` table). No COUNT guard —
+  // INSERT OR IGNORE is idempotent and never overwrites an admin edit, so any
+  // entry missing from an existing DB gets backfilled on the next boot. That
+  // is how the six former curated_trips rows arrive.
+  {
+    const seed = [...LAGOS_EXPERIENCES_SEED, ...IMPORTED_TRIP_EXPERIENCES];
+    for (const exp of seed) {
       await client.execute({
         sql: `INSERT OR IGNORE INTO experiences
               (id, name, tagline, description, price_per_person_per_day, max_days, category,
                location, image_id, color_fallback, included, schedule, schedule_overrides,
-               highlights, group_min, group_max, notes, state)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+               highlights, group_min, group_max, notes, state, sort_order)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         args: [
           exp.id, exp.name, exp.tagline, exp.description,
           exp.pricePerPersonPerDay, exp.maxDays, exp.category, exp.location,
@@ -238,34 +218,12 @@ const ready = (async () => {
           JSON.stringify(exp.schedule  || []),
           JSON.stringify(exp.scheduleOverrides || {}),
           JSON.stringify(exp.highlights || []),
-          exp.groupMin, exp.groupMax, exp.notes || null, 'Lagos',
+          exp.groupMin, exp.groupMax, exp.notes || null,
+          exp.state || 'Lagos', exp.sortOrder || 0,
         ],
       });
     }
-    console.log(`[db] Seeded ${LAGOS_EXPERIENCES_SEED.length} experiences`);
-  }
-  // Seed curated trips once — they land as drafts for the admin to review
-  const tripExisting = await client.execute('SELECT COUNT(*) as n FROM curated_trips');
-  if ((tripExisting.rows[0]?.n ?? 0) === 0) {
-    console.log('[db] Seeding curated_trips table…');
-    for (const t of CURATED_TRIPS_SEED) {
-      await client.execute({
-        sql: `INSERT OR IGNORE INTO curated_trips
-              (id, name, tagline, description, origin, state, location, days, price_from,
-               tag, emoji, image_id, color_fallback, included, highlights, itinerary,
-               group_min, group_max, notes, published, sort_order)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        args: [
-          t.id, t.name, t.tagline, t.description, t.origin, t.state, t.location,
-          t.days, t.priceFrom, t.tag, t.emoji, t.imageId || '', t.colorFallback,
-          JSON.stringify(t.included   || []),
-          JSON.stringify(t.highlights || []),
-          JSON.stringify(t.itinerary  || []),
-          t.groupMin, t.groupMax, t.notes || null, 0, t.sortOrder || 0,
-        ],
-      });
-    }
-    console.log(`[db] Seeded ${CURATED_TRIPS_SEED.length} curated trips (as drafts)`);
+    console.log(`[db] Curated trips seed applied (${seed.length} entries)`);
   }
 })().catch((err) => {
   console.error('[db] schema init failed:', err.message);
@@ -710,12 +668,19 @@ function parseExpRow(row) {
   };
 }
 
+/**
+ * List curated trips. `state: null` spans every state — the admin uses that to
+ * see the whole catalogue; Explore always passes one state.
+ */
 async function getExperiences({ state = 'Lagos', all = false } = {}) {
+  const where = [];
+  const args  = [];
+  if (state) { where.push('state = ?'); args.push(state); }
+  if (!all)    where.push('published = 1');
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const rows = await rawAll(
-    all
-      ? 'SELECT * FROM experiences WHERE state = ? ORDER BY sort_order, created_at'
-      : 'SELECT * FROM experiences WHERE state = ? AND published = 1 ORDER BY sort_order, created_at',
-    [state]
+    `SELECT * FROM experiences ${clause} ORDER BY sort_order, created_at`,
+    args
   );
   return rows.map(parseExpRow);
 }
@@ -769,108 +734,11 @@ async function upsertExperience(exp) {
   return raw('SELECT * FROM experiences WHERE id = ?', [exp.id]).then(parseExpRow);
 }
 
-// ── Curated trip helpers ───────────────────────────────────────────────────
-
-/** Parse a raw DB row into a camelCase curated-trip object. */
-function parseTripRow(row) {
-  if (!row) return null;
-  return {
-    id:            row.id,
-    name:          row.name,
-    tagline:       row.tagline,
-    description:   row.description,
-    origin:        row.origin,
-    state:         row.state,
-    location:      row.location,
-    days:          Number(row.days),
-    priceFrom:     Number(row.price_from),
-    tag:           row.tag,
-    emoji:         row.emoji,
-    imageId:       row.image_id,
-    colorFallback: row.color_fallback,
-    included:      JSON.parse(row.included   || '[]'),
-    highlights:    JSON.parse(row.highlights || '[]'),
-    itinerary:     JSON.parse(row.itinerary  || '[]'),
-    groupMin:      Number(row.group_min),
-    groupMax:      Number(row.group_max),
-    notes:         row.notes || null,
-    published:     Boolean(row.published),
-    sortOrder:     Number(row.sort_order || 0),
-    createdAt:     Number(row.created_at),
-    updatedAt:     Number(row.updated_at),
-  };
-}
-
-/**
- * List curated trips.
- * `all: true` includes drafts (admin); default returns published only (public).
- * `state` narrows to one destination state when given.
- */
-async function getCuratedTrips({ state = null, all = false } = {}) {
-  const where = [];
-  const args  = [];
-  if (!all)  where.push('published = 1');
-  if (state) { where.push('state = ?'); args.push(state); }
-  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const rows = await rawAll(
-    `SELECT * FROM curated_trips ${clause} ORDER BY sort_order, created_at`,
-    args
-  );
-  return rows.map(parseTripRow);
-}
-
-async function getCuratedTrip(id) {
-  return parseTripRow(await raw('SELECT * FROM curated_trips WHERE id = ?', [id]));
-}
-
-async function upsertCuratedTrip(t) {
-  const args = [
-    t.name, t.tagline || '', t.description || '',
-    t.origin || 'Lagos', t.state || 'Lagos', t.location || '',
-    t.days || 2, t.priceFrom || 0, t.tag || '', t.emoji || '🧳',
-    t.imageId || '', t.colorFallback || '#2F4A33',
-    JSON.stringify(t.included   || []),
-    JSON.stringify(t.highlights || []),
-    JSON.stringify(t.itinerary  || []),
-    t.groupMin || 2, t.groupMax || 40,
-    t.notes || null,
-    t.published ? 1 : 0,
-    t.sortOrder || 0,
-  ];
-  const existing = await raw('SELECT id FROM curated_trips WHERE id = ?', [t.id]);
-  if (existing) {
-    await client.execute({
-      sql: `UPDATE curated_trips SET
-              name=?, tagline=?, description=?, origin=?, state=?, location=?,
-              days=?, price_from=?, tag=?, emoji=?, image_id=?, color_fallback=?,
-              included=?, highlights=?, itinerary=?, group_min=?, group_max=?,
-              notes=?, published=?, sort_order=?, updated_at=unixepoch()
-            WHERE id=?`,
-      args: [...args, t.id],
-    });
-  } else {
-    await client.execute({
-      sql: `INSERT INTO curated_trips
-              (name, tagline, description, origin, state, location, days, price_from,
-               tag, emoji, image_id, color_fallback, included, highlights, itinerary,
-               group_min, group_max, notes, published, sort_order, id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      args: [...args, t.id],
-    });
-  }
-  return getCuratedTrip(t.id);
-}
-
-async function deleteCuratedTrip(id) {
-  await client.execute({ sql: 'DELETE FROM curated_trips WHERE id = ?', args: [id] });
-}
-
 module.exports = {
   ready,
   raw,
   rawAll,
   parseExpRow,
-  parseTripRow,
   conv:        { get: getConv, upsert: upsertConv, reset: resetConv },
   trips:       { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
   members:     { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
@@ -893,12 +761,6 @@ module.exports = {
     remove:      deleteAttraction,
   },
   experiences:  { list: getExperiences, upsert: upsertExperience },
-  curatedTrips: {
-    list:   getCuratedTrips,
-    get:    getCuratedTrip,
-    upsert: upsertCuratedTrip,
-    remove: deleteCuratedTrip,
-  },
   users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },
   participants: {
     insert: insertParticipant,

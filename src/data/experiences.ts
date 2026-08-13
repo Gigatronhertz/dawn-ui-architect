@@ -13,7 +13,7 @@ export interface Experience {
   description: string;
   pricePerPersonPerDay: number; // in NGN
   maxDays: number;              // hard cap — can't book this experience for more than N days
-  category: "adventure" | "culture" | "nature" | "leisure" | "food";
+  category: "adventure" | "culture" | "nature" | "leisure" | "food" | "nightlife";
   location: string;
   imageId: string;             // Unsplash photo ID (cdn: images.unsplash.com/photo-{id})
   colorFallback: string;       // CSS color shown if image fails to load

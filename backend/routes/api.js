@@ -762,7 +762,12 @@ router.get('/auth/me', requireAuth, async (req, res) => {
 router.get('/experiences', async (req, res) => {
   try {
     const { state = 'Lagos' } = req.query;
-    const experiences = await db.experiences.list({ state, all: false });
+    // Explore's dropdown holds cities; curated trips are stored by state, so
+    // resolve through the same map the planner uses. cityToState returns null
+    // for values that are already states, where the raw value is correct.
+    const { cityToState } = require('../services/attractions');
+    const stateName = cityToState(state) || state;
+    const experiences = await db.experiences.list({ state: stateName, all: false });
     res.json({ experiences });
   } catch (err) {
     console.error('[api/experiences]', err.message);
@@ -770,104 +775,72 @@ router.get('/experiences', async (req, res) => {
   }
 });
 
-// ── GET /api/curated-trips ──────────────────────────────────────────────────
-// Public endpoint — returns published ready-made trips, optionally one state.
-router.get('/curated-trips', async (req, res) => {
+// ── POST /api/experiences/:id/add-to-plan ───────────────────────────────────
+// Saves a curated trip to the signed-in user's plans so they can come back to
+// it, share it, or hand it to their squad. Karije runs these trips, so we are
+// the organiser — the squad's own number is only collected later, at booking.
+router.post('/experiences/:id/add-to-plan', requireAuth, async (req, res) => {
   try {
-    const { state } = req.query;
-    // Callers pass either a city (Explore's dropdown) or a state (Trips page).
-    // Trips are stored by state, so resolve cities through the same map the
-    // planner uses; cityToState returns null for values that are already
-    // states, in which case the raw value is correct as-is.
-    const { cityToState } = require('../services/attractions');
-    const stateName = state ? (cityToState(state) || state) : null;
-    const trips = await db.curatedTrips.list({ state: stateName, all: false });
-    res.json({ trips });
+    const days      = Math.max(1, Number(req.body?.days)      || 1);
+    const squadSize = Math.max(1, Number(req.body?.squadSize) || 1);
+
+    const rows = await db.rawAll('SELECT * FROM experiences WHERE id = ? AND published = 1', [req.params.id]);
+    const exp  = rows[0] ? db.parseExpRow(rows[0]) : null;
+    if (!exp) return res.status(404).json({ error: 'Trip not found.' });
+
+    const cappedDays = Math.min(days, exp.maxDays || 1);
+    const perPerson  = exp.pricePerPersonPerDay * cappedDays;
+    const total      = perPerson * squadSize;
+
+    // Day 1 uses the base schedule; later days fall back to it unless the
+    // admin set an override — same rule the Explore detail view renders by.
+    const planDays = Array.from({ length: cappedDays }, (_, i) => ({
+      day: i + 1,
+      activities: (exp.scheduleOverrides?.[i] ?? exp.schedule ?? []).map(s => ({
+        time:            s.time,
+        title:           s.activity,
+        cost_per_person: 0,
+      })),
+    }));
+
+    const tripId = uuid();
+    // Karije is the organiser on curated trips — no squad phone number yet.
+    await db.trips.insert({ id: tripId, organiser_phone: process.env.WA_DISPLAY_NUMBER || 'karije' });
+    await db.raw(
+      `UPDATE trips SET user_id=?, origin=?, destination=?, days=?, squad_size=?,
+         status=?, plan=?, intake_json=? WHERE id=?`,
+      [
+        req.user.uid, exp.state, exp.state, cappedDays, squadSize,
+        'curated',
+        JSON.stringify({
+          hotel: null,
+          transport: null,
+          days: planDays,
+          date_options: [],
+          cost_breakdown: {
+            transport_total: 0, lodging_total: 0, food_total: 0,
+            activities_total: total, buffer: 0, total, per_person: perPerson,
+          },
+          highlights: exp.highlights || [],
+          offline_note: exp.notes || '',
+          curated: {
+            experienceId: exp.id,
+            name:         exp.name,
+            tagline:      exp.tagline,
+            location:     exp.location,
+            imageId:      exp.imageId,
+            included:     exp.included || [],
+          },
+        }),
+        JSON.stringify({ curatedId: exp.id, days: cappedDays, squadSize }),
+        tripId,
+      ]
+    );
+
+    res.json({ ok: true, tripId, perPerson, total, days: cappedDays });
   } catch (err) {
-    console.error('[api/curated-trips]', err.message);
+    console.error('[api/add-to-plan]', err.message);
     res.status(500).json({ error: err.message });
-  }
-});
-
-// ── POST /api/explore-plan ──────────────────────────────────────────────────
-// AI-generated single-day intrastate plan using local attractions from DB.
-router.post('/explore-plan', async (req, res) => {
-  const { state = 'Lagos', vibe = 'Chill & scenic', groupSize = 6, budget = 'medium' } = req.body || {};
-
-  if (!process.env.GROQ_API_KEY) {
-    return res.status(503).json({ error: 'AI planning is not configured on this server.' });
-  }
-
-  // The Explore dropdown sends a CITY name, but the attractions table is keyed
-  // by STATE — so map it before querying. Without this, anywhere whose city
-  // name differs from its state (Port Harcourt → Rivers, Ibadan → Oyo …)
-  // matches zero rows and the model invents places instead of using the seed.
-  // Falls back to the raw value for cities that are their own state (Lagos,
-  // Abuja, Enugu, Kano, Kaduna) and for callers already passing a state.
-  const { cityToState } = require('../services/attractions');
-  const city      = state;
-  const stateName = cityToState(city) || city;
-
-  const rawAttractions = await db.attractions.byState(stateName).catch(() => []);
-  console.log(`[explore-plan] attractions for ${city} (${stateName}): ${rawAttractions.length}`);
-
-  const attrLines = rawAttractions.length > 0
-    ? rawAttractions.map(a =>
-        `- ${a.name}${a.fee_max > 0 ? ` (entry: ₦${Number(a.fee_min).toLocaleString()}–₦${Number(a.fee_max).toLocaleString()})` : ' (free entry)'}`
-      ).join('\n')
-    : `Well-known spots in ${city}, Nigeria`;
-
-  const budgetLabel = budget === 'low'  ? 'budget-conscious (under ₦10,000/person)' :
-                      budget === 'high' ? 'premium (₦30,000+/person)'                :
-                                         'comfortable mid-range (₦10,000–₦25,000/person)';
-
-  const prompt = `You are a Nigerian travel expert planning a curated single-day experience for ${groupSize} people exploring ${city}.
-
-Vibe: ${vibe}
-Budget: ${budgetLabel}
-
-Verified local attractions in ${stateName === city ? city : `${stateName} State (in and around ${city})`}:
-${attrLines}
-
-Create a specific, authentic day plan using real places — not generic filler. Prioritise experiences that work well for groups.
-
-Return ONLY valid JSON (no markdown fences, no extra text) matching this exact shape:
-{
-  "title": "A catchy 3-6 word day title",
-  "tagline": "One punchy sentence describing the day",
-  "schedule": [
-    { "time": "HH:MM", "activity": "Name of the stop/activity", "details": "1-2 sentences of specific detail" }
-  ],
-  "highlights": ["key highlight 1", "key highlight 2", "key highlight 3"],
-  "estimatedCostPerPerson": <integer in NGN — realistic total>,
-  "included": ["what is included in the curated package"],
-  "notes": "Optional tip or caveat (null if none)"
-}
-
-Include 5–7 schedule items. Use real ${city} street names, markets, and landmark names where applicable.`;
-
-  try {
-    const groq = getGroq();
-    const completion = await groq.chat.completions.create({
-      model:       'llama-3.3-70b-versatile',
-      messages:    [{ role: 'user', content: prompt }],
-      temperature: 0.75,
-      max_tokens:  1400,
-    });
-
-    const raw = completion.choices[0].message.content || '';
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('[explore-plan] no JSON in response:', raw.slice(0, 200));
-      return res.status(500).json({ error: 'AI returned an unexpected format. Try again.' });
-    }
-
-    const plan = JSON.parse(jsonMatch[0]);
-    return res.json({ ok: true, plan, state });
-
-  } catch (err) {
-    console.error('[explore-plan] AI call failed:', err.message);
-    return res.status(500).json({ error: 'Plan generation failed. Please try again.' });
   }
 });
 

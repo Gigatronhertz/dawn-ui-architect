@@ -326,4 +326,59 @@ const CURATED_TRIPS_SEED = [
   },
 ];
 
-module.exports = { CURATED_TRIPS_SEED };
+/**
+ * Curated trips and experiences were merged into one model — the experiences
+ * table won, because it carries the pricing and duration behaviour we keep
+ * (per-person-per-day, squad picks the length up to max_days).
+ *
+ * These six started life in the old `curated_trips` table, so they are
+ * reshaped here rather than re-typed by hand: converting keeps every word of
+ * the copy exact. Seeded alongside the Lagos set in db/client.js.
+ */
+
+/** Free-text trip tag → the vibe the Explore chips filter on. */
+const TAG_TO_CATEGORY = {
+  'Beach & chill':       'leisure',
+  'Culture & outdoors':  'nature',
+  'Festival & food':     'food',
+  'Scenery & hiking':    'adventure',
+  'Boat & nightlife':    'nightlife',
+  'Adventure & wildlife':'adventure',
+};
+
+function toExperience(t) {
+  const itinerary = t.itinerary || [];
+  // schedule holds day 1; overrides are keyed by day index, so day 2 → key 1.
+  const [firstDay, ...laterDays] = itinerary;
+  const scheduleOverrides = {};
+  laterDays.forEach((d, i) => { scheduleOverrides[i + 1] = d.activities || []; });
+
+  return {
+    id:          t.id,
+    name:        t.name,
+    tagline:     t.tagline,
+    description: t.description,
+    // The old model quoted one "from" price for the whole trip; the new one
+    // prices per day, so divide back out. Admin can retune either number.
+    pricePerPersonPerDay: Math.round((t.priceFrom || 0) / Math.max(1, t.days || 1)),
+    maxDays:     t.days || 1,
+    category:    TAG_TO_CATEGORY[t.tag] || 'leisure',
+    location:    t.location,
+    imageId:     t.imageId || '',
+    colorFallback: t.colorFallback,
+    included:    t.included   || [],
+    schedule:    (firstDay && firstDay.activities) || [],
+    scheduleOverrides,
+    highlights:  t.highlights || [],
+    groupMin:    t.groupMin,
+    groupMax:    t.groupMax,
+    notes:       t.notes || null,
+    state:       t.state,
+    sortOrder:   (t.sortOrder || 0) + 100,  // sort after the hand-written Lagos set
+  };
+}
+
+/** The six former curated trips, in experience shape. */
+const IMPORTED_TRIP_EXPERIENCES = CURATED_TRIPS_SEED.map(toExperience);
+
+module.exports = { CURATED_TRIPS_SEED, toExperience, IMPORTED_TRIP_EXPERIENCES };

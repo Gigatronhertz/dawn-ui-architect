@@ -216,7 +216,7 @@ export default function Pricing() {
               </ul>
 
               <Link
-                to="/trips"
+                to="/start/explore"
                 className="w-full text-center py-3 rounded-sm border border-border font-jost font-medium text-sm tracking-[0.06em] text-foreground hover:bg-secondary transition-colors"
               >
                 Browse ready-made trips →

@@ -11,10 +11,6 @@
  *   PUT  /admin/experiences/:id          — update
  *   DELETE /admin/experiences/:id        — delete
  *   POST /admin/seed                     — re-seed Lagos defaults (idempotent)
- *   GET  /admin/trips?state=Lagos        — list ready-made trips (incl. drafts)
- *   POST /admin/trips                    — create
- *   PUT  /admin/trips/:id                — update
- *   DELETE /admin/trips/:id              — delete
  *   GET  /admin/attractions/states       — per-state row + unpriced counts
  *   GET  /admin/attractions?state=Lagos  — attractions for one state
  *   POST /admin/attractions              — create
@@ -138,62 +134,6 @@ function slugify(name) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 60);
 }
-
-// ── GET /admin/trips ───────────────────────────────────────────────────────────
-router.get('/trips', requireAdmin, async (req, res) => {
-  try {
-    const { state } = req.query;
-    const trips = await db.curatedTrips.list({ state: state || null, all: true });
-    res.json({ trips });
-  } catch (err) {
-    console.error('[admin] GET trips failed:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── POST /admin/trips ──────────────────────────────────────────────────────────
-router.post('/trips', requireAdmin, async (req, res) => {
-  try {
-    const body = req.body || {};
-    if (!body.name) return res.status(400).json({ error: 'Trip name is required.' });
-
-    const id = body.id || slugify(body.name) || `trip_${crypto.randomBytes(6).toString('hex')}`;
-    if (await db.curatedTrips.get(id)) {
-      return res.status(409).json({ error: `A trip with id "${id}" already exists.` });
-    }
-    const created = await db.curatedTrips.upsert({ ...body, id });
-    res.json({ ok: true, trip: created });
-  } catch (err) {
-    console.error('[admin] POST trip failed:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── PUT /admin/trips/:id ───────────────────────────────────────────────────────
-router.put('/trips/:id', requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!await db.curatedTrips.get(id)) {
-      return res.status(404).json({ error: 'Trip not found.' });
-    }
-    const updated = await db.curatedTrips.upsert({ ...req.body, id });
-    res.json({ ok: true, trip: updated });
-  } catch (err) {
-    console.error('[admin] PUT trip failed:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── DELETE /admin/trips/:id ────────────────────────────────────────────────────
-router.delete('/trips/:id', requireAdmin, async (req, res) => {
-  try {
-    await db.curatedTrips.remove(req.params.id);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('[admin] DELETE trip failed:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // ── Attractions (the price table the AI planner quotes from) ───────────────────
 

@@ -3,8 +3,7 @@
  *
  * One admin key unlocks every section. Sections are tabs, each managing its
  * own list/form state:
- *   Experiences → curated day experiences shown on /start/explore
- *   Trips       → ready-made multi-day trips shown on /trips
+ *   Experiences → curated trips shown on /start/explore (all states)
  *   Attractions → the attraction price table the AI planner quotes from
  */
 import { useCallback, useEffect, useState } from "react";
@@ -14,15 +13,10 @@ import {
   type DaySchedule,
   EMPTY_EXPERIENCE,
 } from "@/lib/experienceTypes";
-import {
-  type CuratedTrip,
-  type TripDay,
-  EMPTY_TRIP,
-} from "@/lib/tripTypes";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-type Tab = "experiences" | "trips" | "attractions";
+type Tab = "experiences" | "attractions";
 
 // ── Admin API helpers ──────────────────────────────────────────────────────────
 
@@ -42,11 +36,10 @@ async function apiFetch<T>(path: string, key: string, init?: RequestInit): Promi
 
 // ── Shared options ─────────────────────────────────────────────────────────────
 
-const CATEGORIES = ['adventure', 'culture', 'nature', 'leisure', 'food'] as const;
+const CATEGORIES = ['adventure', 'culture', 'nature', 'leisure', 'food', 'nightlife'] as const;
 const CAT_EMOJI: Record<string, string> = {
-  adventure: '⛵', culture: '🎭', nature: '🌿', leisure: '🏖️', food: '🍽️',
+  adventure: '⛵', culture: '🎭', nature: '🌿', leisure: '🏖️', food: '🍽️', nightlife: '🎉',
 };
-const STATES = ['Lagos', 'Abuja', 'Rivers', 'Delta', 'Oyo', 'Anambra', 'Kano', 'Enugu'];
 
 /** Every state the attractions table covers — also the trip destination list. */
 const ALL_STATES = [
@@ -173,105 +166,13 @@ function ScheduleEditor({
   );
 }
 
-// ── Itinerary editor (trips) ───────────────────────────────────────────────────
-
-function ItineraryEditor({
-  days,
-  onChange,
-}: {
-  days: TripDay[];
-  onChange: (days: TripDay[]) => void;
-}) {
-  const setDay = (di: number, patch: Partial<TripDay>) =>
-    onChange(days.map((d, i) => i === di ? { ...d, ...patch } : d));
-
-  const setActivity = (di: number, ai: number, field: keyof TripDay["activities"][number], val: string) =>
-    setDay(di, {
-      activities: days[di].activities.map((a, j) => j === ai ? { ...a, [field]: val } : a),
-    });
-
-  return (
-    <div className="space-y-3">
-      {days.map((d, di) => (
-        <div key={di} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50/60">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-500 shrink-0">DAY {d.day}</span>
-            <input
-              value={d.title}
-              onChange={(e) => setDay(di, { title: e.target.value })}
-              placeholder="Day title — e.g. Beach day"
-              className="flex-1 border border-gray-200 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-500/40"
-            />
-            <button
-              type="button"
-              onClick={() => onChange(
-                days.filter((_, j) => j !== di).map((day, j) => ({ ...day, day: j + 1 }))
-              )}
-              className="text-gray-300 hover:text-red-500 text-xs"
-              aria-label={`Remove day ${d.day}`}
-            >
-              ✕
-            </button>
-          </div>
-
-          {d.activities.map((a, ai) => (
-            <div key={ai} className="grid grid-cols-[70px,1fr,1fr,24px] gap-2">
-              <input
-                value={a.time}
-                onChange={(e) => setActivity(di, ai, "time", e.target.value)}
-                placeholder="09:00"
-                className="border border-gray-200 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-500/40"
-              />
-              <input
-                value={a.activity}
-                onChange={(e) => setActivity(di, ai, "activity", e.target.value)}
-                placeholder="Activity"
-                className="border border-gray-200 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-500/40"
-              />
-              <input
-                value={a.details || ""}
-                onChange={(e) => setActivity(di, ai, "details", e.target.value)}
-                placeholder="Details (optional)"
-                className="border border-gray-200 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-500/40"
-              />
-              <button
-                type="button"
-                onClick={() => setDay(di, { activities: d.activities.filter((_, j) => j !== ai) })}
-                className="text-gray-300 hover:text-red-500 text-xs self-center"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={() => setDay(di, { activities: [...d.activities, { time: "", activity: "", details: "" }] })}
-            className="text-xs text-green-700 hover:underline"
-          >
-            + Add activity
-          </button>
-        </div>
-      ))}
-
-      <button
-        type="button"
-        onClick={() => onChange([...days, { day: days.length + 1, title: "", activities: [] }])}
-        className="text-xs font-medium text-green-700 hover:underline"
-      >
-        + Add day
-      </button>
-    </div>
-  );
-}
-
 // ── Experiences section ────────────────────────────────────────────────────────
 
 function ExperiencesSection({ adminKey }: { adminKey: string }) {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(false);
   const [listErr, setListErr] = useState("");
-  const [stateFilter, setStateFilter] = useState("Lagos");
+  const [stateFilter, setStateFilter] = useState("All");
   const [editing, setEditing] = useState<Experience | null>(null);
   const [formBusy, setFormBusy] = useState(false);
   const [formErr, setFormErr] = useState("");
@@ -334,7 +235,7 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
         <div className="flex gap-2 flex-wrap">
-          {["All", ...STATES].map(s => (
+          {["All", ...Array.from(new Set(experiences.map(e => e.state))).sort()].map(s => (
             <button
               key={s}
               onClick={() => setStateFilter(s)}
@@ -414,177 +315,6 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
                 </button>
                 <button
                   onClick={() => handleDelete(exp.id, exp.name)}
-                  className="flex-1 text-center border border-red-100 rounded-lg py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Trips section ──────────────────────────────────────────────────────────────
-
-function TripsSection({ adminKey }: { adminKey: string }) {
-  const [trips, setTrips] = useState<CuratedTrip[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [listErr, setListErr] = useState("");
-  const [editing, setEditing] = useState<CuratedTrip | null>(null);
-  const [isNew, setIsNew] = useState(false);
-  const [formBusy, setFormBusy] = useState(false);
-  const [formErr, setFormErr] = useState("");
-
-  useEffect(() => {
-    setLoading(true);
-    setListErr("");
-    apiFetch<{ trips: CuratedTrip[] }>("/admin/trips", adminKey)
-      .then(d => setTrips(d.trips))
-      .catch(e => setListErr(e.message))
-      .finally(() => setLoading(false));
-  }, [adminKey]);
-
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    try {
-      await apiFetch(`/admin/trips/${id}`, adminKey, { method: "DELETE" });
-      setTrips(prev => prev.filter(t => t.id !== id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Delete failed.");
-    }
-  }
-
-  /** Publish toggle straight from the list — the most common admin action. */
-  async function togglePublish(trip: CuratedTrip) {
-    const next = { ...trip, published: !trip.published };
-    setTrips(prev => prev.map(t => t.id === trip.id ? next : t));
-    try {
-      await apiFetch<{ ok: boolean; trip: CuratedTrip }>(
-        `/admin/trips/${trip.id}`, adminKey,
-        { method: "PUT", body: JSON.stringify(next) }
-      );
-    } catch (err) {
-      setTrips(prev => prev.map(t => t.id === trip.id ? trip : t)); // roll back
-      alert(err instanceof Error ? err.message : "Could not change publish state.");
-    }
-  }
-
-  async function handleSave(trip: CuratedTrip) {
-    setFormBusy(true);
-    setFormErr("");
-    try {
-      const result = await apiFetch<{ ok: boolean; trip: CuratedTrip }>(
-        isNew ? "/admin/trips" : `/admin/trips/${trip.id}`,
-        adminKey,
-        { method: isNew ? "POST" : "PUT", body: JSON.stringify(trip) }
-      );
-      setTrips(prev => isNew
-        ? [...prev, result.trip]
-        : prev.map(t => t.id === trip.id ? result.trip : t));
-      setEditing(null);
-    } catch (err) {
-      setFormErr(err instanceof Error ? err.message : "Save failed.");
-    } finally {
-      setFormBusy(false);
-    }
-  }
-
-  if (editing) {
-    return (
-      <TripForm
-        initial={editing}
-        isNew={isNew}
-        onSave={handleSave}
-        onCancel={() => { setEditing(null); setFormErr(""); }}
-        busy={formBusy}
-        error={formErr}
-      />
-    );
-  }
-
-  const liveCount = trips.filter(t => t.published).length;
-
-  return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <p className="text-sm text-gray-500">
-          {trips.length} trip{trips.length === 1 ? "" : "s"} · {liveCount} live on <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">/trips</code>
-        </p>
-        <button
-          onClick={() => { setIsNew(true); setEditing({ id: "", ...EMPTY_TRIP } as CuratedTrip); }}
-          className="bg-[#2F4A33] text-[#F7F1E7] px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
-        >
-          + New trip
-        </button>
-      </div>
-
-      {loading && <p className="text-sm text-gray-500">Loading…</p>}
-      {listErr && <p className="text-sm text-red-500">{listErr}</p>}
-
-      {!loading && trips.length === 0 && !listErr && (
-        <div className="text-center py-16 text-gray-400">
-          <div className="text-4xl mb-3">🧳</div>
-          <p className="text-sm">No ready-made trips yet. Create one above.</p>
-        </div>
-      )}
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {trips.map(trip => (
-          <div key={trip.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <div className="h-28 relative" style={{ backgroundColor: trip.colorFallback }}>
-              {trip.imageId && (
-                <img
-                  src={`https://images.unsplash.com/photo-${trip.imageId}?auto=format&fit=crop&w=480&h=200&q=70`}
-                  alt={trip.name}
-                  className="w-full h-full object-cover"
-                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-              )}
-              <div className="absolute top-2 left-2">
-                <button
-                  onClick={() => togglePublish(trip)}
-                  title="Click to toggle"
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition ${
-                    trip.published
-                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {trip.published ? "Published" : "Draft"}
-                </button>
-              </div>
-              <div className="absolute bottom-2 right-3 text-2xl">{trip.emoji}</div>
-            </div>
-
-            <div className="p-4">
-              <div className="text-[10px] text-gray-400 font-mono mb-1">{trip.id}</div>
-              <h3 className="font-semibold text-gray-900">{trip.name}</h3>
-              <p className="text-xs text-gray-500 mt-0.5 truncate">{trip.location || trip.state}</p>
-
-              <div className="flex items-center justify-between mt-3">
-                <div>
-                  <span className="font-mono text-sm text-gray-800">
-                    ₦{trip.priceFrom.toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-gray-400">/person</span>
-                </div>
-                <span className="text-[10px] text-gray-400">
-                  {trip.days} day{trip.days === 1 ? "" : "s"} · from {trip.origin}
-                </span>
-              </div>
-
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => { setIsNew(false); setEditing(trip); }}
-                  className="flex-1 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(trip.id, trip.name)}
                   className="flex-1 text-center border border-red-100 rounded-lg py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition"
                 >
                   Delete
@@ -993,7 +723,6 @@ export default function Admin() {
 
   const TABS: { id: Tab; label: string; hint: string }[] = [
     { id: "experiences", label: "Experiences", hint: "Day experiences on /start/explore" },
-    { id: "trips",       label: "Trips",       hint: "Ready-made trips on /trips" },
     { id: "attractions", label: "Attractions", hint: "Prices the AI planner quotes" },
   ];
 
@@ -1026,229 +755,11 @@ export default function Admin() {
       </header>
 
       {tab === "experiences" && <ExperiencesSection adminKey={adminKey} />}
-      {tab === "trips"       && <TripsSection       adminKey={adminKey} />}
       {tab === "attractions" && <AttractionsSection adminKey={adminKey} />}
     </main>
   );
 }
 
-// ── Trip form ──────────────────────────────────────────────────────────────────
-
-function TripForm({
-  initial,
-  isNew,
-  onSave,
-  onCancel,
-  busy,
-  error,
-}: {
-  initial: CuratedTrip;
-  isNew: boolean;
-  onSave: (trip: CuratedTrip) => void;
-  onCancel: () => void;
-  busy: boolean;
-  error: string;
-}) {
-  const [form, setForm] = useState<CuratedTrip>(initial);
-
-  const set = <K extends keyof CuratedTrip>(key: K, val: CuratedTrip[K]) =>
-    setForm(f => ({ ...f, [key]: val }));
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.name.trim()) return;
-    onSave(form);
-  }
-
-  return (
-    <div className="pb-24">
-      <div className="sticky top-[97px] z-[9] bg-gray-50/95 backdrop-blur border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-800">← Back</button>
-          <span className="text-sm font-semibold text-gray-900">
-            {isNew ? "New trip" : `Edit: ${initial.name}`}
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          {error && <span className="text-xs text-red-500">{error}</span>}
-          <button
-            onClick={handleSubmit}
-            disabled={busy || !form.name.trim()}
-            className="bg-[#2F4A33] text-[#F7F1E7] px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
-          >
-            {busy ? "Saving…" : "Save trip"}
-          </button>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-3xl px-6 pt-8 space-y-6">
-        {/* ── Basic info ── */}
-        <div className={section}>
-          <h2 className="font-semibold text-gray-900">Basic info</h2>
-
-          <div>
-            <label className={labelCls}>Name</label>
-            <input value={form.name} onChange={e => set("name", e.target.value)} className={inp} placeholder="Lekki Weekend Escape" required />
-          </div>
-
-          {!isNew && (
-            <div>
-              <label className={labelCls}>ID <span className="text-gray-400 normal-case font-normal">(fixed after creation)</span></label>
-              <input value={form.id} disabled className={`${inp} bg-gray-50 text-gray-400 font-mono text-xs`} />
-            </div>
-          )}
-          {isNew && (
-            <p className="text-xs text-gray-400 -mt-2">
-              The ID is generated from the name when you save (e.g. <code>lekki-weekend-escape</code>).
-            </p>
-          )}
-
-          <div>
-            <label className={labelCls}>Tagline <span className="text-gray-400 normal-case font-normal">(1 short sentence)</span></label>
-            <input value={form.tagline} onChange={e => set("tagline", e.target.value)} className={inp} placeholder="Two days of beach, bonfires and island air." />
-          </div>
-          <div>
-            <label className={labelCls}>Description</label>
-            <textarea rows={4} value={form.description} onChange={e => set("description", e.target.value)} className={inp} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Departs from</label>
-              <select value={form.origin} onChange={e => set("origin", e.target.value)} className={inp}>
-                {ALL_STATES.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Destination state</label>
-              <select value={form.state} onChange={e => set("state", e.target.value)} className={inp}>
-                {ALL_STATES.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls}>Location line <span className="text-gray-400 normal-case font-normal">(shown under the trip name)</span></label>
-            <input value={form.location} onChange={e => set("location", e.target.value)} className={inp} placeholder="Cross River · Calabar" />
-          </div>
-
-          <div>
-            <label className={labelCls}>Tag <span className="text-gray-400 normal-case font-normal">(chip on the card)</span></label>
-            <input value={form.tag} onChange={e => set("tag", e.target.value)} className={inp} placeholder="Beach & chill" />
-          </div>
-        </div>
-
-        {/* ── Pricing & group ── */}
-        <div className={section}>
-          <h2 className="font-semibold text-gray-900">Pricing & group</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>"From" price per person (₦)</label>
-              <input type="number" min={0} value={form.priceFrom} onChange={e => set("priceFrom", Number(e.target.value))} className={inp} />
-            </div>
-            <div>
-              <label className={labelCls}>Days</label>
-              <input type="number" min={1} max={30} value={form.days} onChange={e => set("days", Number(e.target.value))} className={inp} />
-            </div>
-            <div>
-              <label className={labelCls}>Min group size</label>
-              <input type="number" min={1} value={form.groupMin} onChange={e => set("groupMin", Number(e.target.value))} className={inp} />
-            </div>
-            <div>
-              <label className={labelCls}>Max group size</label>
-              <input type="number" min={1} value={form.groupMax} onChange={e => set("groupMax", Number(e.target.value))} className={inp} />
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>Notes <span className="text-gray-400 normal-case font-normal">(caveat shown on the detail view)</span></label>
-            <input value={form.notes || ""} onChange={e => set("notes", e.target.value || null)} className={inp} placeholder="Boat charter is weather-dependent June–September." />
-          </div>
-        </div>
-
-        {/* ── Media ── */}
-        <div className={section}>
-          <h2 className="font-semibold text-gray-900">Media</h2>
-          <div className="grid grid-cols-[100px,1fr] gap-4">
-            <div>
-              <label className={labelCls}>Emoji</label>
-              <input value={form.emoji} onChange={e => set("emoji", e.target.value)} className={`${inp} text-center text-lg`} maxLength={4} />
-            </div>
-            <div>
-              <label className={labelCls}>Unsplash photo ID <span className="text-gray-400 normal-case font-normal">(images.unsplash.com/photo-<strong>THIS-PART</strong>)</span></label>
-              <input value={form.imageId} onChange={e => set("imageId", e.target.value)} className={inp} placeholder="1773146916270-e811bff4e923" />
-            </div>
-          </div>
-          {form.imageId && (
-            <img
-              src={`https://images.unsplash.com/photo-${form.imageId}?auto=format&fit=crop&w=480&h=200&q=70`}
-              alt="preview"
-              className="h-28 w-full object-cover rounded"
-              onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-          )}
-          <div>
-            <label className={labelCls}>Colour fallback <span className="text-gray-400 normal-case font-normal">(accent bar + image placeholder)</span></label>
-            <div className="flex items-center gap-3">
-              <input type="color" value={form.colorFallback} onChange={e => set("colorFallback", e.target.value)} className="h-10 w-14 border border-gray-200 rounded cursor-pointer" />
-              <input value={form.colorFallback} onChange={e => set("colorFallback", e.target.value)} className={`${inp} w-32`} />
-            </div>
-          </div>
-        </div>
-
-        {/* ── Content ── */}
-        <div className={section}>
-          <h2 className="font-semibold text-gray-900">Content</h2>
-          <ListEditor label="What's included" items={form.included} onChange={v => set("included", v)} placeholder="Return charter bus from Lagos" />
-          <ListEditor label="Highlights" items={form.highlights} onChange={v => set("highlights", v)} placeholder="Elegushi and Landmark on the same weekend" />
-        </div>
-
-        {/* ── Itinerary ── */}
-        <div className={section}>
-          <h2 className="font-semibold text-gray-900">Day-by-day itinerary</h2>
-          <p className="text-xs text-gray-400">Shown on the trip detail view. Leave empty to hide that section.</p>
-          <ItineraryEditor days={form.itinerary} onChange={v => set("itinerary", v)} />
-        </div>
-
-        {/* ── Settings ── */}
-        <div className={section}>
-          <h2 className="font-semibold text-gray-900">Settings</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Sort order <span className="text-gray-400 normal-case font-normal">(lower = first)</span></label>
-              <input type="number" min={0} value={form.sortOrder} onChange={e => set("sortOrder", Number(e.target.value))} className={inp} />
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.published}
-                  onChange={e => set("published", e.target.checked)}
-                  className="w-4 h-4 accent-green-700"
-                />
-                <span className="text-sm font-medium text-gray-700">Published — live on /trips</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 pb-8">
-          <button onClick={onCancel} className="px-5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={busy || !form.name.trim()}
-            className="bg-[#2F4A33] text-[#F7F1E7] px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
-          >
-            {busy ? "Saving…" : "Save trip"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Experience form ────────────────────────────────────────────────────────────
 
 function ExperienceForm({
   initial,
@@ -1336,7 +847,7 @@ function ExperienceForm({
             <div>
               <label className={labelCls}>State</label>
               <select value={form.state} onChange={e => set("state", e.target.value)} className={inp}>
-                {STATES.map(s => <option key={s}>{s}</option>)}
+                {ALL_STATES.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
             <div>

@@ -50,7 +50,17 @@
       "PowerShell(git check-ignore *)",
       "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 10)",
       "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./package.json'\\).scripts,null,2\\)\\)\")",
-      "Bash(node --check backend/routes/api.js)"
+      "Bash(node --check backend/routes/api.js)",
+      "Bash(sed -i '14,17d' backend/routes/adminRoutes.js)",
+      "Bash(node --check backend/routes/adminRoutes.js)",
+      "Bash(sed -i '/^import Trips from \".\\\\/pages\\\\/Trips.tsx\";$/d' src/App.tsx)",
+      "Bash(sed -i 's|to=\"/trips\"|to=\"/start/explore\"|' src/pages/Pricing.tsx)",
+      "Bash(rm -f src/pages/Trips.tsx src/lib/tripTypes.ts)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 20)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 15)",
+      "Bash(git fetch *)",
+      "Bash(git rev-list *)",
+      "Bash(git commit *)"
     ]
   }
 }

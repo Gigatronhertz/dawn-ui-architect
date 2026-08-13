@@ -15,7 +15,7 @@ export interface Experience {
   description: string;
   pricePerPersonPerDay: number;
   maxDays: number;
-  category: 'adventure' | 'culture' | 'nature' | 'leisure' | 'food';
+  category: 'adventure' | 'culture' | 'nature' | 'leisure' | 'food' | 'nightlife';
   location: string;
   imageId: string;
   colorFallback: string;
