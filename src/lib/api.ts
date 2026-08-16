@@ -249,6 +249,21 @@ export const api = {
       `/api/experiences/${encodeURIComponent(id)}/add-to-plan`, opts, bearer(token)
     ),
 
+  /** Venues for one city, for the build-your-own planner. No auth needed. */
+  getAttractions: (city: string) =>
+    get<{ city: string; state: string; attractions: Attraction[] }>(
+      `/api/attractions?city=${encodeURIComponent(city)}`
+    ),
+
+  /** Save a day out the squad built themselves. Returns the shareable trip id. */
+  saveCustomTrip: (
+    body: { city: string; squadSize: number; days: { activities: Activity[] }[] },
+    token: string,
+  ) =>
+    post<{ ok: boolean; tripId: string; perPerson: number; total: number }>(
+      '/api/custom-trip', body, bearer(token)
+    ),
+
   /** The organiser's view of one trip — who's in, who's paid, how to reach them. */
   getSquad: (tripId: string, token: string) =>
     get<SquadResponse>(`/api/auth/plans/${encodeURIComponent(tripId)}/squad`, bearer(token)),

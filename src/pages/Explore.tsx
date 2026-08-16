@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { KarijeLogo } from "@/components/Nav";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { tripImageUrl } from "@/lib/tripImage";
+import { toVenue, VENUE_VIBES, VIBE_EMOJI, type VenueItem } from "@/lib/attractions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ExploreStep = "browse" | "detail" | "share";
@@ -167,6 +168,273 @@ function RangeSlider({
   );
 }
 
+// ── Build-your-own planner ────────────────────────────────────────────────────
+
+type BuiltStop = { id: string; time: string; title: string; cost: number; emoji: string };
+
+/**
+ * The squad plans their own day out from the venue database.
+ *
+ * Deliberately starts empty: they search and add, and the cost follows what
+ * they picked. Nothing is generated for them — this is the "you're the planner"
+ * half of Explore.
+ */
+function BuildYourOwn({ city }: { city: string }) {
+  const { user, getIdToken } = useAuth();
+  const navigate = useNavigate();
+
+  const [venues, setVenues]   = useState<VenueItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState("");
+  const [vibe, setVibe]       = useState<string>("All");
+  const [squadSize, setSquad] = useState(6);
+  const [dayCount, setDayCount] = useState(1);
+  const [stops, setStops]     = useState<Record<number, BuiltStop[]>>({ 0: [] });
+  const [saving, setSaving]   = useState(false);
+  const [err, setErr]         = useState("");
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    setStops({ 0: [] });
+    api.getAttractions(city)
+      .then(d => { if (live) setVenues((d.attractions ?? []).map(toVenue)); })
+      .catch(() => { if (live) setVenues([]); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [city]);
+
+  const matches = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return venues.filter(v =>
+      (vibe === "All" || v.vibe === vibe) &&
+      (!q || v.name.toLowerCase().includes(q) || v.vibe.toLowerCase().includes(q))
+    );
+  }, [venues, search, vibe]);
+
+  const days = Array.from({ length: dayCount }, (_, i) => i);
+  const perPerson = days.reduce(
+    (sum, d) => sum + (stops[d] ?? []).reduce((s, x) => s + x.cost, 0), 0
+  );
+  const totalStops = days.reduce((n, d) => n + (stops[d] ?? []).length, 0);
+
+  function addStop(day: number, v: VenueItem) {
+    setStops(prev => ({
+      ...prev,
+      [day]: [...(prev[day] ?? []), { id: `${v.id}-${Date.now()}`, time: "", title: v.name, cost: v.cost, emoji: v.emoji }],
+    }));
+  }
+  function removeStop(day: number, id: string) {
+    setStops(prev => ({ ...prev, [day]: (prev[day] ?? []).filter(s => s.id !== id) }));
+  }
+  function setStopTime(day: number, id: string, time: string) {
+    setStops(prev => ({
+      ...prev,
+      [day]: (prev[day] ?? []).map(s => s.id === id ? { ...s, time } : s),
+    }));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setErr("");
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("Please sign in first.");
+      const res = await api.saveCustomTrip({
+        city,
+        squadSize,
+        days: days.map(d => ({
+          activities: (stops[d] ?? []).map(s => ({
+            time: s.time || "—:—",
+            title: `${s.emoji} ${s.title}`,
+            cost_per_person: s.cost,
+          })),
+        })),
+      }, token);
+      navigate(`/plan/${res.tripId}`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not save your trip.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="grid lg:grid-cols-[1fr,340px] gap-8 items-start">
+      {/* ── Left: the days being built ── */}
+      <div className="space-y-5 min-w-0">
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="text-xs font-jost font-light text-muted-foreground">Days</label>
+          <div className="flex">
+            {[1, 2, 3, 4, 5].map(n => (
+              <button
+                key={n}
+                onClick={() => setDayCount(n)}
+                className={`w-9 h-9 text-sm font-jost border transition-colors ${
+                  dayCount === n
+                    ? "border-forest bg-forest text-parchment font-medium"
+                    : "border-border text-muted-foreground hover:border-forest"
+                } ${n > 1 ? "-ml-px" : ""}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          <label className="text-xs font-jost font-light text-muted-foreground ml-2">Squad</label>
+          <input
+            type="number" min={1} max={60} value={squadSize}
+            onChange={e => setSquad(Math.max(1, Number(e.target.value) || 1))}
+            className="w-16 border border-border bg-background px-2 py-1.5 text-sm font-jost text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+
+        {days.map(d => (
+          <div key={d} className="border border-border">
+            <div className="px-4 py-2.5 border-b border-border bg-secondary/30 flex items-center justify-between">
+              <span className="font-jost font-medium text-sm">Day {d + 1}</span>
+              <span className="text-[11px] font-jost font-light text-muted-foreground">
+                {(stops[d] ?? []).length} stop{(stops[d] ?? []).length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            {(stops[d] ?? []).length === 0 ? (
+              <p className="px-4 py-6 text-sm font-jost font-light text-muted-foreground text-center">
+                Nothing here yet — add somewhere from the list.
+              </p>
+            ) : (
+              <ul>
+                {(stops[d] ?? []).map(s => (
+                  <li key={s.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/60 last:border-0">
+                    <input
+                      type="text" value={s.time}
+                      onChange={e => setStopTime(d, s.id, e.target.value)}
+                      placeholder="09:00"
+                      className="w-16 shrink-0 border border-border bg-background px-2 py-1 text-xs font-jost text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/50"
+                    />
+                    <span className="text-lg shrink-0 leading-none">{s.emoji}</span>
+                    <span className="flex-1 min-w-0 text-sm font-jost truncate">{s.title}</span>
+                    <span className="text-xs font-jost tabular-nums text-muted-foreground shrink-0">
+                      {s.cost > 0 ? formatNGN(s.cost) : "Free"}
+                    </span>
+                    <button
+                      onClick={() => removeStop(d, s.id)}
+                      aria-label={`Remove ${s.title}`}
+                      className="text-muted-foreground hover:text-red-500 text-xs shrink-0"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+
+        {/* Total + save */}
+        <div className="border border-border p-5 space-y-3">
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Per person</div>
+              <div className="font-marcellus text-3xl text-foreground">{formatNGN(perPerson)}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Squad total</div>
+              <div className="font-marcellus text-xl text-foreground">{formatNGN(perPerson * squadSize)}</div>
+            </div>
+          </div>
+
+          {user ? (
+            <button
+              onClick={handleSave}
+              disabled={saving || totalStops === 0}
+              className="w-full bg-forest text-parchment py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-40"
+            >
+              {saving ? "Saving…" : totalStops === 0 ? "Add a stop to continue" : "Create shareable link →"}
+            </button>
+          ) : (
+            <Link
+              to="/login?redirect=/start/explore"
+              className="w-full block text-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors"
+            >
+              Sign in to save and share this
+            </Link>
+          )}
+
+          {err && <p className="text-xs font-jost text-red-500">{err}</p>}
+          <p className="text-[10px] font-jost font-light text-muted-foreground leading-relaxed">
+            Entry fees only — food, transport between stops and anything you book yourself aren't
+            included. You can edit all of this before sharing.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Right: the venue library ── */}
+      <div className="lg:sticky lg:top-6 border border-border p-4 space-y-3">
+        <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+          Places in {city}
+          {venues.length > 0 && <span className="text-primary"> · {venues.length}</span>}
+        </div>
+
+        <input
+          type="text" value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder={`Search ${city}…`}
+          className="w-full border border-border bg-background px-3 py-2 text-sm font-jost focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/60"
+        />
+
+        <div className="flex gap-1.5 flex-wrap">
+          {VENUE_VIBES.map(v => (
+            <button
+              key={v}
+              onClick={() => setVibe(v)}
+              className={`text-[10px] font-jost px-2 py-1 border transition-colors ${
+                vibe === v
+                  ? "border-forest bg-forest/5 text-forest font-medium"
+                  : "border-border text-muted-foreground hover:border-forest"
+              }`}
+            >
+              {VIBE_EMOJI[v]} {v}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <p className="text-xs font-jost font-light text-muted-foreground py-6 text-center">Loading places…</p>
+        ) : matches.length === 0 ? (
+          <p className="text-xs font-jost font-light text-muted-foreground py-6 text-center">
+            {venues.length === 0
+              ? `No places listed for ${city} yet.`
+              : `Nothing matching that in ${city}.`}
+          </p>
+        ) : (
+          <ul className="max-h-[26rem] overflow-y-auto -mx-1 px-1">
+            {matches.map(v => (
+              <li key={v.id} className="flex items-center gap-2 py-2 border-b border-border/50 last:border-0">
+                <span className="text-base shrink-0 leading-none">{v.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-jost font-medium truncate">{v.name}</div>
+                  <div className="text-[10px] font-jost font-light text-muted-foreground truncate">
+                    <span className="text-primary/70">{v.vibe}</span> · {v.feeNote}
+                  </div>
+                </div>
+                <select
+                  value=""
+                  onChange={e => { if (e.target.value !== "") addStop(Number(e.target.value), v); }}
+                  aria-label={`Add ${v.name} to a day`}
+                  className="text-[10px] font-jost border border-border bg-background px-1.5 py-1 shrink-0 cursor-pointer hover:border-forest focus:outline-none focus:ring-1 focus:ring-primary/30"
+                >
+                  <option value="">+ Add</option>
+                  {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
+                </select>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 const ALL_EXPLORE_CITIES = [
   "Lagos", "Abuja", "Port Harcourt", "Ibadan", "Enugu",
@@ -186,6 +454,8 @@ export default function Explore() {
   const [experiences, setExperiences] = useState<Experience[]>(LAGOS_EXPERIENCES);
   const [loading, setLoading] = useState(true);
   const [vibe, setVibe] = useState("all");
+  // "ours" = trips Karije picked and runs. "own" = build your own day out.
+  const [tab, setTab] = useState<"ours" | "own">("ours");
 
   useEffect(() => {
     let live = true;
@@ -288,13 +558,38 @@ export default function Explore() {
               </div>
             </div>
 
+            {/* Two ways to end up with a trip: take ours, or build your own */}
+            <div className="flex gap-0 mb-6">
+              <button
+                onClick={() => setTab("ours")}
+                className={`px-5 py-2.5 text-sm font-jost border transition-colors ${
+                  tab === "ours"
+                    ? "border-forest bg-forest text-parchment font-medium"
+                    : "border-border text-muted-foreground hover:border-forest hover:text-forest"
+                }`}
+              >
+                Trips we run
+              </button>
+              <button
+                onClick={() => setTab("own")}
+                className={`px-5 py-2.5 text-sm font-jost border -ml-px transition-colors ${
+                  tab === "own"
+                    ? "border-forest bg-forest text-parchment font-medium"
+                    : "border-border text-muted-foreground hover:border-forest hover:text-forest"
+                }`}
+              >
+                Build your own
+              </button>
+            </div>
+
             <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-xl mb-6">
-              Trips we've picked, priced and will run for your squad. Pick one, choose your
-              days and squad size, and we handle the rest.
+              {tab === "ours"
+                ? "Trips we've picked, priced and will run for your squad. Pick one, choose your days and squad size, and we handle the rest."
+                : `Plan your own day out in ${city}. Add the places you want, we'll tell you what they cost, then share it with your squad to collect everyone's share.`}
             </p>
 
             {/* Vibe filter — chips only appear for vibes this city actually has */}
-            {availableVibes.length > 1 && (
+            {tab === "ours" && availableVibes.length > 1 && (
               <div className="flex gap-2 flex-wrap">
                 {availableVibes.map(({ value, emoji, label }) => (
                   <button
@@ -314,7 +609,9 @@ export default function Explore() {
             )}
           </div>
 
-          {loading && (
+          {tab === "own" && <BuildYourOwn city={city} />}
+
+          {tab === "ours" && loading && (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="border border-border animate-pulse">
@@ -328,7 +625,7 @@ export default function Explore() {
             </div>
           )}
 
-          {!loading && shown.length > 0 && (
+          {tab === "ours" && !loading && shown.length > 0 && (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               {shown.map((exp) => (
                 <ExperienceCard
@@ -341,7 +638,7 @@ export default function Explore() {
           )}
 
           {/* Nothing for this city yet, or nothing under the chosen vibe */}
-          {!loading && shown.length === 0 && (
+          {tab === "ours" && !loading && shown.length === 0 && (
             <div className="border border-border p-10 text-center">
               <div className="text-4xl mb-4">🗺️</div>
               <h2 className="font-marcellus text-2xl text-foreground mb-3">

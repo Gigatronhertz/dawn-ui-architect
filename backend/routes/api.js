@@ -478,8 +478,9 @@ router.post('/agency-leads', async (req, res) => {
 // Returns the public-safe subset of a confirmed plan for the squad share page.
 // Only works after the organiser confirms (status = awaiting_group).
 // Statuses whose plans are shareable. `awaiting_group` comes from the AI
-// planner once the organiser confirms; `curated` from saving a Karije trip.
-const SHAREABLE = ['awaiting_group', 'curated'];
+// planner once the organiser confirms; `curated` from saving a Karije trip;
+// `custom` from a squad building their own day out.
+const SHAREABLE = ['awaiting_group', 'curated', 'custom'];
 
 router.get('/public/plan/:tripId', async (req, res) => {
   const trip = await db.trips.get(req.params.tripId);
@@ -835,6 +836,84 @@ router.get('/experiences', async (req, res) => {
     res.json({ experiences });
   } catch (err) {
     console.error('[api/experiences]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/attractions ────────────────────────────────────────────────────
+// Public venue list for one city, used by the build-your-own planner. Takes a
+// city and resolves it to the state the attractions table is keyed by.
+router.get('/attractions', async (req, res) => {
+  try {
+    const { city = 'Lagos' } = req.query;
+    const { cityToState } = require('../services/attractions');
+    const stateName = cityToState(city) || city;
+    const attractions = await db.attractions.byState(stateName).catch(() => []);
+    res.json({ city, state: stateName, attractions });
+  } catch (err) {
+    console.error('[api/attractions]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/custom-trip ───────────────────────────────────────────────────
+// Saves a day out the squad built themselves. Same shape as a saved curated
+// trip, so the shared link, joining and chasing all work without special cases
+// — the difference is that Karije didn't pick the stops and isn't running it.
+router.post('/custom-trip', requireAuth, async (req, res) => {
+  try {
+    const { city, squadSize, days } = req.body || {};
+    if (!city)                 return res.status(400).json({ error: 'Pick a city first.' });
+    if (!Array.isArray(days) || days.length === 0) {
+      return res.status(400).json({ error: 'Add at least one stop before saving.' });
+    }
+
+    const squad = Math.max(1, Number(squadSize) || 1);
+
+    // Rebuild the plan from the request rather than trusting the numbers in it —
+    // costs come from the activities themselves, so a tampered total can't stick.
+    const planDays = days.map((d, i) => ({
+      day: i + 1,
+      activities: (Array.isArray(d.activities) ? d.activities : []).map(a => ({
+        time:            String(a.time || '').slice(0, 10),
+        title:           String(a.title || '').slice(0, 140),
+        cost_per_person: Math.max(0, Math.round(Number(a.cost_per_person) || 0)),
+      })),
+    }));
+
+    const perPerson = planDays.reduce(
+      (sum, d) => sum + d.activities.reduce((s, a) => s + a.cost_per_person, 0), 0
+    );
+    const total = perPerson * squad;
+
+    const tripId = uuid();
+    await db.trips.insert({ id: tripId, organiser_phone: `web_${tripId}` });
+    await db.raw(
+      `UPDATE trips SET user_id=?, origin=?, destination=?, days=?, squad_size=?,
+         status=?, plan=?, intake_json=? WHERE id=?`,
+      [
+        req.user.uid, city, city, planDays.length, squad,
+        'custom',
+        JSON.stringify({
+          hotel: null,
+          transport: null,
+          days: planDays,
+          date_options: [],
+          cost_breakdown: {
+            transport_total: 0, lodging_total: 0, food_total: 0,
+            activities_total: total, buffer: 0, total, per_person: perPerson,
+          },
+          highlights: [],
+          offline_note: '',
+        }),
+        JSON.stringify({ city, squadSize: squad, dayCount: planDays.length }),
+        tripId,
+      ]
+    );
+
+    res.json({ ok: true, tripId, perPerson, total });
+  } catch (err) {
+    console.error('[api/custom-trip]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
