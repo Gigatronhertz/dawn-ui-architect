@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { v4: uuid } = require('uuid');
 const Groq = require('groq-sdk');
 const db = require('../db/client');
-const { generateTripPlan } = require('../services/planGenerator');
+const { generateTripPlan, buildSkeletonPlan } = require('../services/planGenerator');
 const { sendText } = require('../services/whatsapp');
 const M = require('../bot/messages');
 const GT   = require('../services/googleTravel');
@@ -59,11 +59,18 @@ router.post('/plan', async (req, res) => {
   ;(async () => {
     try {
       const intake = await db.trips.get(tripId);
-      let { plan, scraped } = await generateTripPlan({
+      const withMode = {
         ...intake,
         transport: transport || 'Charter bus',
         vibe: vibe || null,
-      });
+      };
+
+      // The squad is the planner. We fetch what things cost either way, but the
+      // days come back empty unless they explicitly asked for a draft — the
+      // itinerary is theirs to write, not ours to hand over.
+      let { plan, scraped } = req.body.draftItinerary === true
+        ? await generateTripPlan(withMode)
+        : await buildSkeletonPlan(withMode);
 
       // Round trip: double transport cost, recalculate totals
       if (roundTrip && plan?.cost_breakdown && plan?.transport) {
@@ -837,6 +844,31 @@ router.get('/experiences', async (req, res) => {
   } catch (err) {
     console.error('[api/experiences]', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/plan/:tripId/draft-days ───────────────────────────────────────
+// "Give me a starting point." Fills the day schedule from the AI, leaving the
+// squad's transport and hotel choices untouched — they only asked for ideas
+// about what to do, not to have their bookings overwritten.
+router.post('/plan/:tripId/draft-days', async (req, res) => {
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(503).json({ error: 'Suggestions are not available right now.' });
+  }
+  try {
+    const trip = await db.trips.get(req.params.tripId);
+    if (!trip) return res.status(404).json({ error: 'Trip not found.' });
+
+    const { plan: drafted } = await generateTripPlan({
+      ...trip,
+      transport: req.body?.transport || 'Charter bus',
+      vibe:      req.body?.vibe || null,
+    });
+
+    res.json({ ok: true, days: drafted.days || [], highlights: drafted.highlights || [] });
+  } catch (err) {
+    console.error('[api/draft-days]', err.message);
+    res.status(500).json({ error: 'Could not draft a plan. Try again.' });
   }
 });
 

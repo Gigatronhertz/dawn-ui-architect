@@ -249,6 +249,12 @@ export const api = {
       `/api/experiences/${encodeURIComponent(id)}/add-to-plan`, opts, bearer(token)
     ),
 
+  /** Ask the AI to fill the day schedule. Leaves transport and hotel alone. */
+  draftDays: (tripId: string, opts: { transport?: string; vibe?: string } = {}) =>
+    post<{ ok: boolean; days: PlanDay[]; highlights: string[] }>(
+      `/api/plan/${encodeURIComponent(tripId)}/draft-days`, opts
+    ),
+
   /** Venues for one city, for the build-your-own planner. No auth needed. */
   getAttractions: (city: string) =>
     get<{ city: string; state: string; attractions: Attraction[] }>(

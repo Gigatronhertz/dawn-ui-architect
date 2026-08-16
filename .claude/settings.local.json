@@ -74,7 +74,12 @@
       "Bash(awk -F= '/^[A-Z_]+=/ { key=$1; val=substr\\($0, index\\($0,\"=\"\\)+1\\); gsub\\(/^[ \\\\t]+|[ \\\\t\\\\r]+$/, \"\", val\\); printf \"%-28s %s\\\\n\", key, \\(length\\(val\\)>0 ? \"SET\" : \"empty\"\\) }' backend/.env)",
       "Artifact",
       "Bash(node --check backend/db/client.js)",
-      "PowerShell(npx vite build 2>&1 | Select-Object -Last 3)"
+      "PowerShell(npx vite build 2>&1 | Select-Object -Last 3)",
+      "Bash(awk -F= '/^GROQ_API_KEY=|^GOOGLE_API_KEY=/ { v=substr\\($0,index\\($0,\"=\"\\)+1\\); gsub\\(/[ \\\\t\\\\r]/,\"\",v\\); printf \"%-16s %s\\\\n\", $1, \\(length\\(v\\)>0 ? \"SET \\(\"length\\(v\\)\" chars\\)\" : \"empty\"\\) }' backend/.env)",
+      "Bash(node -e \"console.log\\('GROQ_API_KEY:', process.env.GROQ_API_KEY ? 'SET' : 'unset'\\)\")",
+      "Bash(sed -i 's/^module.exports = { generateTripPlan, formatPlanSummary };$/module.exports = { generateTripPlan, buildSkeletonPlan, formatPlanSummary };/' backend/services/planGenerator.js)",
+      "Bash(node --check backend/services/planGenerator.js)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

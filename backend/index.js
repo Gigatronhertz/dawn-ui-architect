@@ -1,4 +1,9 @@
 require('./utils/logger'); // must be first — patches console.* before any other require
+// Load the backend's own .env explicitly. Plain config() reads from the working
+// directory, so starting the server from the repo root silently skipped
+// backend/.env entirely — which is why API keys appeared set but never reached
+// the process. Values already in the environment still win.
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 require('dotenv').config();
 const express = require('express');
 const db = require('./db/client');

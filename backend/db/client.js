@@ -10,9 +10,21 @@ if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 // Local dev: file:./data/mysquadgo.db
 // Production (Turso): set DATABASE_URL + DATABASE_AUTH_TOKEN env vars
-const dbUrl = process.env.DATABASE_URL || `file:${path.join(dataDir, 'mysquadgo.db')}`;
+//
+// The remote URL is only honoured in production, or when someone opts in with
+// USE_REMOTE_DB=1. backend/.env carries the live Turso credentials, so without
+// this guard simply running the server locally would read and write production
+// data — seeding it, taking test bookings against it, and deleting from it.
+const wantsRemote = process.env.NODE_ENV === 'production' || process.env.USE_REMOTE_DB === '1';
+const dbUrl = (wantsRemote && process.env.DATABASE_URL)
+  ? process.env.DATABASE_URL
+  : `file:${path.join(dataDir, 'mysquadgo.db')}`;
+
+if (!wantsRemote && process.env.DATABASE_URL) {
+  console.log('[db] Using the local file database. Set USE_REMOTE_DB=1 to talk to Turso.');
+}
 const client = createClient(
-  process.env.DATABASE_AUTH_TOKEN
+  (wantsRemote && process.env.DATABASE_AUTH_TOKEN)
     ? { url: dbUrl, authToken: process.env.DATABASE_AUTH_TOKEN }
     : { url: dbUrl }
 );

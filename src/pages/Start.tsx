@@ -363,11 +363,12 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
 }
 
 /* ─── step 2: generating ────────────────────────────────────────────────────── */
+// What actually happens now: we price the journey, the squad plans the days.
 const PHASES = [
-  { title: "Analyzing your route…",        sub: "Mapping distances and transport options" },
-  { title: "Fetching live prices…",         sub: "Checking GIGM buses, flights & hotels" },
-  { title: "Building your itinerary…",      sub: "Creating a day-by-day plan for your squad" },
-  { title: "Calculating squad costs…",      sub: "Working out the per-person breakdown" },
+  { title: "Analyzing your route…",   sub: "Mapping distances and transport options" },
+  { title: "Fetching live prices…",   sub: "Checking GIGM buses, flights & hotels" },
+  { title: "Finding places to go…",   sub: `Pulling verified venues and entry fees` },
+  { title: "Calculating squad costs…", sub: "Working out the per-person breakdown" },
 ];
 
 /** Converts a URL-safe base64 VAPID key to the Uint8Array the browser expects. */
@@ -620,6 +621,8 @@ function PlanStep({
   // Day index whose "see all venues" browser is open, or null when closed.
   const [browseDay, setBrowseDay] = useState<number | null>(null);
   const [custom, setCustom] = useState({ time: "", title: "", cost: "" });
+  const [drafting, setDrafting] = useState(false);
+  const [draftErr, setDraftErr] = useState("");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
@@ -711,6 +714,36 @@ function PlanStep({
     );
     setCustom({ time: "", title: "", cost: "" });
     setDirty(true);
+  };
+
+  /** True while every day is still empty — the squad hasn't planned anything yet. */
+  const isEmptyPlan = days.every(d => d.activities.length === 0);
+
+  /**
+   * Ask for a first draft of the days. Only touches the itinerary — whatever
+   * bus, flight or hotel they already picked is left exactly as it was.
+   */
+  const handleDraft = async () => {
+    if (!tripId) return;
+    setDrafting(true);
+    setDraftErr("");
+    try {
+      const res = await api.draftDays(tripId, {
+        transport: intake.transport || undefined,
+        vibe:      intake.vibe || undefined,
+      });
+      if (res.days?.length) {
+        setDays(res.days);
+        setDirty(true);
+        setOpenDay(0);
+      } else {
+        setDraftErr("Couldn't come up with anything — try adding places yourself.");
+      }
+    } catch (e) {
+      setDraftErr(e instanceof Error ? e.message : "Couldn't draft a plan right now.");
+    } finally {
+      setDrafting(false);
+    }
   };
 
   /** Venue list filtered by the active vibe chip and search box. */
@@ -959,10 +992,30 @@ function PlanStep({
         <div className="flex items-center justify-between mb-4">
           <div>
             <SectionLabel>Itinerary</SectionLabel>
-            <h2 className="font-display text-lg font-semibold">Edit before sending to the squad.</h2>
+            <h2 className="font-display text-lg font-semibold">
+              {isEmptyPlan ? "Build your days." : "Edit before sending to the squad."}
+            </h2>
           </div>
           <span className="text-xs text-muted-foreground bg-google-blue/10 text-google-blue px-2.5 py-1 rounded-full font-medium">Editable</span>
         </div>
+
+        {/* Nothing planned yet — offer a draft rather than leaving a blank page */}
+        {isEmptyPlan && (
+          <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 mb-4 text-center space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
+              Your days are empty — open one and add places from {intake.destination}'s venue list
+              below. Or let us sketch a first draft you can rip apart.
+            </p>
+            <button
+              onClick={handleDraft}
+              disabled={drafting}
+              className="text-sm font-medium px-5 py-2.5 rounded-full bg-foreground text-background hover:opacity-90 disabled:opacity-50 transition"
+            >
+              {drafting ? "Sketching…" : "✨ Give me a starting point"}
+            </button>
+            {draftErr && <p className="text-xs text-destructive">{draftErr}</p>}
+          </div>
+        )}
 
         <ol className="space-y-3">
           {days.map((d, di) => {

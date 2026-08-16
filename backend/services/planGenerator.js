@@ -372,6 +372,94 @@ INSTRUCTIONS:
   };
 }
 
+// ── Skeleton plan (no AI) ──────────────────────────────────────────────────────
+
+/**
+ * Fetch prices without writing an itinerary.
+ *
+ * The squad plans their own days; what they can't do is look up what a GIGM
+ * seat or a hotel room costs today. So the scraping runs either way and the
+ * days come back empty, ready to be filled in the plan editor. Costs a single
+ * round of scraping and no tokens.
+ */
+async function buildSkeletonPlan(intake) {
+  const ctx = await fetchRealWorldContext(intake);
+
+  const days      = Math.max(1, Number(intake.days) || 1);
+  const squad     = Math.max(1, Number(intake.squad_size) || 1);
+  const isFlight  = /flight/i.test(intake.transport || '');
+
+  // Default to the cheapest real option we found; the editor lets them change it.
+  const buses  = [...(ctx.gigmTrips || [])].filter(b => b?.price > 0).sort((a, b) => a.price - b.price);
+  const bus    = buses[0] || null;
+  const flight = ctx.flights?.available ? ctx.flights : null;
+
+  // Respect the nightly ceiling they gave us. Only if nothing fits do we fall
+  // back to the cheapest available — showing a room at triple their budget as
+  // the default is worse than showing one that's merely over.
+  const ceiling    = hotelNightlyCeiling(intake);
+  const allHotels  = [...(ctx.bHotels || []), ...(ctx.gtHotels || [])]
+    .filter(h => h?.pricePerNight > 0)
+    .sort((a, b) => a.pricePerNight - b.pricePerNight);
+  const hotel = allHotels.find(h => h.pricePerNight <= ceiling) || allHotels[0] || null;
+
+  const transportPerPerson = isFlight
+    ? (flight?.cheapestNGN || 0)
+    : (bus?.price || 0);
+  const hotelNightly = hotel?.pricePerNight || 0;
+  // One room per two people, rounded up — the same assumption the editor uses.
+  const rooms         = Math.ceil(squad / 2);
+  const lodgingTotal  = hotelNightly * rooms * Math.max(1, days - 1);
+  const transportTotal = transportPerPerson * squad;
+  const total          = transportTotal + lodgingTotal;
+
+  return {
+    plan: {
+      hotel: hotel ? {
+        name:            hotel.name,
+        area:            hotel.address || intake.destination,
+        price_per_night: hotelNightly,
+        rating:          hotel.rating || 0,
+        perks:           hotel.amenities || [],
+      } : null,
+      // Always an object, even when nothing was scraped — the editor renders it
+      // and a null here would blank the whole transport card. Empty operator is
+      // the signal that nothing was found and they need to choose.
+      transport: {
+        operator:        isFlight ? (flight?.cheapestAirline || '') : (bus?.operator || ''),
+        type:            isFlight ? 'Flight' : 'Bus',
+        price_per_person: transportPerPerson,
+        depart_time:     bus?.departureTime || '',
+        arrive_time:     bus?.arrivalTime   || '',
+        pickup:          bus?.terminal      || '',
+      },
+      // Empty on purpose — this is the squad's to fill.
+      days: Array.from({ length: days }, (_, i) => ({ day: i + 1, activities: [] })),
+      date_options: [],
+      cost_breakdown: {
+        transport_total: transportTotal,
+        lodging_total:   lodgingTotal,
+        food_total:      0,
+        activities_total: 0,
+        buffer:          0,
+        total,
+        per_person:      Math.round(total / squad),
+      },
+      highlights: [],
+      offline_note: '',
+    },
+    scraped: {
+      flights:     ctx.flights,
+      gtHotels:    ctx.gtHotels    || [],
+      bHotels:     ctx.bHotels     || [],
+      gtRentals:   ctx.gtRentals   || [],
+      bApartments: ctx.bApartments || [],
+      gigmTrips:        ctx.gigmTrips        || [],
+      localAttractions: ctx.localAttractions || [],
+    },
+  };
+}
+
 // ── WhatsApp plan summary ──────────────────────────────────────────────────────
 function formatPlanSummary(plan, intake) {
   const { hotel, transport, cost_breakdown: cost, highlights, days, data_sources } = plan;
@@ -395,4 +483,4 @@ function formatPlanSummary(plan, intake) {
   );
 }
 
-module.exports = { generateTripPlan, formatPlanSummary };
+module.exports = { generateTripPlan, buildSkeletonPlan, formatPlanSummary };
