@@ -152,6 +152,16 @@ const SCHEMA = [
     name       TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // Uploaded trip photos. Deliberately its own table: the Explore page does
+  // SELECT * FROM experiences on every load, and image bytes must never ride
+  // along with it. Trips reference a row here by URL path, not by join.
+  `CREATE TABLE IF NOT EXISTS trip_images (
+    id         TEXT PRIMARY KEY,
+    mime       TEXT NOT NULL,
+    bytes      BLOB NOT NULL,
+    byte_size  INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
 ];
 
 // Safe schema migrations — new columns added after initial release.
@@ -668,6 +678,25 @@ function parseExpRow(row) {
   };
 }
 
+// ── Trip photo helpers ─────────────────────────────────────────────────────
+
+async function insertTripImage({ id, mime, bytes }) {
+  await client.execute({
+    sql: 'INSERT INTO trip_images (id, mime, bytes, byte_size) VALUES (?, ?, ?, ?)',
+    args: [id, mime, bytes, bytes.byteLength ?? bytes.length],
+  });
+}
+
+/** Returns { mime, bytes } or null. Only ever called by the image endpoint. */
+async function getTripImage(id) {
+  const row = await raw('SELECT mime, bytes FROM trip_images WHERE id = ?', [id]);
+  return row ? { mime: row.mime, bytes: row.bytes } : null;
+}
+
+async function deleteTripImage(id) {
+  await client.execute({ sql: 'DELETE FROM trip_images WHERE id = ?', args: [id] });
+}
+
 /**
  * List curated trips. `state: null` spans every state — the admin uses that to
  * see the whole catalogue; Explore always passes one state.
@@ -761,6 +790,7 @@ module.exports = {
     remove:      deleteAttraction,
   },
   experiences:  { list: getExperiences, upsert: upsertExperience },
+  tripImages:   { insert: insertTripImage, get: getTripImage, remove: deleteTripImage },
   users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },
   participants: {
     insert: insertParticipant,

@@ -775,6 +775,31 @@ router.get('/experiences', async (req, res) => {
   }
 });
 
+// ── GET /api/trip-image/:id ─────────────────────────────────────────────────
+// Serves an uploaded trip photo out of the DB. Immutable — the id is generated
+// per upload and the bytes never change — so it caches hard at the browser and
+// at any CDN in front, and each visitor pays for the fetch exactly once.
+router.get('/trip-image/:id', async (req, res) => {
+  try {
+    const img = await db.tripImages.get(req.params.id);
+    if (!img) return res.status(404).json({ error: 'Image not found.' });
+
+    const body = Buffer.isBuffer(img.bytes) ? img.bytes : Buffer.from(img.bytes);
+    const etag = `"${req.params.id}"`;
+    if (req.headers['if-none-match'] === etag) return res.status(304).end();
+
+    res.set({
+      'Content-Type':  img.mime,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'ETag':          etag,
+    });
+    res.send(body);
+  } catch (err) {
+    console.error('[api/trip-image]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/experiences/:id/add-to-plan ───────────────────────────────────
 // Saves a curated trip to the signed-in user's plans so they can come back to
 // it, share it, or hand it to their squad. Karije runs these trips, so we are

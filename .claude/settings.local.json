@@ -69,7 +69,10 @@
       "PowerShell(npx vite build 2>&1 | Select-Object -Last 4)",
       "Bash(sed -i 's|src={`https://images.unsplash.com/photo-${exp.imageId}?auto=format\\\\&fit=crop\\\\&w=480\\\\&h=200\\\\&q=70`}|src={tripImageUrl\\(exp.imageId, 480, 200\\)}|' src/pages/Admin.tsx)",
       "Bash(sed -i 's|^import { KarijeLogo } from \"@/components/Nav\";$|import { KarijeLogo } from \"@/components/Nav\";\\\\nimport { tripImageUrl } from \"@/lib/tripImage\";|' src/pages/Admin.tsx)",
-      "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 10; npx vite build 2>&1 | Select-Object -Last 2)"
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 10; npx vite build 2>&1 | Select-Object -Last 2)",
+      "Bash(node -e \"const p=require\\('./backend/package.json'\\); console.log\\(Object.keys\\(p.dependencies||{}\\).join\\(', '\\)\\)\")",
+      "Bash(awk -F= '/^[A-Z_]+=/ { key=$1; val=substr\\($0, index\\($0,\"=\"\\)+1\\); gsub\\(/^[ \\\\t]+|[ \\\\t\\\\r]+$/, \"\", val\\); printf \"%-28s %s\\\\n\", key, \\(length\\(val\\)>0 ? \"SET\" : \"empty\"\\) }' backend/.env)",
+      "Artifact"
     ]
   }
 }

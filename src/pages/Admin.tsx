@@ -167,6 +167,129 @@ function ScheduleEditor({
   );
 }
 
+// ── Photo upload ───────────────────────────────────────────────────────────────
+
+/**
+ * Shrink a photo in the browser before upload.
+ *
+ * Phones produce 4–12MB images; the biggest place they're shown is a hero strip
+ * about 1200px wide. Resizing here is what keeps DB-stored photos viable — it's
+ * the difference between ~300KB and several megabytes a row.
+ */
+async function shrinkImage(file: File, maxEdge = 1600, quality = 0.82): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const scale  = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not process the image.");
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+
+  const blob = await new Promise<Blob | null>(resolve =>
+    canvas.toBlob(resolve, "image/jpeg", quality)
+  );
+  if (!blob) throw new Error("Could not process the image.");
+  return blob;
+}
+
+function PhotoField({
+  value,
+  onChange,
+  adminKey,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  adminKey: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr]   = useState("");
+  const [note, setNote] = useState("");
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    setErr("");
+    setNote("");
+    try {
+      const blob = await shrinkImage(file);
+      const res  = await fetch(`${API}/admin/trip-images`, {
+        method:  "POST",
+        headers: { "Content-Type": "image/jpeg", "X-Admin-Key": adminKey },
+        body:    blob,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || `Upload failed (${res.status})`);
+      onChange(json.url);
+      const kb = Math.round(json.bytes / 1024);
+      setNote(`Uploaded — ${kb}KB (from ${Math.round(file.size / 1024)}KB original)`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <label className={labelCls}>Photo</label>
+      <p className="text-xs text-gray-400 mb-2">
+        Upload a picture of the actual place. Large photos are shrunk automatically.
+      </p>
+
+      <div className="flex items-center gap-3">
+        <label className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition ${
+          busy ? "bg-gray-200 text-gray-400" : "bg-gray-800 text-white hover:bg-gray-700"
+        }`}>
+          {busy ? "Uploading…" : value ? "Replace photo" : "Choose photo"}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={busy}
+            onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ""; }}
+            className="hidden"
+          />
+        </label>
+        {value && (
+          <button
+            type="button"
+            onClick={() => { onChange(""); setNote(""); }}
+            className="text-xs text-gray-500 hover:text-red-600"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      {note && <p className="text-xs text-green-700 mt-2">{note}</p>}
+      {err  && <p className="text-xs text-red-500 mt-2">{err}</p>}
+
+      {value && (
+        <img
+          src={tripImageUrl(value, 480, 200)}
+          alt="preview"
+          className="mt-3 h-28 w-full object-cover rounded"
+          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+      )}
+
+      <details className="mt-3">
+        <summary className="text-xs text-gray-400 cursor-pointer">Or paste a link instead</summary>
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className={`${inp} mt-2`}
+          placeholder="https://… or an Unsplash photo ID"
+        />
+      </details>
+    </div>
+  );
+}
+
 // ── Per-day plan editor ────────────────────────────────────────────────────────
 
 /**
@@ -345,6 +468,7 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
         onCancel={() => { setEditing(null); setFormErr(""); }}
         busy={formBusy}
         error={formErr}
+        adminKey={adminKey}
       />
     );
   }
@@ -909,12 +1033,14 @@ function ExperienceForm({
   onCancel,
   busy,
   error,
+  adminKey,
 }: {
   initial: Experience;
   onSave: (exp: Experience) => void;
   onCancel: () => void;
   busy: boolean;
   error: string;
+  adminKey: string;
 }) {
   const [form, setForm] = useState<Experience>(initial);
 
@@ -1019,27 +1145,11 @@ function ExperienceForm({
         {/* ── Media ── */}
         <div className={section}>
           <h2 className="font-semibold text-gray-900">Media</h2>
-          <div>
-            <label className={labelCls}>Photo</label>
-            <p className="text-xs text-gray-400 mb-1.5">
-              Paste a link to a photo of the actual place. An Unsplash photo ID still works
-              for the older trips.
-            </p>
-            <input
-              value={form.imageId}
-              onChange={e => set("imageId", e.target.value)}
-              className={inp}
-              placeholder="https://… or 1773146916270-e811bff4e923"
-            />
-            {form.imageId && (
-              <img
-                src={tripImageUrl(form.imageId, 480, 200)}
-                alt="preview"
-                className="mt-2 h-28 w-full object-cover rounded"
-                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-            )}
-          </div>
+          <PhotoField
+            value={form.imageId}
+            onChange={v => set("imageId", v)}
+            adminKey={adminKey}
+          />
           <div>
             <label className={labelCls}>Colour fallback <span className="text-gray-400 normal-case font-normal">(shown if image fails)</span></label>
             <div className="flex items-center gap-3">

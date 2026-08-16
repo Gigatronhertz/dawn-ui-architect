@@ -17,6 +17,7 @@
  *   PUT  /admin/attractions/:id          — update (prices)
  *   DELETE /admin/attractions/:id        — delete
  */
+const express    = require('express');
 const { Router } = require('express');
 const crypto     = require('crypto');
 const db         = require('../db/client');
@@ -64,6 +65,43 @@ router.post('/auth/verify', (req, res) => {
   if (checkAdminKey(key)) return res.json({ ok: true });
   return res.status(401).json({ error: 'Invalid admin key.' });
 });
+
+// ── POST /admin/trip-images ────────────────────────────────────────────────────
+// Accepts raw image bytes and stores them in the DB, returning the path to save
+// on the trip. The browser shrinks the photo before sending, so the cap here is
+// a backstop against a bad client rather than the expected size.
+//
+// express.raw is applied on this route only — the global JSON parser keeps its
+// small default limit so no other endpoint accepts multi-megabyte bodies.
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+const ALLOWED_MIME    = ['image/jpeg', 'image/png', 'image/webp'];
+
+router.post(
+  '/trip-images',
+  requireAdmin,
+  express.raw({ type: ALLOWED_MIME, limit: MAX_IMAGE_BYTES }),
+  async (req, res) => {
+    try {
+      const mime = (req.headers['content-type'] || '').split(';')[0].trim();
+      if (!ALLOWED_MIME.includes(mime)) {
+        return res.status(415).json({ error: 'Upload a JPEG, PNG or WebP image.' });
+      }
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: 'No image data received.' });
+      }
+
+      const id = `img_${crypto.randomBytes(12).toString('hex')}`;
+      await db.tripImages.insert({ id, mime, bytes: req.body });
+
+      // Stored on the trip as-is; tripImageUrl() passes through leading-slash
+      // paths untouched, so no other code needs to know where photos live.
+      res.json({ ok: true, id, url: `/api/trip-image/${id}`, bytes: req.body.length });
+    } catch (err) {
+      console.error('[admin] image upload failed:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 // ── GET /admin/experiences ─────────────────────────────────────────────────────
 router.get('/experiences', requireAdmin, async (req, res) => {
