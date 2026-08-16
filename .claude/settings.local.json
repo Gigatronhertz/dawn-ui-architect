@@ -72,7 +72,9 @@
       "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 10; npx vite build 2>&1 | Select-Object -Last 2)",
       "Bash(node -e \"const p=require\\('./backend/package.json'\\); console.log\\(Object.keys\\(p.dependencies||{}\\).join\\(', '\\)\\)\")",
       "Bash(awk -F= '/^[A-Z_]+=/ { key=$1; val=substr\\($0, index\\($0,\"=\"\\)+1\\); gsub\\(/^[ \\\\t]+|[ \\\\t\\\\r]+$/, \"\", val\\); printf \"%-28s %s\\\\n\", key, \\(length\\(val\\)>0 ? \"SET\" : \"empty\"\\) }' backend/.env)",
-      "Artifact"
+      "Artifact",
+      "Bash(node --check backend/db/client.js)",
+      "PowerShell(npx vite build 2>&1 | Select-Object -Last 3)"
     ]
   }
 }

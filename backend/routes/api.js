@@ -477,10 +477,14 @@ router.post('/agency-leads', async (req, res) => {
 // GET /api/public/plan/:tripId
 // Returns the public-safe subset of a confirmed plan for the squad share page.
 // Only works after the organiser confirms (status = awaiting_group).
+// Statuses whose plans are shareable. `awaiting_group` comes from the AI
+// planner once the organiser confirms; `curated` from saving a Karije trip.
+const SHAREABLE = ['awaiting_group', 'curated'];
+
 router.get('/public/plan/:tripId', async (req, res) => {
   const trip = await db.trips.get(req.params.tripId);
   if (!trip) return res.status(404).json({ error: 'Plan not found.' });
-  if (trip.status !== 'awaiting_group') {
+  if (!SHAREABLE.includes(trip.status)) {
     return res.status(403).json({ error: 'This plan has not been shared yet — ask the organiser to confirm it first.' });
   }
 
@@ -507,6 +511,10 @@ router.get('/public/plan/:tripId', async (req, res) => {
     totalCollected:   stats.totalCollected,
     participants:     participants.map(p => ({ name: p.name, paid: !!p.paid, createdAt: p.created_at })),
     paymentsEnabled:  paystack.available(),
+    // Curated trips carry their own presentation (photo, blurb, what's included)
+    // and a minimum headcount the squad has to clear for the trip to run.
+    curated:          plan.curated || null,
+    groupMin:         plan.curated?.groupMin ?? null,
   });
 });
 
@@ -515,13 +523,31 @@ router.get('/public/plan/:tripId', async (req, res) => {
 router.post('/public/plan/:tripId/join', async (req, res) => {
   const trip = await db.trips.get(req.params.tripId);
   if (!trip) return res.status(404).json({ error: 'Plan not found.' });
-  if (trip.status !== 'awaiting_group') {
+  if (!SHAREABLE.includes(trip.status)) {
     return res.status(403).json({ error: 'This plan has not been confirmed yet.' });
   }
 
-  const { name } = req.body;
+  // `remindMe` means "I'm in, but not paying right now" — we keep the contact
+  // details so the follow-up can chase them instead of losing them.
+  const { name, email, waNumber, remindMe } = req.body || {};
+
+  const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    return res.status(400).json({ error: 'That email address does not look right.' });
+  }
+  // Nigerian numbers get typed every possible way — keep the digits and let the
+  // sender normalise, rather than rejecting someone over a leading zero.
+  const cleanWa = typeof waNumber === 'string' ? waNumber.replace(/[^\d+]/g, '') : '';
+
   const participantId = uuid();
-  await db.participants.insert({ id: participantId, trip_id: trip.id, name: name?.trim() || null });
+  await db.participants.insert({
+    id:              participantId,
+    trip_id:         trip.id,
+    name:            name?.trim() || null,
+    email:           cleanEmail || null,
+    wa_number:       cleanWa || null,
+    wants_reminders: !!remindMe,
+  });
   const participants = await db.participants.get(trip.id);
 
   return res.json({ ok: true, count: participants.length, participantId });
@@ -855,6 +881,10 @@ router.post('/experiences/:id/add-to-plan', requireAuth, async (req, res) => {
             location:     exp.location,
             imageId:      exp.imageId,
             included:     exp.included || [],
+            // Snapshotted, not looked up later — if the admin retunes the trip
+            // afterwards, a squad already collecting keeps the terms they saw.
+            groupMin:     exp.groupMin,
+            groupMax:     exp.groupMax,
           },
         }),
         JSON.stringify({ curatedId: exp.id, days: cappedDays, squadSize }),

@@ -188,6 +188,11 @@ const MIGRATIONS = [
   // whole-trip budget. The WhatsApp bot still collects `budget`, so both live
   // side by side and planGenerator falls back when this is null.
   `ALTER TABLE trips ADD COLUMN hotel_budget_per_night INTEGER`,
+  // Phase 9 — the shared link collects a way to follow someone up. Anyone who
+  // isn't ready to pay yet can leave their details instead, so a "not now" is
+  // a lead rather than a lost visitor.
+  `ALTER TABLE participants ADD COLUMN wa_number      TEXT`,
+  `ALTER TABLE participants ADD COLUMN wants_reminders INTEGER NOT NULL DEFAULT 0`,
 ];
 
 const ready = (async () => {
@@ -599,10 +604,14 @@ async function getUserPlans(userId) {
 
 // ── Participant helpers ────────────────────────────────────────────────────
 
-async function insertParticipant({ id, trip_id, name }) {
+async function insertParticipant({ id, trip_id, name, email, wa_number, wants_reminders }) {
   await client.execute({
-    sql: 'INSERT INTO participants (id, trip_id, name) VALUES (?, ?, ?)',
-    args: [id, trip_id, name ?? null],
+    sql: `INSERT INTO participants (id, trip_id, name, email, wa_number, wants_reminders)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [
+      id, trip_id, name ?? null, email ?? null, wa_number ?? null,
+      wants_reminders ? 1 : 0,
+    ],
   });
 }
 

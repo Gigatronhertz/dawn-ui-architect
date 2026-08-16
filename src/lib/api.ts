@@ -79,6 +79,19 @@ export type PublicPlanResponse = {
   totalCollected:   number;
   paymentsEnabled:  boolean;
   participants:     { name: string | null; paid: boolean; createdAt: number }[];
+  /** Present only on curated trips — the Karije-run ones. */
+  curated: {
+    experienceId: string;
+    name:         string;
+    tagline:      string;
+    location:     string;
+    imageId:      string;
+    included:     string[];
+    groupMin:     number;
+    groupMax:     number;
+  } | null;
+  /** Headcount the squad must reach for the trip to run. Null when not applicable. */
+  groupMin: number | null;
 };
 
 export type ParticipantsResponse = {
@@ -231,9 +244,24 @@ export const api = {
   /** Fetch the public (confirmed) plan — no auth needed. */
   getPublicPlan:  (tripId: string) =>
     get<PublicPlanResponse>(`/api/public/plan/${tripId}`),
-  /** Squad member joins the plan — no auth needed. Returns participantId for payment. */
-  joinPlan: (tripId: string, name?: string) =>
-    post<{ ok: boolean; count: number; participantId: string }>(`/api/public/plan/${tripId}/join`, { name: name || null }),
+  /**
+   * Squad member joins the plan — no auth needed. Returns participantId for payment.
+   * `remindMe` marks someone who is in but not paying yet, so the follow-up
+   * knows to chase them.
+   */
+  joinPlan: (
+    tripId: string,
+    opts: { name?: string; email?: string; waNumber?: string; remindMe?: boolean } = {},
+  ) =>
+    post<{ ok: boolean; count: number; participantId: string }>(
+      `/api/public/plan/${tripId}/join`,
+      {
+        name:     opts.name     || null,
+        email:    opts.email    || null,
+        waNumber: opts.waNumber || null,
+        remindMe: !!opts.remindMe,
+      },
+    ),
   /** Poll for live participant count and payment stats. */
   getParticipants: (tripId: string) =>
     get<ParticipantsResponse>(`/api/public/plan/${tripId}/participants`),

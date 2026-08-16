@@ -231,15 +231,15 @@ function PaymentSection({
 
 // ── JoinSection ───────────────────────────────────────────────────────────────
 
-type JoinState = "idle" | "name-input" | "loading" | "joined" | "error";
+type JoinState = "idle" | "name-input" | "loading" | "joined" | "reminding" | "error";
 
 function JoinSection({
   tripId, initialCount, initialPaidCount, initialTotalCollected, initialNames,
-  perPerson, squadSize, paymentsEnabled, justPaid,
+  perPerson, squadSize, groupMin, paymentsEnabled, justPaid,
 }: {
   tripId: string; initialCount: number; initialPaidCount: number; initialTotalCollected: number;
   initialNames: (string | null)[]; perPerson: number; squadSize: number | null;
-  paymentsEnabled: boolean; justPaid: boolean;
+  groupMin: number | null; paymentsEnabled: boolean; justPaid: boolean;
 }) {
   const storageKey = `msgo_pid_${tripId}`;
   const [count, setCount]             = useState(initialCount);
@@ -249,6 +249,8 @@ function JoinSection({
   const [participantId, setPid]       = useState<string | null>(() => localStorage.getItem(storageKey));
   const [joinState, setJoinState]     = useState<JoinState>(participantId ? "joined" : "idle");
   const [nameInput, setNameInput]     = useState("");
+  const [emailInput, setEmailInput]   = useState("");
+  const [waInput, setWaInput]         = useState("");
   const [error, setError]             = useState("");
   const pollRef                        = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -269,16 +271,25 @@ function JoinSection({
     return () => { if (pollRef.current) clearTimeout(pollRef.current); };
   }, [tripId]);
 
-  async function handleJoin() {
+  /**
+   * Claim a spot. `remindMe` is the "I'm in, not paying yet" path — we keep the
+   * contact details so they get chased rather than quietly lost.
+   */
+  async function handleJoin(remindMe = false) {
     setJoinState("loading");
     setError("");
     try {
-      const { count: newCount, participantId: pid } = await api.joinPlan(tripId, nameInput.trim() || undefined);
+      const { count: newCount, participantId: pid } = await api.joinPlan(tripId, {
+        name:     nameInput.trim()  || undefined,
+        email:    emailInput.trim() || undefined,
+        waNumber: waInput.trim()    || undefined,
+        remindMe,
+      });
       setCount(newCount);
       if (nameInput.trim()) setNames(prev => [...prev, nameInput.trim()]);
       localStorage.setItem(storageKey, pid);
       setPid(pid);
-      setJoinState("joined");
+      setJoinState(remindMe ? "reminding" : "joined");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setJoinState("error");
@@ -331,6 +342,22 @@ function JoinSection({
             {displayNames.length > 6 ? ` + ${displayNames.length - 6} more` : ""}
           </p>
         )}
+
+        {/* Minimum headcount — tells the squad whether this is actually
+            happening, and gives them a reason to chase each other. */}
+        {groupMin !== null && groupMin > 0 && (
+          <div className="mt-3">
+            {count >= groupMin ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-google-green bg-google-green/10 ring-1 ring-google-green/20 rounded-full px-3 py-1">
+                ✓ Minimum reached — this trip is running
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-secondary/60 ring-hairline rounded-full px-3 py-1">
+                {groupMin - count} more {groupMin - count === 1 ? "person" : "people"} needed for this trip to run
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Join + pay */}
@@ -344,17 +371,47 @@ function JoinSection({
             perPerson={perPerson} justPaid={justPaid} paymentsEnabled={paymentsEnabled}
           />
         </div>
+      ) : joinState === "reminding" ? (
+        <div className="rounded-2xl bg-secondary/60 ring-hairline px-4 py-4 text-center space-y-1">
+          <div className="text-2xl">👍</div>
+          <div className="font-semibold text-sm">You're on the list</div>
+          <p className="text-sm text-muted-foreground">
+            We'll message you a reminder before the squad locks it in. Pay whenever you're ready.
+          </p>
+          <button
+            onClick={() => setJoinState("joined")}
+            className="text-xs text-primary hover:underline pt-1"
+          >
+            Actually, let me pay now →
+          </button>
+        </div>
       ) : joinState === "name-input" ? (
         <div className="space-y-3">
           <input
             type="text" autoFocus value={nameInput}
             onChange={e => setNameInput(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
-            placeholder="Your first name (optional)" maxLength={40}
+            placeholder="Your first name" maxLength={40}
             className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition placeholder:text-muted-foreground/60"
           />
+          <input
+            type="tel" inputMode="tel" value={waInput}
+            onChange={e => setWaInput(e.target.value)}
+            placeholder="WhatsApp number"
+            className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition placeholder:text-muted-foreground/60"
+          />
+          <input
+            type="email" inputMode="email" value={emailInput}
+            onChange={e => setEmailInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleJoin(false); }}
+            placeholder="Email — for your receipt"
+            className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition placeholder:text-muted-foreground/60"
+          />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            We use these to send your receipt and let you know if anything about the trip changes.
+          </p>
+
           <div className="flex gap-2">
-            <button onClick={handleJoin}
+            <button onClick={() => handleJoin(false)}
               className="flex-1 rounded-full bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
             >
               I'm in! 🎉
@@ -365,6 +422,16 @@ function JoinSection({
               Cancel
             </button>
           </div>
+
+          {/* The honest second option — most people won't pay the moment they
+              open a link from a group chat. */}
+          <button
+            onClick={() => handleJoin(true)}
+            className="w-full text-xs text-muted-foreground hover:text-foreground transition py-1"
+          >
+            Can't pay right now — remind me later
+          </button>
+
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       ) : joinState === "loading" ? (
@@ -663,6 +730,7 @@ export default function PlanView() {
                 initialNames={data.participants.map(p => p.name)}
                 perPerson={cb.per_person}
                 squadSize={data.squadSize}
+                groupMin={data.groupMin}
                 paymentsEnabled={data.paymentsEnabled}
                 justPaid={justPaid}
               />
