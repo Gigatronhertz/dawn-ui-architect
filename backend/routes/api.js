@@ -769,6 +769,44 @@ router.get('/auth/plans', requireAuth, async (req, res) => {
   return res.json({ plans });
 });
 
+// GET /api/auth/plans/:tripId/squad
+// The organiser's view of one trip: who's in, who's paid, and how to reach the
+// ones who haven't. Contact details are only ever returned to the trip's owner.
+router.get('/auth/plans/:tripId/squad', requireAuth, async (req, res) => {
+  try {
+    const trip = await db.trips.get(req.params.tripId);
+    if (!trip) return res.status(404).json({ error: 'Plan not found.' });
+    if (trip.user_id !== req.user.uid) {
+      return res.status(403).json({ error: 'This is not your plan.' });
+    }
+
+    const rows = await db.rawAll(
+      `SELECT name, email, wa_number, paid, amount, paid_at, wants_reminders, created_at
+         FROM participants WHERE trip_id = ? ORDER BY paid ASC, created_at ASC`,
+      [trip.id]
+    );
+
+    const plan = trip.plan ? JSON.parse(trip.plan) : null;
+    res.json({
+      tripId:   trip.id,
+      groupMin: plan?.curated?.groupMin ?? null,
+      squad: rows.map(r => ({
+        name:           r.name,
+        email:          r.email,
+        waNumber:       r.wa_number,
+        paid:           !!r.paid,
+        amount:         r.amount ? Number(r.amount) : null,
+        paidAt:         r.paid_at ? Number(r.paid_at) : null,
+        wantsReminders: !!r.wants_reminders,
+        joinedAt:       Number(r.created_at),
+      })),
+    });
+  } catch (err) {
+    console.error('[api/auth/squad]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/auth/me
 // Verifies the token and returns the user's profile + plan count.
 router.get('/auth/me', requireAuth, async (req, res) => {

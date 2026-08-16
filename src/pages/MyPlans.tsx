@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, type UserPlan } from "@/lib/api";
+import { api, type UserPlan, type SquadMember } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
 
 const fmtNGN = (n: number) =>
@@ -525,6 +525,8 @@ export default function MyPlans() {
                             </div>
                           </div>
                         )}
+
+                        <SquadPanel tripId={p.tripId} count={p.participantCount ?? 0} />
                       </div>
                     </div>
                   ) : (
@@ -539,6 +541,117 @@ export default function MyPlans() {
         )}
       </div>
     </main>
+  );
+}
+
+/**
+ * Turn whatever someone typed into a wa.me-safe number.
+ * Nigerian numbers arrive as 0803…, +234803… or 234803… — all the same person.
+ */
+function waLink(raw: string | null): string | null {
+  if (!raw) return null;
+  let d = raw.replace(/\D/g, "");
+  if (d.startsWith("0")) d = `234${d.slice(1)}`;
+  return d.length >= 10 ? `https://wa.me/${d}` : null;
+}
+
+/**
+ * The organiser's chase list. Collapsed by default — it's only opened when
+ * someone is actually working out who still owes money. Unpaid come first,
+ * each with a one-tap WhatsApp link, so chasing works today without any
+ * messaging provider wired up.
+ */
+function SquadPanel({ tripId, count }: { tripId: string; count: number }) {
+  const { getIdToken } = useAuth();
+  const [open, setOpen]     = useState(false);
+  const [squad, setSquad]   = useState<SquadMember[] | null>(null);
+  const [busy, setBusy]     = useState(false);
+  const [err, setErr]       = useState("");
+
+  async function toggle() {
+    if (open) { setOpen(false); return; }
+    setOpen(true);
+    if (squad) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("Please sign in again.");
+      const res = await api.getSquad(tripId, token);
+      setSquad(res.squad);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not load the squad.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (count === 0) return null;
+
+  const unpaid = squad?.filter(m => !m.paid) ?? [];
+
+  return (
+    <div className="border-t border-border pt-3">
+      <button
+        onClick={toggle}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between text-xs font-semibold text-muted-foreground hover:text-foreground transition"
+      >
+        <span>{open ? "Hide" : "See"} who's in and who still owes</span>
+        <span aria-hidden="true">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-1.5">
+          {busy && <p className="text-xs text-muted-foreground">Loading…</p>}
+          {err && <p className="text-xs text-destructive">{err}</p>}
+
+          {squad?.map((m, i) => {
+            const wa = waLink(m.waNumber);
+            return (
+              <div key={i} className="flex items-center gap-2 text-xs bg-secondary/40 rounded-lg px-3 py-2">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${m.paid ? "bg-google-green" : "bg-muted-foreground/40"}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{m.name || "Someone"}</div>
+                  {m.email && <div className="text-[10px] text-muted-foreground truncate">{m.email}</div>}
+                </div>
+                {m.paid ? (
+                  <span className="text-[10px] font-semibold text-google-green shrink-0">Paid</span>
+                ) : (
+                  <>
+                    {m.wantsReminders && (
+                      <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">wants a reminder</span>
+                    )}
+                    {wa ? (
+                      <a
+                        href={wa}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] font-semibold text-primary hover:underline shrink-0"
+                      >
+                        Chase →
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground shrink-0">No number</span>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {squad && unpaid.length > 0 && (
+            <p className="text-[10px] text-muted-foreground pt-1">
+              {unpaid.length} still to pay. Automated reminders are coming — for now, tap Chase to
+              message them yourself.
+            </p>
+          )}
+          {squad && unpaid.length === 0 && (
+            <p className="text-[10px] text-google-green font-medium pt-1">Everyone has paid 🎉</p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

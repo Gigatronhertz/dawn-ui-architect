@@ -94,6 +94,24 @@ export type PublicPlanResponse = {
   groupMin: number | null;
 };
 
+export type SquadMember = {
+  name:           string | null;
+  email:          string | null;
+  waNumber:       string | null;
+  paid:           boolean;
+  amount:         number | null;
+  paidAt:         number | null;
+  wantsReminders: boolean;
+  joinedAt:       number;
+};
+
+export type SquadResponse = {
+  tripId:   string;
+  groupMin: number | null;
+  /** Unpaid first — those are the ones who need chasing. */
+  squad:    SquadMember[];
+};
+
 export type ParticipantsResponse = {
   count:          number;
   paidCount:      number;
@@ -230,6 +248,10 @@ export const api = {
     post<{ ok: boolean; tripId: string; perPerson: number; total: number; days: number }>(
       `/api/experiences/${encodeURIComponent(id)}/add-to-plan`, opts, bearer(token)
     ),
+
+  /** The organiser's view of one trip — who's in, who's paid, how to reach them. */
+  getSquad: (tripId: string, token: string) =>
+    get<SquadResponse>(`/api/auth/plans/${encodeURIComponent(tripId)}/squad`, bearer(token)),
 
   /** Fetch all plans saved by the authenticated user. */
   getMyPlans: (token: string) =>
