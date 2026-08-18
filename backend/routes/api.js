@@ -872,6 +872,85 @@ router.post('/plan/:tripId/draft-days', async (req, res) => {
   }
 });
 
+// ── POST /api/suggest-venues ────────────────────────────────────────────────
+// "What else should we do?" Suggests a few places that fit what the squad has
+// already picked.
+//
+// The model chooses from the real venue list and nothing else: anything it
+// returns that doesn't match a row we hold is dropped before responding, so a
+// suggestion can never carry an invented name or a made-up entry fee. With no
+// API key — or if the call fails — it falls back to unpicked venues in the
+// requested vibe, which is less clever but never wrong.
+router.post('/suggest-venues', async (req, res) => {
+  try {
+    const { city = 'Lagos', added = [], vibe = null } = req.body || {};
+    const { cityToState } = require('../services/attractions');
+    const stateName = cityToState(city) || city;
+
+    const all = await db.attractions.byState(stateName).catch(() => []);
+    const addedNames = new Set(
+      (Array.isArray(added) ? added : []).map(s => String(s).toLowerCase().trim())
+    );
+    // Never suggest something already on the plan.
+    const pool = all.filter(a => !addedNames.has(a.name.toLowerCase()));
+    if (pool.length === 0) return res.json({ suggestions: [] });
+
+    const byName = new Map(pool.map(a => [a.name.toLowerCase(), a]));
+    const shape  = (a, reason) => ({
+      id: a.id, name: a.name, fee_min: a.fee_min, fee_max: a.fee_max,
+      fee_note: a.fee_note, reason,
+    });
+    const fallback = () => pool.slice(0, 4).map(a => shape(a, null));
+
+    if (!process.env.GROQ_API_KEY) return res.json({ suggestions: fallback() });
+
+    const prompt = `A squad is planning a trip in ${city}, Nigeria.
+
+Already on their plan:
+${addedNames.size ? [...addedNames].join(', ') : '(nothing yet)'}
+
+Choose 4 places from this list that would go well with what they have. Prefer
+variety over more of the same, and something for different times of day.
+${vibe && vibe !== 'All' ? `They lean towards: ${vibe}.` : ''}
+
+Available places — you may ONLY choose from these, by exact name:
+${pool.map(a => `- ${a.name}`).join('\n')}
+
+Return ONLY valid JSON, no markdown:
+{"picks":[{"name":"exact name from the list","reason":"max 8 words on why it fits"}]}`;
+
+    let picks = [];
+    try {
+      const completion = await getGroq().chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.5,
+      });
+      const raw = completion.choices[0].message.content.trim()
+        .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      picks = JSON.parse(raw).picks || [];
+    } catch (err) {
+      console.warn('[suggest-venues] model call failed, falling back:', err.message);
+      return res.json({ suggestions: fallback() });
+    }
+
+    // Match every pick back to a real row; silently drop anything invented.
+    const suggestions = [];
+    for (const p of picks) {
+      const row = byName.get(String(p?.name || '').toLowerCase().trim());
+      if (row && !suggestions.some(s => s.id === row.id)) {
+        suggestions.push(shape(row, typeof p.reason === 'string' ? p.reason.slice(0, 60) : null));
+      }
+    }
+
+    res.json({ suggestions: suggestions.length ? suggestions : fallback() });
+  } catch (err) {
+    console.error('[api/suggest-venues]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/attractions ────────────────────────────────────────────────────
 // Public venue list for one city, used by the build-your-own planner. Takes a
 // city and resolves it to the state the attractions table is keyed by.

@@ -255,6 +255,13 @@ export const api = {
       `/api/plan/${encodeURIComponent(tripId)}/draft-days`, opts
     ),
 
+  /**
+   * A few places that would go well with what's already planned. Always drawn
+   * from the real venue table, so prices are never invented.
+   */
+  suggestVenues: (body: { city: string; added: string[]; vibe?: string | null }) =>
+    post<{ suggestions: (Attraction & { reason: string | null })[] }>('/api/suggest-venues', body),
+
   /** Venues for one city, for the build-your-own planner. No auth needed. */
   getAttractions: (city: string) =>
     get<{ city: string; state: string; attractions: Attraction[] }>(

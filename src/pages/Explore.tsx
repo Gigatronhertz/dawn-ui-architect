@@ -192,6 +192,8 @@ function BuildYourOwn({ city }: { city: string }) {
   const [stops, setStops]     = useState<Record<number, BuiltStop[]>>({ 0: [] });
   const [saving, setSaving]   = useState(false);
   const [err, setErr]         = useState("");
+  const [ideas, setIdeas]     = useState<(VenueItem & { reason: string | null })[]>([]);
+  const [thinking, setThinking] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -217,6 +219,23 @@ function BuildYourOwn({ city }: { city: string }) {
     (sum, d) => sum + (stops[d] ?? []).reduce((s, x) => s + x.cost, 0), 0
   );
   const totalStops = days.reduce((n, d) => n + (stops[d] ?? []).length, 0);
+
+  /**
+   * Ask for a few places that fit what's already picked. Additive only — the
+   * squad's plan is never replaced, just offered more.
+   */
+  async function getIdeas() {
+    setThinking(true);
+    try {
+      const added = days.flatMap(d => (stops[d] ?? []).map(s => s.title));
+      const res = await api.suggestVenues({ city, added, vibe: vibe === "All" ? null : vibe });
+      setIdeas(res.suggestions.map(s => ({ ...toVenue(s), reason: s.reason })));
+    } catch {
+      setIdeas([]);
+    } finally {
+      setThinking(false);
+    }
+  }
 
   function addStop(day: number, v: VenueItem) {
     setStops(prev => ({
@@ -397,6 +416,51 @@ function BuildYourOwn({ city }: { city: string }) {
             </button>
           ))}
         </div>
+
+        {/* Ideas — additive suggestions, never a replacement for their picks */}
+        {venues.length > 0 && (
+          <div className="border-t border-border pt-3">
+            <button
+              onClick={getIdeas}
+              disabled={thinking}
+              className="w-full text-[11px] font-jost font-medium py-2 border border-border text-muted-foreground hover:border-forest hover:text-forest transition-colors disabled:opacity-50"
+            >
+              {thinking ? "Thinking…" : totalStops === 0 ? "✨ What should we do?" : "✨ What else goes with this?"}
+            </button>
+
+            {ideas.length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {ideas.map(v => (
+                  <li key={v.id} className="bg-secondary/40 p-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base shrink-0 leading-none">{v.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-jost font-medium truncate">{v.name}</div>
+                        <div className="text-[10px] font-jost font-light text-muted-foreground truncate">
+                          {v.reason || `${v.vibe} · ${v.feeNote}`}
+                        </div>
+                      </div>
+                      <select
+                        value=""
+                        onChange={e => {
+                          if (e.target.value !== "") {
+                            addStop(Number(e.target.value), v);
+                            setIdeas(prev => prev.filter(x => x.id !== v.id));
+                          }
+                        }}
+                        aria-label={`Add ${v.name} to a day`}
+                        className="text-[10px] font-jost border border-border bg-background px-1.5 py-1 shrink-0 cursor-pointer hover:border-forest focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      >
+                        <option value="">+ Add</option>
+                        {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
+                      </select>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <p className="text-xs font-jost font-light text-muted-foreground py-6 text-center">Loading places…</p>
