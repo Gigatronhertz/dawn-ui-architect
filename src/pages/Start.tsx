@@ -602,6 +602,44 @@ function parseDateOptionLabel(label: string): string {
 }
 
 /* ─── step 3: plan editor ───────────────────────────────────────────────────── */
+/**
+ * "Add to which day?" — a select rather than a button, because with the venue
+ * library always on screen the day is no longer implied by where you clicked.
+ * Collapses to a plain button on single-day trips, where there's no choice.
+ */
+function DayPicker({
+  days, onPick, label = "+ Add", disabled = false,
+}: {
+  days: PlanDay[];
+  onPick: (dayIdx: number) => void;
+  label?: string;
+  disabled?: boolean;
+}) {
+  if (days.length === 1) {
+    return (
+      <button
+        onClick={() => onPick(0)}
+        disabled={disabled}
+        className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground shrink-0 transition disabled:opacity-40"
+      >
+        {label}
+      </button>
+    );
+  }
+  return (
+    <select
+      value=""
+      disabled={disabled}
+      onChange={(e) => { if (e.target.value !== "") onPick(Number(e.target.value)); }}
+      aria-label="Add to which day"
+      className="text-[10px] font-semibold px-1.5 py-1 rounded-full bg-primary/10 text-primary shrink-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-40"
+    >
+      <option value="">{label}</option>
+      {days.map((d, i) => <option key={i} value={i}>Day {d.day}</option>)}
+    </select>
+  );
+}
+
 function PlanStep({
   tripId, plan: initialPlan, intake, scraped, busLoading,
   onConfirm,
@@ -618,11 +656,11 @@ function PlanStep({
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [venueSearch, setVenueSearch] = useState("");
   const [vibeFilter, setVibeFilter] = useState<string>("All");
-  // Day index whose "see all venues" browser is open, or null when closed.
-  const [browseDay, setBrowseDay] = useState<number | null>(null);
   const [custom, setCustom] = useState({ time: "", title: "", cost: "" });
   const [drafting, setDrafting] = useState(false);
   const [draftErr, setDraftErr] = useState("");
+  const [ideas, setIdeas] = useState<{ id: string; title: string; emoji: string; cost: number; feeNote: string; reason: string | null }[]>([]);
+  const [thinking, setThinking] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
@@ -718,6 +756,32 @@ function PlanStep({
 
   /** True while every day is still empty — the squad hasn't planned anything yet. */
   const isEmptyPlan = days.every(d => d.activities.length === 0);
+  const totalActivities = days.reduce((n, d) => n + d.activities.length, 0);
+
+  /** A few places that fit what's already on the plan. Additive only. */
+  const getIdeas = async () => {
+    setThinking(true);
+    try {
+      const added = days.flatMap(d => d.activities.map(a => a.title.replace(/^\S+\s/, "")));
+      const res = await api.suggestVenues({
+        city: intake.destination!,
+        added,
+        vibe: vibeFilter === "All" ? null : vibeFilter,
+      });
+      setIdeas(res.suggestions.map(s => ({
+        id:      `attr-${s.id}`,
+        title:   s.name,
+        emoji:   attractionEmoji(s.name),
+        cost:    s.fee_max > 0 ? Math.round((s.fee_min + s.fee_max) / 2) : 0,
+        feeNote: s.fee_note || (s.fee_max > 0 ? `₦${s.fee_min.toLocaleString()}–₦${s.fee_max.toLocaleString()}` : "Free"),
+        reason:  s.reason,
+      })));
+    } catch {
+      setIdeas([]);
+    } finally {
+      setThinking(false);
+    }
+  };
 
   /**
    * Ask for a first draft of the days. Only touches the itinerary — whatever
@@ -987,7 +1051,9 @@ function PlanStep({
         </Card>
       )}
 
-      {/* Editable itinerary */}
+      {/* Itinerary + venue library, side by side. The library stays on screen
+          so adding a place never means hunting through collapsed days. */}
+      <div className="grid lg:grid-cols-[1fr,340px] gap-5 items-start">
       <Card>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -1045,137 +1111,6 @@ function PlanStep({
                         </li>
                       ))}
                     </ul>
-
-                    {/* Venue picker — seeded DB attractions for this destination */}
-                    <div className="rounded-xl ring-hairline bg-card p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          📍 Add a venue
-                          {placesItems.length > 0 && (
-                            <span className="ml-1.5 font-normal normal-case text-primary/70">
-                              — {placesItems.length} spots in {intake.destination}
-                            </span>
-                          )}
-                        </div>
-                        {placesItems.length > 0 && (
-                          <button
-                            onClick={() => setBrowseDay(di)}
-                            className="text-[10px] font-semibold text-primary hover:underline shrink-0"
-                          >
-                            See all {placesItems.length} →
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Vibe filter chips */}
-                      <div className="flex gap-1.5 flex-wrap">
-                        {VIBE_FILTERS.map(({ value, label }) => (
-                          <button
-                            key={value}
-                            onClick={() => setVibeFilter(value)}
-                            className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
-                              vibeFilter === value
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Search */}
-                      <input
-                        type="text"
-                        placeholder={`Search ${intake.destination} venues…`}
-                        value={venueSearch}
-                        onChange={(e) => setVenueSearch(e.target.value)}
-                        className="w-full text-[12px] px-3 py-1.5 rounded-lg bg-secondary ring-hairline focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
-                      />
-
-                      {/* Top matches — the full list lives in the browser modal */}
-                      <ul className="space-y-0.5">
-                        {filteredPlaces.slice(0, 6).map((p) => (
-                          <li key={p.id} className="flex items-center gap-2 text-[12px] rounded-lg px-2 py-1.5 hover:bg-secondary/70 transition group">
-                            <span className="text-base shrink-0 leading-none">{p.emoji}</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate leading-tight">{p.title}</div>
-                              <div className="text-[10px] text-muted-foreground leading-tight">
-                                <span className="text-primary/60 font-medium">{p.tag}</span>
-                                {' · '}
-                                {p.feeNote}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => addActivity(di, { id: p.id, title: p.title, cost: p.cost, emoji: p.emoji })}
-                              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground shrink-0 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            >
-                              + Add
-                            </button>
-                          </li>
-                        ))}
-
-                        {filteredPlaces.length === 0 && (
-                          <li className="text-[12px] text-muted-foreground px-2 py-3 text-center">
-                            No {vibeFilter !== 'All' ? vibeFilter.toLowerCase() : ''} venues{venueSearch ? ` matching "${venueSearch}"` : ''} in {intake.destination}
-                          </li>
-                        )}
-                      </ul>
-
-                      {filteredPlaces.length > 6 && (
-                        <button
-                          onClick={() => setBrowseDay(di)}
-                          className="w-full text-[11px] font-semibold py-2 rounded-lg bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground transition"
-                        >
-                          See all {filteredPlaces.length} matching spots →
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Add your own — for a spot that isn't in our list */}
-                    <div className="rounded-xl ring-hairline bg-card p-3 space-y-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        ✍️ Add your own
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="14:00"
-                          value={custom.time}
-                          onChange={(e) => setCustom(c => ({ ...c, time: e.target.value }))}
-                          className="w-16 text-[12px] px-2 py-1.5 rounded-lg bg-secondary ring-hairline text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Place or activity"
-                          value={custom.title}
-                          onChange={(e) => setCustom(c => ({ ...c, title: e.target.value }))}
-                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomActivity(di); } }}
-                          className="flex-1 min-w-0 text-[12px] px-3 py-1.5 rounded-lg bg-secondary ring-hairline focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          placeholder="₦0"
-                          value={custom.cost}
-                          onChange={(e) => setCustom(c => ({ ...c, cost: e.target.value }))}
-                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomActivity(di); } }}
-                          className="w-20 text-[12px] px-2 py-1.5 rounded-lg bg-secondary ring-hairline tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
-                        />
-                        <button
-                          onClick={() => addCustomActivity(di)}
-                          disabled={!custom.title.trim()}
-                          className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 shrink-0 transition"
-                        >
-                          Add
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground leading-relaxed">
-                        Know a spot that isn't listed? Type it in — it goes on Day {d.day} and counts
-                        toward the per-person cost. Leave the price at 0 if it's free.
-                      </p>
-                    </div>
                   </div>
                 )}
               </li>
@@ -1183,6 +1118,133 @@ function PlanStep({
           })}
         </ol>
       </Card>
+
+        {/* ── Venue library — always visible, adds to whichever day you choose ── */}
+        <div className="lg:sticky lg:top-4 rounded-3xl bg-card ring-hairline shadow-card p-4 space-y-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            📍 Places in {intake.destination}
+            {placesItems.length > 0 && <span className="text-primary"> · {placesItems.length}</span>}
+          </div>
+
+          <input
+            type="text"
+            value={venueSearch}
+            onChange={(e) => setVenueSearch(e.target.value)}
+            placeholder={`Search ${intake.destination}…`}
+            className="w-full text-[12px] px-3 py-2 rounded-lg bg-secondary ring-hairline focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+          />
+
+          <div className="flex gap-1.5 flex-wrap">
+            {VIBE_FILTERS.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setVibeFilter(value)}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
+                  vibeFilter === value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Ideas — additive only, never replaces what they picked */}
+          <div className="border-t border-border pt-3">
+            <button
+              onClick={getIdeas}
+              disabled={thinking}
+              className="w-full text-[11px] font-semibold py-2 rounded-lg bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground transition disabled:opacity-50"
+            >
+              {thinking ? "Thinking…" : totalActivities === 0 ? "✨ What should we do?" : "✨ What else goes with this?"}
+            </button>
+
+            {ideas.length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {ideas.map((v) => (
+                  <li key={v.id} className="flex items-center gap-2 bg-secondary/50 rounded-lg p-2">
+                    <span className="text-base shrink-0 leading-none">{v.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-medium truncate">{v.title}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">{v.reason || v.feeNote}</div>
+                    </div>
+                    <DayPicker
+                      days={days}
+                      onPick={(di) => {
+                        addActivity(di, { id: v.id, title: v.title, cost: v.cost, emoji: v.emoji });
+                        setIdeas((prev) => prev.filter((x) => x.id !== v.id));
+                      }}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* The library itself */}
+          <ul className="space-y-0.5 max-h-[24rem] overflow-y-auto -mx-1 px-1">
+            {filteredPlaces.map((p) => (
+              <li key={p.id} className="flex items-center gap-2 text-[12px] rounded-lg px-2 py-1.5 hover:bg-secondary/70 transition">
+                <span className="text-base shrink-0 leading-none">{p.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate leading-tight">{p.title}</div>
+                  <div className="text-[10px] text-muted-foreground leading-tight truncate">
+                    <span className="text-primary/60 font-medium">{p.tag}</span> · {p.feeNote}
+                  </div>
+                </div>
+                <DayPicker
+                  days={days}
+                  onPick={(di) => addActivity(di, { id: p.id, title: p.title, cost: p.cost, emoji: p.emoji })}
+                />
+              </li>
+            ))}
+            {filteredPlaces.length === 0 && (
+              <li className="text-[12px] text-muted-foreground px-2 py-6 text-center">
+                Nothing matching that in {intake.destination}.
+              </li>
+            )}
+          </ul>
+
+          {/* Somewhere we don't have on file */}
+          <div className="border-t border-border pt-3 space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              ✍️ Add your own
+            </div>
+            <input
+              type="text"
+              placeholder="Place or activity"
+              value={custom.title}
+              onChange={(e) => setCustom(c => ({ ...c, title: e.target.value }))}
+              className="w-full text-[12px] px-3 py-1.5 rounded-lg bg-secondary ring-hairline focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="14:00"
+                value={custom.time}
+                onChange={(e) => setCustom(c => ({ ...c, time: e.target.value }))}
+                className="w-16 text-[12px] px-2 py-1.5 rounded-lg bg-secondary ring-hairline text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+              />
+              <input
+                type="number"
+                min={0}
+                placeholder="₦0"
+                value={custom.cost}
+                onChange={(e) => setCustom(c => ({ ...c, cost: e.target.value }))}
+                className="flex-1 min-w-0 text-[12px] px-2 py-1.5 rounded-lg bg-secondary ring-hairline tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+              />
+              <DayPicker
+                days={days}
+                label="Add"
+                disabled={!custom.title.trim()}
+                onPick={(di) => addCustomActivity(di)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Hotel selection */}
       <Card>
@@ -1306,184 +1368,10 @@ function PlanStep({
         </button>
       </div>
 
-      {/* Full venue browser — every seeded spot for the destination, with prices */}
-      {browseDay !== null && (
-        <VenueBrowser
-          destination={intake.destination!}
-          dayNumber={days[browseDay]?.day ?? browseDay + 1}
-          places={placesItems}
-          added={days[browseDay]?.activities.map(a => a.title) ?? []}
-          onAdd={(p) => addActivity(browseDay, { id: p.id, title: p.title, cost: p.cost, emoji: p.emoji })}
-          onClose={() => setBrowseDay(null)}
-        />
-      )}
     </div>
   );
 }
 
-/* ─── venue browser modal ────────────────────────────────────────────────────── */
-
-type PlaceItem = { id: string; emoji: string; title: string; tag: string; feeNote: string; cost: number };
-
-/**
- * The "see all" view for a destination's attractions. The inline picker only
- * shows the top few matches; this lists every seeded spot with its price so the
- * squad can browse the whole state before committing.
- */
-function VenueBrowser({
-  destination, dayNumber, places, added, onAdd, onClose,
-}: {
-  destination: string;
-  dayNumber: number;
-  places: PlaceItem[];
-  added: string[];
-  onAdd: (p: PlaceItem) => void;
-  onClose: () => void;
-}) {
-  const [q, setQ] = useState("");
-  const [tag, setTag] = useState("All");
-  const [sort, setSort] = useState<"name" | "price">("name");
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
-
-  const shown = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    return places
-      .filter((p) => {
-        const matchesTag = tag === "All" || p.tag === tag;
-        const matchesQuery = !query || p.title.toLowerCase().includes(query) || p.tag.toLowerCase().includes(query);
-        return matchesTag && matchesQuery;
-      })
-      .sort((a, b) => sort === "price" ? a.cost - b.cost : a.title.localeCompare(b.title));
-  }, [places, q, tag, sort]);
-
-  // A venue counts as added when its title appears in the day's activity list.
-  const isAdded = (p: PlaceItem) => added.some(t => t.includes(p.title));
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`All venues in ${destination}`}
-        className="bg-card w-full max-w-2xl rounded-t-2xl sm:rounded-2xl ring-hairline flex flex-col max-h-[88vh] sm:max-h-[80vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="p-4 border-b border-border space-y-3 shrink-0">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="font-display font-semibold">All spots in {destination}</div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {places.length} venues · adding to Day {dayNumber}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              className="w-8 h-8 grid place-items-center rounded-full bg-secondary hover:bg-secondary/70 text-muted-foreground transition shrink-0"
-            >
-              ✕
-            </button>
-          </div>
-
-          <input
-            autoFocus
-            type="text"
-            placeholder={`Search ${destination} venues…`}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="w-full text-sm px-3 py-2 rounded-lg bg-secondary ring-hairline focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
-          />
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {VIBE_FILTERS.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => setTag(value)}
-                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
-                  tag === value
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-            <button
-              onClick={() => setSort(s => s === "name" ? "price" : "name")}
-              className="ml-auto text-[10px] font-semibold px-2.5 py-1 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition"
-            >
-              {sort === "name" ? "↑ A–Z" : "↑ Cheapest"}
-            </button>
-          </div>
-        </div>
-
-        {/* List */}
-        <ul className="overflow-y-auto p-2 flex-1">
-          {shown.map((p) => {
-            const alreadyAdded = isAdded(p);
-            return (
-              <li key={p.id} className="flex items-center gap-3 text-sm rounded-lg px-2 py-2 hover:bg-secondary/60 transition">
-                <span className="text-xl shrink-0 leading-none">{p.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate leading-tight">{p.title}</div>
-                  <div className="text-[11px] text-muted-foreground leading-tight">
-                    <span className="text-primary/60 font-medium">{p.tag}</span>
-                    {' · '}
-                    {p.feeNote}
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-[11px] tabular-nums text-muted-foreground">
-                    {p.cost > 0 ? fmtNGN(p.cost) : "Free"}
-                  </div>
-                </div>
-                <button
-                  onClick={() => onAdd(p)}
-                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0 transition ${
-                    alreadyAdded
-                      ? 'bg-primary/15 text-primary'
-                      : 'bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground'
-                  }`}
-                >
-                  {alreadyAdded ? '✓ Added' : '+ Add'}
-                </button>
-              </li>
-            );
-          })}
-
-          {shown.length === 0 && (
-            <li className="text-sm text-muted-foreground px-2 py-10 text-center">
-              No venues{q ? ` matching "${q}"` : ''} in {destination}
-              {tag !== "All" ? ` under ${tag}` : ''}.
-            </li>
-          )}
-        </ul>
-
-        <div className="p-3 border-t border-border shrink-0">
-          <button
-            onClick={onClose}
-            className="w-full text-sm font-medium py-2.5 rounded-xl bg-foreground text-background hover:opacity-90 transition"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ─── step 4: confirm ────────────────────────────────────────────────────────── */
 function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, selectedDate }: {
