@@ -661,6 +661,8 @@ function PlanStep({
   const [draftErr, setDraftErr] = useState("");
   const [ideas, setIdeas] = useState<{ id: string; title: string; emoji: string; cost: number; feeNote: string; reason: string | null }[]>([]);
   const [thinking, setThinking] = useState(false);
+  // On a phone the library can't sit beside the plan, so it becomes a sheet.
+  const [libOpen, setLibOpen] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
@@ -1119,8 +1121,38 @@ function PlanStep({
         </ol>
       </Card>
 
-        {/* ── Venue library — always visible, adds to whichever day you choose ── */}
-        <div className="lg:sticky lg:top-4 rounded-3xl bg-card ring-hairline shadow-card p-4 space-y-3">
+        {/* Dimmer behind the mobile sheet */}
+        {libOpen && (
+          <button
+            aria-label="Close places"
+            onClick={() => setLibOpen(false)}
+            className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+          />
+        )}
+
+        {/* ── Venue library ──────────────────────────────────────────────────
+            Beside the plan on a wide screen; a bottom sheet on a phone, where
+            stacking it under the itinerary would mean scrolling past every day
+            to add a single place. One instance, two presentations. */}
+        <div
+          className={`rounded-3xl bg-card ring-hairline shadow-card p-4 space-y-3 lg:block lg:static lg:sticky lg:top-4 lg:max-h-none lg:overflow-visible lg:z-auto lg:rounded-3xl ${
+            libOpen
+              ? "fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-b-none rounded-t-3xl"
+              : "hidden"
+          }`}
+        >
+          {/* Sheet handle — mobile only */}
+          <div className="lg:hidden flex items-center justify-between -mt-1 mb-1">
+            <span className="text-sm font-semibold">Add a place</span>
+            <button
+              onClick={() => setLibOpen(false)}
+              className="w-8 h-8 grid place-items-center rounded-full bg-secondary text-muted-foreground"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             📍 Places in {intake.destination}
             {placesItems.length > 0 && <span className="text-primary"> · {placesItems.length}</span>}
@@ -1246,6 +1278,25 @@ function PlanStep({
         </div>
       </div>
 
+      {/* Phone-only bar — keeps the library one tap away instead of a long
+          scroll below the itinerary. Sits above the safe area on iOS. */}
+      {!libOpen && (
+        <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Per person</div>
+              <div className="font-display text-base font-semibold tabular-nums truncate">{fmtNGN(perPerson)}</div>
+            </div>
+            <button
+              onClick={() => setLibOpen(true)}
+              className="flex-1 py-3 rounded-full bg-gradient-primary text-primary-foreground text-sm font-medium shadow-glow active:scale-[0.98] transition"
+            >
+              ＋ Add a place
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hotel selection */}
       <Card>
         <SectionLabel>Accommodation</SectionLabel>
@@ -1368,6 +1419,8 @@ function PlanStep({
         </button>
       </div>
 
+      {/* Clearance for the fixed add-a-place bar on phones */}
+      <div className="lg:hidden h-24" aria-hidden="true" />
     </div>
   );
 }

@@ -194,6 +194,8 @@ function BuildYourOwn({ city }: { city: string }) {
   const [err, setErr]         = useState("");
   const [ideas, setIdeas]     = useState<(VenueItem & { reason: string | null })[]>([]);
   const [thinking, setThinking] = useState(false);
+  // On a phone the library becomes a sheet rather than stacking below the days.
+  const [libOpen, setLibOpen] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -385,10 +387,42 @@ function BuildYourOwn({ city }: { city: string }) {
             included. You can edit all of this before sharing.
           </p>
         </div>
+
+        {/* Clearance for the fixed add-a-place bar on phones */}
+        <div className="lg:hidden h-24" aria-hidden="true" />
       </div>
 
-      {/* ── Right: the venue library ── */}
-      <div className="lg:sticky lg:top-6 border border-border p-4 space-y-3">
+      {/* Dimmer behind the mobile sheet */}
+      {libOpen && (
+        <button
+          aria-label="Close places"
+          onClick={() => setLibOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+        />
+      )}
+
+      {/* ── The venue library ────────────────────────────────────────────────
+          Beside the days on a wide screen, a bottom sheet on a phone. Stacking
+          it underneath would mean scrolling past the whole plan to add one
+          place, which is the thing people do most. */}
+      <div
+        className={`bg-background border border-border p-4 space-y-3 lg:block lg:sticky lg:top-6 lg:max-h-none lg:overflow-visible lg:z-auto ${
+          libOpen
+            ? "fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl"
+            : "hidden"
+        }`}
+      >
+        <div className="lg:hidden flex items-center justify-between mb-1">
+          <span className="font-jost font-medium text-sm">Add a place</span>
+          <button
+            onClick={() => setLibOpen(false)}
+            aria-label="Close"
+            className="w-8 h-8 grid place-items-center bg-secondary text-muted-foreground"
+          >
+            ✕
+          </button>
+        </div>
+
         <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
           Places in {city}
           {venues.length > 0 && <span className="text-primary"> · {venues.length}</span>}
@@ -495,6 +529,24 @@ function BuildYourOwn({ city }: { city: string }) {
           </ul>
         )}
       </div>
+
+      {/* Phone-only bar — the library is one tap away, not a scroll away */}
+      {!libOpen && (
+        <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Per person</div>
+              <div className="font-marcellus text-lg text-foreground tabular-nums truncate">{formatNGN(perPerson)}</div>
+            </div>
+            <button
+              onClick={() => setLibOpen(true)}
+              className="flex-1 bg-forest text-parchment py-3 font-jost font-medium text-sm tracking-[0.06em] active:opacity-90 transition"
+            >
+              ＋ Add a place
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
