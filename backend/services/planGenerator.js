@@ -12,6 +12,7 @@ const GT   = require('./googleTravel');
 const GIGM = require('./gigm');
 const db   = require('../db/client');
 const { cityToState, formatAttractionsForPrompt } = require('./attractions');
+const { CHAT_MODEL } = require('./llm');
 
 let _groq;
 function getGroq() {
@@ -349,7 +350,7 @@ INSTRUCTIONS:
 }`;
 
   const completion = await getGroq().chat.completions.create({
-    model: 'llama-3.3-70b-versatile',   // Groq — 14,400 req/day free tier
+    model: CHAT_MODEL,
     messages: [{ role: 'user', content: prompt }],
     response_format: { type: 'json_object' },
     temperature: 0.4,

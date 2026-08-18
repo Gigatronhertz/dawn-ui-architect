@@ -79,7 +79,8 @@
       "Bash(node -e \"console.log\\('GROQ_API_KEY:', process.env.GROQ_API_KEY ? 'SET' : 'unset'\\)\")",
       "Bash(sed -i 's/^module.exports = { generateTripPlan, formatPlanSummary };$/module.exports = { generateTripPlan, buildSkeletonPlan, formatPlanSummary };/' backend/services/planGenerator.js)",
       "Bash(node --check backend/services/planGenerator.js)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "PowerShell(Select-String *)"
     ]
   }
 }

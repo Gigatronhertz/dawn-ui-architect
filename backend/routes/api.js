@@ -12,6 +12,7 @@ const { requireAuth }        = require('../middleware/auth');
 const { sendPlanReadyEmail } = require('../services/email');
 const { sendPlanReadyPush  } = require('../services/webPush');
 const paystack               = require('../services/paystack');
+const { CHAT_MODEL }         = require('../services/llm');
 
 let _groq;
 const getGroq = () => { if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); return _groq; };
@@ -922,7 +923,7 @@ Return ONLY valid JSON, no markdown:
     let picks = [];
     try {
       const completion = await getGroq().chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: CHAT_MODEL,
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
         temperature: 0.5,
