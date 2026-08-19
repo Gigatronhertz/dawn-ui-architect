@@ -11,7 +11,7 @@
  * who has been nudged and when.
  */
 const db = require('../db/client');
-const { sendText, available: waAvailable } = require('./whatsapp');
+const { sendText, sendTemplate, available: waAvailable } = require('./whatsapp');
 const { sendPaymentReminderEmail, available: emailAvailable } = require('./email');
 
 const HOUR = 3600;
@@ -95,12 +95,30 @@ async function remindOne(row, { frontendUrl }) {
   let channel = null;
 
   // WhatsApp first — it's the one that actually gets read.
+  //
+  // A reminder is always days after the person last spoke to us, so the
+  // 24-hour window is shut and WhatsApp requires an approved template. Plain
+  // text is tried only as a fallback, for the rare case where they messaged us
+  // recently; it fails cleanly with whatsapp_window_closed otherwise.
   if (row.wa_number && waAvailable()) {
+    const templateName = process.env.ZAVU_REMINDER_TEMPLATE;
     try {
-      await sendText(normaliseNumber(row.wa_number), body);
+      if (templateName) {
+        await sendTemplate(row.wa_number, templateName, [
+          row.name || 'there',
+          tripName,
+          fmtNGN(perPerson),
+          link,
+        ]);
+      } else {
+        await sendText(row.wa_number, body);
+      }
       channel = 'whatsapp';
     } catch (err) {
-      console.warn(`[reminders] whatsapp failed for ${row.id}: ${err.message}`);
+      if (err.code === 'whatsapp_window_closed' && !templateName) {
+        console.warn('[reminders] set ZAVU_REMINDER_TEMPLATE to reach people over WhatsApp');
+      }
+      // Falls through to email below.
     }
   }
 
@@ -125,13 +143,6 @@ async function remindOne(row, { frontendUrl }) {
   );
 
   return channel;
-}
-
-/** Nigerian numbers arrive every possible way; wa.me wants digits with country code. */
-function normaliseNumber(raw) {
-  let d = String(raw).replace(/\D/g, '');
-  if (d.startsWith('0')) d = `234${d.slice(1)}`;
-  return d;
 }
 
 /** One pass. Safe to call repeatedly; does nothing when nothing is due. */

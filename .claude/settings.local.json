@@ -86,7 +86,10 @@
       "PowerShell(npx tsc --noEmit -p tsconfig.app.json 2>&1 | Select-Object -First 8; npx vite build 2>&1 | Select-Object -Last 2)",
       "Bash(node --check backend/index.js)",
       "Bash(perl -0pi -e 's/`UPDATE trips SET user_id=\\\\?, origin=\\\\?, destination=\\\\?, days=\\\\?, squad_size=\\\\?,\\\\n         status=\\\\?, plan=\\\\?, intake_json=\\\\? WHERE id=\\\\?`,/`UPDATE trips SET user_id=?, origin=?, destination=?, days=?, squad_size=?,\\\\n         status=?, plan=?, intake_json=?, service_fee_per_person=? WHERE id=?`,/g' backend/routes/api.js)",
-      "PowerShell(npx vite build 2>&1 | Select-Object -Last 2)"
+      "PowerShell(npx vite build 2>&1 | Select-Object -Last 2)",
+      "WebFetch(domain:www.zavu.dev)",
+      "WebFetch(domain:crubingllc.mintlify.app)",
+      "WebFetch(domain:docs.zavu.dev)"
     ]
   }
 }
