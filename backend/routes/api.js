@@ -13,6 +13,7 @@ const { sendPlanReadyEmail } = require('../services/email');
 const { sendPlanReadyPush  } = require('../services/webPush');
 const paystack               = require('../services/paystack');
 const { CHAT_MODEL }         = require('../services/llm');
+const ledger                 = require('../services/ledger');
 
 let _groq;
 const getGroq = () => { if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); return _groq; };
@@ -1009,7 +1010,7 @@ router.post('/custom-trip', requireAuth, async (req, res) => {
     await db.trips.insert({ id: tripId, organiser_phone: `web_${tripId}` });
     await db.raw(
       `UPDATE trips SET user_id=?, origin=?, destination=?, days=?, squad_size=?,
-         status=?, plan=?, intake_json=? WHERE id=?`,
+         status=?, plan=?, intake_json=?, service_fee_per_person=? WHERE id=?`,
       [
         req.user.uid, city, city, planDays.length, squad,
         'custom',
@@ -1026,6 +1027,7 @@ router.post('/custom-trip', requireAuth, async (req, res) => {
           offline_note: '',
         }),
         JSON.stringify({ city, squadSize: squad, dayCount: planDays.length }),
+        ledger.DEFAULT_SERVICE_FEE,
         tripId,
       ]
     );
@@ -1095,7 +1097,7 @@ router.post('/experiences/:id/add-to-plan', requireAuth, async (req, res) => {
     await db.trips.insert({ id: tripId, organiser_phone: process.env.WA_DISPLAY_NUMBER || 'karije' });
     await db.raw(
       `UPDATE trips SET user_id=?, origin=?, destination=?, days=?, squad_size=?,
-         status=?, plan=?, intake_json=? WHERE id=?`,
+         status=?, plan=?, intake_json=?, service_fee_per_person=? WHERE id=?`,
       [
         req.user.uid, exp.state, exp.state, cappedDays, squadSize,
         'curated',
@@ -1124,6 +1126,7 @@ router.post('/experiences/:id/add-to-plan', requireAuth, async (req, res) => {
           },
         }),
         JSON.stringify({ curatedId: exp.id, days: cappedDays, squadSize }),
+        ledger.DEFAULT_SERVICE_FEE,
         tripId,
       ]
     );

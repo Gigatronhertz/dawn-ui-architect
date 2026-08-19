@@ -17,7 +17,20 @@ import {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-type Tab = "experiences" | "attractions";
+type Tab = "experiences" | "attractions" | "money";
+
+type MoneyTrip = {
+  tripId: string; name: string; destination: string | null; tripDate: string | null;
+  paidCount: number; collected: number; serviceFee: number;
+  dueToOrganiser: number; paidOut: number; outstanding: number;
+  payoutAccountName: string | null;
+};
+type Payout = {
+  id: string; amount: number; note: string | null; status: string;
+  reference: string | null; created_at: number; paid_at: number | null;
+};
+
+const naira = (n: number) => `₦${Number(n || 0).toLocaleString()}`;
 
 // ── Admin API helpers ──────────────────────────────────────────────────────────
 
@@ -594,6 +607,203 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
   );
 }
 
+// ── Money section ──────────────────────────────────────────────────────────────
+
+/**
+ * What Karije is holding and who it belongs to.
+ *
+ * Payouts are recorded here rather than executed here: the bank transfer
+ * happens in your banking app, and this is the record of it. Nothing leaves an
+ * account because someone clicked a button in a browser.
+ */
+function MoneySection({ adminKey }: { adminKey: string }) {
+  const [trips, setTrips]   = useState<MoneyTrip[]>([]);
+  const [totals, setTotals] = useState({ collected: 0, serviceFee: 0, paidOut: 0, outstanding: 0 });
+  const [fee, setFee]       = useState(0);
+  const [loading, setLoad]  = useState(true);
+  const [err, setErr]       = useState("");
+  const [openTrip, setOpen] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoad(true);
+    apiFetch<{ trips: MoneyTrip[]; totals: typeof totals; feePerPerson: number }>("/admin/money", adminKey)
+      .then(d => { setTrips(d.trips); setTotals(d.totals); setFee(d.feePerPerson); })
+      .catch(e => setErr(e.message))
+      .finally(() => setLoad(false));
+  }, [adminKey]);
+
+  useEffect(load, [load]);
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      {/* Position at a glance */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {[
+          { label: "Collected",       value: totals.collected,   hint: "from squad members" },
+          { label: "Karije fee",      value: totals.serviceFee,  hint: `${naira(fee)}/person` },
+          { label: "Paid out",        value: totals.paidOut,     hint: "released to organisers" },
+          { label: "Still to pay",    value: totals.outstanding, hint: "owed right now", accent: true },
+        ].map(s => (
+          <div key={s.label} className={`rounded-xl border p-4 ${s.accent ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-white"}`}>
+            <div className="text-[11px] uppercase tracking-wide text-gray-500">{s.label}</div>
+            <div className="text-xl font-semibold text-gray-900 mt-1 tabular-nums">{naira(s.value)}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">{s.hint}</div>
+          </div>
+        ))}
+      </div>
+
+      {err && <p className="text-sm text-red-600 mb-4">{err}</p>}
+      {loading && <p className="text-sm text-gray-400">Loading…</p>}
+
+      {!loading && trips.length === 0 && (
+        <div className="text-center py-16 text-gray-400">
+          <div className="text-4xl mb-3">💸</div>
+          <p className="text-sm">No money collected yet. Trips appear here once someone pays.</p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {trips.map(t => (
+          <div key={t.tripId} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setOpen(openTrip === t.tripId ? null : t.tripId)}
+              className="w-full flex items-center gap-4 p-4 text-left hover:bg-gray-50 transition"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-gray-900 truncate">{t.name}</div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {t.paidCount} paid · {naira(t.collected)} in
+                  {t.tripDate ? ` · ${t.tripDate}` : ""}
+                  {t.payoutAccountName ? ` · ${t.payoutAccountName}` : " · no payout account"}
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className={`font-semibold tabular-nums ${t.outstanding > 0 ? "text-amber-700" : "text-green-700"}`}>
+                  {naira(t.outstanding)}
+                </div>
+                <div className="text-[10px] text-gray-400">{t.outstanding > 0 ? "to pay out" : "settled"}</div>
+              </div>
+              <span className="text-gray-400 text-xs">{openTrip === t.tripId ? "▲" : "▼"}</span>
+            </button>
+
+            {openTrip === t.tripId && (
+              <TripMoneyDetail tripId={t.tripId} adminKey={adminKey} onChange={load} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TripMoneyDetail({ tripId, adminKey, onChange }: {
+  tripId: string; adminKey: string; onChange: () => void;
+}) {
+  const [data, setData] = useState<(MoneyTrip & { payouts: Payout[]; feePerPerson: number }) | null>(null);
+  const [amount, setAmount] = useState("");
+  const [note, setNote]     = useState("");
+  const [busy, setBusy]     = useState(false);
+  const [err, setErr]       = useState("");
+
+  const load = useCallback(() => {
+    apiFetch<MoneyTrip & { payouts: Payout[]; feePerPerson: number }>(`/admin/money/${tripId}`, adminKey)
+      .then(setData)
+      .catch(e => setErr(e.message));
+  }, [tripId, adminKey]);
+
+  useEffect(load, [load]);
+
+  async function recordPayout() {
+    setBusy(true); setErr("");
+    try {
+      await apiFetch(`/admin/money/${tripId}/payout`, adminKey, {
+        method: "POST",
+        body: JSON.stringify({ amount: Number(amount), note: note || null }),
+      });
+      setAmount(""); setNote("");
+      load(); onChange();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not record that payout.");
+    } finally { setBusy(false); }
+  }
+
+  if (!data) return <div className="px-4 pb-4 text-xs text-gray-400">Loading…</div>;
+
+  return (
+    <div className="border-t border-gray-100 p-4 space-y-4 bg-gray-50/60">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        {[
+          ["Collected", data.collected],
+          [`Fee (${data.paidCount} × ${naira(data.feePerPerson)})`, data.serviceFee],
+          ["Due to organiser", data.dueToOrganiser],
+          ["Already paid out", data.paidOut],
+        ].map(([label, value]) => (
+          <div key={String(label)}>
+            <div className="text-[11px] text-gray-500">{label}</div>
+            <div className="tabular-nums font-medium text-gray-900">{naira(Number(value))}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Record a release */}
+      {data.outstanding > 0 && (
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <div className="text-xs font-medium text-gray-700 mb-2">
+            Record a payout — {naira(data.outstanding)} outstanding
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="number" min={1} max={data.outstanding} value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="Amount"
+              className="w-28 border border-gray-200 rounded px-2 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-green-600/30"
+            />
+            <input
+              value={note} onChange={e => setNote(e.target.value)}
+              placeholder="What for? e.g. bus deposit"
+              className="flex-1 min-w-[10rem] border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30"
+            />
+            <button
+              onClick={recordPayout}
+              disabled={busy || !amount}
+              className="px-4 py-1.5 bg-gray-900 text-white rounded text-sm hover:bg-gray-700 disabled:opacity-40"
+            >
+              {busy ? "Saving…" : "Record"}
+            </button>
+            <button
+              onClick={() => setAmount(String(data.outstanding))}
+              className="px-3 py-1.5 border border-gray-200 rounded text-xs text-gray-600 hover:border-gray-400"
+            >
+              Pay all
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-2">
+            Make the transfer in your bank first, then record it here.
+          </p>
+          {err && <p className="text-xs text-red-600 mt-2">{err}</p>}
+        </div>
+      )}
+
+      {data.payouts.length > 0 && (
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-500 mb-1.5">Payout history</div>
+          <ul className="space-y-1">
+            {data.payouts.map(p => (
+              <li key={p.id} className="flex items-center gap-3 text-xs bg-white border border-gray-100 rounded px-3 py-2">
+                <span className="tabular-nums font-medium text-gray-900">{naira(p.amount)}</span>
+                <span className="flex-1 text-gray-500 truncate">{p.note || "—"}</span>
+                <span className="text-gray-400">
+                  {p.paid_at ? new Date(p.paid_at * 1000).toLocaleDateString() : "pending"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Attractions section ────────────────────────────────────────────────────────
 
 type AttractionRow = {
@@ -988,8 +1198,9 @@ export default function Admin() {
   }
 
   const TABS: { id: Tab; label: string; hint: string }[] = [
-    { id: "experiences", label: "Experiences", hint: "Day experiences on /start/explore" },
-    { id: "attractions", label: "Attractions", hint: "Prices the AI planner quotes" },
+    { id: "experiences", label: "Trips",       hint: "Curated trips on /start/explore" },
+    { id: "money",       label: "Money",       hint: "Collected, owed, and paid out" },
+    { id: "attractions", label: "Attractions", hint: "Prices the planner quotes" },
   ];
 
   return (
@@ -1021,6 +1232,7 @@ export default function Admin() {
       </header>
 
       {tab === "experiences" && <ExperiencesSection adminKey={adminKey} />}
+      {tab === "money"       && <MoneySection       adminKey={adminKey} />}
       {tab === "attractions" && <AttractionsSection adminKey={adminKey} />}
     </main>
   );

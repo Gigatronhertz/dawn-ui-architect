@@ -164,6 +164,19 @@ const SCHEMA = [
     name       TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // Money paid out to whoever is running a trip. A table rather than columns
+  // because payouts happen in stages — a release to book the bus, then the
+  // balance — and every one of them needs its own record and reference.
+  `CREATE TABLE IF NOT EXISTS payouts (
+    id          TEXT PRIMARY KEY,
+    trip_id     TEXT NOT NULL,
+    amount      INTEGER NOT NULL,
+    note        TEXT,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    reference   TEXT,
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+    paid_at     INTEGER
+  )`,
   // Uploaded trip photos. Deliberately its own table: the Explore page does
   // SELECT * FROM experiences on every load, and image bytes must never ride
   // along with it. Trips reference a row here by URL path, not by join.
@@ -210,6 +223,13 @@ const MIGRATIONS = [
   // restarts or two instances overlap.
   `ALTER TABLE participants ADD COLUMN reminders_sent  INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE participants ADD COLUMN last_reminded_at INTEGER`,
+  // Phase 11 — Karije collects for the trip and disburses to whoever is
+  // running it. The fee is snapshotted per trip so changing the platform rate
+  // never re-prices a squad that is already collecting.
+  `ALTER TABLE trips ADD COLUMN service_fee_per_person INTEGER`,
+  `ALTER TABLE trips ADD COLUMN payout_bank_code    TEXT`,
+  `ALTER TABLE trips ADD COLUMN payout_account_no   TEXT`,
+  `ALTER TABLE trips ADD COLUMN payout_account_name TEXT`,
 ];
 
 const ready = (async () => {

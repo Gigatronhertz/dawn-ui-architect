@@ -22,6 +22,7 @@ const { Router } = require('express');
 const crypto     = require('crypto');
 const db         = require('../db/client');
 const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
+const ledger = require('../services/ledger');
 
 const router = Router();
 
@@ -102,6 +103,91 @@ router.post(
     }
   }
 );
+
+// ── GET /admin/money ───────────────────────────────────────────────────────────
+// Every trip holding money: what came in, Karije's fee, what's owed to whoever
+// is running it, and what's already been released.
+router.get('/money', requireAdmin, async (req, res) => {
+  try {
+    const trips = await ledger.outstandingTrips();
+    const totals = trips.reduce((t, x) => ({
+      collected:   t.collected   + x.collected,
+      serviceFee:  t.serviceFee  + x.serviceFee,
+      paidOut:     t.paidOut     + x.paidOut,
+      outstanding: t.outstanding + x.outstanding,
+    }), { collected: 0, serviceFee: 0, paidOut: 0, outstanding: 0 });
+    res.json({ trips, totals, feePerPerson: ledger.DEFAULT_SERVICE_FEE });
+  } catch (err) {
+    console.error('[admin] GET money failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /admin/money/:tripId ───────────────────────────────────────────────────
+// One trip's position, plus every payout recorded against it.
+router.get('/money/:tripId', requireAdmin, async (req, res) => {
+  try {
+    const position = await ledger.forTrip(req.params.tripId);
+    if (!position) return res.status(404).json({ error: 'Trip not found.' });
+    const payouts = await db.rawAll(
+      `SELECT id, amount, note, status, reference, created_at, paid_at
+         FROM payouts WHERE trip_id = ? ORDER BY created_at DESC`,
+      [req.params.tripId]
+    );
+    res.json({ ...position, payouts });
+  } catch (err) {
+    console.error('[admin] GET money/:tripId failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /admin/money/:tripId/payout ───────────────────────────────────────────
+// Record money released to the trip's organiser. Payouts are made by bank
+// transfer and recorded here — deliberately not automated, so nothing leaves
+// an account without a person deciding it should.
+router.post('/money/:tripId/payout', requireAdmin, async (req, res) => {
+  try {
+    const amount = Math.round(Number(req.body?.amount) || 0);
+    if (amount <= 0) return res.status(400).json({ error: 'Enter an amount greater than zero.' });
+
+    const position = await ledger.forTrip(req.params.tripId);
+    if (!position) return res.status(404).json({ error: 'Trip not found.' });
+    // Guard against releasing more than the squad actually paid in.
+    if (amount > position.outstanding) {
+      return res.status(400).json({
+        error: `That's more than is owed. Outstanding is ₦${position.outstanding.toLocaleString()}.`,
+      });
+    }
+
+    const id = `po_${crypto.randomBytes(8).toString('hex')}`;
+    await db.raw(
+      `INSERT INTO payouts (id, trip_id, amount, note, status, reference, paid_at)
+       VALUES (?, ?, ?, ?, 'paid', ?, unixepoch())`,
+      [id, req.params.tripId, amount, req.body?.note || null, req.body?.reference || null]
+    );
+
+    res.json({ ok: true, payoutId: id, position: await ledger.forTrip(req.params.tripId) });
+  } catch (err) {
+    console.error('[admin] POST payout failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /admin/money/:tripId/account ───────────────────────────────────────────
+// Where this trip's payouts should go.
+router.put('/money/:tripId/account', requireAdmin, async (req, res) => {
+  try {
+    const { bankCode, accountNo, accountName } = req.body || {};
+    await db.raw(
+      `UPDATE trips SET payout_bank_code=?, payout_account_no=?, payout_account_name=? WHERE id=?`,
+      [bankCode || null, accountNo || null, accountName || null, req.params.tripId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] PUT payout account failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── GET /admin/experiences ─────────────────────────────────────────────────────
 router.get('/experiences', requireAdmin, async (req, res) => {
