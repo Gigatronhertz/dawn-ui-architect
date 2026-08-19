@@ -563,6 +563,29 @@ router.post('/public/plan/:tripId/join', async (req, res) => {
   return res.json({ ok: true, count: participants.length, participantId });
 });
 
+// GET /api/public/plan/:tripId/participant/:participantId
+// Has this specific person actually paid? The browser can't answer this — it
+// comes back from Paystack with ?paid=1 whether the payment went through, was
+// cancelled, or the URL was typed by hand. Only the row we marked from a
+// verified webhook counts.
+router.get('/public/plan/:tripId/participant/:participantId', async (req, res) => {
+  try {
+    const rows = await db.rawAll(
+      `SELECT paid, amount, paid_at FROM participants WHERE id = ? AND trip_id = ?`,
+      [req.params.participantId, req.params.tripId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Not found.' });
+    res.json({
+      paid:   !!rows[0].paid,
+      amount: rows[0].amount ? Number(rows[0].amount) : null,
+      paidAt: rows[0].paid_at ? Number(rows[0].paid_at) : null,
+    });
+  } catch (err) {
+    console.error('[api/participant-status]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/public/plan/:tripId/participants
 // Returns live participant count, names, and payment stats — polled every 20 s from PlanView.
 router.get('/public/plan/:tripId/participants', async (req, res) => {

@@ -127,24 +127,107 @@ function DayAccordion({ day }: { day: PlanDay }) {
 
 // ── PaymentSection ────────────────────────────────────────────────────────────
 
-type PayState = "idle" | "form" | "loading" | "redirecting";
+/**
+ * "redirecting" means we're handing off to Paystack — not that anything has
+ * been paid. "verifying" is the wait after coming back while we ask the server
+ * what actually happened. Only "paid" is a confirmed payment.
+ */
+type PayState = "idle" | "form" | "loading" | "redirecting" | "verifying" | "paid" | "unconfirmed";
 
 function PaymentSection({
   tripId, participantId, perPerson, justPaid, paymentsEnabled,
 }: {
   tripId: string; participantId: string; perPerson: number; justPaid: boolean; paymentsEnabled: boolean;
 }) {
-  const [payState, setPayState] = useState<PayState>(justPaid ? "redirecting" : "idle");
+  const [payState, setPayState] = useState<PayState>(justPaid ? "verifying" : "idle");
   const [email, setEmail]       = useState("");
   const [error, setError]       = useState("");
 
-  if (justPaid || payState === "redirecting") {
+  /**
+   * Coming back from Paystack, ask the server whether the money actually
+   * arrived. The webhook that marks someone paid can land a moment after the
+   * browser redirect, so poll briefly rather than judging on the first answer.
+   */
+  useEffect(() => {
+    if (payState !== "verifying") return;
+    let live = true;
+    let tries = 0;
+
+    const check = async () => {
+      try {
+        const { paid } = await api.getMyPaymentStatus(tripId, participantId);
+        if (!live) return;
+        if (paid) { setPayState("paid"); return; }
+      } catch { /* keep trying — a blip shouldn't read as a failed payment */ }
+      if (!live) return;
+      // ~20s of grace for the webhook, then say so honestly.
+      if (++tries >= 10) { setPayState("unconfirmed"); return; }
+      setTimeout(check, 2000);
+    };
+
+    check();
+    return () => { live = false; };
+  }, [payState, tripId, participantId]);
+
+  if (payState === "paid") {
     return (
       <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 p-5 flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl bg-google-green/15 grid place-items-center text-xl shrink-0">✅</div>
         <div>
           <div className="font-display font-semibold text-google-green">Payment confirmed!</div>
           <p className="text-sm text-muted-foreground mt-0.5">You're all set. See you on the trip! 🎉</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (payState === "verifying") {
+    return (
+      <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 flex items-center gap-3">
+        <div className="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+        <div>
+          <div className="font-display font-semibold">Checking your payment…</div>
+          <p className="text-sm text-muted-foreground mt-0.5">One moment — confirming with Paystack.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (payState === "redirecting") {
+    return (
+      <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 flex items-center gap-3">
+        <div className="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+        <div>
+          <div className="font-display font-semibold">Taking you to Paystack…</div>
+          <p className="text-sm text-muted-foreground mt-0.5">Complete your payment on the next screen.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (payState === "unconfirmed") {
+    return (
+      <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 space-y-3">
+        <div>
+          <div className="font-display font-semibold">We haven't seen your payment yet</div>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            If you completed it, this usually clears within a minute — refresh to check again.
+            If something went wrong, you can try again.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPayState("verifying")}
+            className="flex-1 rounded-full bg-secondary text-foreground py-2.5 text-sm font-medium hover:bg-secondary/70 transition"
+          >
+            Check again
+          </button>
+          <button
+            onClick={() => setPayState("form")}
+            className="flex-1 rounded-full bg-gradient-primary text-primary-foreground py-2.5 text-sm font-medium shadow-glow hover:opacity-90 transition"
+          >
+            Try payment again
+          </button>
         </div>
       </div>
     );

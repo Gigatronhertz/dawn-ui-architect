@@ -326,6 +326,16 @@ export const api = {
         remindMe: !!opts.remindMe,
       },
     ),
+  /**
+   * Whether this person has actually paid, according to the server.
+   * The `?paid=1` the browser comes back with only means "returned from
+   * Paystack" — it says nothing about whether money moved.
+   */
+  getMyPaymentStatus: (tripId: string, participantId: string) =>
+    get<{ paid: boolean; amount: number | null; paidAt: number | null }>(
+      `/api/public/plan/${tripId}/participant/${participantId}`
+    ),
+
   /** Poll for live participant count and payment stats. */
   getParticipants: (tripId: string) =>
     get<ParticipantsResponse>(`/api/public/plan/${tripId}/participants`),
