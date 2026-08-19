@@ -48,13 +48,20 @@ services:
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
 
-      # ── WhatsApp (Meta Cloud API) ──────────────────────────────────────────
-      - key: WA_TOKEN
+      # ── WhatsApp outbound (Zavu) ───────────────────────────────────────────
+      - key: ZAVU_API_KEY
         sync: false
-      - key: WA_PHONE_ID
+      - key: ZAVU_SENDER_ID
         sync: false
-      - key: WA_VERIFY_TOKEN
+      - key: ZAVU_REMINDER_TEMPLATE
         sync: false
+
+      # ── WhatsApp inbound (Zavu webhook signature) ──────────────────────────
+      # Without this the webhook fails closed and rejects every message.
+      - key: ZAVU_WEBHOOK_SECRET
+        sync: false
+
+      # Still shown to users when the bot asks to be added to a squad group
       - key: WA_DISPLAY_NUMBER
         sync: false
 
