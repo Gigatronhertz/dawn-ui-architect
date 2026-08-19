@@ -11,8 +11,13 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   generating:     { label: "Generating…", color: "text-google-blue bg-google-blue/10" },
   plan_review:    { label: "Ready",       color: "text-google-green bg-google-green/10" },
   awaiting_group: { label: "Confirmed",   color: "text-primary bg-primary/10" },
+  curated:        { label: "Ready to share", color: "text-primary bg-primary/10" },
+  custom:         { label: "Ready to share", color: "text-primary bg-primary/10" },
   error:          { label: "Failed",      color: "text-destructive bg-destructive/10" },
 };
+
+/** Statuses whose plan has a public page a squad can open and pay on. */
+const SHAREABLE_STATUS = ["curated", "custom", "awaiting_group"];
 
 type AuthMode = "signin" | "signup" | "magic";
 type SubmitState = "idle" | "busy" | "done" | "err";
@@ -529,6 +534,15 @@ export default function MyPlans() {
                         <SquadPanel tripId={p.tripId} count={p.participantCount ?? 0} />
                       </div>
                     </div>
+                  ) : SHAREABLE_STATUS.includes(p.status) ? (
+                    // Curated and self-built trips: the card opens the page the
+                    // squad sees, which is where the shareable link lives.
+                    <Link
+                      to={`/plan/${p.tripId}`}
+                      className="group flex flex-col aspect-[4/5] bg-card ring-hairline shadow-card p-4 hover:border-primary hover:shadow-md transition-all overflow-hidden"
+                    >
+                      <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
+                    </Link>
                   ) : (
                     <div className="flex flex-col aspect-[4/5] bg-card ring-hairline shadow-card p-4 overflow-hidden">
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
@@ -676,11 +690,20 @@ function PlanCardSquare({ p, s, date, perPerson }: {
         <span className="text-[10px] text-muted-foreground">{date}</span>
       </div>
 
-      {/* Route */}
+      {/* Title. A trip inside one city has no route to show — "Lagos → Lagos"
+          tells you nothing — so name it instead. */}
       <div className="font-marcellus text-base leading-snug">
-        <span className="text-foreground">{p.origin || "—"}</span>
-        <span className="text-muted-foreground/60 mx-1 text-sm">→</span>
-        <span className="text-foreground">{p.destination || "—"}</span>
+        {p.plan?.curated?.name ? (
+          <span className="text-foreground line-clamp-2">{p.plan.curated.name}</span>
+        ) : p.origin && p.destination && p.origin === p.destination ? (
+          <span className="text-foreground">A day out in {p.destination}</span>
+        ) : (
+          <>
+            <span className="text-foreground">{p.origin || "—"}</span>
+            <span className="text-muted-foreground/60 mx-1 text-sm">→</span>
+            <span className="text-foreground">{p.destination || "—"}</span>
+          </>
+        )}
       </div>
 
       {/* Meta */}

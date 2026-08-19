@@ -34,6 +34,17 @@ export type TripPlan = {
   cost_breakdown: { transport_total: number; lodging_total: number; food_total: number; activities_total: number; buffer: number; total: number; per_person: number };
   highlights: string[];
   offline_note: string;
+  /** Present only on curated trips — the ones Karije picked and runs. */
+  curated?: {
+    experienceId: string;
+    name:         string;
+    tagline:      string;
+    location:     string;
+    imageId:      string;
+    included:     string[];
+    groupMin:     number;
+    groupMax:     number;
+  } | null;
 };
 
 export type ScrapedFlightOffer = { price: number; airline: string | null; stops: number | null; duration: string | null; roundTrip: boolean };
