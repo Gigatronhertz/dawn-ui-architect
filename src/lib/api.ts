@@ -103,6 +103,9 @@ export type SquadMember = {
   paidAt:         number | null;
   wantsReminders: boolean;
   joinedAt:       number;
+  /** How many automated nudges have gone out to this person. */
+  remindersSent:  number;
+  lastRemindedAt: number | null;
 };
 
 export type SquadResponse = {

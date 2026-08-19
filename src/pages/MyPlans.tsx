@@ -619,7 +619,11 @@ function SquadPanel({ tripId, count }: { tripId: string; count: number }) {
                   <span className="text-[10px] font-semibold text-google-green shrink-0">Paid</span>
                 ) : (
                   <>
-                    {m.wantsReminders && (
+                    {m.remindersSent > 0 ? (
+                      <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">
+                        nudged {m.remindersSent}×
+                      </span>
+                    ) : m.wantsReminders && (
                       <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">wants a reminder</span>
                     )}
                     {wa ? (

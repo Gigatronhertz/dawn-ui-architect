@@ -99,4 +99,88 @@ async function sendPlanReadyEmail({ to, destination, origin, days, squadSize, pe
   }
 }
 
-module.exports = { sendPlanReadyEmail };
+/** True when email can actually be sent — callers use this to pick a channel. */
+function available() {
+  return !!process.env.RESEND_API_KEY;
+}
+
+const fmtNGN = (n) =>
+  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
+
+/** Shared shell so every Karije email looks like the same company sent it. */
+function shell({ heading, body, ctaLabel, ctaUrl, footnote }) {
+  return `<!doctype html><html><body style="margin:0;padding:24px;background:#f7f1e7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;">
+    <div style="background:#2f4a33;padding:20px 24px;">
+      <span style="color:#f7f1e7;font-size:18px;font-weight:600;letter-spacing:.02em;">Karije</span>
+    </div>
+    <div style="padding:28px 24px;">
+      <h1 style="margin:0 0 14px;font-size:20px;line-height:1.3;color:#22321f;">${heading}</h1>
+      <div style="font-size:15px;line-height:1.6;color:#5c6b5c;">${body}</div>
+      ${ctaUrl ? `<a href="${ctaUrl}" style="display:inline-block;margin-top:22px;background:#b0682f;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:15px;font-weight:600;">${ctaLabel}</a>` : ''}
+      ${footnote ? `<p style="margin-top:22px;font-size:12px;line-height:1.5;color:#8b978a;">${footnote}</p>` : ''}
+    </div>
+  </div>
+</body></html>`;
+}
+
+/**
+ * Nudge someone who joined a trip and hasn't paid.
+ * Tone escalates across the reminder schedule — see services/reminders.js.
+ */
+async function sendPaymentReminderEmail({ to, name, tripName, perPerson, link, daysLeft, tone }) {
+  const resend = getResend();
+  if (!resend || !to) return;
+
+  const who = name ? `${name}, ` : '';
+  const heading = tone === 'final'
+    ? `Last call for ${tripName}`
+    : tone === 'chase'
+      ? `Still holding your spot on ${tripName}`
+      : `You're on the list for ${tripName}`;
+
+  const urgency = daysLeft != null
+    ? ` The trip is <strong>${daysLeft} day${daysLeft === 1 ? '' : 's'}</strong> away.`
+    : '';
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: tone === 'final' ? `Last call — ${tripName}` : `Your share for ${tripName}`,
+    html: shell({
+      heading,
+      body: `<p style="margin:0;">${who}your share is <strong style="color:#22321f;">${fmtNGN(perPerson)}</strong>.` +
+            ` The squad is confirmed once everyone has paid.${urgency}</p>`,
+      ctaLabel: 'Pay my share',
+      ctaUrl: link,
+      footnote: `Not going any more? Ignore this and we'll stop reminding you after a few tries.`,
+    }),
+  });
+}
+
+/** Confirmation that money was actually taken. People go looking for these. */
+async function sendPaymentReceiptEmail({ to, name, tripName, amount, link, reference }) {
+  const resend = getResend();
+  if (!resend || !to) return;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `You're paid up for ${tripName} ✓`,
+    html: shell({
+      heading: `You're in 🎉`,
+      body: `<p style="margin:0 0 12px;">${name ? name + ', y' : 'Y'}our spot on <strong style="color:#22321f;">${tripName}</strong> is paid for.</p>
+             <p style="margin:0;">Amount paid: <strong style="color:#22321f;">${fmtNGN(amount)}</strong></p>`,
+      ctaLabel: 'See the trip',
+      ctaUrl: link,
+      footnote: `Reference: ${reference}. Keep this email — it's your receipt.`,
+    }),
+  });
+}
+
+module.exports = {
+  sendPlanReadyEmail,
+  sendPaymentReminderEmail,
+  sendPaymentReceiptEmail,
+  available,
+};

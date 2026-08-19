@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { Router } = require('express');
 const { verifyPayment } = require('./services/paystack');
 const { sendText } = require('./services/whatsapp');
+const { sendPaymentReceiptEmail } = require('./services/email');
 const { routeMessage } = require('./bot/router');
 const M = require('./bot/messages');
 const db = require('./db/client');
@@ -63,6 +64,26 @@ async function processPayment(reference) {
     if (participant.paid) return false; // idempotent
     await db.participants.markPaid({ paystack_ref: reference });
     console.log(`[processPayment] web participant ${participant.id} paid for trip ${participant.trip_id}`);
+
+    // Receipt. Non-blocking — a mail failure must never make a paid person
+    // look unpaid, and the payment is already recorded either way.
+    ;(async () => {
+      try {
+        const trip = await db.trips.get(participant.trip_id);
+        const plan = trip?.plan ? JSON.parse(trip.plan) : null;
+        await sendPaymentReceiptEmail({
+          to:        participant.email,
+          name:      participant.name,
+          tripName:  plan?.curated?.name || trip?.destination || 'your trip',
+          amount:    plan?.cost_breakdown?.per_person || 0,
+          link:      `${process.env.FRONTEND_URL || ''}/plan/${participant.trip_id}`,
+          reference,
+        });
+      } catch (err) {
+        console.warn('[processPayment] receipt email failed:', err.message);
+      }
+    })();
+
     return true;
   }
 

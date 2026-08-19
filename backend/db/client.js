@@ -205,6 +205,11 @@ const MIGRATIONS = [
   // a lead rather than a lost visitor.
   `ALTER TABLE participants ADD COLUMN wa_number      TEXT`,
   `ALTER TABLE participants ADD COLUMN wants_reminders INTEGER NOT NULL DEFAULT 0`,
+  // Phase 10 — chasing unpaid squad members. Tracked per participant so a
+  // reminder is never sent twice for the same step, even if the runner
+  // restarts or two instances overlap.
+  `ALTER TABLE participants ADD COLUMN reminders_sent  INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE participants ADD COLUMN last_reminded_at INTEGER`,
 ];
 
 const ready = (async () => {

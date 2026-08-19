@@ -66,5 +66,11 @@ db.ready.then(() => {
     console.log(`\n🚀 Karije backend running on port ${PORT}`);
     console.log(`   Webhook URL: http://localhost:${PORT}/webhook`);
     console.log(`   (expose with: ngrok http ${PORT})\n`);
+
+    // Chase unpaid squad members. Set REMINDERS=off to silence it in a shell
+    // where you don't want real messages going out.
+    if (process.env.REMINDERS !== 'off') {
+      require('./services/reminders').start();
+    }
   });
 });

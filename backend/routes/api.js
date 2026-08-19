@@ -588,7 +588,11 @@ router.post('/public/plan/:tripId/pay', async (req, res) => {
 
   const trip = await db.trips.get(req.params.tripId);
   if (!trip) return res.status(404).json({ error: 'Plan not found.' });
-  if (trip.status !== 'awaiting_group') return res.status(403).json({ error: 'Plan is not yet confirmed.' });
+  // Same set the shared link accepts — curated trips are the ones that collect,
+  // and gating on awaiting_group alone refused payment on every one of them.
+  if (!SHAREABLE.includes(trip.status)) {
+    return res.status(403).json({ error: 'Plan is not yet confirmed.' });
+  }
 
   const { participantId, email, name } = req.body;
   if (!email || !email.includes('@')) {
@@ -790,7 +794,8 @@ router.get('/auth/plans/:tripId/squad', requireAuth, async (req, res) => {
     }
 
     const rows = await db.rawAll(
-      `SELECT name, email, wa_number, paid, amount, paid_at, wants_reminders, created_at
+      `SELECT name, email, wa_number, paid, amount, paid_at, wants_reminders, created_at,
+              reminders_sent, last_reminded_at
          FROM participants WHERE trip_id = ? ORDER BY paid ASC, created_at ASC`,
       [trip.id]
     );
@@ -808,6 +813,8 @@ router.get('/auth/plans/:tripId/squad', requireAuth, async (req, res) => {
         paidAt:         r.paid_at ? Number(r.paid_at) : null,
         wantsReminders: !!r.wants_reminders,
         joinedAt:       Number(r.created_at),
+        remindersSent:  Number(r.reminders_sent || 0),
+        lastRemindedAt: r.last_reminded_at ? Number(r.last_reminded_at) : null,
       })),
     });
   } catch (err) {
