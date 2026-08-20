@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { Router } = require('express');
-const { verifyPayment } = require('./services/paystack');
+const { verifyPayment, initializeWebPayment } = require('./services/paystack');
 const { sendText } = require('./services/whatsapp');
 const { sendPaymentReceiptEmail } = require('./services/email');
 const { routeMessage } = require('./bot/router');
@@ -182,6 +182,60 @@ router.post('/webhook', (req, res) => {
   }
 });
 
+// ── Pay now — a link that can't go stale ──────────────────────────────────────
+//
+// Reminder emails point here rather than at a checkout URL. A reminder can be
+// opened five days after it was sent, and a Paystack link minted at send time
+// may not still be good by then; this mints one at the moment it's clicked.
+//
+// It also means the email carries no frontend URL at all, which is what put a
+// localhost link in front of people in the first place.
+router.get('/pay/:participantId', async (req, res) => {
+  const frontendUrl = (process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app').replace(/\/$/, '');
+
+  try {
+    const participant = await db.participants.getById(req.params.participantId);
+    if (!participant) return res.redirect(frontendUrl);
+
+    const planUrl = `${frontendUrl}/plan/${participant.trip_id}`;
+
+    // Never send someone to pay for something they've already paid for.
+    if (participant.paid) return res.redirect(`${planUrl}?paid=1`);
+
+    // Paystack can't raise a transaction without an email address, and the
+    // amount comes off the plan. Missing either, the plan page handles it —
+    // that's the form that asks.
+    const trip   = await db.trips.get(participant.trip_id);
+    const plan   = trip?.plan ? JSON.parse(trip.plan) : null;
+    const amount = plan?.cost_breakdown?.per_person;
+    if (!participant.email || !amount || amount <= 0) return res.redirect(planUrl);
+
+    const { reference, authorization_url } = await initializeWebPayment({
+      tripId:        participant.trip_id,
+      participantId: participant.id,
+      email:         participant.email,
+      name:          participant.name,
+      amountNGN:     amount,
+      callbackUrl:   `${planUrl}?paid=1`,
+    });
+
+    await db.participants.updatePayment({
+      id:           participant.id,
+      email:        participant.email,
+      amount,
+      paystack_ref: reference,
+      paystack_url: authorization_url,
+    });
+
+    return res.redirect(authorization_url);
+  } catch (err) {
+    // A dead-end link is bad; a stack trace in the browser is worse. Send them
+    // somewhere real and leave the reason in the logs.
+    console.error('[pay]', err.message);
+    return res.redirect(frontendUrl);
+  }
+});
+
 // ── Shared payment processing logic ───────────────────────────────────────────
 async function processPayment(reference) {
   const result = await verifyPayment(reference);
@@ -190,10 +244,16 @@ async function processPayment(reference) {
   // ── Phase 6: web squad payments (participants table) ──────────────────────
   // References starting with WEBSQ- belong to web squad members.
   if (reference.startsWith('WEBSQ-')) {
-    const participant = await db.participants.getByRef(reference);
+    // The reference stored on the row is only ever the most recent one, and
+    // someone can pay from an older reminder's link. Fall back to the
+    // participant Paystack carries in the transaction metadata — without it the
+    // money arrives and nobody gets credited for it.
+    const participant =
+      (await db.participants.getByRef(reference)) ||
+      (result.participantId ? await db.participants.getById(result.participantId) : null);
     if (!participant) { console.warn('[processPayment] participant not found for ref', reference); return false; }
     if (participant.paid) return false; // idempotent
-    await db.participants.markPaid({ paystack_ref: reference });
+    await db.participants.markPaidById(participant.id);
     console.log(`[processPayment] web participant ${participant.id} paid for trip ${participant.trip_id}`);
 
     // Receipt. Non-blocking — a mail failure must never make a paid person
@@ -207,7 +267,9 @@ async function processPayment(reference) {
           name:      participant.name,
           tripName:  plan?.curated?.name || trip?.destination || 'your trip',
           amount:    plan?.cost_breakdown?.per_person || 0,
-          link:      `${process.env.FRONTEND_URL || ''}/plan/${participant.trip_id}`,
+          // Falling back to '' produced "/plan/abc" — a relative link, which is
+          // meaningless in an email client.
+          link:      `${(process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app').replace(/\/$/, '')}/plan/${participant.trip_id}`,
           reference,
         });
       } catch (err) {
@@ -297,3 +359,9 @@ router.get('/payment/confirm', async (req, res) => {
 });
 
 module.exports = router;
+
+// The payment-status endpoint in routes/api.js needs this too: a browser coming
+// back from Paystack shouldn't be stuck waiting on a webhook that may never
+// arrive. Shared rather than reimplemented so crediting a payment, sending the
+// receipt and staying idempotent happen in exactly one place.
+module.exports.processPayment = processPayment;

@@ -46,6 +46,10 @@ async function verifyPayment(reference) {
     amountNGN: amount / 100,
     tripId: metadata?.trip_id,
     phone: metadata?.phone,
+    // Web squad payments carry the participant. The reference alone isn't
+    // enough to find them — a new one is raised each time they open a pay
+    // link, so an older link's reference won't match the row.
+    participantId: metadata?.participant_id,
   };
 }
 

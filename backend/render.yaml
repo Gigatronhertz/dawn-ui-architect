@@ -43,6 +43,10 @@ services:
         value: "MySquadGo <onboarding@resend.dev>"
       - key: FRONTEND_URL
         value: https://mysquadgo.vercel.app
+      # Public URL of this service. Reminder emails build their Pay now link
+      # from it — a wrong value mails out a button nobody can click.
+      - key: BACKEND_URL
+        value: https://dawn-ui-architect.onrender.com
 
       # ── Firebase Admin (Google Auth verification) ──────────────────────────
       - key: FIREBASE_SERVICE_ACCOUNT
@@ -64,6 +68,12 @@ services:
       # Still shown to users when the bot asks to be added to a squad group
       - key: WA_DISPLAY_NUMBER
         sync: false
+
+      # ── Reminders ─────────────────────────────────────────────
+      # Channel order, first that lands wins. Email leads while WhatsApp is
+      # parked; swap to whatsapp,email once the Zavu account has a sender.
+      - key: REMINDER_CHANNELS
+        value: email,whatsapp
 
       # ── Payments (Paystack) ────────────────────────────────────────────────
       - key: PAYSTACK_SECRET_KEY

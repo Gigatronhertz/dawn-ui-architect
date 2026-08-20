@@ -6,9 +6,9 @@
  * here is per-participant and idempotent — a reminder is counted the moment it
  * goes out, so a restart or an overlapping run can't double-send.
  *
- * Channels degrade rather than fail. With no WhatsApp provider it sends email;
- * with neither it records the attempt so the organiser's chase list still shows
- * who has been nudged and when.
+ * Channels degrade rather than fail: it tries each in CHANNEL_ORDER and stops
+ * at the first that lands. With none of them reachable it still records the
+ * attempt, so the organiser's chase list shows who has been nudged and when.
  */
 const db = require('../db/client');
 const { sendText, sendTemplate, available: waAvailable } = require('./whatsapp');
@@ -27,6 +27,16 @@ const STEPS = [
   { after: 3 * DAY,  tone: 'chase'  },
   { after: 5 * DAY,  tone: 'final'  },
 ];
+
+/**
+ * Which channels to try, in order, stopping at the first that lands.
+ *
+ * Email leads because it is the one that currently works — WhatsApp is set
+ * aside until the Zavu account has a sender configured. WhatsApp is still
+ * tried as a fallback, so nobody with a number and no email goes unreminded.
+ */
+const CHANNEL_ORDER = (process.env.REMINDER_CHANNELS || 'email,whatsapp')
+  .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 
 const fmtNGN = (n) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
@@ -75,11 +85,13 @@ async function findDue(now = Math.floor(Date.now() / 1000)) {
  * Send one participant their next reminder.
  * Returns the channel used, or null when there was no way to reach them.
  */
-async function remindOne(row, { frontendUrl }) {
+async function remindOne(row, { payBase }) {
   const plan      = row.plan ? JSON.parse(row.plan) : null;
   const perPerson = plan?.cost_breakdown?.per_person || 0;
   const tripName  = plan?.curated?.name || plan?.days?.length ? (plan?.curated?.name || 'your trip') : 'your trip';
-  const link      = `${frontendUrl}/plan/${row.trip_id}`;
+  // Straight to paying, not to the plan page with a Pay button on it. The
+  // backend resolves this to a live Paystack checkout when it's clicked.
+  const link      = `${payBase}/pay/${row.id}`;
   const step      = STEPS[Number(row.reminders_sent)];
 
   let daysLeft = null;
@@ -92,45 +104,61 @@ async function remindOne(row, { frontendUrl }) {
     tone: step.tone, name: row.name, tripName, perPerson, link, daysLeft,
   });
 
+  // Email leads for now. WhatsApp is parked until the Zavu account has a
+  // sender, and until then every WhatsApp attempt fails and falls through to
+  // email anyway — so try the channel that actually works first, rather than
+  // after a failure. Order is config, not code: set REMINDER_CHANNELS to
+  // `whatsapp,email` to put it back in front the day it's live again.
+  const attempts = {
+    async email() {
+      if (!row.email || !emailAvailable()) return false;
+      try {
+        await sendPaymentReminderEmail({
+          to: row.email, name: row.name, tripName, perPerson, link, daysLeft, tone: step.tone,
+        });
+        return true;
+      } catch (err) {
+        console.warn(`[reminders] email failed for ${row.id}: ${err.message}`);
+        return false;
+      }
+    },
+
+    // A reminder is always days after the person last spoke to us, so the
+    // 24-hour window is shut and WhatsApp requires an approved template. Plain
+    // text is tried only for the rare case where they messaged us recently; it
+    // fails cleanly with whatsapp_window_closed otherwise.
+    async whatsapp() {
+      if (!row.wa_number || !waAvailable()) return false;
+      const templateName = process.env.ZAVU_REMINDER_TEMPLATE;
+      try {
+        if (templateName) {
+          await sendTemplate(row.wa_number, templateName, [
+            row.name || 'there',
+            tripName,
+            fmtNGN(perPerson),
+            link,
+          ]);
+        } else {
+          await sendText(row.wa_number, body);
+        }
+        return true;
+      } catch (err) {
+        if (err.code === 'whatsapp_window_closed' && !templateName) {
+          console.warn('[reminders] set ZAVU_REMINDER_TEMPLATE to reach people over WhatsApp');
+        }
+        return false;
+      }
+    },
+  };
+
   let channel = null;
-
-  // WhatsApp first — it's the one that actually gets read.
-  //
-  // A reminder is always days after the person last spoke to us, so the
-  // 24-hour window is shut and WhatsApp requires an approved template. Plain
-  // text is tried only as a fallback, for the rare case where they messaged us
-  // recently; it fails cleanly with whatsapp_window_closed otherwise.
-  if (row.wa_number && waAvailable()) {
-    const templateName = process.env.ZAVU_REMINDER_TEMPLATE;
-    try {
-      if (templateName) {
-        await sendTemplate(row.wa_number, templateName, [
-          row.name || 'there',
-          tripName,
-          fmtNGN(perPerson),
-          link,
-        ]);
-      } else {
-        await sendText(row.wa_number, body);
-      }
-      channel = 'whatsapp';
-    } catch (err) {
-      if (err.code === 'whatsapp_window_closed' && !templateName) {
-        console.warn('[reminders] set ZAVU_REMINDER_TEMPLATE to reach people over WhatsApp');
-      }
-      // Falls through to email below.
+  for (const name of CHANNEL_ORDER) {
+    const attempt = attempts[name];
+    if (!attempt) {
+      console.warn(`[reminders] unknown channel in REMINDER_CHANNELS: ${name}`);
+      continue;
     }
-  }
-
-  if (!channel && row.email && emailAvailable()) {
-    try {
-      await sendPaymentReminderEmail({
-        to: row.email, name: row.name, tripName, perPerson, link, daysLeft, tone: step.tone,
-      });
-      channel = 'email';
-    } catch (err) {
-      console.warn(`[reminders] email failed for ${row.id}: ${err.message}`);
-    }
+    if (await attempt()) { channel = name; break; }
   }
 
   // Count the attempt either way. If we can't reach someone, retrying the same
@@ -147,13 +175,16 @@ async function remindOne(row, { frontendUrl }) {
 
 /** One pass. Safe to call repeatedly; does nothing when nothing is due. */
 async function runOnce() {
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+  // The pay link is a backend URL. Falling back to localhost here is what put
+  // an unclickable "Pay now" button in front of real people — every other
+  // module in the backend falls back to the deployed host, and so does this.
+  const payBase = (process.env.BACKEND_URL || 'https://dawn-ui-architect.onrender.com').replace(/\/$/, '');
   const due = await findDue();
   if (due.length === 0) return { checked: 0, sent: 0, unreachable: 0 };
 
   let sent = 0, unreachable = 0;
   for (const row of due) {
-    const channel = await remindOne(row, { frontendUrl });
+    const channel = await remindOne(row, { payBase });
     if (channel) sent++; else unreachable++;
   }
 

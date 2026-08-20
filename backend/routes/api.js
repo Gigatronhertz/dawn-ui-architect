@@ -12,6 +12,9 @@ const { requireAuth }        = require('../middleware/auth');
 const { sendPlanReadyEmail } = require('../services/email');
 const { sendPlanReadyPush  } = require('../services/webPush');
 const paystack               = require('../services/paystack');
+// Crediting a payment lives with the webhook that normally does it; the
+// payment-status endpoint reuses it so a payer is never stranded waiting.
+const { processPayment }     = require('../webhook');
 const { CHAT_MODEL }         = require('../services/llm');
 const ledger                 = require('../services/ledger');
 
@@ -571,14 +574,39 @@ router.post('/public/plan/:tripId/join', async (req, res) => {
 router.get('/public/plan/:tripId/participant/:participantId', async (req, res) => {
   try {
     const rows = await db.rawAll(
-      `SELECT paid, amount, paid_at FROM participants WHERE id = ? AND trip_id = ?`,
+      `SELECT id, paid, amount, paid_at, paystack_ref FROM participants WHERE id = ? AND trip_id = ?`,
       [req.params.participantId, req.params.tripId]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Not found.' });
+    let row = rows[0];
+
+    // Not marked paid yet? Ask Paystack rather than waiting on their webhook.
+    //
+    // The webhook is still the primary path, but it can be delayed, misrouted,
+    // or arrive while the service is cold — and until it lands the payer sits
+    // in front of "we haven't seen your payment yet" having genuinely paid.
+    // Verifying server-to-server keeps the rule that matters: the browser is
+    // still not believed, Paystack is asked directly. processPayment is the
+    // same routine the webhook runs, and it's idempotent.
+    if (!row.paid && row.paystack_ref && paystack.available()) {
+      try {
+        if (await processPayment(row.paystack_ref)) {
+          const fresh = await db.rawAll(
+            `SELECT paid, amount, paid_at FROM participants WHERE id = ?`, [row.id]
+          );
+          if (fresh.length) row = fresh[0];
+        }
+      } catch (err) {
+        // Leave them unconfirmed rather than guessing — never claim a payment
+        // that hasn't been verified.
+        console.warn('[api/participant-status] verify failed:', err.message);
+      }
+    }
+
     res.json({
-      paid:   !!rows[0].paid,
-      amount: rows[0].amount ? Number(rows[0].amount) : null,
-      paidAt: rows[0].paid_at ? Number(rows[0].paid_at) : null,
+      paid:   !!row.paid,
+      amount: row.amount ? Number(row.amount) : null,
+      paidAt: row.paid_at ? Number(row.paid_at) : null,
     });
   } catch (err) {
     console.error('[api/participant-status]', err.message);

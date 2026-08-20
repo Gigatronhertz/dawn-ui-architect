@@ -660,6 +660,15 @@ async function getParticipants(tripId) {
   return res.rows;
 }
 
+/** One participant by id — the pay link resolves against this. */
+async function getParticipantById(id) {
+  const r = await client.execute({
+    sql: 'SELECT * FROM participants WHERE id = ?',
+    args: [id],
+  });
+  return r.rows[0] || null;
+}
+
 async function getParticipantByRef(paystackRef) {
   const res = await client.execute({
     sql: 'SELECT * FROM participants WHERE paystack_ref = ?',
@@ -679,6 +688,20 @@ async function markParticipantPaid({ paystack_ref }) {
   await client.execute({
     sql: `UPDATE participants SET paid=1, paid_at=unixepoch() WHERE paystack_ref=?`,
     args: [paystack_ref],
+  });
+}
+
+/**
+ * Mark paid by participant id rather than reference.
+ *
+ * Every click on a pay link raises a fresh Paystack reference, so the one that
+ * comes back on a webhook is not necessarily the one stored on the row. Keying
+ * on the id credits the right person whichever link they used.
+ */
+async function markParticipantPaidById(id) {
+  await client.execute({
+    sql: 'UPDATE participants SET paid=1, paid_at=unixepoch() WHERE id=?',
+    args: [id],
   });
 }
 
@@ -841,9 +864,11 @@ module.exports = {
   participants: {
     insert: insertParticipant,
     get: getParticipants,
+    getById: getParticipantById,
     getByRef: getParticipantByRef,
     updatePayment: updateParticipantPayment,
     markPaid: markParticipantPaid,
+    markPaidById: markParticipantPaidById,
     stats: getParticipantStats,
   },
 };
