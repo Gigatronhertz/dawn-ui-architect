@@ -185,7 +185,9 @@ export type DashboardSummary = {
 };
 
 export type DashboardData = {
-  agent: AgentProfile & { agency_name: string; plan_type: string; service_fee: number };
+  // wa_number is the raw agents column, snake_case as the row comes back —
+  // the dashboard reads it, and leaving it off the type made that a build error.
+  agent: AgentProfile & { agency_name: string; plan_type: string; service_fee: number; wa_number?: string };
   trips: TripRow[];
   summary: DashboardSummary;
 };
@@ -263,6 +265,16 @@ export const api = {
       `/api/experiences/${encodeURIComponent(id)}/add-to-plan`, opts, bearer(token)
     ),
 
+  /**
+   * Same trip, no account needed — used to get a shareable id before sending a
+   * curated trip to a squad. Sharing needs something to link to, and requiring
+   * a sign-in first is what left the share message with no link in it.
+   */
+  createShareTrip: (id: string, opts: { days: number; squadSize: number }) =>
+    post<{ ok: boolean; tripId: string; perPerson: number; total: number; days: number }>(
+      `/api/experiences/${encodeURIComponent(id)}/share-trip`, opts
+    ),
+
   /** Ask the AI to fill the day schedule. Leaves transport and hotel alone. */
   draftDays: (tripId: string, opts: { transport?: string; vibe?: string } = {}) =>
     post<{ ok: boolean; days: PlanDay[]; highlights: string[] }>(
@@ -332,9 +344,18 @@ export const api = {
    * Paystack" — it says nothing about whether money moved.
    */
   getMyPaymentStatus: (tripId: string, participantId: string) =>
-    get<{ paid: boolean; amount: number | null; paidAt: number | null }>(
+    get<{ paid: boolean; amount: number | null; paidAt: number | null; hasEmail: boolean }>(
       `/api/public/plan/${tripId}/participant/${participantId}`
     ),
+
+  /**
+   * Where "Pay now" goes once we already know who someone is.
+   *
+   * The backend resolves this to a live Paystack checkout, reading the email
+   * captured when they joined — so nobody is asked for it a second time. Not a
+   * fetch: it's a link the browser follows, ending on Paystack.
+   */
+  payLink: (participantId: string) => `${API_URL}/pay/${participantId}`,
 
   /** Poll for live participant count and payment stats. */
   getParticipants: (tripId: string) =>

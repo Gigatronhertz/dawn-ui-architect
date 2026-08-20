@@ -574,7 +574,7 @@ router.post('/public/plan/:tripId/join', async (req, res) => {
 router.get('/public/plan/:tripId/participant/:participantId', async (req, res) => {
   try {
     const rows = await db.rawAll(
-      `SELECT id, paid, amount, paid_at, paystack_ref FROM participants WHERE id = ? AND trip_id = ?`,
+      `SELECT id, paid, amount, paid_at, paystack_ref, email FROM participants WHERE id = ? AND trip_id = ?`,
       [req.params.participantId, req.params.tripId]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Not found.' });
@@ -607,6 +607,11 @@ router.get('/public/plan/:tripId/participant/:participantId', async (req, res) =
       paid:   !!row.paid,
       amount: row.amount ? Number(row.amount) : null,
       paidAt: row.paid_at ? Number(row.paid_at) : null,
+      // Whether we already hold an email for this person. They gave one when
+      // they joined; asking a second time at payment is asking twice for the
+      // same thing. The address itself stays server-side — the pay route reads
+      // it there, so it never needs to travel to the browser and back.
+      hasEmail: !!row.email,
     });
   } catch (err) {
     console.error('[api/participant-status]', err.message);
@@ -1115,76 +1120,116 @@ router.get('/trip-image/:id', async (req, res) => {
   }
 });
 
+/**
+ * Turn a curated experience into a real trip row.
+ *
+ * Shared by two routes because a trip has to exist before it can be shared:
+ * the link a squad receives is a trip id, and until one exists the share
+ * message has nothing to point at. Signing in decides whose plans it lands in,
+ * not whether it can be created — `userId` is simply null for a squad shared
+ * by someone who never made an account.
+ *
+ * Returns null when the experience doesn't exist or isn't published.
+ */
+async function createCuratedTrip({ experienceId, days, squadSize, userId }) {
+  const rows = await db.rawAll('SELECT * FROM experiences WHERE id = ? AND published = 1', [experienceId]);
+  const exp  = rows[0] ? db.parseExpRow(rows[0]) : null;
+  if (!exp) return null;
+
+  const cappedDays = Math.min(days, exp.maxDays || 1);
+  const perPerson  = exp.pricePerPersonPerDay * cappedDays;
+  const total      = perPerson * squadSize;
+
+  // Day 1 uses the base schedule; later days fall back to it unless the
+  // admin set an override — same rule the Explore detail view renders by.
+  const planDays = Array.from({ length: cappedDays }, (_, i) => ({
+    day: i + 1,
+    activities: (exp.scheduleOverrides?.[i] ?? exp.schedule ?? []).map(s => ({
+      time:            s.time,
+      title:           s.activity,
+      cost_per_person: 0,
+    })),
+  }));
+
+  const tripId = uuid();
+  // Karije is the organiser on curated trips — no squad phone number yet.
+  await db.trips.insert({ id: tripId, organiser_phone: process.env.WA_DISPLAY_NUMBER || 'karije' });
+  await db.raw(
+    `UPDATE trips SET user_id=?, origin=?, destination=?, days=?, squad_size=?,
+       status=?, plan=?, intake_json=?, service_fee_per_person=? WHERE id=?`,
+    [
+      userId, exp.state, exp.state, cappedDays, squadSize,
+      'curated',
+      JSON.stringify({
+        hotel: null,
+        transport: null,
+        days: planDays,
+        date_options: [],
+        cost_breakdown: {
+          transport_total: 0, lodging_total: 0, food_total: 0,
+          activities_total: total, buffer: 0, total, per_person: perPerson,
+        },
+        highlights: exp.highlights || [],
+        offline_note: exp.notes || '',
+        curated: {
+          experienceId: exp.id,
+          name:         exp.name,
+          tagline:      exp.tagline,
+          location:     exp.location,
+          imageId:      exp.imageId,
+          included:     exp.included || [],
+          // Snapshotted, not looked up later — if the admin retunes the trip
+          // afterwards, a squad already collecting keeps the terms they saw.
+          groupMin:     exp.groupMin,
+          groupMax:     exp.groupMax,
+        },
+      }),
+      JSON.stringify({ curatedId: exp.id, days: cappedDays, squadSize }),
+      ledger.DEFAULT_SERVICE_FEE,
+      tripId,
+    ]
+  );
+
+  return { tripId, perPerson, total, days: cappedDays };
+}
+
 // ── POST /api/experiences/:id/add-to-plan ───────────────────────────────────
 // Saves a curated trip to the signed-in user's plans so they can come back to
 // it, share it, or hand it to their squad. Karije runs these trips, so we are
 // the organiser — the squad's own number is only collected later, at booking.
 router.post('/experiences/:id/add-to-plan', requireAuth, async (req, res) => {
   try {
-    const days      = Math.max(1, Number(req.body?.days)      || 1);
-    const squadSize = Math.max(1, Number(req.body?.squadSize) || 1);
-
-    const rows = await db.rawAll('SELECT * FROM experiences WHERE id = ? AND published = 1', [req.params.id]);
-    const exp  = rows[0] ? db.parseExpRow(rows[0]) : null;
-    if (!exp) return res.status(404).json({ error: 'Trip not found.' });
-
-    const cappedDays = Math.min(days, exp.maxDays || 1);
-    const perPerson  = exp.pricePerPersonPerDay * cappedDays;
-    const total      = perPerson * squadSize;
-
-    // Day 1 uses the base schedule; later days fall back to it unless the
-    // admin set an override — same rule the Explore detail view renders by.
-    const planDays = Array.from({ length: cappedDays }, (_, i) => ({
-      day: i + 1,
-      activities: (exp.scheduleOverrides?.[i] ?? exp.schedule ?? []).map(s => ({
-        time:            s.time,
-        title:           s.activity,
-        cost_per_person: 0,
-      })),
-    }));
-
-    const tripId = uuid();
-    // Karije is the organiser on curated trips — no squad phone number yet.
-    await db.trips.insert({ id: tripId, organiser_phone: process.env.WA_DISPLAY_NUMBER || 'karije' });
-    await db.raw(
-      `UPDATE trips SET user_id=?, origin=?, destination=?, days=?, squad_size=?,
-         status=?, plan=?, intake_json=?, service_fee_per_person=? WHERE id=?`,
-      [
-        req.user.uid, exp.state, exp.state, cappedDays, squadSize,
-        'curated',
-        JSON.stringify({
-          hotel: null,
-          transport: null,
-          days: planDays,
-          date_options: [],
-          cost_breakdown: {
-            transport_total: 0, lodging_total: 0, food_total: 0,
-            activities_total: total, buffer: 0, total, per_person: perPerson,
-          },
-          highlights: exp.highlights || [],
-          offline_note: exp.notes || '',
-          curated: {
-            experienceId: exp.id,
-            name:         exp.name,
-            tagline:      exp.tagline,
-            location:     exp.location,
-            imageId:      exp.imageId,
-            included:     exp.included || [],
-            // Snapshotted, not looked up later — if the admin retunes the trip
-            // afterwards, a squad already collecting keeps the terms they saw.
-            groupMin:     exp.groupMin,
-            groupMax:     exp.groupMax,
-          },
-        }),
-        JSON.stringify({ curatedId: exp.id, days: cappedDays, squadSize }),
-        ledger.DEFAULT_SERVICE_FEE,
-        tripId,
-      ]
-    );
-
-    res.json({ ok: true, tripId, perPerson, total, days: cappedDays });
+    const result = await createCuratedTrip({
+      experienceId: req.params.id,
+      days:         Math.max(1, Number(req.body?.days)      || 1),
+      squadSize:    Math.max(1, Number(req.body?.squadSize) || 1),
+      userId:       req.user.uid,
+    });
+    if (!result) return res.status(404).json({ error: 'Trip not found.' });
+    res.json({ ok: true, ...result });
   } catch (err) {
     console.error('[api/add-to-plan]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/experiences/:id/share-trip ────────────────────────────────────
+// The same thing without an account. Sharing a curated trip needs a trip id to
+// point at, and requiring a sign-in first is what left the WhatsApp share
+// message with no link in it at all — a squad was invited to a plan that did
+// not exist yet, with nowhere to say yes or pay.
+router.post('/experiences/:id/share-trip', async (req, res) => {
+  try {
+    const result = await createCuratedTrip({
+      experienceId: req.params.id,
+      days:         Math.max(1, Number(req.body?.days)      || 1),
+      squadSize:    Math.max(1, Number(req.body?.squadSize) || 1),
+      userId:       null,
+    });
+    if (!result) return res.status(404).json({ error: 'Trip not found.' });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('[api/share-trip]', err.message);
     res.status(500).json({ error: err.message });
   }
 });

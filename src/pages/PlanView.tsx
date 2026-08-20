@@ -142,6 +142,27 @@ function PaymentSection({
   const [payState, setPayState] = useState<PayState>(justPaid ? "verifying" : "idle");
   const [email, setEmail]       = useState("");
   const [error, setError]       = useState("");
+  /**
+   * Whether the server already holds an email for this person. They gave one
+   * when they joined, so asking again at payment is asking twice for the same
+   * thing. Assume not until the server says otherwise — the worst case is the
+   * old behaviour, never a payment attempt with no address.
+   */
+  const [hasEmail, setHasEmail] = useState(false);
+
+  // Ask once on mount who this is. Doubles as recovery: if a payment landed
+  // while the page was closed, this is where it gets picked up.
+  useEffect(() => {
+    let live = true;
+    api.getMyPaymentStatus(tripId, participantId)
+      .then((s) => {
+        if (!live) return;
+        setHasEmail(s.hasEmail);
+        if (s.paid) setPayState("paid");
+      })
+      .catch(() => { /* leave it to the pay flow to surface problems */ });
+    return () => { live = false; };
+  }, [tripId, participantId]);
 
   /**
    * Coming back from Paystack, ask the server whether the money actually
@@ -241,6 +262,19 @@ function PaymentSection({
     );
   }
 
+  /**
+   * We already have their email from joining, so go straight to paying. Only
+   * someone who joined without one — a WhatsApp-only signup — still sees a form.
+   */
+  function handlePayNow() {
+    if (hasEmail) {
+      setPayState("redirecting");
+      window.location.href = api.payLink(participantId);
+      return;
+    }
+    setPayState("form");
+  }
+
   async function handlePay(e: React.FormEvent) {
     e.preventDefault();
     if (!email.includes("@")) { setError("Enter a valid email address."); return; }
@@ -271,7 +305,7 @@ function PaymentSection({
 
       {payState === "idle" && (
         <button
-          onClick={() => setPayState("form")}
+          onClick={handlePayNow}
           className="w-full rounded-full bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
         >
           Pay now →
