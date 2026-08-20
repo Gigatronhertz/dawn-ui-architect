@@ -45,7 +45,7 @@ export const WaitlistForm = ({
           onChange={(e) => setPhone(e.target.value)}
           placeholder="Your WhatsApp number"
           disabled={status === "loading"}
-          className={`flex-1 rounded-full px-5 py-3.5 text-sm focus:outline-none transition-all ${
+          className={`flex-1 rounded-lg px-5 py-3.5 text-sm focus:outline-none transition-all ${
             dark
               ? "bg-white/10 ring-1 ring-white/20 placeholder:text-white/50 text-white focus:ring-2 focus:ring-white/40"
               : "bg-secondary/60 ring-hairline placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40"
@@ -54,7 +54,7 @@ export const WaitlistForm = ({
         <button
           type="submit"
           disabled={status === "loading" || !phone.trim()}
-          className="rounded-full bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100 whitespace-nowrap"
+          className="rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100 whitespace-nowrap"
         >
           {status === "loading" ? "Saving…" : "Get early access"}
         </button>

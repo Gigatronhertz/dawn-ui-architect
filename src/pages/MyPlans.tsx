@@ -511,7 +511,7 @@ export default function MyPlans() {
                           </div>
                           <Link
                             to={`/plan/${p.tripId}`}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-4 py-2 text-xs font-semibold hover:bg-primary/15 transition"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary px-4 py-2 text-xs font-semibold hover:bg-primary/15 transition"
                           >
                             View squad page →
                           </Link>

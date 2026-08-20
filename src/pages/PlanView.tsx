@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { api, type PublicPlanResponse, type PlanDay } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -239,13 +240,13 @@ function PaymentSection({
         <div className="flex gap-2">
           <button
             onClick={() => setPayState("verifying")}
-            className="flex-1 rounded-full bg-secondary text-foreground py-2.5 text-sm font-medium hover:bg-secondary/70 transition"
+            className="flex-1 rounded-lg bg-secondary text-foreground py-2.5 text-sm font-medium hover:bg-secondary/70 transition"
           >
             Check again
           </button>
           <button
             onClick={() => setPayState("form")}
-            className="flex-1 rounded-full bg-gradient-primary text-primary-foreground py-2.5 text-sm font-medium shadow-glow hover:opacity-90 transition"
+            className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-2.5 text-sm font-medium shadow-glow hover:opacity-90 transition"
           >
             Try payment again
           </button>
@@ -306,7 +307,7 @@ function PaymentSection({
       {payState === "idle" && (
         <button
           onClick={handlePayNow}
-          className="w-full rounded-full bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+          className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
         >
           Pay now →
         </button>
@@ -323,12 +324,12 @@ function PaymentSection({
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
             <button type="submit"
-              className="flex-1 rounded-full bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
             >
               Pay {fmtNGN(perPerson)} →
             </button>
             <button type="button" onClick={() => { setPayState("idle"); setError(""); }}
-              className="rounded-full bg-secondary text-foreground px-4 py-3 text-sm font-medium hover:bg-secondary/60 transition"
+              className="rounded-lg bg-secondary text-foreground px-4 py-3 text-sm font-medium hover:bg-secondary/60 transition"
             >
               Cancel
             </button>
@@ -529,12 +530,12 @@ function JoinSection({
 
           <div className="flex gap-2">
             <button onClick={() => handleJoin(false)}
-              className="flex-1 rounded-full bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
             >
               I'm in! 🎉
             </button>
             <button onClick={() => setJoinState("idle")}
-              className="rounded-full bg-secondary text-foreground px-4 py-3 text-sm font-medium hover:bg-secondary/60 transition"
+              className="rounded-lg bg-secondary text-foreground px-4 py-3 text-sm font-medium hover:bg-secondary/60 transition"
             >
               Cancel
             </button>
@@ -557,7 +558,7 @@ function JoinSection({
         </div>
       ) : (
         <button onClick={() => setJoinState("name-input")}
-          className="w-full rounded-full bg-gradient-primary text-primary-foreground py-4 text-base font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+          className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-4 text-base font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
         >
           I'm in! 🎉
         </button>
@@ -579,7 +580,7 @@ function ShareSection({ tripId, destination }: { tripId: string; destination: st
     <div className="flex gap-3 print:hidden">
       <button
         onClick={() => { navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-        className={`flex-1 rounded-full py-3 text-sm font-medium ring-hairline transition ${
+        className={`flex-1 rounded-lg py-3 text-sm font-medium ring-hairline transition ${
           copied ? "bg-google-green/10 text-google-green ring-google-green/20" : "bg-card text-foreground hover:bg-secondary"
         }`}
       >
@@ -588,7 +589,7 @@ function ShareSection({ tripId, destination }: { tripId: string; destination: st
       <a
         href={`https://wa.me/?text=${waText}`}
         target="_blank" rel="noopener noreferrer"
-        className="flex-1 rounded-full py-3 text-sm font-medium text-center bg-whatsapp text-white hover:opacity-90 transition"
+        className="flex-1 rounded-lg py-3 text-sm font-medium text-center bg-whatsapp text-white hover:opacity-90 transition"
       >
         Share on WhatsApp
       </a>
@@ -625,10 +626,29 @@ export default function PlanView() {
   const { tripId }      = useParams<{ tripId: string }>();
   const [searchParams]  = useSearchParams();
   const justPaid        = searchParams.get("paid") === "1";
+  const toClaim         = searchParams.get("claim") === "1";
 
   const [data, setData]     = useState<PublicPlanResponse | null>(null);
   const [loading, setLoad]  = useState(true);
   const [error, setError]   = useState<string | null>(null);
+  const [claimed, setClaimed] = useState(false);
+
+  /**
+   * Landing here straight after signing up, on a trip made before there was an
+   * account to put it in. Adopt it now, so planning first and registering
+   * second doesn't cost someone the thing they just built.
+   */
+  const { user, getIdToken } = useAuth();
+  useEffect(() => {
+    if (!toClaim || !tripId || !user) return;
+    let live = true;
+    const token = getIdToken();
+    if (!token) return;
+    api.claimTrip(tripId, token)
+      .then(() => { if (live) setClaimed(true); })
+      .catch(() => { /* already someone else's, or offline — the plan still shows */ });
+    return () => { live = false; };
+  }, [toClaim, tripId, user, getIdToken]);
 
   useEffect(() => {
     if (!tripId) { setError("Invalid plan link."); setLoad(false); return; }
@@ -639,9 +659,8 @@ export default function PlanView() {
   }, [tripId]);
 
   useEffect(() => {
-    document.title = data?.destination
-      ? `${data.destination} Squad Trip · Karije`
-      : "Squad Trip · Karije";
+    const name = data?.curated?.name || data?.destination;
+    document.title = name ? `${name} Squad Trip · Karije` : "Squad Trip · Karije";
   }, [data]);
 
   const cb = data?.cost_breakdown;
@@ -662,12 +681,26 @@ export default function PlanView() {
 
       {/* Screen header */}
       <header className="pt-6 pb-2 print:hidden">
-        <div className="mx-auto max-w-lg px-4">
+        <div className="mx-auto max-w-lg lg:max-w-6xl px-4 lg:px-8">
           <KarijeLogo size="sm" />
         </div>
       </header>
 
-      <div className="mx-auto max-w-lg px-4 pb-24 space-y-4 print:max-w-full print:px-8 print:pb-8 print:space-y-3">
+      <div className="mx-auto max-w-lg lg:max-w-6xl px-4 lg:px-8 pb-24 space-y-4 print:max-w-full print:px-8 print:pb-8 print:space-y-3">
+        {/* Adopted on arrival from sign-up — say so, or it looks like nothing happened */}
+        {claimed && (
+          <div className="rounded-lg bg-primary/10 ring-1 ring-primary/20 px-5 py-4 flex items-center gap-3 print:hidden">
+            <span className="text-2xl">📌</span>
+            <div>
+              <div className="font-display font-semibold">Saved to your plans</div>
+              <p className="text-sm text-muted-foreground">
+                This trip is yours now — find it any time in{" "}
+                <Link to="/my-plans" className="underline hover:text-foreground">My Plans</Link>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Payment success banner */}
         {justPaid && (
           <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 px-5 py-4 flex items-center gap-3 print:hidden">
@@ -687,7 +720,7 @@ export default function PlanView() {
             <div className="font-display text-xl font-semibold mb-2">Plan not available</div>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto">{error}</p>
             <Link to="/"
-              className="inline-block mt-6 rounded-full bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:opacity-90 transition"
+              className="inline-block mt-6 rounded-lg bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:opacity-90 transition"
             >
               Plan your own trip
             </Link>
@@ -695,7 +728,9 @@ export default function PlanView() {
         )}
 
         {data && !loading && (
-          <>
+          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-8 lg:items-start print:block">
+            {/* The trip itself — what they're being invited to */}
+            <div className="space-y-4 print:space-y-3">
             {/* Countdown — shown when organiser set a trip date */}
             {data.selectedDate && (
               <div className="print:hidden">
@@ -705,11 +740,16 @@ export default function PlanView() {
 
             {/* Hero */}
             <div className="text-center py-6 print:py-3 print:text-left">
+              {/* On a curated trip origin and destination are both the state, so
+                  the old heading read "LAGOS → LAGOS" over a title of "Lagos".
+                  These trips have a name and a place — use them. */}
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2 print:hidden">
-                {data.origin || "Your city"} → {data.destination || "Destination"}
+                {data.curated
+                  ? data.curated.location
+                  : `${data.origin || "Your city"} → ${data.destination || "Destination"}`}
               </div>
               <h1 className="font-display text-4xl md:text-5xl font-semibold tracking-tight mb-3 print:text-2xl">
-                {data.destination || "Squad Trip"}
+                {data.curated?.name || data.destination || "Squad Trip"}
               </h1>
               <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground flex-wrap print:justify-start">
                 {data.days && (
@@ -837,6 +877,11 @@ export default function PlanView() {
               </Card>
             )}
 
+            </div>
+
+            {/* Joining and paying. Sticky on desktop: on a long itinerary the
+                thing a squad member came to do shouldn't scroll away. */}
+            <aside className="space-y-4 mt-4 lg:mt-0 lg:sticky lg:top-6 print:mt-0">
             {/* Squad participation + payment */}
             {tripId && cb && (
               <JoinSection
@@ -865,7 +910,7 @@ export default function PlanView() {
               {/* Print button */}
               <button
                 onClick={() => window.print()}
-                className="w-full rounded-full bg-secondary text-foreground py-3 text-sm font-medium ring-hairline hover:bg-secondary/70 transition flex items-center justify-center gap-2"
+                className="w-full rounded-lg bg-secondary text-foreground py-3 text-sm font-medium ring-hairline hover:bg-secondary/70 transition flex items-center justify-center gap-2"
               >
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="6 9 6 2 18 2 18 9" />
@@ -881,7 +926,7 @@ export default function PlanView() {
               <p className="text-sm text-muted-foreground mb-3">Want to plan your own squad trip?</p>
               <Link
                 to="/start"
-                className="inline-flex items-center gap-2 rounded-full bg-card ring-hairline px-6 py-3 text-sm font-medium hover:bg-secondary transition"
+                className="inline-flex items-center gap-2 rounded-lg bg-card ring-hairline px-6 py-3 text-sm font-medium hover:bg-secondary transition"
               >
                 Plan a trip with AI
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -889,7 +934,8 @@ export default function PlanView() {
                 </svg>
               </Link>
             </div>
-          </>
+            </aside>
+          </div>
         )}
       </div>
     </main>

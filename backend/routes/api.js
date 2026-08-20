@@ -1213,6 +1213,44 @@ router.post('/experiences/:id/add-to-plan', requireAuth, async (req, res) => {
   }
 });
 
+// ── POST /api/plan/:tripId/claim ────────────────────────────────────────────
+// Take ownership of a trip that nobody owns yet.
+//
+// Trips get created before anyone signs in — that is deliberate, since making
+// people register before they can plan anything loses most of them. The cost is
+// ownerless trips, which show up in nobody's My Plans. This is how one gets
+// adopted: someone plans, hits save, signs up, and comes back to claim what
+// they already built.
+//
+// Only unowned trips can be claimed. Claiming your own again is a no-op rather
+// than an error, so a double-tap or a refresh doesn't read as a failure.
+router.post('/plan/:tripId/claim', requireAuth, async (req, res) => {
+  try {
+    const trip = await db.trips.get(req.params.tripId);
+    if (!trip) return res.status(404).json({ error: 'Trip not found.' });
+
+    if (trip.user_id && trip.user_id !== req.user.uid) {
+      return res.status(409).json({ error: 'This trip already belongs to someone else.' });
+    }
+
+    // Read before writing — deciding afterwards would depend on whether the
+    // row object was mutated underneath us.
+    const wasUnowned = !trip.user_id;
+
+    // Guarded in SQL as well as above: two tabs claiming at once must not let
+    // the second overwrite the first.
+    if (wasUnowned) {
+      await db.raw('UPDATE trips SET user_id = ? WHERE id = ? AND user_id IS NULL',
+        [req.user.uid, trip.id]);
+    }
+
+    res.json({ ok: true, tripId: trip.id, claimed: wasUnowned });
+  } catch (err) {
+    console.error('[api/claim]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/experiences/:id/share-trip ────────────────────────────────────
 // The same thing without an account. Sharing a curated trip needs a trip id to
 // point at, and requiring a sign-in first is what left the WhatsApp share

@@ -19,7 +19,13 @@ export default function Login() {
   const { user, loading } = useAuth();
   const navigate          = useNavigate();
   const [searchParams]    = useSearchParams();
-  const nextUrl           = searchParams.get("next") || "/my-plans";
+  /**
+   * Where to land after signing in. `redirect` is accepted alongside `next`
+   * because links around the app were written with it — and reading only
+   * `next` meant those silently dropped people on /my-plans, losing whatever
+   * they were in the middle of making.
+   */
+  const nextUrl           = searchParams.get("next") || searchParams.get("redirect") || "/my-plans";
 
   const verified  = searchParams.get("verified")   === "1";
   const authError = searchParams.get("auth_error");

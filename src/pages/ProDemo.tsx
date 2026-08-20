@@ -90,8 +90,8 @@ const ProDemo = () => {
               Stop building itineraries in Word. Stop chasing 15 people for transfers. Karije Pro replaces all of it — fully branded as <span className="font-semibold text-foreground">your agency</span>.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#dashboard" className="rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90">See the dashboard</a>
-              <a href="#try-it" className="rounded-full ring-1 ring-foreground/20 px-5 py-2.5 text-sm font-medium hover:bg-foreground/5">Brand it as yours</a>
+              <a href="#dashboard" className="rounded-lg bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90">See the dashboard</a>
+              <a href="#try-it" className="rounded-lg ring-1 ring-foreground/20 px-5 py-2.5 text-sm font-medium hover:bg-foreground/5">Brand it as yours</a>
             </div>
             <div className="mt-4">
               <Link to="/pro/login" className="text-[13px] text-muted-foreground hover:text-foreground transition">
@@ -318,7 +318,7 @@ const ProDemo = () => {
                 <span className="font-semibold">Total</span>
                 <span className="font-display text-xl font-semibold tabular-nums">₦33,917</span>
               </div>
-              <button className="mt-4 w-full rounded-full bg-foreground text-background py-2.5 text-sm font-medium">Pay with Paystack</button>
+              <button className="mt-4 w-full rounded-lg bg-foreground text-background py-2.5 text-sm font-medium">Pay with Paystack</button>
               <div className="mt-2 text-center text-[10px] text-muted-foreground">Powered by Chioma Travels</div>
             </div>
           </div>
@@ -453,7 +453,7 @@ const ProDemo = () => {
                 <li key={f} className="flex gap-2"><span className="text-primary">✓</span>{f}</li>
               ))}
             </ul>
-            <Link to="/pro/setup" className="mt-7 block text-center rounded-full bg-foreground text-background py-3 text-sm font-medium hover:opacity-90">Start Pro Starter</Link>
+            <Link to="/pro/setup" className="mt-7 block text-center rounded-lg bg-foreground text-background py-3 text-sm font-medium hover:opacity-90">Start Pro Starter</Link>
           </div>
 
           <div className="rounded-3xl bg-gradient-primary text-primary-foreground p-7 shadow-glow">
@@ -471,7 +471,7 @@ const ProDemo = () => {
                 <li key={f} className="flex gap-2"><span>✓</span>{f}</li>
               ))}
             </ul>
-            <Link to="/pro/setup?plan=growth" className="mt-7 block text-center rounded-full bg-white text-foreground py-3 text-sm font-medium hover:bg-white/90">Start Pro Growth</Link>
+            <Link to="/pro/setup?plan=growth" className="mt-7 block text-center rounded-lg bg-white text-foreground py-3 text-sm font-medium hover:bg-white/90">Start Pro Growth</Link>
           </div>
         </div>
 
@@ -541,8 +541,8 @@ const ProDemo = () => {
             Start with Pro Starter for ₦10,000/month. Upgrade to Growth the moment you're juggling more than 3 trips. Cancel anytime.
           </p>
           <div className="mt-8 flex flex-wrap gap-3 justify-center">
-            <Link to="/pro/setup" className="rounded-full bg-white text-foreground px-6 py-3 text-sm font-medium hover:bg-white/90">Start Pro Starter</Link>
-            <a href="#try-it" className="rounded-full ring-1 ring-white/30 px-6 py-3 text-sm font-medium hover:bg-white/10">Brand it as yours ↑</a>
+            <Link to="/pro/setup" className="rounded-lg bg-white text-foreground px-6 py-3 text-sm font-medium hover:bg-white/90">Start Pro Starter</Link>
+            <a href="#try-it" className="rounded-lg ring-1 ring-white/30 px-6 py-3 text-sm font-medium hover:bg-white/10">Brand it as yours ↑</a>
           </div>
         </div>
       </section>

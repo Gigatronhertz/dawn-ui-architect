@@ -559,6 +559,7 @@ const ALL_EXPLORE_CITIES = [
 ];
 
 export default function Explore() {
+  const navigate            = useNavigate();
   const [step, setStep]     = useState<ExploreStep>("browse");
   const [selected, setSelected] = useState<Experience | null>(null);
   const [days, setDays]     = useState(1);
@@ -628,6 +629,32 @@ export default function Explore() {
     } finally {
       setSharePrep(false);
     }
+  }
+
+  /**
+   * Sign in without losing the trip.
+   *
+   * The trip is created first, then sign-in returns to it with ?claim=1 so it
+   * gets adopted on arrival. Sending someone to /login and hoping they find
+   * their way back is how a half-built plan disappears — and an ownerless trip
+   * is exactly what we're trying to stop producing.
+   */
+  async function signInToSave() {
+    let id = shareId;
+    if (!id && selected) {
+      setSharePrep(true);
+      try {
+        const res = await api.createShareTrip(selected.id, { days, squadSize });
+        id = res.tripId;
+        setShareTripId(res.tripId);
+      } catch {
+        // Couldn't reserve one — still let them sign in rather than dead-end.
+      } finally {
+        setSharePrep(false);
+      }
+    }
+    const back = id ? `/plan/${id}?claim=1` : "/start/explore";
+    navigate(`/login?next=${encodeURIComponent(back)}`);
   }
 
   async function handleAddToPlan() {
@@ -1043,12 +1070,13 @@ export default function Explore() {
                     {saving ? "Saving…" : "+ Add to my plans"}
                   </button>
                 ) : (
-                  <Link
-                    to="/login?redirect=/start/explore"
-                    className="w-full flex items-center justify-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors"
+                  <button
+                    onClick={signInToSave}
+                    disabled={sharePrep}
+                    className="w-full flex items-center justify-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors disabled:opacity-60"
                   >
-                    Sign in to save this trip
-                  </Link>
+                    {sharePrep ? "Holding your trip…" : "Sign in to save this trip"}
+                  </button>
                 )}
 
                 {saveErr && (
@@ -1099,7 +1127,7 @@ export default function Explore() {
       <main className="min-h-screen bg-background">
         <PageHeader onBack={() => setStep("detail")} />
 
-        <div className="mx-auto max-w-2xl px-6 pb-24">
+        <div className="mx-auto max-w-2xl lg:max-w-5xl px-6 lg:px-8 pb-24">
           {/* Eyebrow */}
           <div className="flex items-center gap-4 mb-6">
             <span className="h-px w-8 bg-primary" />
@@ -1204,12 +1232,13 @@ export default function Explore() {
                 {saving ? "Saving…" : "+ Save to my plans"}
               </button>
             ) : (
-              <Link
-                to="/login?redirect=/start/explore"
-                className="w-full flex items-center justify-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors"
+              <button
+                onClick={signInToSave}
+                disabled={sharePrep}
+                className="w-full flex items-center justify-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors disabled:opacity-60"
               >
-                Sign in to save this trip
-              </Link>
+                {sharePrep ? "Holding your trip…" : "Sign in to save this trip"}
+              </button>
             )}
 
             {saveErr && (

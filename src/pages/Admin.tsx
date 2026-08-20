@@ -498,7 +498,7 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
             <button
               key={s}
               onClick={() => setStateFilter(s)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 stateFilter === s
                   ? "bg-[#2F4A33] text-[#F7F1E7]"
                   : "bg-white border border-gray-200 text-gray-600 hover:border-gray-400"

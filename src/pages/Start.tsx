@@ -206,7 +206,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           <button
             type="button"
             onClick={() => set("roundTrip", !form.roundTrip)}
-            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ring-hairline transition ${
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold ring-hairline transition ${
               form.roundTrip
                 ? "bg-primary text-primary-foreground shadow-glow"
                 : "bg-card text-muted-foreground hover:text-foreground"
@@ -350,7 +350,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
         </p>
         <button
           onClick={() => onSubmit(form, phone)}
-          className="group inline-flex items-center gap-2 rounded-full bg-gradient-primary text-primary-foreground px-6 py-3 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform w-full sm:w-auto justify-center"
+          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform w-full sm:w-auto justify-center"
         >
           Generate my squad plan
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -620,7 +620,7 @@ function DayPicker({
       <button
         onClick={() => onPick(0)}
         disabled={disabled}
-        className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground shrink-0 transition disabled:opacity-40"
+        className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground shrink-0 transition disabled:opacity-40"
       >
         {label}
       </button>
@@ -632,7 +632,7 @@ function DayPicker({
       disabled={disabled}
       onChange={(e) => { if (e.target.value !== "") onPick(Number(e.target.value)); }}
       aria-label="Add to which day"
-      className="text-[10px] font-semibold px-1.5 py-1 rounded-full bg-primary/10 text-primary shrink-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-40"
+      className="text-[10px] font-semibold px-1.5 py-1 rounded-lg bg-primary/10 text-primary shrink-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-40"
     >
       <option value="">{label}</option>
       {days.map((d, i) => <option key={i} value={i}>Day {d.day}</option>)}
@@ -990,7 +990,7 @@ function PlanStep({
                     <div className="text-[10px] text-muted-foreground">per seat · applied above ↑</div>
                     <a href="https://www.gigm.com/book-a-seat" target="_blank" rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
-                      className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition">
+                      className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-foreground text-background hover:opacity-80 transition">
                       Book on GIGM ↗
                     </a>
                   </div>
@@ -1033,7 +1033,7 @@ function PlanStep({
                       <div className="text-[10px] text-muted-foreground">per person</div>
                       <a href={flightUrl} target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition">
+                        className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-foreground text-background hover:opacity-80 transition">
                         Search →
                       </a>
                     </div>
@@ -1077,7 +1077,7 @@ function PlanStep({
             <button
               onClick={handleDraft}
               disabled={drafting}
-              className="text-sm font-medium px-5 py-2.5 rounded-full bg-foreground text-background hover:opacity-90 disabled:opacity-50 transition"
+              className="text-sm font-medium px-5 py-2.5 rounded-lg bg-foreground text-background hover:opacity-90 disabled:opacity-50 transition"
             >
               {drafting ? "Sketching…" : "✨ Give me a starting point"}
             </button>
@@ -1171,7 +1171,7 @@ function PlanStep({
               <button
                 key={value}
                 onClick={() => setVibeFilter(value)}
-                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition ${
                   vibeFilter === value
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
@@ -1289,7 +1289,7 @@ function PlanStep({
             </div>
             <button
               onClick={() => setLibOpen(true)}
-              className="flex-1 py-3 rounded-full bg-gradient-primary text-primary-foreground text-sm font-medium shadow-glow active:scale-[0.98] transition"
+              className="flex-1 py-3 rounded-lg bg-gradient-primary text-primary-foreground text-sm font-medium shadow-glow active:scale-[0.98] transition"
             >
               ＋ Add a place
             </button>
@@ -1339,7 +1339,7 @@ function PlanStep({
                 {opt.url && (
                   <a href={opt.url} target="_blank" rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full bg-foreground text-background hover:opacity-80 transition whitespace-nowrap">
+                    className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-foreground text-background hover:opacity-80 transition whitespace-nowrap">
                     {opt.source === 'Booking.com' ? 'Book →' : 'View →'}
                   </a>
                 )}
@@ -1378,7 +1378,7 @@ function PlanStep({
                       key={opt.id}
                       type="button"
                       onClick={() => { if (isoDate) setSelectedDate(isoDate); }}
-                      className={`rounded-full px-3 py-1.5 text-xs transition-all border ${
+                      className={`rounded-lg px-3 py-1.5 text-xs transition-all border ${
                         isActive
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-secondary/60 text-foreground hover:border-primary/50"
@@ -1410,7 +1410,7 @@ function PlanStep({
         </div>
         <button
           onClick={() => onConfirm(finalPlan, selectedDate || undefined)}
-          className="group inline-flex items-center gap-2 rounded-full bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform whitespace-nowrap w-full sm:w-auto justify-center"
+          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform whitespace-nowrap w-full sm:w-auto justify-center"
         >
           Confirm & share with squad
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1506,7 +1506,7 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
         <div className="flex gap-2">
           <button
             onClick={copyLink}
-            className={`flex-1 rounded-full py-2.5 text-sm font-medium ring-hairline transition ${
+            className={`flex-1 rounded-lg py-2.5 text-sm font-medium ring-hairline transition ${
               linkCopied ? "bg-google-green/10 text-google-green ring-google-green/20" : "bg-card text-foreground hover:bg-secondary"
             }`}
           >
@@ -1516,7 +1516,7 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
             href={`https://wa.me/?text=${waShareText}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 rounded-full py-2.5 text-sm font-medium text-center bg-whatsapp text-white hover:opacity-90 transition"
+            className="flex-1 rounded-lg py-2.5 text-sm font-medium text-center bg-whatsapp text-white hover:opacity-90 transition"
           >
             Share on WhatsApp
           </a>
@@ -1531,7 +1531,7 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
         </div>
         <button
           onClick={copy}
-          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-all shrink-0 ${
+          className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all shrink-0 ${
             copied ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-80"
           }`}
         >
@@ -1565,7 +1565,7 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
         <em>"Someone's been planning something... 👀"</em> before the full plan drops.
       </div>
 
-      <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-full bg-card ring-hairline px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors w-full sm:w-auto">
+      <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-lg bg-card ring-hairline px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors w-full sm:w-auto">
         Back to home
       </Link>
     </Card>
@@ -1629,7 +1629,7 @@ function LockBanner({ tripId }: { tripId: string }) {
             <Link to="/my-plans" className="underline underline-offset-2 hover:text-foreground transition-colors">My Plans</Link>
           </p>
         </div>
-        <Link to="/my-plans" className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition">
+        <Link to="/my-plans" className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-foreground text-background hover:opacity-80 transition">
           View all →
         </Link>
       </Card>
@@ -1664,7 +1664,7 @@ function LockBanner({ tripId }: { tripId: string }) {
           <div className="font-display font-semibold text-sm text-destructive">Couldn't save plan</div>
           <p className="text-xs text-muted-foreground mt-0.5">{errorMsg}</p>
         </div>
-        <button onClick={() => setState('idle')} className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition">
+        <button onClick={() => setState('idle')} className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-foreground text-background hover:opacity-80 transition">
           Retry
         </button>
       </Card>
@@ -1697,12 +1697,12 @@ function LockBanner({ tripId }: { tripId: string }) {
           onChange={e => setEmail(e.target.value)}
           placeholder="you@example.com"
           required
-          className="flex-1 min-w-0 rounded-full px-4 py-2.5 text-sm bg-secondary ring-hairline focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="flex-1 min-w-0 rounded-lg px-4 py-2.5 text-sm bg-secondary ring-hairline focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         <button
           type="submit"
           disabled={state === 'sending'}
-          className="shrink-0 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium bg-foreground text-background hover:opacity-80 active:scale-95 transition disabled:opacity-60"
+          className="shrink-0 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium bg-foreground text-background hover:opacity-80 active:scale-95 transition disabled:opacity-60"
         >
           {state === 'sending'
             ? <><span className="w-3.5 h-3.5 rounded-full border-2 border-background/40 border-t-background animate-spin" />Sending…</>
@@ -1952,7 +1952,7 @@ export default function Start() {
             </p>
             <Link
               to="/my-plans"
-              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background hover:opacity-80 transition whitespace-nowrap"
+              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-foreground text-background hover:opacity-80 transition whitespace-nowrap"
             >
               My Plans →
             </Link>
@@ -1992,7 +1992,7 @@ export default function Start() {
                   window.history.replaceState({}, "", url.toString());
                   handleIntakeSubmit(intake, phone);
                 }}
-                className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-destructive text-white hover:opacity-80 active:scale-95 transition whitespace-nowrap"
+                className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-destructive text-white hover:opacity-80 active:scale-95 transition whitespace-nowrap"
               >
                 Try again
               </button>

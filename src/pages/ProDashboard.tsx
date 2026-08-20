@@ -113,7 +113,7 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
             {trip.status === 'plan_review' && (
               <Link
                 to={`/start?job=${trip.id}`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1.5 text-[11px] font-medium hover:bg-primary/15 transition"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary px-3 py-1.5 text-[11px] font-medium hover:bg-primary/15 transition"
               >
                 Review plan →
               </Link>
@@ -121,7 +121,7 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
             {trip.status === 'awaiting_group' && (
               <Link
                 to={`/plan/${trip.id}`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-foreground text-background px-3 py-1.5 text-[11px] font-medium hover:opacity-90 transition"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-foreground text-background px-3 py-1.5 text-[11px] font-medium hover:opacity-90 transition"
               >
                 View squad page →
               </Link>
@@ -225,13 +225,13 @@ const ProDashboard = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab(activeTab === "settings" ? "trips" : "settings")}
-              className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-full hover:bg-secondary transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-secondary transition-colors"
             >
               {activeTab === "settings" ? "← Dashboard" : "Settings"}
             </button>
             <Link
               to="/pro/setup"
-              className="text-xs rounded-full bg-foreground text-background px-3 py-1.5 hover:opacity-90 transition-opacity"
+              className="text-xs rounded-lg bg-foreground text-background px-3 py-1.5 hover:opacity-90 transition-opacity"
             >
               Edit profile
             </Link>
@@ -287,7 +287,7 @@ const ProDashboard = () => {
               <div className="pt-4">
                 <Link
                   to="/pro/setup"
-                  className="inline-flex rounded-full bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90"
+                  className="inline-flex rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90"
                 >
                   Edit settings →
                 </Link>
@@ -341,7 +341,7 @@ const ProDashboard = () => {
                   </button>
                   <Link
                     to="/start"
-                    className="inline-flex items-center gap-1.5 text-xs rounded-full bg-foreground text-background px-3 py-1.5 hover:opacity-90 transition-opacity"
+                    className="inline-flex items-center gap-1.5 text-xs rounded-lg bg-foreground text-background px-3 py-1.5 hover:opacity-90 transition-opacity"
                   >
                     <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 5v14M5 12h14" />
@@ -364,7 +364,7 @@ const ProDashboard = () => {
                   </p>
                   <Link
                     to="/start"
-                    className="inline-flex items-center gap-2 rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90"
+                    className="inline-flex items-center gap-2 rounded-lg bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90"
                   >
                     Plan your first trip →
                   </Link>

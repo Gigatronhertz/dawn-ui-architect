@@ -132,7 +132,7 @@ export const Pricing = () => (
             <p className="text-sm opacity-80 leading-relaxed mb-6 max-w-lg">
               Fully white-label. Your agency name and logo on every itinerary, message, and payment page. Service fees you keep 100% of. Multi-trip dashboard, client profiles, and trip templates that scale you from 3 trips to 10.
             </p>
-            <Link to="/pro" className="inline-flex items-center gap-2 rounded-full bg-white text-foreground px-5 py-2.5 text-sm font-medium hover:bg-white/90 mb-6">
+            <Link to="/pro" className="inline-flex items-center gap-2 rounded-lg bg-white text-foreground px-5 py-2.5 text-sm font-medium hover:bg-white/90 mb-6">
               See Pro in action
               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
             </Link>

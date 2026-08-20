@@ -275,6 +275,15 @@ export const api = {
       `/api/experiences/${encodeURIComponent(id)}/share-trip`, opts
     ),
 
+  /**
+   * Adopt a trip that nobody owns yet — how a plan made before signing up ends
+   * up in the planner's My Plans instead of being stranded.
+   */
+  claimTrip: (tripId: string, token: string) =>
+    post<{ ok: boolean; tripId: string; claimed: boolean }>(
+      `/api/plan/${encodeURIComponent(tripId)}/claim`, {}, bearer(token)
+    ),
+
   /** Ask the AI to fill the day schedule. Leaves transport and hotel alone. */
   draftDays: (tripId: string, opts: { transport?: string; vibe?: string } = {}) =>
     post<{ ok: boolean; days: PlanDay[]; highlights: string[] }>(

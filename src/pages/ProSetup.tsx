@@ -277,7 +277,7 @@ const ProSetup = () => {
           <button
             type="submit"
             disabled={status === "loading" || !form.phone.trim() || !form.agencyName.trim()}
-            className="w-full rounded-full bg-foreground text-background py-4 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+            className="w-full rounded-lg bg-foreground text-background py-4 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           >
             {status === "loading" ? "Saving…" : "Launch my agency →"}
           </button>

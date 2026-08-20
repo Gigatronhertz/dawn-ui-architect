@@ -106,7 +106,7 @@ const PrimaryBtn = ({ children, onClick, disabled, fullWidth }: { children: Reac
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`group inline-flex items-center gap-1.5 rounded-full bg-gradient-primary text-primary-foreground px-4 py-2 text-xs font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100${fullWidth ? " w-full justify-center sm:w-auto" : ""}`}
+    className={`group inline-flex items-center gap-1.5 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-xs font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100${fullWidth ? " w-full justify-center sm:w-auto" : ""}`}
   >
     {children}
     <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
@@ -114,7 +114,7 @@ const PrimaryBtn = ({ children, onClick, disabled, fullWidth }: { children: Reac
 );
 
 const GhostBtn = ({ children, onClick, fullWidth }: { children: React.ReactNode; onClick?: () => void; fullWidth?: boolean }) => (
-  <button onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-full bg-card ring-hairline px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary transition-colors${fullWidth ? " w-full justify-center sm:w-auto" : ""}`}>
+  <button onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-lg bg-card ring-hairline px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary transition-colors${fullWidth ? " w-full justify-center sm:w-auto" : ""}`}>
     {children}
   </button>
 );
@@ -752,18 +752,18 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
                                     <div className="font-display text-[11px] font-semibold truncate flex-1 min-w-0">{s.title}</div>
                                   </div>
                                   <div className="text-[10px] text-muted-foreground line-clamp-2">{s.blurb}</div>
-                                  <button onClick={() => addSuggestion(di, s)} className="mt-1 self-start text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground text-background hover:opacity-90 transition">+ Add</button>
+                                  <button onClick={() => addSuggestion(di, s)} className="mt-1 self-start text-[10px] font-medium px-2 py-0.5 rounded-lg bg-foreground text-background hover:opacity-90 transition">+ Add</button>
                                 </div>
                               </div>
                             ))}
                           </div>
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {sugg.length > 2 && (
-                              <button onClick={() => setSeeMore((m) => ({ ...m, [di]: !m[di] }))} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-secondary hover:bg-secondary/70 transition">
+                              <button onClick={() => setSeeMore((m) => ({ ...m, [di]: !m[di] }))} className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-secondary hover:bg-secondary/70 transition">
                                 {seeMore[di] ? "Show less" : `See ${sugg.length - 2} more`}
                               </button>
                             )}
-                            <button onClick={() => setMapsOpen(mapsOpen === di ? null : di)} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-google-blue/15 text-google-blue hover:bg-google-blue/25 transition inline-flex items-center gap-1">
+                            <button onClick={() => setMapsOpen(mapsOpen === di ? null : di)} className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-google-blue/15 text-google-blue hover:bg-google-blue/25 transition inline-flex items-center gap-1">
                               🗺️ Add from Maps
                             </button>
                           </div>
@@ -785,7 +785,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
                                       <div className="font-medium truncate">{p.title}</div>
                                       <div className="text-[10px] text-muted-foreground truncate">{p.tag}</div>
                                     </div>
-                                    <button onClick={() => addSuggestion(di, p)} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground text-background shrink-0">+ Add</button>
+                                    <button onClick={() => addSuggestion(di, p)} className="text-[10px] font-medium px-2 py-0.5 rounded-lg bg-foreground text-background shrink-0">+ Add</button>
                                   </li>
                                 ))}
                               </ul>
@@ -1251,7 +1251,7 @@ function DuringTripView({ intake, onNext, onBack }: { intake: Intake; onNext: ()
                       <button
                         onClick={() => setUberShared((u) => ({ ...u, [i]: true }))}
                         disabled={uberShared[i]}
-                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${uberShared[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
+                        className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${uberShared[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
                       >
                         {uberShared[i] ? "✓ Safe — loved ones notified" : "🛡️ Tap to check in"}
                       </button>
@@ -1260,7 +1260,7 @@ function DuringTripView({ intake, onNext, onBack }: { intake: Intake; onNext: ()
                       <button
                         onClick={() => setStopOk((s) => ({ ...s, [i]: true }))}
                         disabled={stopOk[i]}
-                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${stopOk[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
+                        className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${stopOk[i] ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-90"}`}
                       >
                         {stopOk[i] ? "✓ Squad linked up" : "👍 We're all here"}
                       </button>
@@ -1268,7 +1268,7 @@ function DuringTripView({ intake, onNext, onBack }: { intake: Intake; onNext: ()
                     {p.kind === "photo" && (
                       <button
                         onClick={() => setPhotosSent((n) => n + 1)}
-                        className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-google-pink/15 text-google-pink px-3 py-1.5 text-xs font-medium hover:bg-google-pink/25 transition"
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-google-pink/15 text-google-pink px-3 py-1.5 text-xs font-medium hover:bg-google-pink/25 transition"
                       >
                         📸 Send photo {photosSent > 0 && `· ${photosSent} sent`}
                       </button>
@@ -1410,7 +1410,7 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-primary">Each pays</div>
               <div className="font-display text-lg font-semibold">{fmtNGN(settlePerPerson)}</div>
             </div>
-            <button className="rounded-full bg-foreground text-background px-4 py-2 text-xs font-medium">Send Paystack links</button>
+            <button className="rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium">Send Paystack links</button>
           </div>
         </div>
 
@@ -1472,9 +1472,9 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
         </div>
         {!reelBuilding && (
           <div className="relative mt-4 flex flex-wrap gap-2">
-            <button className="rounded-full bg-whatsapp text-primary-foreground px-4 py-2 text-xs font-medium">Share to WhatsApp Status</button>
-            <button className="rounded-full bg-background/10 ring-1 ring-background/20 px-4 py-2 text-xs font-medium">Share to Instagram</button>
-            <button className="rounded-full bg-background/10 ring-1 ring-background/20 px-4 py-2 text-xs font-medium">Download MP4</button>
+            <button className="rounded-lg bg-whatsapp text-primary-foreground px-4 py-2 text-xs font-medium">Share to WhatsApp Status</button>
+            <button className="rounded-lg bg-background/10 ring-1 ring-background/20 px-4 py-2 text-xs font-medium">Share to Instagram</button>
+            <button className="rounded-lg bg-background/10 ring-1 ring-background/20 px-4 py-2 text-xs font-medium">Download MP4</button>
           </div>
         )}
       </div>
@@ -1499,7 +1499,7 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
         <div className="text-xs text-muted-foreground">Trip Journal saved · venue ratings synced · settlement closed.</div>
         <div className="flex gap-2">
           <GhostBtn onClick={onRestart}>Run demo again</GhostBtn>
-          <Link to="/" className="inline-flex items-center gap-2 rounded-full bg-foreground text-background px-5 py-3 text-sm font-medium hover:opacity-90 transition-opacity">
+          <Link to="/" className="inline-flex items-center gap-2 rounded-lg bg-foreground text-background px-5 py-3 text-sm font-medium hover:opacity-90 transition-opacity">
             Back to home
           </Link>
         </div>
@@ -1565,11 +1565,11 @@ const Demo = () => {
           </Link>
           <div className="flex items-center gap-2">
             {auto ? (
-              <button onClick={() => setAuto(false)} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-foreground text-background inline-flex items-center gap-1.5">
+              <button onClick={() => setAuto(false)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-foreground text-background inline-flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Auto-playing · pause
               </button>
             ) : (
-              <button onClick={startAuto} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gradient-primary text-primary-foreground shadow-glow inline-flex items-center gap-1.5">
+              <button onClick={startAuto} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gradient-primary text-primary-foreground shadow-glow inline-flex items-center gap-1.5">
                 ▶ Show me the demo
               </button>
             )}
