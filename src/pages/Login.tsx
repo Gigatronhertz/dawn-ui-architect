@@ -119,14 +119,14 @@ export default function Login() {
   if (submitState === "done") {
     const isSignup = authMode === "signup";
     return (
-      <main className="min-h-screen bg-background">
+      <main className="min-h-screen bg-background flex flex-col">
         <header className="pt-8 pb-6">
           <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
             <KarijeLogo />
             <Link to="/" className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
           </div>
         </header>
-        <div className="mx-auto max-w-sm px-6 pb-24 mt-8">
+        <div className="mx-auto max-w-sm w-full px-6 pb-24 mt-8 flex-1 lg:flex lg:flex-col lg:justify-center lg:mt-0">
           <div className="border border-border p-8 text-center">
             <div className="text-4xl mb-4">{isSignup ? "📬" : "✉️"}</div>
             <div className="font-marcellus text-xl text-foreground mb-3">
@@ -152,7 +152,7 @@ export default function Login() {
 
   // ── Main login page ───────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background flex flex-col">
       <header className="pt-8 pb-6">
         <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
           <KarijeLogo />
@@ -160,7 +160,7 @@ export default function Login() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-sm px-6 pb-24">
+      <div className="mx-auto max-w-sm w-full px-6 pb-24 flex-1 lg:flex lg:flex-col lg:justify-center">
         {/* Eyebrow */}
         <div className="flex items-center gap-4 mb-6">
           <span className="h-px w-8 bg-primary" />
