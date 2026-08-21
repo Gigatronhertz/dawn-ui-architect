@@ -146,7 +146,7 @@ export default function MyPlans() {
       return (
         <main className="min-h-screen bg-background">
           <header className="pt-8 pb-6">
-            <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
+            <div className="mx-auto max-w-3xl lg:max-w-5xl px-6 flex items-center justify-between">
               <KarijeLogo />
               <Link to="/" className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
             </div>
@@ -412,7 +412,7 @@ export default function MyPlans() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-6 pb-24 space-y-6">
+      <div className="mx-auto max-w-3xl lg:max-w-5xl px-6 pb-24 space-y-6">
         {/* Header */}
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-1">Your account</div>
@@ -462,7 +462,7 @@ export default function MyPlans() {
         )}
 
         {!fetching && plans.length > 0 && (
-          <ol className="grid grid-cols-2 gap-3">
+          <ol className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {plans.map((p) => {
               const s = STATUS_LABEL[p.status] ?? { label: p.status, color: "text-muted-foreground bg-secondary" };
               const perPerson = p.plan?.cost_breakdown?.per_person;
@@ -470,7 +470,7 @@ export default function MyPlans() {
               // Awaiting-group plans have more content (participants + payment bar) — they go full-width
               const isActive = p.status === 'awaiting_group';
               return (
-                <li key={p.tripId} className={isActive ? "col-span-2" : ""}>
+                <li key={p.tripId} className={isActive ? "col-span-2 lg:col-span-3" : ""}>
                   {p.status === 'plan_review' ? (
                     <Link
                       to={`/start/trip?job=${p.tripId}`}
