@@ -832,8 +832,11 @@ function PlanStep({
     ? { ...initialPlan.transport, operator: 'GIGM', type: `Bus · ${selBus.class}`, price_per_person: selBus.price, depart_time: selBus.departureTime?.slice(0, 5) || initialPlan.transport.depart_time, pickup: selBus.terminal || initialPlan.transport.pickup }
     : initialPlan.transport;
   const hotel = (selHotel && selHotel.key !== 'ai' && selHotel.price)
-    ? { ...initialPlan.hotel, name: selHotel.name, area: selHotel.area, price_per_night: selHotel.price, rating: selHotel.rating ?? initialPlan.hotel.rating, perks: selHotel.perks }
+    ? { ...initialPlan.hotel, name: selHotel.name, area: selHotel.area, price_per_night: selHotel.price, rating: selHotel.rating ?? initialPlan.hotel?.rating ?? null, perks: selHotel.perks }
     : initialPlan.hotel;
+  // Null whenever nothing was scraped and nothing has been picked. Everything
+  // below has to survive that rather than assume a hotel exists.
+  const hotelName = hotel?.name?.split(" ")[0] ?? "No hotel yet";
 
   // ── Accurate live cost breakdown — recomputed from selections ─────────────────
   // Round trip doubles the transport price (same route back, same operator/price).
@@ -846,12 +849,12 @@ function PlanStep({
   const foodPerPerson   = Math.round((initialPlan.cost_breakdown.food_total   || 0) / Math.max(intake.squadSize, 1));
   const bufferPerPerson = Math.round((initialPlan.cost_breakdown.buffer       || 0) / Math.max(intake.squadSize, 1));
   const perPerson       = transportPerPerson
-                        + (hotel.price_per_night || 0) * (intake.days || 1)
+                        + (hotel?.price_per_night || 0) * (intake.days || 1)
                         + activitiesPerPerson
                         + foodPerPerson
                         + bufferPerPerson;
   const transportTotal  = transportPerPerson * (intake.squadSize || 1);
-  const lodgingTotal    = (hotel.price_per_night || 0) * (intake.days || 1) * (intake.squadSize || 1);
+  const lodgingTotal    = (hotel?.price_per_night || 0) * (intake.days || 1) * (intake.squadSize || 1);
   const squadTotal      = perPerson * (intake.squadSize || 1);
   const isDirty         = dirty || selectedBusIdx !== null || selectedFlightIdx !== null || selectedHotelKey !== 'ai';
 
@@ -879,7 +882,7 @@ function PlanStep({
               badge: intake.roundTrip ? "↩ Return included" : null,
               color: "text-google-blue",
             },
-            { label: "Lodging", val: fmtNGN(lodgingTotal), sub: `${hotel.name.split(" ")[0]} · ${intake.days} nights`, badge: null, color: "text-google-purple" },
+            { label: "Lodging", val: fmtNGN(lodgingTotal), sub: `${hotelName} · ${intake.days} nights`, badge: null, color: "text-google-purple" },
             { label: "Per person", val: fmtNGN(perPerson), sub: isDirty ? "Updated · live" : "AI estimate", badge: null, color: "text-primary" },
             { label: "Squad total", val: fmtNGN(squadTotal), sub: `${intake.squadSize} people · all-in`, badge: null, color: "text-google-green" },
           ].map((c) => (
@@ -899,7 +902,7 @@ function PlanStep({
           total={perPerson}
           items={[
             { label: intake.roundTrip ? "Transport (× 2 return)" : "Transport", value: transportPerPerson, icon: "🚌", colorClass: "bg-google-blue" },
-            { label: `Lodging · ${intake.days} night${intake.days === 1 ? "" : "s"}`, value: (hotel.price_per_night || 0) * (intake.days || 1), icon: "🏨", colorClass: "bg-google-purple" },
+            { label: `Lodging · ${intake.days} night${intake.days === 1 ? "" : "s"}`, value: (hotel?.price_per_night || 0) * (intake.days || 1), icon: "🏨", colorClass: "bg-google-purple" },
             { label: "Activities", value: activitiesPerPerson, icon: "🎯", colorClass: "bg-accent" },
             { label: "Food est.", value: foodPerPerson, icon: "🍽️", colorClass: "bg-google-green" },
             { label: "Buffer", value: bufferPerPerson, icon: "🔒", colorClass: "bg-muted-foreground" },
@@ -931,7 +934,7 @@ function PlanStep({
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-foreground" />{intake.origin}</span>
                   <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary animate-pulse" />{intake.destination}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-google-purple" />{hotel.name.split(" ")[0]}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-google-purple" />{hotelName}</span>
                 </div>
                 <span className="font-display font-semibold text-foreground">{initialPlan.offline_note?.split("·")[0] || "~128 km"}</span>
               </div>
@@ -1347,7 +1350,13 @@ function PlanStep({
             </button>
           ))}
         </div>
-        {allHotelOptions.length <= 1 && (
+        {allHotelOptions.length === 0 && (
+          <p className="text-xs text-muted-foreground mt-3">
+            No hotels came back for this destination. You can still confirm the trip —
+            lodging just isn't priced in.
+          </p>
+        )}
+        {allHotelOptions.length === 1 && (
           <p className="text-xs text-muted-foreground mt-3">
             Live hotel data is loading — only the AI pick is available right now.
           </p>
@@ -1468,13 +1477,17 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
         <div className="rounded-2xl bg-secondary/40 ring-hairline p-5 mb-6">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">What you confirmed</div>
           <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Hotel</span>
-              <span className="font-medium text-right truncate max-w-[60%]">{finalPlan.hotel.name}</span>
-            </div>
+            {/* A trip can be confirmed without a hotel — day trips have none,
+                and the scrape can come back empty. Don't crash the summary. */}
+            {finalPlan.hotel && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Hotel</span>
+                <span className="font-medium text-right truncate max-w-[60%]">{finalPlan.hotel.name}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Transport</span>
-              <span className="font-medium">{finalPlan.transport.operator} · {finalPlan.transport.type}</span>
+              <span className="font-medium">{finalPlan.transport?.operator} · {finalPlan.transport?.type}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Per person</span>
@@ -1888,6 +1901,17 @@ export default function Start() {
     }
   }
 
+  /**
+   * How wide the page is allowed to get, by step.
+   *
+   * Only the plan step wants the room. It already lays the itinerary out beside
+   * the venue library at lg, but a 48rem shell squeezed that into roughly 380px
+   * of itinerary next to a 340px library — the responsive layout was there, the
+   * width to use it wasn't. The other steps are a form, a progress screen and a
+   * share screen; those read worse stretched across a monitor, so they stay put.
+   */
+  const shellWidth = step === "plan" ? "max-w-3xl lg:max-w-7xl" : "max-w-3xl";
+
   return (
     <main className="min-h-screen bg-hero-mesh">
       <div className="pointer-events-none fixed -top-32 -left-32 w-[28rem] h-[28rem] rounded-full bg-primary/15 blur-3xl animate-float" />
@@ -1895,7 +1919,7 @@ export default function Start() {
 
       {/* Header */}
       <header className="relative pt-8 pb-6">
-        <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
+        <div className={`mx-auto ${shellWidth} px-6 flex items-center justify-between`}>
           <KarijeLogo />
           <div className="flex items-center gap-3">
             {/* Start over — shown on plan/confirm steps */}
@@ -1942,7 +1966,7 @@ export default function Start() {
         </div>
       </header>
 
-      <div className="relative mx-auto max-w-3xl px-6 pb-24">
+      <div className={`relative mx-auto ${shellWidth} px-6 pb-24`}>
         {/* Progress pills */}
         {/* Signed-in banner — shown on intake step only when user has an account */}
         {step === "intake" && user && (
