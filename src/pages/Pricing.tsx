@@ -282,7 +282,7 @@ export default function Pricing() {
             {/* ── Pro Growth ─────────────────────────────────────── */}
             <div className="rounded-3xl border border-primary/30 bg-primary/10 p-8 flex flex-col relative">
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-4 py-1.5 rounded-full bg-primary text-white whitespace-nowrap shadow-glow">
+                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-4 py-1.5 rounded-full bg-primary text-ink whitespace-nowrap shadow-glow">
                   Best for agencies
                 </span>
               </div>
@@ -310,7 +310,7 @@ export default function Pricing() {
 
               <Link
                 to="/pro"
-                className="w-full text-center py-3 rounded-sm bg-primary text-white font-jost font-medium text-sm tracking-[0.06em] hover:opacity-90 transition-opacity shadow-glow"
+                className="w-full text-center py-3 rounded-sm bg-primary text-ink font-jost font-medium text-sm tracking-[0.06em] hover:opacity-90 transition-opacity shadow-glow"
               >
                 Join the waitlist →
               </Link>
@@ -458,7 +458,7 @@ export default function Pricing() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
                   to="/start/trip"
-                  className="inline-flex items-center gap-2 bg-primary text-white px-7 py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:opacity-90 transition-opacity shadow-glow rounded-sm"
+                  className="inline-flex items-center gap-2 bg-primary text-ink px-7 py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:opacity-90 transition-opacity shadow-glow rounded-sm"
                 >
                   Plan a trip free
                   <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

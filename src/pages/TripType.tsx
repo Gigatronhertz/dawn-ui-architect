@@ -109,7 +109,7 @@ export default function TripType() {
             className="group border border-border p-8 flex flex-col gap-6 hover:border-primary transition-all hover:shadow-card"
           >
             {/* Icon */}
-            <div className="w-12 h-12 bg-primary text-white grid place-items-center shrink-0">
+            <div className="w-12 h-12 bg-primary text-ink grid place-items-center shrink-0">
               <svg
                 viewBox="0 0 24 24"
                 className="w-5 h-5"

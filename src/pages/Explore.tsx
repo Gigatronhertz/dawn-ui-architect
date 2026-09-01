@@ -49,7 +49,7 @@ const CAT_LABEL: Record<string, string> = {
 
 const CAT_COLOR: Record<string, string> = {
   adventure: "bg-forest text-parchment",
-  culture:   "bg-primary text-white",
+  culture:   "bg-primary text-ink",
   nature:    "bg-sage text-parchment",
   leisure:   "bg-warm-grey text-white",
   food:      "bg-primary/90 text-white",
