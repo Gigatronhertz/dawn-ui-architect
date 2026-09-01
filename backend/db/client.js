@@ -240,6 +240,10 @@ const MIGRATIONS = [
   `ALTER TABLE trips ADD COLUMN title          TEXT`,
   `ALTER TABLE trips ADD COLUMN summary        TEXT`,
   `ALTER TABLE trips ADD COLUMN cover_image_id TEXT`,
+  // Phase 13 — agency branding. The id points into trip_images, which is a
+  // generic blob store despite the name, so logos get the same immutable
+  // caching the trip photos already have.
+  `ALTER TABLE agents ADD COLUMN logo_image_id TEXT`,
 ];
 
 const ready = (async () => {

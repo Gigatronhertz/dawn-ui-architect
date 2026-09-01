@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, session, type AgencySquadMember, type AgencyTripDetail } from "@/lib/api";
+import { api, imageUrl, session, type AgencySquadMember, type AgencyTripDetail } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
 
 /**
@@ -279,7 +279,7 @@ export default function ProTripDetail() {
     );
   }
 
-  const { trip, summary, money } = data;
+  const { trip, summary, money, agency } = data;
 
   const emptyCopy =
     tab === "paid"    ? "Nobody has paid yet. Chase the pending list and they'll appear here."
@@ -300,6 +300,21 @@ export default function ProTripDetail() {
         {/* ── Heading ───────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div className="min-w-0">
+            {/* The agency running it — the same branding a traveller sees. */}
+            {agency && (
+              <div className="flex items-center gap-2.5 mb-3">
+                {imageUrl(agency.logoUrl) && (
+                  <img
+                    src={imageUrl(agency.logoUrl)!}
+                    alt={agency.name}
+                    className="h-7 w-auto max-w-[6rem] object-contain"
+                  />
+                )}
+                <span className="text-[10px] font-jost tracking-label text-muted-foreground uppercase">
+                  {agency.name}
+                </span>
+              </div>
+            )}
             <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight">
               {trip.title || trip.city}
             </h1>

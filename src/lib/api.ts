@@ -74,6 +74,8 @@ export type UserPlan = {
 
 /** Returned by GET /api/public/plan/:tripId — safe to show without auth */
 export type PublicPlanResponse = {
+  /** Present only when an agency owns the trip — null for a squad's own plan. */
+  agency:           PlanAgency | null;
   tripId:           string;
   origin:           string | null;
   destination:      string | null;
@@ -153,6 +155,17 @@ export type PollPlanResponse = {
   instructions?: string[];
 };
 
+/**
+ * Turn a backend image path into something an <img> can load. The API is on a
+ * different origin in production, so a relative path would point at the
+ * frontend and 404.
+ */
+export function imageUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return `${API_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
 export type AgentProfile = {
   phone: string;
   agencyName: string;
@@ -161,6 +174,8 @@ export type AgentProfile = {
   color: string;
   planType: 'starter' | 'growth';
   tagline?: string;
+  /** Points into the image store; run it through imageUrl() before rendering. */
+  logo_image_id?: string | null;
 };
 
 export type TripRow = {
@@ -228,6 +243,13 @@ async function patch<T>(path: string, body: unknown, headers?: Record<string, st
   return data as T;
 }
 
+async function del<T>(path: string, headers?: Record<string, string>): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, { method: 'DELETE', headers });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data as T;
+}
+
 function bearer(token: string) { return { Authorization: `Bearer ${token}` }; }
 
 // ── Session token helpers ──────────────────────────────────────────────────
@@ -272,6 +294,8 @@ export type AgencySquadMember = {
 };
 
 export type AgencyTripDetail = {
+  /** The agency that owns the trip — its own branding, for the header. */
+  agency: { name: string; color: string | null; logoUrl: string | null };
   trip: {
     id: string; title: string | null; summary: string | null; city: string;
     days: number; squadSize: number; listed: boolean; status: string;
@@ -294,6 +318,16 @@ export type AgencyListing = {
   days: number; groupMax: number | null; date: string | null;
   perPerson: number; imageId: string | null; colorFallback: string;
   agency: string; href: string;
+  /** Relative image path, or null when the agency has not uploaded one. */
+  agencyLogo: string | null;
+};
+
+/** The agency running a trip, shown on its public plan. */
+export type PlanAgency = {
+  name: string;
+  tagline: string | null;
+  color: string | null;
+  logoUrl: string | null;
 };
 
 export const api = {
@@ -470,6 +504,23 @@ export const api = {
   /** Submit an agency / pro plan lead. */
   submitAgencyLead: (payload: { name: string; agencyName: string; phone: string; email: string }) =>
     post<{ ok: boolean }>('/api/agency-leads', payload),
+  // ── Agency branding ──────────────────────────────────────────────────────
+  /** Upload the agency logo. Send the raw File — the mime comes from its type. */
+  uploadAgencyLogo: async (file: File, token: string) => {
+    const res = await fetch(`${API_URL}/api/pro/logo`, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type, Authorization: `Bearer ${token}` },
+      body: file,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not upload the logo.');
+    return data as { ok: boolean; logoImageId: string; url: string };
+  },
+
+  /** Drop the logo. The stored image stays, so live plans keep rendering. */
+  removeAgencyLogo: (token: string) =>
+    del<{ ok: boolean }>('/api/pro/logo', bearer(token)),
+
   // ── Agency-owned trips ───────────────────────────────────────────────────
   /** Create a trip the agency owns. Costs are re-derived server-side. */
   createAgencyTrip: (

@@ -6,7 +6,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { api, type PublicPlanResponse, type PlanDay } from "@/lib/api";
+import { api, imageUrl, type PublicPlanResponse, type PlanDay } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -740,6 +740,27 @@ export default function PlanView() {
 
             {/* Hero */}
             <div className="text-center py-6 print:py-3 print:text-left">
+              {/* Who is actually running this trip. Only agency-owned trips
+                  carry this, so a squad's own plan looks exactly as before. */}
+              {data.agency && (
+                <div className="flex items-center justify-center gap-3 mb-5 print:justify-start">
+                  {imageUrl(data.agency.logoUrl) && (
+                    <img
+                      src={imageUrl(data.agency.logoUrl)!}
+                      alt={data.agency.name}
+                      className="h-10 w-auto max-w-[8rem] object-contain"
+                    />
+                  )}
+                  <div className="text-left">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      Presented by
+                    </div>
+                    <div className="font-display font-semibold text-sm leading-tight">
+                      {data.agency.name}
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* On a curated trip origin and destination are both the state, so
                   the old heading read "LAGOS → LAGOS" over a title of "Lagos".
                   These trips have a name and a place — use them. */}

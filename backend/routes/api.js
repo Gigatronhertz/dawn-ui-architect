@@ -1,4 +1,4 @@
-const { Router } = require('express');
+const { Router, raw } = require('express');
 const { v4: uuid } = require('uuid');
 const Groq = require('groq-sdk');
 const db = require('../db/client');
@@ -514,7 +514,26 @@ router.get('/public/plan/:tripId', async (req, res) => {
   const participants = await db.participants.get(trip.id);
   const stats = await db.participants.stats(trip.id);
 
+  // Whoever is actually running this trip. Present only on agency-owned
+  // trips, so a squad's own plan is unchanged.
+  let agency = null;
+  if (trip.agent_id) {
+    const a = await db.raw(
+      'SELECT agency_name, tagline, color, logo_image_id FROM agents WHERE id = ?',
+      [trip.agent_id]
+    );
+    if (a) {
+      agency = {
+        name:    a.agency_name,
+        tagline: a.tagline || null,
+        color:   a.color || null,
+        logoUrl: a.logo_image_id ? `/api/trip-image/${a.logo_image_id}` : null,
+      };
+    }
+  }
+
   return res.json({
+    agency,
     tripId:           trip.id,
     origin:           trip.origin,
     destination:      trip.destination,
@@ -848,6 +867,56 @@ async function agentTripOr403(req, res) {
   return trip;
 }
 
+
+// ── Agency logo ───────────────────────────────────────────────────────────────
+// Stored in trip_images and referenced by id, so it is served by the existing
+// immutable-cached /api/trip-image route and every viewer fetches it once.
+//
+// SVG is deliberately not accepted: it can carry script, and this file is
+// served from our own origin, so an uploaded SVG would be stored XSS.
+const LOGO_MIME  = ['image/jpeg', 'image/png', 'image/webp'];
+const LOGO_LIMIT = 2 * 1024 * 1024;
+
+router.post(
+  '/pro/logo',
+  requireAuth,
+  requireAgent,
+  raw({ type: LOGO_MIME, limit: LOGO_LIMIT }),
+  async (req, res) => {
+    try {
+      const mime = (req.headers['content-type'] || '').split(';')[0].trim();
+      if (!LOGO_MIME.includes(mime)) {
+        return res.status(415).json({ error: 'Upload a JPEG, PNG or WebP image.' });
+      }
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: 'No image data received.' });
+      }
+
+      const id = `logo_${uuid().replace(/-/g, '')}`;
+      await db.tripImages.insert({ id, mime, bytes: req.body });
+      await db.raw('UPDATE agents SET logo_image_id = ? WHERE id = ?', [id, req.agent.id]);
+
+      return res.json({ ok: true, logoImageId: id, url: `/api/trip-image/${id}` });
+    } catch (err) {
+      console.error('[api/pro/logo]', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// DELETE /api/pro/logo — drop the branding, keep the stored bytes. Trips
+// already sent out reference the image id, so deleting the blob would break
+// plans that are live.
+router.delete('/pro/logo', requireAuth, requireAgent, async (req, res) => {
+  try {
+    await db.raw('UPDATE agents SET logo_image_id = NULL WHERE id = ?', [req.agent.id]);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[api/pro/logo:delete]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/pro/trips
 // Body: { title, summary?, city, squadSize, days[], listed?, selectedDate? }
 router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
@@ -933,6 +1002,11 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
     const money = await ledger.forTrip(trip.id);
 
     res.json({
+      agency: {
+        name:    req.agent.agency_name,
+        color:   req.agent.color || null,
+        logoUrl: req.agent.logo_image_id ? `/api/trip-image/${req.agent.logo_image_id}` : null,
+      },
       trip: {
         id:           trip.id,
         title:        trip.title,
@@ -1249,7 +1323,7 @@ router.get('/listings', async (req, res) => {
     const agencyRows = await db.rawAll(
       `SELECT t.id, t.title, t.summary, t.destination, t.days, t.squad_size,
               t.selected_date, t.plan, t.created_at, t.cover_image_id,
-              a.agency_name, a.color
+              a.agency_name, a.color, a.logo_image_id
          FROM trips t
          JOIN agents a ON a.id = t.agent_id
         WHERE t.listed = 1 AND t.status = 'custom'
@@ -1274,6 +1348,7 @@ router.get('/listings', async (req, res) => {
         imageId:     r.cover_image_id || null,
         colorFallback: r.color || '#0B0B0B',
         agency:      r.agency_name,
+        agencyLogo:  r.logo_image_id ? `/api/trip-image/${r.logo_image_id}` : null,
         href:        `/plan/${r.id}`,
       };
     });

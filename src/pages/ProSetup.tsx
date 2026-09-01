@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { api } from "@/lib/api";
+import { api, imageUrl } from "@/lib/api";
 
 
 // ── Colour swatches ───────────────────────────────────────────────────────────
@@ -31,6 +31,10 @@ const ProSetup = () => {
   });
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
+  // Held until the profile is saved. On first onboarding there is no agency
+  // yet, and the upload route needs one — so the file waits for the save.
+  const [logoFile, setLogoFile]       = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Pre-fill plan from URL (?plan=growth) and any existing saved form
   useEffect(() => {
@@ -52,6 +56,9 @@ const ProSetup = () => {
           color:      agent.color                           || "#6366f1",
           plan:       (urlPlan ?? agent.planType ?? agent.plan_type ?? "starter") as "starter" | "growth",
         });
+        if (agent.logo_image_id) {
+          setLogoPreview(imageUrl(`/api/trip-image/${agent.logo_image_id}`));
+        }
       })
       .catch(() => { /* first time — no profile yet */ });
   }, [user, getIdToken, searchParams]);
@@ -82,6 +89,23 @@ const ProSetup = () => {
         },
         token,
       );
+      // The agency has to exist before it can own a logo, so this follows the
+      // profile save rather than racing it.
+      if (logoFile) {
+        try {
+          await api.uploadAgencyLogo(logoFile, token);
+        } catch (uploadErr) {
+          // The profile saved; only the logo failed. Say so plainly instead of
+          // making them redo the whole form.
+          setStatus("error");
+          setError(
+            uploadErr instanceof Error
+              ? `Your agency was saved, but the logo did not upload: ${uploadErr.message}`
+              : "Your agency was saved, but the logo did not upload."
+          );
+          return;
+        }
+      }
       navigate("/pro/dashboard");
     } catch (err: unknown) {
       setStatus("error");
@@ -217,6 +241,65 @@ const ProSetup = () => {
             )}
           </div>
 
+          {/* Logo */}
+          <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+            <div className="font-semibold text-sm">Your logo</div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Shown on your dashboard, on every trip you build, and on the plan page
+              your travellers open. JPEG, PNG or WebP, up to 2MB.
+            </p>
+
+            <div className="flex items-center gap-4">
+              <div
+                className="w-16 h-16 rounded-xl grid place-items-center overflow-hidden shrink-0 ring-hairline bg-secondary/40"
+                style={logoPreview ? undefined : { backgroundColor: form.color }}
+              >
+                {logoPreview ? (
+                  <img src={logoPreview} alt="" className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-white font-display font-bold text-sm">{initials}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer rounded-lg bg-secondary/60 ring-hairline px-4 py-2 hover:bg-secondary transition">
+                  {logoPreview ? "Choose a different file" : "Choose a file"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 2 * 1024 * 1024) {
+                        setError("That logo is over 2MB — pick a smaller file.");
+                        return;
+                      }
+                      setError("");
+                      setLogoFile(file);
+                      setLogoPreview(URL.createObjectURL(file));
+                    }}
+                  />
+                </label>
+                {logoPreview && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setLogoFile(null);
+                      setLogoPreview(null);
+                      const token = getIdToken();
+                      // Only meaningful if one was already saved; harmless otherwise.
+                      if (token) { try { await api.removeAgencyLogo(token); } catch { /* nothing saved yet */ } }
+                    }}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition text-left"
+                  >
+                    Remove logo
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Brand color */}
           <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
             <div className="font-semibold text-sm">Brand color</div>
@@ -234,10 +317,12 @@ const ProSetup = () => {
             </div>
             <div className="flex items-center gap-3 mt-1 p-3 rounded-xl bg-secondary/40">
               <div
-                className="w-9 h-9 rounded-lg grid place-items-center text-white font-display font-bold text-xs shrink-0"
-                style={{ backgroundColor: form.color }}
+                className="w-9 h-9 rounded-lg grid place-items-center text-white font-display font-bold text-xs shrink-0 overflow-hidden"
+                style={logoPreview ? undefined : { backgroundColor: form.color }}
               >
-                {initials}
+                {logoPreview
+                  ? <img src={logoPreview} alt="" className="w-full h-full object-contain" />
+                  : initials}
               </div>
               <div>
                 <div className="font-semibold text-sm">{form.agencyName || "Your Agency"}</div>

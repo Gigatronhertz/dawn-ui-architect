@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, type DashboardData, type TripRow } from "@/lib/api";
+import { api, imageUrl, type DashboardData, type TripRow } from "@/lib/api";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
@@ -225,6 +225,7 @@ const ProDashboard = () => {
   const { summary, trips } = data ?? { summary: null, trips: [] };
 
   const agencyName  = agent?.agency_name || "";
+  const agencyLogo  = imageUrl(agent?.logo_image_id ? `/api/trip-image/${agent.logo_image_id}` : null);
   const agentColor  = agent?.color || "#6366f1";
   const planType    = agent?.plan_type || "starter";
   const initials    = agencyName.trim().split(/\s+/).filter(Boolean).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() || "??";
@@ -236,10 +237,12 @@ const ProDashboard = () => {
         <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="w-8 h-8 rounded-lg grid place-items-center text-white font-display font-bold text-xs shrink-0"
-              style={{ backgroundColor: agentColor }}
+              className="w-8 h-8 rounded-lg grid place-items-center text-white font-display font-bold text-xs shrink-0 overflow-hidden"
+              style={agencyLogo ? undefined : { backgroundColor: agentColor }}
             >
-              {initials}
+              {agencyLogo
+                ? <img src={agencyLogo} alt={agencyName} className="w-full h-full object-contain" />
+                : initials}
             </div>
             <div>
               <div className="font-display font-semibold text-sm leading-tight">{agencyName || user.email}</div>
@@ -288,10 +291,12 @@ const ProDashboard = () => {
             <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4 text-sm">
               <div className="flex items-center gap-3 pb-4 border-b border-border">
                 <div
-                  className="w-12 h-12 rounded-xl grid place-items-center text-white font-display font-bold text-base shrink-0"
-                  style={{ backgroundColor: agentColor }}
+                  className="w-12 h-12 rounded-xl grid place-items-center text-white font-display font-bold text-base shrink-0 overflow-hidden"
+                  style={agencyLogo ? undefined : { backgroundColor: agentColor }}
                 >
-                  {initials}
+                  {agencyLogo
+                    ? <img src={agencyLogo} alt={agencyName} className="w-full h-full object-contain" />
+                    : initials}
                 </div>
                 <div>
                   <div className="font-semibold">{agencyName}</div>
