@@ -73,7 +73,7 @@ const Services = () => (
               <div className={`w-10 h-10 ${s.color} text-parchment grid place-items-center shrink-0`}>
                 {s.icon}
               </div>
-              <span className="font-marcellus text-3xl text-border group-hover:text-primary/30 transition-colors">
+              <span className="font-marcellus text-3xl text-border group-hover:text-foreground/30 transition-colors">
                 {s.n}
               </span>
             </div>
@@ -234,7 +234,7 @@ const AgenciesSection = () => (
           <ul className="mt-8 space-y-4">
             {proBenefits.map((b) => (
               <li key={b.text} className="flex items-start gap-4">
-                <span className="text-primary text-[8px] mt-1.5 shrink-0">{b.icon}</span>
+                <span className="text-foreground text-[8px] mt-1.5 shrink-0">{b.icon}</span>
                 <span className="font-jost font-light text-sm text-parchment/80 leading-relaxed">
                   {b.text}
                 </span>

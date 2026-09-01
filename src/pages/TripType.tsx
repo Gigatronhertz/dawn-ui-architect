@@ -150,7 +150,7 @@ export default function TripType() {
             </div>
 
             {/* CTA hint */}
-            <div className="flex items-center gap-2 text-sm font-jost font-medium text-primary group-hover:gap-3 transition-all">
+            <div className="flex items-center gap-2 text-sm font-jost font-medium text-foreground group-hover:gap-3 transition-all">
               Explore local experiences
               <svg
                 viewBox="0 0 24 24"

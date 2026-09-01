@@ -156,7 +156,7 @@ export const Nav = () => {
               <Link
                 to="/start"
                 onClick={close}
-                className="inline-flex items-center gap-2 bg-forest text-parchment px-5 py-2 text-[13px] font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors rounded-sm"
+                className="inline-flex items-center gap-2 bg-signal text-ink px-5 py-2 text-[13px] font-jost font-medium tracking-[0.06em] hover:bg-ink hover:text-signal transition-colors rounded-sm"
               >
                 Plan a trip
                 <svg
@@ -176,7 +176,7 @@ export const Nav = () => {
               <button
                 onClick={() => setOpen((v) => !v)}
                 aria-label={open ? "Close menu" : "Open menu"}
-                className="md:hidden ml-1 w-9 h-9 flex items-center justify-center text-foreground hover:text-primary transition-colors"
+                className="md:hidden ml-1 w-9 h-9 flex items-center justify-center text-foreground hover:text-foreground/60 transition-colors"
               >
                 {open ? (
                   <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -221,20 +221,20 @@ export const Nav = () => {
                 key={l.href}
                 to={l.href}
                 onClick={close}
-                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-primary transition-colors"
+                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-foreground/60 transition-colors"
               >
                 {l.label}
-                <span className="text-primary text-base">↗</span>
+                <span className="text-foreground text-base">↗</span>
               </Link>
             ) : (
               <a
                 key={l.href}
                 href={l.href}
                 onClick={close}
-                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-primary transition-colors"
+                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-foreground/60 transition-colors"
               >
                 {l.label}
-                <span className="text-primary text-base">↗</span>
+                <span className="text-foreground text-base">↗</span>
               </a>
             )
           )}
@@ -244,10 +244,10 @@ export const Nav = () => {
               <Link
                 to="/my-plans"
                 onClick={close}
-                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-primary transition-colors"
+                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-foreground/60 transition-colors"
               >
                 My Plans
-                <span className="text-primary text-base">↗</span>
+                <span className="text-foreground text-base">↗</span>
               </Link>
               <button
                 onClick={() => { signOut(); close(); }}
@@ -260,10 +260,10 @@ export const Nav = () => {
             <Link
               to="/login"
               onClick={close}
-              className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-primary transition-colors"
+              className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-foreground/60 transition-colors"
             >
               Log in
-              <span className="text-primary text-base">↗</span>
+              <span className="text-foreground text-base">↗</span>
             </Link>
           )}
         </nav>
@@ -273,7 +273,7 @@ export const Nav = () => {
           <Link
             to="/start"
             onClick={close}
-            className="w-full flex items-center justify-center gap-3 bg-forest text-parchment px-6 py-4 font-jost font-medium tracking-[0.08em] hover:bg-primary transition-colors"
+            className="w-full flex items-center justify-center gap-3 bg-signal text-ink px-6 py-4 font-jost font-medium tracking-[0.08em] hover:bg-ink hover:text-signal transition-colors"
           >
             <KarijeMark size={16} color="currentColor" />
             PLAN A TRIP

@@ -111,7 +111,7 @@ const Card = ({ children, className = "" }: { children: React.ReactNode; classNa
 );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-1">{children}</div>
+  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground mb-1">{children}</div>
 );
 
 const chipCls = (active: boolean) =>
@@ -456,7 +456,7 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
           </svg>
         </div>
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-primary/60 mb-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-foreground/60 mb-2">
             Step {idx + 1} of {PHASES.length}
           </div>
           <p className="font-display text-xl font-semibold">{PHASES[idx].title}</p>
@@ -620,7 +620,7 @@ function DayPicker({
       <button
         onClick={() => onPick(0)}
         disabled={disabled}
-        className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground shrink-0 transition disabled:opacity-40"
+        className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-primary/10 text-foreground hover:bg-primary hover:text-primary-foreground shrink-0 transition disabled:opacity-40"
       >
         {label}
       </button>
@@ -632,7 +632,7 @@ function DayPicker({
       disabled={disabled}
       onChange={(e) => { if (e.target.value !== "") onPick(Number(e.target.value)); }}
       aria-label="Add to which day"
-      className="text-[10px] font-semibold px-1.5 py-1 rounded-lg bg-primary/10 text-primary shrink-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-40"
+      className="text-[10px] font-semibold px-1.5 py-1 rounded-lg bg-primary/10 text-foreground shrink-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-40"
     >
       <option value="">{label}</option>
       {days.map((d, i) => <option key={i} value={i}>Day {d.day}</option>)}
@@ -883,7 +883,7 @@ function PlanStep({
               color: "text-google-blue",
             },
             { label: "Lodging", val: fmtNGN(lodgingTotal), sub: `${hotelName} · ${intake.days} nights`, badge: null, color: "text-google-purple" },
-            { label: "Per person", val: fmtNGN(perPerson), sub: isDirty ? "Updated · live" : "AI estimate", badge: null, color: "text-primary" },
+            { label: "Per person", val: fmtNGN(perPerson), sub: isDirty ? "Updated · live" : "AI estimate", badge: null, color: "text-foreground" },
             { label: "Squad total", val: fmtNGN(squadTotal), sub: `${intake.squadSize} people · all-in`, badge: null, color: "text-google-green" },
           ].map((c) => (
             <div key={c.label} className="p-4 md:p-6 text-center">
@@ -891,7 +891,7 @@ function PlanStep({
               <div className="font-display text-lg md:text-2xl font-semibold tabular-nums">{c.val}</div>
               <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{c.sub}</div>
               {c.badge && (
-                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-semibold">
+                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 text-foreground px-2 py-0.5 text-[10px] font-semibold">
                   {c.badge}
                 </div>
               )}
@@ -989,7 +989,7 @@ function PlanStep({
                   <div className="text-[11px] text-muted-foreground mt-1">{bus.class}</div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">{bus.seatsAvailable} seats left</div>
                   <div className="mt-auto pt-3 border-t border-border/50">
-                    <div className="font-display text-base font-semibold text-primary tabular-nums">{fmtNGN(bus.price)}</div>
+                    <div className="font-display text-base font-semibold text-foreground tabular-nums">{fmtNGN(bus.price)}</div>
                     <div className="text-[10px] text-muted-foreground">per seat · applied above ↑</div>
                     <a href="https://www.gigm.com/book-a-seat" target="_blank" rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
@@ -1005,7 +1005,7 @@ function PlanStep({
                 className={`col-span-2 text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedBusIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                 <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator} · {initialPlan.transport.type}</span>
-                {selectedBusIdx === null && <span className="ml-2 text-[11px] text-primary font-medium">✓ Active</span>}
+                {selectedBusIdx === null && <span className="ml-2 text-[11px] text-foreground font-medium">✓ Active</span>}
               </button>
             </div>
           )}
@@ -1032,7 +1032,7 @@ function PlanStep({
                       <div className="text-[11px] text-muted-foreground mt-0.5">{f.duration}</div>
                     )}
                     <div className="mt-auto pt-3 border-t border-border/50">
-                      <div className="font-display text-base font-semibold text-primary tabular-nums">{fmtNGN(f.price)}</div>
+                      <div className="font-display text-base font-semibold text-foreground tabular-nums">{fmtNGN(f.price)}</div>
                       <div className="text-[10px] text-muted-foreground">per person</div>
                       <a href={flightUrl} target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
@@ -1049,7 +1049,7 @@ function PlanStep({
                 className={`col-span-2 text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedFlightIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                 <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator}</span>
-                {selectedFlightIdx === null && <span className="ml-2 text-[11px] text-primary font-medium">✓ Active</span>}
+                {selectedFlightIdx === null && <span className="ml-2 text-[11px] text-foreground font-medium">✓ Active</span>}
               </button>
             </div>
           )}
@@ -1158,7 +1158,7 @@ function PlanStep({
 
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             📍 Places in {intake.destination}
-            {placesItems.length > 0 && <span className="text-primary"> · {placesItems.length}</span>}
+            {placesItems.length > 0 && <span className="text-foreground"> · {placesItems.length}</span>}
           </div>
 
           <input
@@ -1225,7 +1225,7 @@ function PlanStep({
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate leading-tight">{p.title}</div>
                   <div className="text-[10px] text-muted-foreground leading-tight truncate">
-                    <span className="text-primary/60 font-medium">{p.tag}</span> · {p.feeNote}
+                    <span className="text-foreground/60 font-medium">{p.tag}</span> · {p.feeNote}
                   </div>
                 </div>
                 <DayPicker
@@ -1501,7 +1501,7 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
             )}
             <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
               <span className="font-medium">Squad total ({squadSize} people)</span>
-              <span className="font-display font-semibold text-primary">{fmtNGN(finalPlan.cost_breakdown.per_person * squadSize)}</span>
+              <span className="font-display font-semibold text-foreground">{fmtNGN(finalPlan.cost_breakdown.per_person * squadSize)}</span>
             </div>
           </div>
         </div>
@@ -1509,7 +1509,7 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
 
       {/* Share with squad — primary CTA */}
       <div className="rounded-2xl bg-primary/10 ring-1 ring-primary/20 p-5 mb-6">
-        <div className="text-xs font-semibold uppercase tracking-wider text-primary mb-1">Share with your squad</div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-foreground mb-1">Share with your squad</div>
         <p className="text-sm text-muted-foreground mb-4">
           Send this link to your group — they can view the full plan and say "I'm in!"
         </p>
@@ -1562,7 +1562,7 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
             { step: "The bot's first message drops the plan without warning — the squad won't see it coming.", tag: null },
           ].map(({ step, tag }, i) => (
             <li key={i} className="flex items-start gap-3 text-sm">
-              <span className="w-6 h-6 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-semibold shrink-0 mt-0.5">{i + 1}</span>
+              <span className="w-6 h-6 rounded-full bg-primary/15 text-foreground grid place-items-center text-xs font-semibold shrink-0 mt-0.5">{i + 1}</span>
               <span className="text-foreground/90 leading-relaxed">
                 {step}
                 {tag && <span className={`ml-2 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${tag === "Works now" ? "bg-google-green/15 text-google-green" : "bg-secondary text-muted-foreground"}`}>{tag}</span>}
@@ -1652,7 +1652,7 @@ function LockBanner({ tripId }: { tripId: string }) {
   if (state === 'sent') {
     return (
       <Card className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center text-xl shrink-0">📬</div>
+        <div className="w-10 h-10 rounded-full bg-primary/10 text-foreground grid place-items-center text-xl shrink-0">📬</div>
         <div className="flex-1 min-w-0">
           <div className="font-display font-semibold text-sm">Check your email</div>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -1660,7 +1660,7 @@ function LockBanner({ tripId }: { tripId: string }) {
             Click it to save your plan. Link expires in 15 minutes.
           </p>
           {previewUrl && (
-            <a href={previewUrl} className="mt-2 block text-xs text-primary underline underline-offset-2 break-all">
+            <a href={previewUrl} className="mt-2 block text-xs text-foreground underline underline-offset-2 break-all">
               (Email not configured — click here to sign in directly)
             </a>
           )}
@@ -1687,7 +1687,7 @@ function LockBanner({ tripId }: { tripId: string }) {
   if (user || state === 'linking') {
     return (
       <Card className="flex items-center gap-4">
-        <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+        <div className="w-6 h-6 rounded-full border-2 border-foreground border-t-transparent animate-spin shrink-0" />
         <div className="text-sm text-muted-foreground">Saving plan to your account…</div>
       </Card>
     );
@@ -1944,7 +1944,7 @@ export default function Start() {
                   {user.picture ? (
                     <img src={user.picture} alt="" className="w-6 h-6 rounded-full ring-hairline" referrerPolicy="no-referrer" />
                   ) : (
-                    <span className="w-6 h-6 rounded-full bg-primary/15 grid place-items-center text-primary text-[10px] font-semibold">
+                    <span className="w-6 h-6 rounded-full bg-primary/15 grid place-items-center text-foreground text-[10px] font-semibold">
                       {(user.name || user.email || "U")[0].toUpperCase()}
                     </span>
                   )}

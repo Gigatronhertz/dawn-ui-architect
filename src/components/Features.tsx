@@ -49,7 +49,7 @@ export const Features = () => (
   <section id="features" className="py-28 md:py-36">
     <div className="mx-auto max-w-6xl px-6">
       <div className="max-w-2xl">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Features</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground">Features</span>
         <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tight mt-3 leading-[1.05]">
           Everything you'd
           <br />

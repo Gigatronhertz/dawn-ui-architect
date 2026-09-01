@@ -15,7 +15,7 @@ const pillars = [
   },
   {
     emoji: "↩️",
-    color: "text-primary",
+    color: "text-foreground",
     bg: "bg-primary-soft",
     title: "Full refunds, no drama",
     desc: "Trip cancelled via group poll or organiser call — 100% automatic refund to every member's original payment method. No form to fill. No support ticket. No chasing.",
@@ -57,7 +57,7 @@ export const MoneyTrust = () => (
           <span className="font-semibold text-foreground">Not on Pro or Monthly yet?</span>{" "}
           Escrow and spend notifications are available on the Monthly plan and above.
         </p>
-        <a href="#pricing" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline shrink-0">
+        <a href="#pricing" className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:underline shrink-0">
           See pricing
           <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
         </a>

@@ -104,14 +104,14 @@ export default function Login() {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
     <main className="min-h-screen bg-background grid place-items-center">
-      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
     </main>
   );
 
   // ── Already signed in (routing) ───────────────────────────────────────────
   if (user) return (
     <main className="min-h-screen bg-background grid place-items-center">
-      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
     </main>
   );
 
@@ -206,7 +206,7 @@ export default function Login() {
               onClick={() => resetForm(mode)}
               className={`pb-2.5 text-xs font-jost font-medium mr-4 border-b-2 transition-colors ${
                 authMode === mode
-                  ? "border-primary text-foreground"
+                  ? "border-foreground text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >

@@ -93,7 +93,7 @@ const ProSetup = () => {
   if (loading) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
       </main>
     );
   }

@@ -96,7 +96,7 @@ const Section = ({ children }: { children: React.ReactNode }) => (
 
 const StepHeader = ({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) => (
   <div className="mb-5">
-    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</span>
+    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground">{eyebrow}</span>
     <h2 className="font-display text-xl md:text-3xl font-semibold tracking-tight mt-1.5 leading-[1.1] text-gradient">{title}</h2>
     {sub && <p className="mt-1.5 text-xs md:text-sm text-muted-foreground max-w-xl">{sub}</p>}
   </div>
@@ -215,7 +215,7 @@ function WhatsAppView({ onNext, onBack }: { onNext: () => void; onBack: () => vo
                         : "bg-secondary text-foreground rounded-bl-sm"
                     }`}>
                       {m.who && <div className="text-[11px] font-semibold text-google-blue mb-0.5">{m.who}</div>}
-                      {!m.who && m.from === "bot" && <div className="text-[11px] font-semibold text-primary mb-0.5 flex items-center gap-1">🤖 Karije Bot</div>}
+                      {!m.who && m.from === "bot" && <div className="text-[11px] font-semibold text-foreground mb-0.5 flex items-center gap-1">🤖 Karije Bot</div>}
                       {m.text}
                       <div className={`text-[10px] mt-1 ${isUser || m.highlight ? "opacity-70" : "text-muted-foreground"}`}>{m.time}</div>
                     </div>
@@ -246,12 +246,12 @@ function WhatsAppView({ onNext, onBack }: { onNext: () => void; onBack: () => vo
 
         <div className="lg:max-w-xs space-y-4">
           <div className="rounded-2xl bg-secondary/60 p-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-2">What just happened</div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground mb-2">What just happened</div>
             <ul className="space-y-2.5 text-sm text-foreground/90">
-              <li className="flex gap-2"><span className="text-primary">①</span> Tunde planned the trip privately in 2 minutes</li>
-              <li className="flex gap-2"><span className="text-primary">②</span> He added <strong>Karije Bot</strong> to the squad group</li>
-              <li className="flex gap-2"><span className="text-primary">③</span> Bot's first message is the plan reveal — not a form</li>
-              <li className="flex gap-2"><span className="text-primary">④</span> Squad votes on dates + hotel, bot collects contributions</li>
+              <li className="flex gap-2"><span className="text-foreground">①</span> Tunde planned the trip privately in 2 minutes</li>
+              <li className="flex gap-2"><span className="text-foreground">②</span> He added <strong>Karije Bot</strong> to the squad group</li>
+              <li className="flex gap-2"><span className="text-foreground">③</span> Bot's first message is the plan reveal — not a form</li>
+              <li className="flex gap-2"><span className="text-foreground">④</span> Squad votes on dates + hotel, bot collects contributions</li>
             </ul>
           </div>
           <div className="rounded-2xl bg-card ring-hairline p-4 text-xs text-muted-foreground">
@@ -638,7 +638,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
           {[
             { tag: "Transport", val: fmtNGN(realPlan?.cost_breakdown.transport_total ?? fallbackPlan.transportTotal), sub: `${realPlan?.transport.operator ?? fallbackPlan.operator.brand} · ${intake.squadSize}×`, color: "bg-google-blue/10 text-google-blue" },
             { tag: "Lodging", val: fmtNGN(realPlan?.cost_breakdown.lodging_total ?? fallbackPlan.lodgingTotal), sub: `${intake.days} nights`, color: "bg-google-purple/10 text-google-purple" },
-            { tag: "Per person", val: fmtNGN(realPlan?.cost_breakdown.per_person ?? fallbackPlan.perPerson), sub: "All-in · live", color: "bg-primary-soft text-primary" },
+            { tag: "Per person", val: fmtNGN(realPlan?.cost_breakdown.per_person ?? fallbackPlan.perPerson), sub: "All-in · live", color: "bg-primary-soft text-foreground" },
           ].map((c) => (
             <div key={c.tag} className="rounded-xl bg-secondary/60 p-2.5 min-w-0">
               <span className={`inline-flex text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${c.color}`}>{c.tag}</span>
@@ -738,7 +738,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
                             </li>
                           ))}
                         </ul>
-                        <button onClick={() => addCustom(di)} className="text-[11px] font-medium text-primary hover:underline">+ Add custom stop</button>
+                        <button onClick={() => addCustom(di)} className="text-[11px] font-medium text-foreground hover:underline">+ Add custom stop</button>
 
                         {/* AI suggestions w/ photo tiles — show 2 by default */}
                         <div>
@@ -960,7 +960,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
                 ))}
                 <div className="flex justify-between pt-1.5 border-t border-border font-semibold">
                   <span>Total ({intake.squadSize} pax)</span>
-                  <span className="font-display tabular-nums text-primary">{fmtNGN(realPlan.cost_breakdown.total)}</span>
+                  <span className="font-display tabular-nums text-foreground">{fmtNGN(realPlan.cost_breakdown.total)}</span>
                 </div>
               </div>
             )}
@@ -1064,7 +1064,7 @@ function VoteView({ intake, plan, onNext, onBack }: { intake: Intake; plan: Trip
                     <div className="min-w-0">
                       <div className="font-display font-semibold truncate flex items-center gap-2 flex-wrap">
                         {hotelLabel}
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">AI pick</span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-foreground shrink-0">AI pick</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">{fmtNGN(hotelPrice)}/night · ⭐ {hotelRating}</div>
                     </div>
@@ -1153,7 +1153,7 @@ function ContributionsView({ intake, plan: realPlan, onNext, onBack }: { intake:
               </div>
             </div>
             {m.paid ? (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-foreground">
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                 Paid
               </span>
@@ -1216,7 +1216,7 @@ function DuringTripView({ intake, onNext, onBack }: { intake: Intake; onNext: ()
     depart: "bg-google-blue/15 text-google-blue",
     uber: "bg-foreground/10 text-foreground",
     stop: "bg-google-green/15 text-google-green",
-    expense: "bg-primary/15 text-primary",
+    expense: "bg-primary/15 text-foreground",
     photo: "bg-google-pink/15 text-google-pink",
     update: "bg-google-purple/15 text-google-purple",
     packup: "bg-google-yellow/20 text-google-yellow",
@@ -1407,7 +1407,7 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
           </ul>
           <div className="rounded-xl bg-primary-soft p-3 flex items-center justify-between">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-primary">Each pays</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Each pays</div>
               <div className="font-display text-lg font-semibold">{fmtNGN(settlePerPerson)}</div>
             </div>
             <button className="rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium">Send Paystack links</button>
@@ -1595,7 +1595,7 @@ const Demo = () => {
                   >
                     {done ? "✓" : i + 1}
                   </button>
-                  <span className={`hidden sm:block text-[10px] font-medium tracking-wide text-center leading-tight ${active ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
+                  <span className={`hidden sm:block text-[10px] font-medium tracking-wide text-center leading-tight ${active ? "text-foreground" : done ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
                 </div>
                 {i < STEPS.length - 1 && (
                   <div className={`flex-1 h-px mt-3.5 ${done ? "bg-primary" : "bg-border"}`} />

@@ -10,9 +10,9 @@ const fmtNGN = (n: number) =>
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   generating:     { label: "Generating…", color: "text-google-blue bg-google-blue/10" },
   plan_review:    { label: "Ready",       color: "text-google-green bg-google-green/10" },
-  awaiting_group: { label: "Confirmed",   color: "text-primary bg-primary/10" },
-  curated:        { label: "Ready to share", color: "text-primary bg-primary/10" },
-  custom:         { label: "Ready to share", color: "text-primary bg-primary/10" },
+  awaiting_group: { label: "Confirmed",   color: "text-foreground bg-primary/10" },
+  curated:        { label: "Ready to share", color: "text-foreground bg-primary/10" },
+  custom:         { label: "Ready to share", color: "text-foreground bg-primary/10" },
   error:          { label: "Failed",      color: "text-destructive bg-destructive/10" },
 };
 
@@ -128,7 +128,7 @@ export default function MyPlans() {
   if (loading) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -230,7 +230,7 @@ export default function MyPlans() {
                 onClick={() => resetForm(mode)}
                 className={`pb-2.5 text-xs font-jost font-medium mr-4 border-b-2 transition-colors ${
                   authMode === mode
-                    ? "border-primary text-foreground"
+                    ? "border-foreground text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -384,7 +384,7 @@ export default function MyPlans() {
 
           <p className="mt-8 text-center text-xs font-jost font-light text-muted-foreground">
             Want to plan first?{" "}
-            <Link to="/start" className="text-primary hover:underline">Plan a trip →</Link>
+            <Link to="/start" className="text-foreground hover:underline">Plan a trip →</Link>
           </p>
         </div>
       </main>
@@ -415,7 +415,7 @@ export default function MyPlans() {
       <div className="mx-auto max-w-3xl lg:max-w-5xl px-6 pb-24 space-y-6">
         {/* Header */}
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-1">Your account</div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground mb-1">Your account</div>
           <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight">My Plans</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {user.name ? `Welcome back, ${user.name.split(" ")[0]}.` : "Welcome back."} All your saved squad plans are here.
@@ -443,7 +443,7 @@ export default function MyPlans() {
         {/* Plans list */}
         {fetching && (
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
           </div>
         )}
 
@@ -494,7 +494,7 @@ export default function MyPlans() {
                         </div>
                         {perPerson && (
                           <div className="text-right shrink-0">
-                            <div className="font-display font-semibold text-primary">{fmtNGN(perPerson)}</div>
+                            <div className="font-display font-semibold text-foreground">{fmtNGN(perPerson)}</div>
                             <div className="text-[10px] text-muted-foreground">/person</div>
                           </div>
                         )}
@@ -511,7 +511,7 @@ export default function MyPlans() {
                           </div>
                           <Link
                             to={`/plan/${p.tripId}`}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary px-4 py-2 text-xs font-semibold hover:bg-primary/15 transition"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-foreground px-4 py-2 text-xs font-semibold hover:bg-primary/15 transition"
                           >
                             View squad page →
                           </Link>
@@ -645,7 +645,7 @@ function SquadPanel({ tripId, count }: { tripId: string; count: number }) {
                         href={wa}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[10px] font-semibold text-primary hover:underline shrink-0"
+                        className="text-[10px] font-semibold text-foreground hover:underline shrink-0"
                       >
                         Chase →
                       </a>
@@ -719,14 +719,14 @@ function PlanCardSquare({ p, s, date, perPerson }: {
       {/* Price at bottom */}
       {perPerson && (
         <div className="mt-auto pt-2.5 border-t border-border/60">
-          <div className="font-marcellus text-lg text-primary tabular-nums leading-none">{fmtNGN(perPerson)}</div>
+          <div className="font-marcellus text-lg text-foreground tabular-nums leading-none">{fmtNGN(perPerson)}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5">/person</div>
         </div>
       )}
 
       {/* Tap hint for plan_review */}
       {p.status === 'plan_review' && (
-        <div className="mt-1 text-[10px] text-primary font-jost font-medium group-hover:underline">
+        <div className="mt-1 text-[10px] text-foreground font-jost font-medium group-hover:underline">
           Review plan →
         </div>
       )}

@@ -2,13 +2,13 @@ const capabilities = [
   { label: "Smart Itinerary Generation", color: "text-google-blue" },
   { label: "Real-time Cost Analysis", color: "text-google-green" },
   { label: "Hotel & Transport Matching", color: "text-google-purple" },
-  { label: "Group Sentiment Analysis", color: "text-primary" },
+  { label: "Group Sentiment Analysis", color: "text-foreground" },
   { label: "Dynamic Budget Splitting", color: "text-google-yellow" },
   { label: "Risk & Weather Forecasts", color: "text-accent" },
   { label: "Local Insider Tips", color: "text-google-pink" },
   { label: "Conversational Trip Editing", color: "text-google-blue" },
   { label: "Auto-translated Updates", color: "text-google-green" },
-  { label: "Fraud & Vendor Vetting", color: "text-primary" },
+  { label: "Fraud & Vendor Vetting", color: "text-foreground" },
 ];
 
 /** Karije spark — a stylised K built from two angled strokes */

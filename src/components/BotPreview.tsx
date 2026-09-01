@@ -75,7 +75,7 @@ export const BotPreview = () => (
                 }`}>
                   {m.who && <div className="text-[11px] font-semibold text-google-blue mb-0.5">{m.who}</div>}
                   {!m.who && m.from === "bot" && (
-                    <div className="text-[11px] font-semibold text-primary mb-0.5 flex items-center gap-1">🤖 Karije Bot</div>
+                    <div className="text-[11px] font-semibold text-foreground mb-0.5 flex items-center gap-1">🤖 Karije Bot</div>
                   )}
                   {m.text}
                 </div>

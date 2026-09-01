@@ -46,7 +46,7 @@ function Countdown({ selectedDate }: { selectedDate: string }) {
     return (
       <Card className="text-center bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Days until the trip</div>
-        <div className="font-display text-6xl font-semibold text-primary tabular-nums mb-1">{diffDays}</div>
+        <div className="font-display text-6xl font-semibold text-foreground tabular-nums mb-1">{diffDays}</div>
         <div className="text-sm text-muted-foreground">🚀 {fmtDate(selectedDate)}</div>
       </Card>
     );
@@ -90,7 +90,7 @@ function DayAccordion({ day }: { day: PlanDay }) {
         className="w-full flex items-center justify-between gap-3 py-3 text-left print:hidden"
       >
         <div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Day {day.day}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Day {day.day}</span>
           <div className="font-display text-sm font-semibold mt-0.5">{day.title}</div>
         </div>
         <svg
@@ -105,7 +105,7 @@ function DayAccordion({ day }: { day: PlanDay }) {
       <div className={`pb-3 space-y-1.5 ${open ? "" : "hidden print:block"}`}>
         {/* Day heading — shown only in print */}
         <div className="hidden print:block pt-2 pb-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Day {day.day}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Day {day.day}</span>
           <div className="font-semibold text-sm">{day.title}</div>
         </div>
         {day.activities.map((a, i) => (
@@ -206,7 +206,7 @@ function PaymentSection({
   if (payState === "verifying") {
     return (
       <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+        <div className="w-7 h-7 rounded-full border-2 border-foreground border-t-transparent animate-spin shrink-0" />
         <div>
           <div className="font-display font-semibold">Checking your payment…</div>
           <p className="text-sm text-muted-foreground mt-0.5">One moment — confirming with Paystack.</p>
@@ -218,7 +218,7 @@ function PaymentSection({
   if (payState === "redirecting") {
     return (
       <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+        <div className="w-7 h-7 rounded-full border-2 border-foreground border-t-transparent animate-spin shrink-0" />
         <div>
           <div className="font-display font-semibold">Taking you to Paystack…</div>
           <p className="text-sm text-muted-foreground mt-0.5">Complete your payment on the next screen.</p>
@@ -299,7 +299,7 @@ function PaymentSection({
           <div className="text-sm text-muted-foreground">Secure payment via Paystack</div>
         </div>
         <div className="text-right shrink-0">
-          <div className="font-display text-2xl font-semibold text-primary">{fmtNGN(perPerson)}</div>
+          <div className="font-display text-2xl font-semibold text-foreground">{fmtNGN(perPerson)}</div>
           <div className="text-[10px] text-muted-foreground">per person</div>
         </div>
       </div>
@@ -339,7 +339,7 @@ function PaymentSection({
 
       {payState === "loading" && (
         <div className="flex items-center justify-center py-3 gap-3 text-sm text-muted-foreground">
-          <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+          <div className="w-5 h-5 rounded-full border-2 border-foreground border-t-transparent animate-spin shrink-0" />
           Opening secure payment…
         </div>
       )}
@@ -498,7 +498,7 @@ function JoinSection({
           </p>
           <button
             onClick={() => setJoinState("joined")}
-            className="text-xs text-primary hover:underline pt-1"
+            className="text-xs text-foreground hover:underline pt-1"
           >
             Actually, let me pay now →
           </button>
@@ -554,7 +554,7 @@ function JoinSection({
         </div>
       ) : joinState === "loading" ? (
         <div className="flex justify-center py-4">
-          <div className="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <div className="w-7 h-7 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
         </div>
       ) : (
         <button onClick={() => setJoinState("name-input")}
@@ -774,7 +774,7 @@ export default function PlanView() {
             {cb && (
               <Card>
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 print:hidden">Your share</div>
-                <div className="font-display text-4xl font-semibold text-primary mb-1 print:text-2xl print:text-center">{fmtNGN(cb.per_person)}</div>
+                <div className="font-display text-4xl font-semibold text-foreground mb-1 print:text-2xl print:text-center">{fmtNGN(cb.per_person)}</div>
                 <div className="text-sm text-muted-foreground print:hidden text-center">per person</div>
                 <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-3 text-sm">
                   <div>
@@ -859,7 +859,7 @@ export default function PlanView() {
                 <ul className="space-y-1.5">
                   {data.highlights.map((h, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-primary shrink-0 mt-0.5">✦</span>
+                      <span className="text-foreground shrink-0 mt-0.5">✦</span>
                       <span>{h}</span>
                     </li>
                   ))}

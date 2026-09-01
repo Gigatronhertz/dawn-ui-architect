@@ -425,7 +425,7 @@ function BuildYourOwn({ city }: { city: string }) {
 
         <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
           Places in {city}
-          {venues.length > 0 && <span className="text-primary"> · {venues.length}</span>}
+          {venues.length > 0 && <span className="text-foreground"> · {venues.length}</span>}
         </div>
 
         <input
@@ -512,7 +512,7 @@ function BuildYourOwn({ city }: { city: string }) {
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-jost font-medium truncate">{v.name}</div>
                   <div className="text-[10px] font-jost font-light text-muted-foreground truncate">
-                    <span className="text-primary/70">{v.vibe}</span> · {v.feeNote}
+                    <span className="text-foreground/70">{v.vibe}</span> · {v.feeNote}
                   </div>
                 </div>
                 <select
@@ -899,7 +899,7 @@ export default function Explore() {
                 <ul className="space-y-2.5">
                   {selected.highlights.map((h) => (
                     <li key={h} className="flex items-start gap-3">
-                      <span className="text-primary mt-0.5 text-[8px] shrink-0">◆</span>
+                      <span className="text-foreground mt-0.5 text-[8px] shrink-0">◆</span>
                       <span className="font-jost font-light text-sm text-foreground">{h}</span>
                     </li>
                   ))}
@@ -1177,7 +1177,7 @@ export default function Explore() {
                       <div className="text-[10px] font-jost font-light text-muted-foreground uppercase tracking-wide mb-0.5">
                         {label}
                       </div>
-                      <div className={`font-marcellus text-lg ${accent ? "text-primary" : "text-foreground"}`}>
+                      <div className={`font-marcellus text-lg ${accent ? "text-foreground" : "text-foreground"}`}>
                         {value}
                       </div>
                     </div>
@@ -1211,7 +1211,7 @@ export default function Explore() {
               onClick={() => {
                 navigator.clipboard?.writeText(clipboardText).catch(() => {});
               }}
-              className="w-full flex items-center justify-center gap-2 border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-primary hover:text-primary transition-colors"
+              className="w-full flex items-center justify-center gap-2 border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-primary hover:text-foreground/60 transition-colors"
             >
               Copy trip summary
             </button>

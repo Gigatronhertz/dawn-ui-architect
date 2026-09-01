@@ -6,99 +6,112 @@
 
 /* ──────────────────────────────────────────────────────────────────────────
    Karije Design System
-   Palette  : parchment · forest green · terracotta
-   Display  : Marcellus (serif, single weight) — headlines, logo
+   Palette  : paper white ground · ink black lettering · signal yellow fills
+              ink #0B0B0B · signal #F5C518 · panel #1A1A1A · paper #FFFFFF
+   Rule     : yellow is a FILL, never lettering — it fails contrast on paper.
+              Ink carries the type; yellow carries the buttons and highlights.
    Body     : Jost (geometric sans, 300–600) — all other text
-   Voice    : editorial, premium, warm African travel
+   Voice    : movement and gathering — we connect, we travel, we make memories
 ────────────────────────────────────────────────────────────────────────── */
 
 @layer base {
   :root {
-    /* ── Surfaces — white base, parchment used as accent only ── */
-    --background:            0 0% 100%;   /* pure white */
-    --foreground:          129 22% 18%;   /* #2F4A33 forest green (slightly darker) */
-    --card:                  0 0% 100%;   /* white cards */
-    --card-foreground:     129 22% 18%;
+    /* ── Surfaces — Paper ground, Ink lettering ── */
+    --background:            0 0% 100%;   /* #FFFFFF paper */
+    --foreground:            0 0%  4%;    /* #0B0B0B ink black */
+    --card:                  0 0% 100%;
+    --card-foreground:       0 0%  4%;
     --popover:               0 0% 100%;
-    --popover-foreground:  129 22% 18%;
+    --popover-foreground:    0 0%  4%;
 
-    /* ── Primary action — terracotta ── */
-    --primary:              27 58% 44%;   /* #B0682F */
-    --primary-foreground:    0 0% 100%;   /* white on terracotta */
-    --primary-soft:         27 50% 96%;
+    /* ── Primary action — Signal Yellow, always carrying ink lettering ── */
+    --primary:              47 92% 53%;   /* #F5C518 */
+    --primary-foreground:    0 0%  4%;    /* ink on yellow — never white */
+    --primary-soft:         47 92% 95%;
 
     /* ── Secondary / muted surfaces ── */
     --secondary:             0 0% 97%;
-    --secondary-foreground: 129 22% 18%;
+    --secondary-foreground:  0 0%  4%;
     --muted:                 0 0% 96%;
-    --muted-foreground:    220 10% 50%;   /* neutral grey — readable, not sepia */
+    --muted-foreground:      0 0% 40%;    /* neutral grey */
 
-    /* ── Accent — forest green (icon fills, solid blocks) ── */
-    --accent:              129 22% 24%;   /* #2F4A33 */
-    --accent-foreground:    40 47% 94%;
+    /* ── Accent — Ink Black blocks (inverse sections) ── */
+    --accent:                0 0%  4%;
+    --accent-foreground:     0 0% 100%;
 
     /* ── Utility ── */
     --destructive:           0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border:              220 13% 91%;   /* clean light border */
-    --input:               220 13% 91%;
-    --ring:                 27 58% 44%;   /* terracotta focus ring */
+    --border:                0 0% 90%;
+    --input:                 0 0% 90%;
+    --ring:                  0 0%  4%;    /* ink focus ring — yellow is invisible on paper */
     --radius: 0.5rem;
 
     /* ── Brand tokens (direct use) ── */
-    --terracotta:           27 58% 44%;   /* #B0682F */
-    --forest:              129 22% 24%;   /* #2F4A33 */
-    --parchment:            40 47% 94%;   /* #F7F1E7 */
-    --sage:                122 16% 36%;   /* #4E6B4F */
-    --warm-grey:            35 16% 48%;   /* #8A7A63 */
+    --ink:                   0 0%  4%;    /* #0B0B0B */
+    --signal:               47 92% 53%;   /* #F5C518 */
+    --panel:                 0 0% 10%;    /* #1A1A1A */
+    --paper:                 0 0% 100%;   /* #FFFFFF */
     --whatsapp:            142 70% 49%;
+
+    /* ── Legacy brand names, remapped to the new palette ──
+       forest → ink · parchment → paper · terracotta → signal · sage → panel
+       Kept so existing utilities (text-parchment on bg-forest, etc.) still
+       resolve; prefer --ink / --signal / --panel / --paper in new code. */
+    --terracotta:           47 92% 53%;
+    --forest:                0 0%  4%;
+    --parchment:             0 0% 100%;
+    --sage:                  0 0% 10%;
+    --warm-grey:             0 0% 40%;
 
     /* ── Gradients ── */
     --gradient-hero:
-      radial-gradient(65% 55% at 80% 20%, hsl(27 58% 44% / 0.06) 0%, transparent 65%),
-      radial-gradient(55% 45% at 15% 85%, hsl(129 22% 24% / 0.04) 0%, transparent 65%),
+      radial-gradient(65% 55% at 80% 20%, hsl(47 92% 53% / 0.14) 0%, transparent 65%),
+      radial-gradient(55% 45% at 15% 85%, hsl(0 0% 4% / 0.04) 0%, transparent 65%),
       hsl(0 0% 100%);
-    --gradient-primary: linear-gradient(135deg, hsl(27 58% 48%), hsl(22 62% 40%));
-    --gradient-text:    linear-gradient(135deg, hsl(129 22% 24%) 0%, hsl(129 18% 36%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(47 92% 56%), hsl(43 92% 48%));
+    --gradient-text:    linear-gradient(135deg, hsl(0 0% 4%) 0%, hsl(0 0% 28%) 100%);
 
-    /* ── Shadows — warm, lifted ── */
-    --shadow-soft: 0 1px 2px hsl(129 22% 10% / 0.04), 0 4px 16px hsl(129 22% 10% / 0.04);
-    --shadow-card: 0 2px 8px hsl(129 22% 10% / 0.04), 0 16px 40px hsl(129 22% 10% / 0.06);
-    --shadow-glow: 0 16px 48px -8px hsl(27 58% 44% / 0.28);
+    /* ── Shadows — neutral, with a signal-tinted lift ── */
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.05), 0 4px 16px hsl(0 0% 0% / 0.05);
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.05), 0 16px 40px hsl(0 0% 0% / 0.07);
+    --shadow-glow: 0 16px 48px -8px hsl(47 92% 53% / 0.40);
 
     /* ── Motion ── */
     --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 
     /* ── Sidebar ── */
-    --sidebar-background:          40 47% 94%;
-    --sidebar-foreground:         129 22% 24%;
-    --sidebar-primary:            129 22% 24%;
-    --sidebar-primary-foreground:  40 47% 94%;
-    --sidebar-accent:              40 18% 88%;
-    --sidebar-accent-foreground:  129 22% 24%;
-    --sidebar-border:              38 32% 84%;
-    --sidebar-ring:                27 58% 44%;
+    --sidebar-background:          0 0% 100%;
+    --sidebar-foreground:          0 0%  4%;
+    --sidebar-primary:             0 0%  4%;
+    --sidebar-primary-foreground:  0 0% 100%;
+    --sidebar-accent:             47 92% 95%;
+    --sidebar-accent-foreground:   0 0%  4%;
+    --sidebar-border:              0 0% 90%;
+    --sidebar-ring:                0 0%  4%;
   }
 
   .dark {
-    --background:          220 20% 9%;
-    --foreground:           40 47% 94%;
-    --card:                220 18% 12%;
-    --card-foreground:      40 47% 94%;
-    --popover:             220 18% 12%;
-    --popover-foreground:   40 47% 94%;
-    --primary:              27 58% 54%;
-    --primary-foreground:    0 0% 100%;
-    --primary-soft:         27 30% 18%;
-    --secondary:           220 14% 16%;
-    --secondary-foreground: 40 47% 94%;
-    --muted:               220 14% 16%;
-    --muted-foreground:    220 10% 58%;
-    --accent:              129 22% 30%;
-    --accent-foreground:    40 47% 94%;
-    --border:              220 14% 18%;
-    --input:               220 14% 18%;
-    --ring:                 27 58% 54%;
+    --background:            0 0%  4%;    /* ink ground */
+    --foreground:            0 0% 100%;
+    --card:                  0 0% 10%;    /* panel grey */
+    --card-foreground:       0 0% 100%;
+    --popover:               0 0% 10%;
+    --popover-foreground:    0 0% 100%;
+    --primary:              47 92% 53%;
+    --primary-foreground:    0 0%  4%;
+    --primary-soft:          0 0% 14%;
+    --secondary:             0 0% 14%;
+    --secondary-foreground:  0 0% 100%;
+    --muted:                 0 0% 14%;
+    --muted-foreground:      0 0% 62%;
+    --accent:                0 0% 14%;
+    --accent-foreground:     0 0% 100%;
+    --border:                0 0% 18%;
+    --input:                 0 0% 18%;
+    --ring:                 47 92% 53%;   /* yellow reads on ink */
+    --parchment:             0 0% 100%;
+    --forest:                0 0%  4%;
   }
 }
 

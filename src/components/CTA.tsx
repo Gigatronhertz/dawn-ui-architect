@@ -10,7 +10,7 @@ export const CTA = () => (
         <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-accent/30 blur-3xl" />
 
         <div className="relative">
-          <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05]">
+          <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] text-signal">
             Your next squad trip
             <br />
             shouldn't take 3 weeks.

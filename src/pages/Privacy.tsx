@@ -56,7 +56,7 @@ export default function Privacy() {
           <section>
             <h2 className="font-marcellus text-xl text-foreground mb-3">Your rights</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              You can request a copy of your data, ask us to delete your account, or opt out of any communications at any time. Email us at <a href="mailto:hello@karije.com" className="text-primary hover:underline">hello@karije.com</a> and we'll respond within 48 hours.
+              You can request a copy of your data, ask us to delete your account, or opt out of any communications at any time. Email us at <a href="mailto:hello@karije.com" className="text-foreground hover:underline">hello@karije.com</a> and we'll respond within 48 hours.
             </p>
           </section>
 
@@ -70,7 +70,7 @@ export default function Privacy() {
           <section>
             <h2 className="font-marcellus text-xl text-foreground mb-3">Contact</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Questions about this policy? Reach us at <a href="mailto:hello@karije.com" className="text-primary hover:underline">hello@karije.com</a> or on WhatsApp at the number shown after your trip is confirmed.
+              Questions about this policy? Reach us at <a href="mailto:hello@karije.com" className="text-foreground hover:underline">hello@karije.com</a> or on WhatsApp at the number shown after your trip is confirmed.
             </p>
           </section>
 

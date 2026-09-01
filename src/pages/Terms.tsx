@@ -70,7 +70,7 @@ export default function Terms() {
           <section>
             <h2 className="font-marcellus text-xl text-foreground mb-3">Contact</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Questions or disputes? Email <a href="mailto:hello@karije.com" className="text-primary hover:underline">hello@karije.com</a>. We aim to respond within 2 business days.
+              Questions or disputes? Email <a href="mailto:hello@karije.com" className="text-foreground hover:underline">hello@karije.com</a>. We aim to respond within 2 business days.
             </p>
           </section>
 

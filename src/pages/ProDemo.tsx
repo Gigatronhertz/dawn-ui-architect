@@ -6,7 +6,7 @@ const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?
     default: "bg-secondary text-muted-foreground",
     warn: "bg-yellow-100 text-yellow-900",
     good: "bg-emerald-100 text-emerald-900",
-    brand: "bg-primary/10 text-primary",
+    brand: "bg-primary/10 text-foreground",
   };
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>{children}</span>
@@ -17,7 +17,7 @@ const Section = ({ id, eyebrow, title, sub, children }: { id?: string; eyebrow?:
   <section id={id} className="py-20 md:py-28">
     <div className="mx-auto max-w-6xl px-6">
       <div className="max-w-2xl mb-10">
-        {eyebrow && <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</span>}
+        {eyebrow && <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">{eyebrow}</span>}
         <h2 className="font-display text-3xl md:text-5xl font-semibold tracking-tight mt-2 leading-[1.05]">{title}</h2>
         {sub && <p className="mt-4 text-muted-foreground">{sub}</p>}
       </div>
@@ -80,7 +80,7 @@ const ProDemo = () => {
       <section className="relative pt-20 pb-16 bg-hero-mesh">
         <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-[1.1fr,1fr] gap-12 items-center">
           <div>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">For travel agents</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">For travel agents</span>
             <h1 className="font-display text-4xl md:text-6xl font-semibold tracking-tight mt-3 leading-[1.02]">
               Run your travel business
               <br />
@@ -95,7 +95,7 @@ const ProDemo = () => {
             </div>
             <div className="mt-4">
               <Link to="/pro/login" className="text-[13px] text-muted-foreground hover:text-foreground transition">
-                Already a member? <span className="text-primary font-medium underline underline-offset-2">Sign in →</span>
+                Already a member? <span className="text-foreground font-medium underline underline-offset-2">Sign in →</span>
               </Link>
             </div>
             <div className="mt-5 flex items-center gap-3 text-xs text-muted-foreground">
@@ -126,7 +126,7 @@ const ProDemo = () => {
                 </ul>
               </div>
               <div className="rounded-xl bg-primary/10 p-3">
-                <div className="text-primary font-semibold mb-1">After Pro</div>
+                <div className="text-foreground font-semibold mb-1">After Pro</div>
                 <ul className="space-y-1.5">
                   <li>• 5 min per itinerary</li>
                   <li>• Paystack handles payments</li>
@@ -348,7 +348,7 @@ const ProDemo = () => {
             <div className="rounded-2xl bg-card ring-hairline p-5">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">WhatsApp · Group message</div>
               <div className="rounded-xl bg-secondary/60 p-4 space-y-2.5">
-                <div className="text-[11px] font-semibold text-primary">{agencyName || "Your Agency"} Bot</div>
+                <div className="text-[11px] font-semibold text-foreground">{agencyName || "Your Agency"} Bot</div>
                 <div className="text-sm text-foreground/90 leading-snug whitespace-pre-line">
                   👋 Hey Calabar Carnival squad!{"\n"}{agencyName || "Your Agency"} here.{"\n"}Tolu's trip is ready:
                 </div>
@@ -450,7 +450,7 @@ const ProDemo = () => {
             <p className="text-sm text-muted-foreground mt-2">Move from WhatsApp chaos to a proper system.</p>
             <ul className="mt-6 space-y-2.5 text-[13px]">
               {["Up to 3 active trips", "Branded itineraries (no Karije branding)", "Service fee collection — keep 100%", "Paystack contribution links", "Auto reminders", "Trip templates (5)", "Verified Pro badge + directory listing", "WhatsApp bot fully branded"].map((f) => (
-                <li key={f} className="flex gap-2"><span className="text-primary">✓</span>{f}</li>
+                <li key={f} className="flex gap-2"><span className="text-foreground">✓</span>{f}</li>
               ))}
             </ul>
             <Link to="/pro/setup" className="mt-7 block text-center rounded-lg bg-foreground text-background py-3 text-sm font-medium hover:opacity-90">Start Pro Starter</Link>
@@ -479,7 +479,7 @@ const ProDemo = () => {
           <div className="font-display text-3xl md:text-4xl font-semibold leading-tight">
             ₦10,000 fee × 4 trips
             <br />
-            <span className="text-primary">= ₦40,000 / month</span>
+            <span className="text-foreground">= ₦40,000 / month</span>
           </div>
           <div className="text-sm text-muted-foreground max-w-md">
             At a single ₦10,000 service fee per trip and just 4 trips a month, Pro Starter pays for itself in less than half a trip. Everything beyond that is profit you weren't capturing before.
@@ -496,7 +496,7 @@ const ProDemo = () => {
             { n: "03", t: "Public profile live", d: "karije.com/chioma — drop in your bio. Clients book directly." },
           ].map((s) => (
             <div key={s.n} className="rounded-2xl bg-card ring-hairline p-5">
-              <div className="font-display text-3xl font-semibold text-primary tabular-nums">{s.n}</div>
+              <div className="font-display text-3xl font-semibold text-foreground tabular-nums">{s.n}</div>
               <div className="font-semibold text-sm mt-2">{s.t}</div>
               <div className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{s.d}</div>
             </div>
@@ -508,7 +508,7 @@ const ProDemo = () => {
       <Section eyebrow="From beta agents" title="What they're saying.">
         <div className="grid md:grid-cols-2 gap-5">
           <div className="rounded-3xl bg-card ring-hairline p-7">
-            <div className="text-2xl text-primary leading-none">"</div>
+            <div className="text-2xl text-foreground leading-none">"</div>
             <p className="text-base leading-relaxed mt-2">
               I used to spend my Sundays building Word itineraries and chasing transfers. Now I send one link. My clients think I built the whole system myself.
             </p>

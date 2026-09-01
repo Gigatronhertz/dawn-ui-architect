@@ -63,7 +63,7 @@ export const HowItWorks = () => (
             <div className={`absolute top-0 left-0 right-0 h-[3px] ${p.accent}`} />
 
             <div className="flex items-start justify-between">
-              <span className="font-marcellus text-4xl text-border group-hover:text-primary/25 transition-colors select-none">
+              <span className="font-marcellus text-4xl text-border group-hover:text-foreground/25 transition-colors select-none">
                 {p.n}
               </span>
             </div>

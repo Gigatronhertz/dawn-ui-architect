@@ -50,7 +50,7 @@ export const Pricing = () => (
   <section id="pricing" className="py-28 md:py-36 bg-secondary/40">
     <div className="mx-auto max-w-6xl px-6">
       <div className="text-center max-w-2xl mx-auto">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Pricing</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground">Pricing</span>
         <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tight mt-3 leading-[1.05]">
           Honest pricing.
           <br />
@@ -95,7 +95,7 @@ export const Pricing = () => (
               <ul className="mt-6 space-y-3 flex-1">
                 {p.features.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-[13px]">
-                    <svg viewBox="0 0 24 24" className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isPrimary || isDark ? "" : "text-primary"}`} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    <svg viewBox="0 0 24 24" className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isPrimary || isDark ? "" : "text-foreground"}`} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     <span>{f}</span>
                   </li>
                 ))}

@@ -86,7 +86,7 @@ export default function ProLogin() {
   if (loading) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -96,7 +96,7 @@ export default function ProLogin() {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground text-sm">
-          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
           <span>Loading your Pro dashboard…</span>
         </div>
       </main>
@@ -147,7 +147,7 @@ export default function ProLogin() {
               <button
                 type="button"
                 onClick={() => { setSt("idle"); setSentTo(""); }}
-                className="mt-1 text-[12px] text-primary hover:underline"
+                className="mt-1 text-[12px] text-foreground hover:underline"
               >
                 Resend →
               </button>
@@ -247,7 +247,7 @@ export default function ProLogin() {
         <div className="mt-6 text-center space-y-3">
           <p className="text-[13px] text-muted-foreground">
             Not a Pro member yet?{" "}
-            <Link to="/pro" className="text-primary hover:underline font-medium">
+            <Link to="/pro" className="text-foreground hover:underline font-medium">
               Join the waitlist →
             </Link>
           </p>

@@ -31,7 +31,7 @@ export const Transparency = () => (
   <section id="faq" className="py-28 md:py-36 bg-secondary/40">
     <div className="mx-auto max-w-4xl px-6">
       <div className="text-center max-w-2xl mx-auto mb-14">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Transparency</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground">Transparency</span>
         <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight mt-3 leading-[1.05]">
           Built for when things
           <br />
@@ -46,7 +46,7 @@ export const Transparency = () => (
         <Accordion type="single" collapsible className="w-full">
           {faqs.map((faq, i) => (
             <AccordionItem key={i} value={`item-${i}`} className="border-0 px-7">
-              <AccordionTrigger className="text-left text-[15px] font-medium py-5 hover:no-underline hover:text-primary transition-colors">
+              <AccordionTrigger className="text-left text-[15px] font-medium py-5 hover:no-underline hover:text-foreground/60 transition-colors">
                 {faq.q}
               </AccordionTrigger>
               <AccordionContent className="text-[14px] text-muted-foreground leading-relaxed pb-5">

@@ -53,6 +53,12 @@ export default {
         "primary-soft": "hsl(var(--primary-soft))",
 
         /* ── Karije brand ── */
+        ink:    "hsl(var(--ink))",      /* #0B0B0B — all lettering */
+        signal: "hsl(var(--signal))",   /* #F5C518 — fills, never type */
+        panel:  "hsl(var(--panel))",    /* #1A1A1A — surfaces only */
+        paper:  "hsl(var(--paper))",    /* #FFFFFF — the ground */
+
+        /* Legacy names, remapped onto the new palette (see index.css) */
         terracotta: "hsl(var(--terracotta))",
         forest:     "hsl(var(--forest))",
         parchment:  "hsl(var(--parchment))",

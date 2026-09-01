@@ -5,7 +5,7 @@ import { Footer } from "@/components/CTA";
 
 // ── Check / X icons ────────────────────────────────────────────────────────
 const Check = () => (
-  <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 text-primary mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 text-foreground mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 8 6.5 11.5 13 5" />
   </svg>
 );
@@ -133,7 +133,7 @@ export default function Pricing() {
               </div>
 
               <div className="mb-6 mt-2">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full bg-primary/10 text-primary mb-4">
+                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full bg-primary/10 text-foreground mb-4">
                   AI Curated Trips
                 </span>
 
@@ -165,7 +165,7 @@ export default function Pricing() {
                     <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦4,500</div>
                     <div className="text-sm font-jost font-light text-muted-foreground">
                       / month · unlimited plans{" "}
-                      <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">saves ₦10,500+ vs per-plan</span>
+                      <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-foreground">saves ₦10,500+ vs per-plan</span>
                     </div>
                   </>
                 )}
@@ -288,7 +288,7 @@ export default function Pricing() {
               </div>
 
               <div className="mb-6 mt-2">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full border border-primary/30 text-primary/80 mb-4">
+                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full border border-primary/30 text-foreground/80 mb-4">
                   Pro Growth
                 </span>
                 <div className="font-marcellus text-5xl text-parchment leading-none mb-1">₦20,000</div>
@@ -357,7 +357,7 @@ export default function Pricing() {
                 <tr className="border-b border-border">
                   <th className="text-left pb-4 text-xs font-semibold tracking-[0.08em] uppercase text-muted-foreground w-[38%]">Feature</th>
                   <th className="pb-4 text-center text-xs font-semibold tracking-[0.08em] uppercase text-muted-foreground">Free</th>
-                  <th className="pb-4 text-center text-xs font-semibold tracking-[0.08em] uppercase text-primary">AI Plans</th>
+                  <th className="pb-4 text-center text-xs font-semibold tracking-[0.08em] uppercase text-foreground">AI Plans</th>
                   <th className="pb-4 text-center text-xs font-semibold tracking-[0.08em] uppercase text-muted-foreground">Ready-made</th>
                   <th className="pb-4 text-center text-xs font-semibold tracking-[0.08em] uppercase text-muted-foreground">Pro</th>
                 </tr>
@@ -380,16 +380,16 @@ export default function Pricing() {
                   <tr key={feature} className="hover:bg-secondary/30 transition-colors">
                     <td className="py-3.5 pr-4 text-foreground">{feature}</td>
                     <td className="py-3.5 text-center text-muted-foreground">
-                      {free === "✓" ? <span className="text-primary font-medium">✓</span> : free === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{free}</span>}
+                      {free === "✓" ? <span className="text-foreground font-medium">✓</span> : free === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{free}</span>}
                     </td>
                     <td className="py-3.5 text-center">
-                      {ai === "✓" ? <span className="text-primary font-medium">✓</span> : ai === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{ai}</span>}
+                      {ai === "✓" ? <span className="text-foreground font-medium">✓</span> : ai === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{ai}</span>}
                     </td>
                     <td className="py-3.5 text-center text-muted-foreground">
-                      {ready === "✓" ? <span className="text-primary font-medium">✓</span> : ready === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{ready}</span>}
+                      {ready === "✓" ? <span className="text-foreground font-medium">✓</span> : ready === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{ready}</span>}
                     </td>
                     <td className="py-3.5 text-center text-muted-foreground">
-                      {pro === "✓" ? <span className="text-primary font-medium">✓</span> : pro === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{pro}</span>}
+                      {pro === "✓" ? <span className="text-foreground font-medium">✓</span> : pro === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{pro}</span>}
                     </td>
                   </tr>
                 ))}
@@ -415,7 +415,7 @@ export default function Pricing() {
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   className="w-full flex items-center justify-between gap-4 py-5 text-left group"
                 >
-                  <span className="font-jost font-medium text-base text-foreground group-hover:text-primary transition-colors">
+                  <span className="font-jost font-medium text-base text-foreground group-hover:text-foreground/60 transition-colors">
                     {item.q}
                   </span>
                   <span className={`text-muted-foreground transition-transform duration-200 shrink-0 ${openFaq === i ? "rotate-45" : ""}`}>

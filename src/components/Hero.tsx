@@ -38,7 +38,7 @@ export const Hero = () => (
           >
             Group trips,
             <br />
-            <span className="text-primary">planned in minutes.</span>
+            <span className="text-foreground">planned in minutes.</span>
           </h1>
 
           {/* Tagline rule */}
@@ -73,7 +73,7 @@ export const Hero = () => (
           >
             <Link
               to="/start"
-              className="inline-flex items-center justify-center gap-2.5 bg-forest text-parchment px-7 py-3.5 text-sm font-jost font-medium tracking-[0.08em] shadow-glow hover:bg-primary transition-colors"
+              className="inline-flex items-center justify-center gap-2.5 bg-signal text-ink px-7 py-3.5 text-sm font-jost font-medium tracking-[0.08em] shadow-glow hover:bg-ink hover:text-signal transition-colors"
             >
               Plan a trip
               <svg
@@ -90,7 +90,7 @@ export const Hero = () => (
             </Link>
             <a
               href="#agencies"
-              className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-7 py-3.5 text-sm font-jost font-light tracking-[0.06em] hover:border-primary hover:text-primary transition-colors"
+              className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-7 py-3.5 text-sm font-jost font-light tracking-[0.06em] hover:border-primary hover:text-foreground/60 transition-colors"
             >
               For agencies
             </a>

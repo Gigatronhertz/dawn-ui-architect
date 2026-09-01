@@ -40,7 +40,7 @@ const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?
     default: "bg-secondary text-muted-foreground",
     warn:    "bg-yellow-100 text-yellow-900 dark:bg-yellow-900/40 dark:text-yellow-300",
     good:    "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-300",
-    brand:   "bg-primary/10 text-primary",
+    brand:   "bg-primary/10 text-foreground",
   };
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>
@@ -113,7 +113,7 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
             {trip.status === 'plan_review' && (
               <Link
                 to={`/start?job=${trip.id}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary px-3 py-1.5 text-[11px] font-medium hover:bg-primary/15 transition"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-foreground px-3 py-1.5 text-[11px] font-medium hover:bg-primary/15 transition"
               >
                 Review plan →
               </Link>
@@ -188,7 +188,7 @@ const ProDashboard = () => {
   if (authLoading || (!data && !error && user)) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -353,7 +353,7 @@ const ProDashboard = () => {
 
               {fetching ? (
                 <div className="px-6 py-12 text-center">
-                  <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto" />
+                  <div className="w-6 h-6 rounded-full border-2 border-foreground border-t-transparent animate-spin mx-auto" />
                 </div>
               ) : trips.length === 0 ? (
                 <div className="px-6 py-16 text-center">
