@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, session } from "@/lib/api";
 
-type Mode        = "password" | "magic";
+type Mode        = "password" | "magic" | "signup";
 type SubmitState = "idle" | "busy" | "sent" | "err";
 
 /* ─── Karije Pro wordmark ────────────────────────────────────────────────── */
@@ -35,6 +35,10 @@ export default function ProLogin() {
   const [st, setSt]             = useState<SubmitState>("idle");
   const [err, setErr]           = useState("");
   const [sentTo, setSentTo]     = useState("");
+  const [sentKind, setSentKind] = useState<"magic" | "verify">("magic");
+  // Only set when the backend has no Resend key — lets local testing finish
+  // the verify step without an inbox.
+  const [preview, setPreview]   = useState("");
 
   /* Reset field error whenever user types */
   const resetErr = () => { if (st === "err") { setSt("idle"); setErr(""); } };
@@ -75,9 +79,30 @@ export default function ProLogin() {
     try {
       await api.sendMagicLink({ email: email.trim(), redirect: "/pro/login" });
       setSentTo(email.trim());
+      setSentKind("magic");
       setSt("sent");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+      setSt("err");
+    }
+  }
+
+  /* ── Create an account ───────────────────────────────────────────────────── */
+  // The account is created unverified: /auth/login answers 403 until the
+  // emailed link is clicked, so this lands on the check-your-inbox state
+  // rather than signing anyone straight in.
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || password.length < 8) return;
+    setSt("busy"); setErr("");
+    try {
+      const res = await api.signup({ email: email.trim(), password });
+      setSentTo(email.trim());
+      setSentKind("verify");
+      setPreview(res?.preview ?? "");
+      setSt("sent");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not create the account. Please try again.");
       setSt("err");
     }
   }
@@ -111,12 +136,17 @@ export default function ProLogin() {
 
         {/* ── Card ──────────────────────────────────────────────────────────── */}
         <div className="rounded-3xl bg-card ring-hairline shadow-card p-8">
-          <h1 className="font-display text-2xl font-semibold text-center">Agency login</h1>
+          <h1 className="font-display text-2xl font-semibold text-center">
+            {mode === "signup" ? "Create an agency account" : "Agency login"}
+          </h1>
           <p className="text-sm text-muted-foreground text-center mt-1 mb-6">
-            Sign in as a travel agency or events planner
+            {mode === "signup"
+              ? "For travel agencies and events planners"
+              : "Sign in as a travel agency or events planner"}
           </p>
 
-          {/* Mode toggle */}
+          {/* Mode toggle — sign-in only; signup is its own view */}
+          {mode !== "signup" && (
           <div className="flex rounded-xl bg-secondary/60 p-0.5 mb-6 gap-0.5">
             {(["password", "magic"] as Mode[]).map((m) => (
               <button
@@ -133,6 +163,7 @@ export default function ProLogin() {
               </button>
             ))}
           </div>
+          )}
 
           {/* ── Sent state ──────────────────────────────────────────────────── */}
           {st === "sent" ? (
@@ -140,10 +171,20 @@ export default function ProLogin() {
               <div className="text-2xl">📬</div>
               <div className="font-semibold text-sm">Check your inbox</div>
               <p className="text-muted-foreground text-[13px] leading-relaxed">
-                We emailed a sign-in link to{" "}
+                {sentKind === "verify" ? "We emailed a verification link to" : "We emailed a sign-in link to"}{" "}
                 <strong className="text-foreground">{sentTo}</strong>.
-                Click it to access your Pro dashboard.
+                {sentKind === "verify"
+                  ? " Click it to activate your account, then sign in."
+                  : " Click it to access your Pro dashboard."}
               </p>
+              {preview && (
+                <a
+                  href={preview}
+                  className="block text-[11px] text-foreground underline break-all pt-1"
+                >
+                  Email is not configured on this server — verify directly →
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => { setSt("idle"); setSentTo(""); }}
@@ -208,6 +249,62 @@ export default function ProLogin() {
               </button>
             </form>
 
+          /* ── Sign-up form ───────────────────────────────────────────────── */
+          ) : mode === "signup" ? (
+            <form onSubmit={handleSignup} className="space-y-3">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); resetErr(); }}
+                placeholder="your@email.com"
+                required
+                autoFocus
+                autoComplete="email"
+                className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+              />
+              <div className="relative">
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); resetErr(); }}
+                  placeholder="Password — 8 characters or more"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 pr-14 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground hover:text-foreground transition px-1"
+                >
+                  {showPass ? "Hide" : "Show"}
+                </button>
+              </div>
+
+              {st === "err" && (
+                <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2 leading-relaxed">
+                  {err}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={st === "busy" || !email.trim() || password.length < 8}
+                className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-50 disabled:scale-100"
+              >
+                {st === "busy" ? "Creating your account…" : "Create account →"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setMode("password"); setSt("idle"); setErr(""); }}
+                className="w-full text-center text-[12px] text-muted-foreground hover:text-foreground transition pt-1"
+              >
+                Already have an account? Sign in →
+              </button>
+            </form>
+
           /* ── Magic link form ────────────────────────────────────────────── */
           ) : (
             <form onSubmit={handleMagic} className="space-y-3">
@@ -246,9 +343,21 @@ export default function ProLogin() {
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="mt-6 text-center space-y-3">
           <p className="text-[13px] text-muted-foreground">
-            Not a Pro member yet?{" "}
-            <Link to="/pro" className="text-foreground hover:underline font-medium">
-              Join the waitlist →
+            {mode === "signup" ? "Already running trips with Karije?" : "New agency?"}{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "signup" ? "password" : "signup");
+                setSt("idle"); setErr(""); setSentTo(""); setPreview("");
+              }}
+              className="text-foreground hover:underline font-medium"
+            >
+              {mode === "signup" ? "Sign in →" : "Create an account →"}
+            </button>
+          </p>
+          <p className="text-[12px] text-muted-foreground/70">
+            <Link to="/pro" className="hover:text-foreground transition">
+              See what Pro does →
             </Link>
           </p>
           <Link
