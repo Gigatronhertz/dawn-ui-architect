@@ -267,6 +267,8 @@ export type AgencySquadMember = {
   joinedAt: number;
   remindersSent: number;
   lastRemindedAt: number | null;
+  /** Paystack reference, so a payment can be matched against a statement. */
+  reference: string | null;
 };
 
 export type AgencyTripDetail = {
@@ -277,6 +279,11 @@ export type AgencyTripDetail = {
   };
   plan: TripPlan | null;
   squad: AgencySquadMember[];
+  /** The trip's money position, from the ledger. */
+  money: {
+    collected: number; serviceFee: number; dueToOrganiser: number;
+    paidOut: number; outstanding: number;
+  } | null;
   summary: { joined: number; paid: number; pending: number; collected: number };
 };
 
@@ -491,6 +498,9 @@ export const api = {
   ) => patch<{ ok: boolean; trip: { id: string; title: string; listed: boolean } }>(
     `/api/pro/trips/${tripId}`, payload, bearer(token),
   ),
+
+  /** Absolute URL of the traveller CSV. Needs the token as a header, so fetch it. */
+  agencyTripCsvUrl: (tripId: string) => `${API_URL}/api/pro/trips/${tripId}/travellers.csv`,
 
   /** Chase unpaid travellers now. Omit participantIds to chase everyone unpaid. */
   remindAgencyTrip: (tripId: string, participantIds: string[] | undefined, token: string) =>

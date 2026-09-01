@@ -1,20 +1,152 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, session, type AgencyTripDetail } from "@/lib/api";
+import { api, session, type AgencySquadMember, type AgencyTripDetail } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
 
 /**
- * One agency trip: who has joined, who has paid, and who still needs chasing.
- * The agency can chase anyone unpaid from here, and flip the trip on or off
- * the Karije catalog without leaving the page.
+ * One agency trip: who joined, who paid, and who still needs chasing.
+ *
+ * Every contact detail a traveller gave is shown — email and phone, never one
+ * or the other. Paid rows carry the amount, the moment it landed and the
+ * Paystack reference, so a payment can be matched against a statement.
  */
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n || 0);
 
 const fmtDate = (unix: number | null) =>
-  unix ? new Date(unix * 1000).toLocaleDateString("en-NG", { day: "numeric", month: "short" }) : "—";
+  unix ? new Date(unix * 1000).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : "—";
+
+const fmtDateTime = (unix: number | null) =>
+  unix
+    ? new Date(unix * 1000).toLocaleString("en-NG", {
+        day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+      })
+    : "—";
+
+/** Digits only — what wa.me expects, and what tel: is happiest with. */
+const waDigits = (n: string) => n.replace(/[^\d]/g, "");
+
+type Tab = "all" | "paid" | "pending";
+
+/** A contact line you can read, copy, and act on. */
+function Contact({ label, value, href, action }: {
+  label: string;
+  value: string;
+  href: string;
+  action?: { href: string; label: string };
+}) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <span className="text-[10px] font-jost text-muted-foreground/70 uppercase tracking-wider w-10 shrink-0">
+        {label}
+      </span>
+      <a href={href} className="font-jost text-xs text-foreground hover:underline truncate">
+        {value}
+      </a>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard?.writeText(value);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+        aria-label={`Copy ${label.toLowerCase()}`}
+        className="text-[10px] font-jost text-muted-foreground hover:text-foreground transition-colors shrink-0"
+      >
+        {copied ? "✓" : "copy"}
+      </button>
+      {action && (
+        <a
+          href={action.href}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[10px] font-jost text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          {action.label}
+        </a>
+      )}
+    </div>
+  );
+}
+
+/** One traveller, with everything they gave us. */
+function TravellerRow({ m, perPerson, onRemind, sending }: {
+  m: AgencySquadMember;
+  perPerson: number;
+  onRemind: () => void;
+  sending: boolean;
+}) {
+  return (
+    <div className="border-t border-border p-4 grid md:grid-cols-[1.4fr,1fr,auto] gap-4 items-start">
+      {/* Who */}
+      <div className="min-w-0 space-y-1.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="font-jost text-sm font-medium">{m.name || "Unnamed traveller"}</span>
+          <span className={`inline-flex items-center gap-1.5 text-[10px] font-jost font-medium tracking-wider uppercase ${m.paid ? "text-foreground" : "text-muted-foreground"}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${m.paid ? "bg-primary" : "bg-muted-foreground/50"}`} />
+            {m.paid ? "Paid" : "Pending"}
+          </span>
+        </div>
+
+        {/* Email and phone both, always — never one or the other. */}
+        {m.email && (
+          <Contact label="Email" value={m.email} href={`mailto:${m.email}`} />
+        )}
+        {m.waNumber && (
+          <Contact
+            label="Phone"
+            value={m.waNumber}
+            href={`tel:${waDigits(m.waNumber)}`}
+            action={{ href: `https://wa.me/${waDigits(m.waNumber)}`, label: "WhatsApp ↗" }}
+          />
+        )}
+        {!m.email && !m.waNumber && (
+          <div className="font-jost text-xs text-muted-foreground">No contact details given</div>
+        )}
+      </div>
+
+      {/* Money, or the chase history */}
+      <div className="font-jost text-xs space-y-0.5 min-w-0">
+        {m.paid ? (
+          <>
+            <div className="text-sm font-medium tabular-nums">{fmtNGN(m.amount ?? perPerson)}</div>
+            <div className="text-muted-foreground">{fmtDateTime(m.paidAt)}</div>
+            {m.reference && (
+              <div className="text-muted-foreground/70 font-mono text-[10px] truncate" title={m.reference}>
+                ref {m.reference}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="text-muted-foreground">Joined {fmtDate(m.joinedAt)}</div>
+            <div className="text-muted-foreground">
+              {m.remindersSent > 0
+                ? `Chased ${m.remindersSent}× · last ${fmtDate(m.lastRemindedAt)}`
+                : "Not chased yet"}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Act */}
+      <div className="md:text-right">
+        {!m.paid && (
+          <button
+            onClick={onRemind}
+            disabled={sending}
+            className="text-xs font-jost border border-border px-3 py-1.5 hover:border-foreground transition-colors disabled:opacity-40 whitespace-nowrap"
+          >
+            {sending ? "Sending…" : "Remind"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ProTripDetail() {
   const { tripId } = useParams<{ tripId: string }>();
@@ -27,6 +159,8 @@ export default function ProTripDetail() {
   const [note, setNote]       = useState("");
   const [sending, setSending] = useState<string | null>(null);
   const [copied, setCopied]   = useState(false);
+  const [tab, setTab]         = useState<Tab>("all");
+  const [exporting, setExporting] = useState(false);
 
   const shareUrl = `${window.location.origin}/plan/${tripId}`;
 
@@ -49,6 +183,11 @@ export default function ProTripDetail() {
     load();
   }, [user, loading, load, navigate]);
 
+  const squad   = data?.squad ?? [];
+  const paid    = useMemo(() => squad.filter(s => s.paid),  [squad]);
+  const pending = useMemo(() => squad.filter(s => !s.paid), [squad]);
+  const shown   = tab === "paid" ? paid : tab === "pending" ? pending : squad;
+
   async function remind(participantIds?: string[]) {
     setSending(participantIds?.[0] ?? "all");
     setNote("");
@@ -57,13 +196,12 @@ export default function ProTripDetail() {
       if (!token) throw new Error("Please sign in again.");
       const res = await api.remindAgencyTrip(tripId!, participantIds, token);
 
-      if (res.message)        setNote(res.message);
-      else if (res.sent)      setNote(`Reminder sent to ${res.sent} ${res.sent === 1 ? "person" : "people"}.`);
+      if (res.message)   setNote(res.message);
+      else if (res.sent) setNote(`Reminder sent to ${res.sent} ${res.sent === 1 ? "person" : "people"}.`);
       else {
-        // Nothing went out — say why, rather than a silent no-op.
         const reason = res.results?.[0]?.reason;
         setNote(
-          reason === "too_soon"     ? "Already chased in the last hour — give it a moment."
+          reason === "too_soon"      ? "Already chased in the last hour — give it a moment."
           : reason === "already_paid" ? "They have already paid."
           : reason === "unreachable"  ? "No way to reach them yet — email delivery isn't configured."
           : "Nothing was sent."
@@ -74,6 +212,35 @@ export default function ProTripDetail() {
       setNote(e instanceof Error ? e.message : "Could not send the reminder.");
     } finally {
       setSending(null);
+    }
+  }
+
+  /**
+   * The CSV route is behind the bearer token, so a plain link cannot fetch it.
+   * Pull it with the header, then hand the browser a blob to save.
+   */
+  async function exportCsv() {
+    setExporting(true);
+    setNote("");
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("Please sign in again.");
+      const res = await fetch(api.agencyTripCsvUrl(tripId!), { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error("Could not build the export.");
+
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url;
+      a.download = `${(data?.trip.title || "trip").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-travellers.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "Could not export the list.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -112,8 +279,12 @@ export default function ProTripDetail() {
     );
   }
 
-  const { trip, squad, summary } = data;
-  const unpaid = squad.filter(s => !s.paid);
+  const { trip, summary, money } = data;
+
+  const emptyCopy =
+    tab === "paid"    ? "Nobody has paid yet. Chase the pending list and they'll appear here."
+    : tab === "pending" ? "Everyone who joined has paid. Nothing to chase."
+    : "Nobody has joined yet. Share the link above and they'll show up here as they join.";
 
   return (
     <main className="min-h-screen bg-background">
@@ -150,7 +321,7 @@ export default function ProTripDetail() {
         </div>
 
         {/* ── Share link ────────────────────────────────────────────────── */}
-        <div className="border border-border p-4 mb-8 flex flex-wrap items-center gap-3 justify-between">
+        <div className="border border-border p-4 mb-6 flex flex-wrap items-center gap-3 justify-between">
           <div className="min-w-0">
             <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">
               Share this link
@@ -172,10 +343,10 @@ export default function ProTripDetail() {
         {/* ── Money ─────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border mb-8">
           {[
-            { label: "Joined",    value: String(summary.joined) },
-            { label: "Paid",      value: String(summary.paid) },
-            { label: "Pending",   value: String(summary.pending) },
-            { label: "Collected", value: fmtNGN(summary.collected) },
+            { label: "Joined",      value: String(summary.joined) },
+            { label: "Paid",        value: `${summary.paid} of ${summary.joined}` },
+            { label: "Collected",   value: fmtNGN(summary.collected) },
+            { label: "Due to you",  value: fmtNGN(money?.dueToOrganiser ?? summary.collected) },
           ].map(s => (
             <div key={s.label} className="bg-card p-4">
               <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">
@@ -186,80 +357,71 @@ export default function ProTripDetail() {
           ))}
         </div>
 
-        {/* ── Chase ─────────────────────────────────────────────────────── */}
+        {/* ── Travellers ────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <h2 className="font-display text-xl font-semibold">Travellers</h2>
           <div className="flex-1" />
-          {unpaid.length > 0 && (
+          <button
+            onClick={exportCsv}
+            disabled={exporting || squad.length === 0}
+            className="text-xs font-jost border border-border px-4 py-2 hover:border-foreground transition-colors disabled:opacity-40"
+          >
+            {exporting ? "Preparing…" : "↓ Export CSV"}
+          </button>
+          {pending.length > 0 && (
             <button
               onClick={() => remind()}
               disabled={sending !== null}
-              className="text-xs font-jost font-medium tracking-[0.06em] border border-border px-4 py-2 hover:border-foreground transition-colors disabled:opacity-40"
+              className="text-xs font-jost font-medium tracking-[0.06em] bg-signal text-ink px-4 py-2 hover:bg-ink hover:text-signal transition-colors disabled:opacity-40"
             >
-              {sending === "all" ? "Sending…" : `Chase all ${unpaid.length} unpaid`}
+              {sending === "all" ? "Sending…" : `Chase all ${pending.length} unpaid`}
             </button>
           )}
         </div>
 
+        {/* Tabs */}
+        <div className="flex border border-border border-b-0">
+          {([
+            { key: "all",     label: "All",     n: squad.length },
+            { key: "paid",    label: "Paid",    n: paid.length },
+            { key: "pending", label: "Pending", n: pending.length },
+          ] as const).map((t, i) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              aria-pressed={tab === t.key}
+              className={`px-5 py-3 text-xs font-jost font-medium tracking-[0.06em] transition-colors ${i > 0 ? "border-l border-border" : ""} ${
+                tab === t.key
+                  ? "bg-secondary/60 text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label} <span className="tabular-nums opacity-60">{t.n}</span>
+            </button>
+          ))}
+        </div>
+
         {note && (
-          <p className="text-xs font-jost bg-secondary/60 ring-hairline px-3 py-2 mb-4">{note}</p>
+          <p className="text-xs font-jost bg-secondary/60 border-x border-border px-4 py-2">{note}</p>
         )}
 
-        {squad.length === 0 ? (
-          <div className="border border-border p-10 text-center">
-            <p className="font-jost font-light text-muted-foreground">
-              Nobody has joined yet. Share the link above and they'll show up here as they join.
-            </p>
-          </div>
-        ) : (
-          <div className="border border-border overflow-x-auto">
-            <table className="w-full min-w-[36rem]">
-              <thead>
-                <tr className="bg-secondary/60">
-                  {["Traveller", "Status", "Amount", "Joined", "Chased", ""].map(h => (
-                    <th key={h} className="text-left text-[10px] font-jost font-medium tracking-label text-muted-foreground uppercase px-4 py-3">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {squad.map(m => (
-                  <tr key={m.id} className="border-t border-border">
-                    <td className="px-4 py-3">
-                      <div className="font-jost text-sm">{m.name || "—"}</div>
-                      <div className="font-jost text-xs text-muted-foreground">{m.email || m.waNumber || "no contact"}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-jost font-medium ${m.paid ? "text-foreground" : "text-muted-foreground"}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${m.paid ? "bg-primary" : "bg-muted-foreground/50"}`} />
-                        {m.paid ? "Paid" : "Pending"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-jost text-sm tabular-nums">
-                      {m.paid ? fmtNGN(m.amount ?? trip.perPerson) : "—"}
-                    </td>
-                    <td className="px-4 py-3 font-jost text-xs text-muted-foreground">{fmtDate(m.joinedAt)}</td>
-                    <td className="px-4 py-3 font-jost text-xs text-muted-foreground">
-                      {m.remindersSent > 0 ? `${m.remindersSent}× · ${fmtDate(m.lastRemindedAt)}` : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {!m.paid && (
-                        <button
-                          onClick={() => remind([m.id])}
-                          disabled={sending !== null}
-                          className="text-xs font-jost border border-border px-3 py-1.5 hover:border-foreground transition-colors disabled:opacity-40 whitespace-nowrap"
-                        >
-                          {sending === m.id ? "Sending…" : "Remind"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className="border border-border">
+          {shown.length === 0 ? (
+            <div className="p-10 text-center">
+              <p className="font-jost font-light text-muted-foreground">{emptyCopy}</p>
+            </div>
+          ) : (
+            shown.map(m => (
+              <TravellerRow
+                key={m.id}
+                m={m}
+                perPerson={trip.perPerson}
+                sending={sending === m.id}
+                onRemind={() => remind([m.id])}
+              />
+            ))
+          )}
+        </div>
 
         <p className="text-xs font-jost font-light text-muted-foreground mt-4">
           Reminders go out by email. WhatsApp check-ins switch on automatically once

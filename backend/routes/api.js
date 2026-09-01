@@ -905,7 +905,7 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
 
     const rows = await db.rawAll(
       `SELECT id, name, email, wa_number, paid, amount, paid_at, wants_reminders,
-              created_at, reminders_sent, last_reminded_at
+              created_at, reminders_sent, last_reminded_at, paystack_ref
          FROM participants WHERE trip_id = ? ORDER BY paid ASC, created_at ASC`,
       [trip.id]
     );
@@ -924,7 +924,13 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
       joinedAt:       Number(r.created_at),
       remindersSent:  Number(r.reminders_sent || 0),
       lastRemindedAt: r.last_reminded_at ? Number(r.last_reminded_at) : null,
+      reference:      r.paystack_ref || null,
     }));
+
+    // The trip's money position. For an agency trip the per-head fee is 0, so
+    // dueToOrganiser equals collected — which is exactly the thing worth
+    // showing them plainly.
+    const money = await ledger.forTrip(trip.id);
 
     res.json({
       trip: {
@@ -942,6 +948,7 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
       },
       plan,
       squad,
+      money,
       summary: {
         joined:    squad.length,
         paid:      squad.filter(s => s.paid).length,
@@ -951,6 +958,53 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
     });
   } catch (err) {
     console.error('[api/pro/trips:get]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// GET /api/pro/trips/:tripId/travellers.csv
+// The traveller list as a file, for reconciliation and for anything the
+// dashboard does not do. Every field is quoted and embedded quotes doubled, so
+// a traveller called O'Brien, or "Ada, Jr." does not shift the columns.
+router.get('/pro/trips/:tripId/travellers.csv', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const trip = await agentTripOr403(req, res);
+    if (!trip) return;
+
+    const rows = await db.rawAll(
+      `SELECT name, wa_number, email, paid, amount, paid_at, paystack_ref, created_at,
+              reminders_sent
+         FROM participants WHERE trip_id = ? ORDER BY paid DESC, created_at ASC`,
+      [trip.id]
+    );
+
+    const iso = (unix) => (unix ? new Date(Number(unix) * 1000).toISOString() : '');
+    const cell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+
+    const header = ['Name', 'Phone', 'Email', 'Status', 'Amount', 'Paid at', 'Reference', 'Joined at', 'Times chased'];
+    const lines = [header.map(cell).join(',')];
+
+    for (const r of rows) {
+      lines.push([
+        r.name, r.wa_number, r.email,
+        r.paid ? 'paid' : 'pending',
+        r.paid ? (r.amount ?? '') : '',
+        iso(r.paid_at), r.paystack_ref,
+        iso(r.created_at), r.reminders_sent ?? 0,
+      ].map(cell).join(','));
+    }
+
+    // A BOM so Excel opens the naira sign and any accented name correctly.
+    const body = '\uFEFF' + lines.join('\r\n') + '\r\n';
+    const slug = String(trip.title || trip.destination || 'trip')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'trip';
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${slug}-travellers.csv"`);
+    return res.send(body);
+  } catch (err) {
+    console.error('[api/pro/trips:csv]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1008,25 +1062,34 @@ router.post('/pro/trips/:tripId/remind', requireAuth, requireAgent, async (req, 
 
     const { participantIds } = req.body || {};
 
+    const named = Array.isArray(participantIds) && participantIds.length > 0;
+
     let targets;
-    if (Array.isArray(participantIds) && participantIds.length) {
-      // Only ids that really belong to this trip — an id from someone else's
-      // trip must not become a send just because it was posted here.
+    if (named) {
+      // Ids that really belong to this trip — an id from someone else's trip
+      // must not become a send just because it was posted here. Paid people
+      // are deliberately NOT filtered out: remindNow refuses them anyway, and
+      // dropping them here would report "everyone has paid" for a trip where
+      // most people still owe.
       const rows = await db.rawAll(
-        `SELECT id FROM participants WHERE trip_id = ? AND paid = 0`,
+        `SELECT id FROM participants WHERE trip_id = ?`,
         [trip.id]
       );
       const mine = new Set(rows.map(r => r.id));
       targets = participantIds.filter(id => mine.has(id));
+      if (!targets.length) {
+        return res.status(404).json({ error: 'Those travellers are not on this trip.' });
+      }
     } else {
       const rows = await db.rawAll(
         `SELECT id FROM participants WHERE trip_id = ? AND paid = 0 ORDER BY created_at ASC`,
         [trip.id]
       );
       targets = rows.map(r => r.id);
+      if (!targets.length) {
+        return res.json({ ok: true, sent: 0, results: [], message: 'Everyone has paid.' });
+      }
     }
-
-    if (!targets.length) return res.json({ ok: true, sent: 0, results: [], message: 'Everyone has paid.' });
 
     const results = [];
     for (const id of targets) {

@@ -65,10 +65,17 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
   const joined  = Number(trip.total_members ?? 0);
   const pending = Math.max(0, joined - trip.paid_count);
 
+  // Only agency-authored trips have a management page to open.
+  const ownsPage = !!trip.agent_id;
+  const RowTag: any = ownsPage ? Link : "button";
+  const rowProps = ownsPage
+    ? { to: `/pro/trips/${trip.id}` }
+    : { onClick: onToggle, type: "button" as const };
+
   return (
     <div className="border-t border-border">
-      <button
-        onClick={onToggle}
+      <RowTag
+        {...rowProps}
         className="w-full grid grid-cols-12 items-center px-4 py-3 text-xs text-left hover:bg-secondary/30 transition-colors"
       >
         <div className="col-span-4">
@@ -83,7 +90,14 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
           </div>
         </div>
         <div className="col-span-2 tabular-nums text-muted-foreground">
-          {trip.squad_size ? `${trip.squad_size} ppl` : "—"}
+          {joined > 0 ? (
+            <>
+              <span className="text-foreground font-medium">{joined}</span> joined
+              {pending > 0 && <span className="block text-[10px]">{pending} unpaid</span>}
+            </>
+          ) : trip.squad_size ? (
+            `${trip.squad_size} seats`
+          ) : "—"}
         </div>
         <div className="col-span-3">
           {trip.squad_size ? (
@@ -100,10 +114,12 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
         <div className={`col-span-2 text-[11px] ${statusInfo.tone === "warn" ? "text-yellow-700 dark:text-yellow-400" : "text-muted-foreground"}`}>
           {actionText}
         </div>
-        <div className="col-span-1 text-right text-muted-foreground text-[10px]">{isOpen ? "▲" : "▼"}</div>
-      </button>
+        <div className="col-span-1 text-right text-muted-foreground text-[10px]">
+          {ownsPage ? "→" : isOpen ? "▲" : "▼"}
+        </div>
+      </RowTag>
 
-      {isOpen && (
+      {isOpen && !ownsPage && (
         <div className="px-4 pb-4 bg-secondary/20">
           {trip.total_collected > 0 && (
             <div className="pt-3 pb-2 flex gap-4 text-xs text-muted-foreground border-b border-border mb-3">
