@@ -13,7 +13,10 @@ import { BuildYourOwn } from "@/pages/Explore";
  * and a choice: list it on Karije, or keep it to the share link.
  */
 
-const CITIES = ["Lagos", "Abuja", "Calabar", "Enugu", "Port Harcourt", "Ibadan", "Uyo", "Kano"];
+// Suggestions, not a whitelist. An agency runs trips wherever it runs them, so
+// the field below accepts anything typed into it — these just save typing for
+// the cities we already have a venue library for.
+const CITY_SUGGESTIONS = ["Lagos", "Abuja", "Calabar", "Enugu", "Port Harcourt", "Ibadan", "Uyo", "Kano"];
 
 export default function ProTripBuilder() {
   const { user, loading, getIdToken } = useAuth();
@@ -21,11 +24,18 @@ export default function ProTripBuilder() {
 
   const [checking, setChecking] = useState(true);
   const [city, setCity]         = useState("Lagos");
+  // What the builder actually sees — only catches up once typing settles.
+  const [builderCity, setBuilderCity] = useState("Lagos");
   const [title, setTitle]       = useState("");
   const [summary, setSummary]   = useState("");
   const [date, setDate]         = useState("");
   const [listed, setListed]     = useState(true);
   const [err, setErr]           = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setBuilderCity(city.trim() || "Lagos"), 600);
+    return () => clearTimeout(t);
+  }, [city]);
 
   // An agency must exist before it can own a trip; the API answers 403 with
   // needsSetup, so send them to finish setting up rather than showing an error.
@@ -55,7 +65,7 @@ export default function ProTripBuilder() {
     const res = await api.createAgencyTrip({
       title: title.trim(),
       summary: summary.trim() || undefined,
-      city: payload.city,
+      city: city.trim() || payload.city,
       squadSize: payload.squadSize,
       days: payload.days,
       listed,
@@ -116,14 +126,18 @@ export default function ProTripBuilder() {
             <label htmlFor="trip-city" className="text-xs font-jost text-muted-foreground block mb-1.5">
               City
             </label>
-            <select
+            <input
               id="trip-city"
+              list="karije-city-suggestions"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="w-full bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
-            >
-              {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+              placeholder="Anywhere you run trips"
+              maxLength={80}
+              className="w-full bg-secondary/60 ring-hairline px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+            />
+            <datalist id="karije-city-suggestions">
+              {CITY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+            </datalist>
           </div>
           <div className="md:col-span-2">
             <label htmlFor="trip-summary" className="text-xs font-jost text-muted-foreground block mb-1.5">
@@ -158,10 +172,10 @@ export default function ProTripBuilder() {
 
         {/* ── The builder, shared with the squad flow ───────────────────── */}
         <BuildYourOwn
-          key={city}
-          city={city}
+          city={builderCity}
           onSave={save}
           requireSignIn={false}
+          allowCustomPlaces
           saveLabel="Create the trip →"
           extraFields={
             <label className="flex items-start gap-3 pb-1 cursor-pointer">

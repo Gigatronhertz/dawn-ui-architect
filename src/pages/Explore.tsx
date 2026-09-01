@@ -219,6 +219,7 @@ export function BuildYourOwn({
   saveLabel,
   extraFields,
   requireSignIn = true,
+  allowCustomPlaces = false,
 }: {
   city: string;
   /** Take over saving. Receives the built days and headcount. */
@@ -229,6 +230,12 @@ export function BuildYourOwn({
   extraFields?: React.ReactNode;
   /** Agency pages are already behind auth, so they skip the sign-in prompt. */
   requireSignIn?: boolean;
+  /**
+   * Let the planner add a place that isn't in our library. Pro only: agencies
+   * are verified before they get here, and they routinely run trips around
+   * venues we have never listed — or in cities we have not seeded at all.
+   */
+  allowCustomPlaces?: boolean;
 }) {
   const { user, getIdToken } = useAuth();
   const navigate = useNavigate();
@@ -246,11 +253,19 @@ export function BuildYourOwn({
   const [thinking, setThinking] = useState(false);
   // On a phone the library becomes a sheet rather than stacking below the days.
   const [libOpen, setLibOpen] = useState(false);
+  // A place the planner is typing in themselves.
+  const [ownName, setOwnName] = useState("");
+  const [ownCost, setOwnCost] = useState("");
+  const [ownDay,  setOwnDay]  = useState(0);
 
   useEffect(() => {
     let live = true;
     setLoading(true);
-    setStops({ 0: [] });
+    // Swapping city swaps the venue library, so library-picked stops no longer
+    // belong. A planner who can add their own places is different: their stops
+    // are their own work and are not ours to throw away when they fix a typo
+    // in the city name.
+    if (!allowCustomPlaces) setStops({ 0: [] });
     api.getAttractions(city)
       .then(d => { if (live) setVenues((d.attractions ?? []).map(toVenue)); })
       .catch(() => { if (live) setVenues([]); })
@@ -295,6 +310,27 @@ export function BuildYourOwn({
       [day]: [...(prev[day] ?? []), { id: `${v.id}-${Date.now()}`, time: "", title: v.name, cost: v.cost, emoji: v.emoji }],
     }));
   }
+  /**
+   * Add a place the planner typed in. It behaves exactly like a library venue
+   * once added — same shape, same cost maths — it just never came from us.
+   */
+  function addOwnPlace() {
+    const name = ownName.trim();
+    if (!name) return;
+    const cost = Math.max(0, Math.round(Number(ownCost) || 0));
+    const day = Math.min(ownDay, dayCount - 1);
+    addStop(day, {
+      id:      `own-${Date.now()}`,
+      name,
+      emoji:   "📍",
+      vibe:    "Custom",
+      cost,
+      feeNote: cost > 0 ? `₦${cost.toLocaleString()}` : "Free",
+    });
+    setOwnName("");
+    setOwnCost("");
+  }
+
   function removeStop(day: number, id: string) {
     setStops(prev => ({ ...prev, [day]: (prev[day] ?? []).filter(s => s.id !== id) }));
   }
@@ -495,6 +531,54 @@ export function BuildYourOwn({
           className="w-full border border-border bg-background px-3 py-2 text-sm font-jost focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/60"
         />
 
+        {allowCustomPlaces && (
+          <div className="border border-border p-3 space-y-2">
+            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+              Add your own place
+            </div>
+            <input
+              type="text"
+              value={ownName}
+              onChange={e => setOwnName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addOwnPlace(); } }}
+              placeholder="Name of the place or activity"
+              maxLength={120}
+              className="w-full border border-border bg-background px-3 py-2 text-sm font-jost focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/60"
+            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={ownCost}
+                onChange={e => setOwnCost(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addOwnPlace(); } }}
+                placeholder="₦ per person"
+                className="flex-1 min-w-0 border border-border bg-background px-3 py-2 text-sm font-jost focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/60"
+              />
+              <select
+                value={ownDay}
+                onChange={e => setOwnDay(Number(e.target.value))}
+                aria-label="Which day"
+                className="border border-border bg-background px-2 py-2 text-xs font-jost shrink-0"
+              >
+                {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={addOwnPlace}
+              disabled={!ownName.trim()}
+              className="w-full bg-signal text-ink py-2 text-xs font-jost font-medium tracking-[0.06em] hover:bg-ink hover:text-signal transition-colors disabled:opacity-40"
+            >
+              + Add to Day {Math.min(ownDay, dayCount - 1) + 1}
+            </button>
+            <p className="text-[10px] font-jost font-light text-muted-foreground leading-relaxed">
+              Anywhere you run trips — it doesn't have to be a place we already list.
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-1.5 flex-wrap">
           {VENUE_VIBES.map(v => (
             <button
@@ -561,7 +645,9 @@ export function BuildYourOwn({
         ) : matches.length === 0 ? (
           <p className="text-xs font-jost font-light text-muted-foreground py-6 text-center">
             {venues.length === 0
-              ? `No places listed for ${city} yet.`
+              ? allowCustomPlaces
+                ? `We have no places listed for ${city} — add your own above.`
+                : `No places listed for ${city} yet.`
               : `Nothing matching that in ${city}.`}
           </p>
         ) : (
