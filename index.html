@@ -18,6 +18,14 @@
     <meta name="twitter:title" content="MySquadGo — Group trips, planned in minutes">
     <meta name="twitter:description" content="Plan your West African group trip in minutes. AI itinerary, WhatsApp coordination, Paystack split payments — all in one link.">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <script>
+    // Apply the stored theme before first paint so a dark-mode reload never
+    // flashes the paper ground. Must match ThemeProvider storageKey in App.tsx.
+    try {
+      if (localStorage.getItem("karije-theme") === "dark")
+        document.documentElement.classList.add("dark");
+    } catch (e) {}
+  </script>
 </head>
 
   <body>

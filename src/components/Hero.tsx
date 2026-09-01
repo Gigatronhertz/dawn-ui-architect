@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { KarijeWordmark } from "@/components/Nav";
 
 // Verified Unsplash CDN photo IDs (full internal IDs)
 // 1577900190299-7316c32fe85f : Aerial Enugu, Nigeria
@@ -18,8 +19,13 @@ export const Hero = () => (
   <section className="relative pt-24 pb-16 md:pt-36 md:pb-24 bg-hero-mesh overflow-hidden">
     <div className="relative mx-auto max-w-6xl px-6">
 
+      {/* ── Wordmark ────────────────────────────────────────────────── */}
+      <div className="animate-rise mb-8">
+        <KarijeWordmark className="h-20 md:h-28 w-auto text-logo" />
+      </div>
+
       {/* ── Eyebrow ─────────────────────────────────────────────────── */}
-      <div className="animate-rise flex items-center gap-4 mb-10">
+      <div className="animate-rise flex items-center gap-4 mb-10" style={{ animationDelay: "0.03s" }}>
         <span className="h-px w-10 bg-primary" />
         <span className="text-[11px] font-jost font-light tracking-label text-muted-foreground uppercase">
           Private beta · Lagos · Accra · Abuja · Dakar
@@ -47,8 +53,8 @@ export const Hero = () => (
             style={{ animationDelay: "0.1s" }}
           >
             <span className="h-px flex-1 bg-border" />
-            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-              Let us go
+            <span className="text-[10px] font-jost font-light tracking-[0.08em] text-muted-foreground lowercase">
+              we connect · we travel · we make memories
             </span>
             <span className="h-px w-8 bg-primary" />
           </div>

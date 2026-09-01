@@ -52,6 +52,7 @@
     --signal:               47 92% 53%;   /* #F5C518 */
     --panel:                 0 0% 10%;    /* #1A1A1A */
     --paper:                 0 0% 100%;   /* #FFFFFF */
+    --logo:                  0 0%  4%;    /* the logo is ink on paper */
     --whatsapp:            142 70% 49%;
 
     /* ── Legacy brand names, remapped to the new palette ──
@@ -92,26 +93,68 @@
   }
 
   .dark {
-    --background:            0 0%  4%;    /* ink ground */
-    --foreground:            0 0% 100%;
-    --card:                  0 0% 10%;    /* panel grey */
+    /* ── Surfaces — Ink ground, Paper lettering (the guide's primary state) ── */
+    --background:            0 0%  4%;    /* #0B0B0B ink */
+    --foreground:            0 0% 100%;   /* white lettering */
+    --card:                  0 0% 10%;    /* #1A1A1A panel */
     --card-foreground:       0 0% 100%;
     --popover:               0 0% 10%;
     --popover-foreground:    0 0% 100%;
+
+    /* ── Signal Yellow is identical in both themes — it is the constant ── */
     --primary:              47 92% 53%;
-    --primary-foreground:    0 0%  4%;
-    --primary-soft:          0 0% 14%;
+    --primary-foreground:    0 0%  4%;    /* ink on yellow, in both themes */
+    --primary-soft:         47 34% 15%;
+
+    /* ── Secondary / muted surfaces ── */
     --secondary:             0 0% 14%;
     --secondary-foreground:  0 0% 100%;
     --muted:                 0 0% 14%;
-    --muted-foreground:      0 0% 62%;
-    --accent:                0 0% 14%;
+    --muted-foreground:      0 0% 64%;
+
+    --accent:                0 0% 15%;
     --accent-foreground:     0 0% 100%;
+
+    /* ── Utility ── */
+    --destructive:           0 72% 56%;
+    --destructive-foreground: 0 0% 100%;
     --border:                0 0% 18%;
     --input:                 0 0% 18%;
-    --ring:                 47 92% 53%;   /* yellow reads on ink */
+    --ring:                 47 92% 53%;   /* yellow reads on ink at 11.2:1 */
+
+    /* ── The logo turns Signal Yellow on the ink ground ── */
+    --logo:                 47 92% 53%;
+
+    /* ── Legacy names — dark blocks lift to panel grey so they stay
+       distinguishable from the ink ground instead of merging into it ── */
+    --terracotta:           47 92% 53%;
+    --forest:                0 0% 10%;
     --parchment:             0 0% 100%;
-    --forest:                0 0%  4%;
+    --sage:                  0 0% 16%;
+    --warm-grey:             0 0% 46%;
+
+    /* ── Gradients ── */
+    --gradient-hero:
+      radial-gradient(65% 55% at 80% 20%, hsl(47 92% 53% / 0.10) 0%, transparent 65%),
+      radial-gradient(55% 45% at 15% 85%, hsl(47 92% 53% / 0.05) 0%, transparent 65%),
+      hsl(0 0% 4%);
+    --gradient-primary: linear-gradient(135deg, hsl(47 92% 56%), hsl(43 92% 48%));
+    --gradient-text:    linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(0 0% 68%) 100%);
+
+    /* ── Shadows — deeper on ink, where soft greys disappear ── */
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.40), 0 4px 16px hsl(0 0% 0% / 0.36);
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.44), 0 16px 40px hsl(0 0% 0% / 0.50);
+    --shadow-glow: 0 16px 48px -8px hsl(47 92% 53% / 0.30);
+
+    /* ── Sidebar ── */
+    --sidebar-background:          0 0%  4%;
+    --sidebar-foreground:          0 0% 100%;
+    --sidebar-primary:            47 92% 53%;
+    --sidebar-primary-foreground:  0 0%  4%;
+    --sidebar-accent:              0 0% 14%;
+    --sidebar-accent-foreground:   0 0% 100%;
+    --sidebar-border:              0 0% 18%;
+    --sidebar-ring:               47 92% 53%;
   }
 }
 

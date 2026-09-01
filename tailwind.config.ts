@@ -57,6 +57,7 @@ export default {
         signal: "hsl(var(--signal))",   /* #F5C518 — fills, never type */
         panel:  "hsl(var(--panel))",    /* #1A1A1A — surfaces only */
         paper:  "hsl(var(--paper))",    /* #FFFFFF — the ground */
+        logo:   "hsl(var(--logo))",     /* ink on paper, signal on ink */
 
         /* Legacy names, remapped onto the new palette (see index.css) */
         terracotta: "hsl(var(--terracotta))",

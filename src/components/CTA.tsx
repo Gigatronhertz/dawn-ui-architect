@@ -5,7 +5,7 @@ import { KarijeLogo } from "@/components/Nav";
 export const CTA = () => (
   <section id="cta" className="py-28 md:py-36">
     <div className="mx-auto max-w-5xl px-6">
-      <div className="relative overflow-hidden rounded-[2.5rem] bg-foreground text-background p-12 md:p-20 text-center">
+      <div className="relative overflow-hidden rounded-[2.5rem] bg-ink text-paper p-12 md:p-20 text-center">
         <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/30 blur-3xl" />
         <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-accent/30 blur-3xl" />
 
