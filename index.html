@@ -3,26 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MySquadGo — Group trips, planned in minutes</title>
-    <meta name="description" content="MySquadGo plans your West African group trip in minutes. AI itinerary, hotel suggestions, WhatsApp coordination, and Paystack split payments — all in one link. Lagos · Accra · Dakar · Abidjan.">
-    <meta name="author" content="MySquadGo" />
+    <title>Karije — Group trips, planned in minutes</title>
+    <meta name="description" content="Karije plans your group trip in minutes. AI itinerary, hotel suggestions, Paystack split payments, and automatic email follow-ups — all in one link. Lagos · Accra · Abuja · Dakar.">
+    <meta name="author" content="Karije" />
 
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/og-image.png">
-    <meta property="og:title" content="MySquadGo — Group trips, planned in minutes">
-    <meta property="og:description" content="Plan your West African group trip in minutes. AI itinerary, WhatsApp coordination, Paystack split payments — all in one link.">
+    <meta property="og:title" content="Karije — Group trips, planned in minutes">
+    <meta property="og:description" content="Plan your group trip in minutes. AI itinerary, Paystack split payments, and automatic email follow-ups — all in one link.">
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@mysquadgo" />
     <meta name="twitter:image" content="/og-image.png">
-    <meta name="twitter:title" content="MySquadGo — Group trips, planned in minutes">
-    <meta name="twitter:description" content="Plan your West African group trip in minutes. AI itinerary, WhatsApp coordination, Paystack split payments — all in one link.">
+    <meta name="twitter:title" content="Karije — Group trips, planned in minutes">
+    <meta name="twitter:description" content="Plan your group trip in minutes. AI itinerary, Paystack split payments, and automatic email follow-ups — all in one link.">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <script>
-    // Apply the stored theme before first paint so a dark-mode reload never
-    // flashes the paper ground. Must match ThemeProvider storageKey in App.tsx.
+    // Apply the theme before first paint. Dark is the default, so add the class
+    // unless the user explicitly chose light. Matches storageKey in App.tsx.
     try {
-      if (localStorage.getItem("karije-theme") === "dark")
+      if (localStorage.getItem("karije-theme") !== "light")
         document.documentElement.classList.add("dark");
     } catch (e) {}
   </script>

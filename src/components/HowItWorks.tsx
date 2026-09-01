@@ -16,8 +16,8 @@ const phases = [
   },
   {
     n: "03",
-    title: "Share to WhatsApp",
-    desc: "The bot joins your group, posts the plan, runs the date and hotel votes — everyone stays in sync, no back-and-forth.",
+    title: "Share one link",
+    desc: "Send the plan link to your squad however you already talk. They open it, see the full itinerary and their share, and say they are in.",
     accent: "bg-sage",
   },
   {

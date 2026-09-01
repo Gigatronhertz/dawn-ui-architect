@@ -1468,7 +1468,7 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
         <div className="w-16 h-16 rounded-2xl bg-google-green/15 text-google-green grid place-items-center mx-auto mb-4 text-3xl">✅</div>
         <div className="font-display text-2xl md:text-3xl font-semibold tracking-tight">Plan confirmed.</div>
         <p className="text-muted-foreground mt-2">
-          Add the bot to your {destination} squad's WhatsApp group to reveal the plan.
+          Share the plan with your {destination} squad and we will collect everyone's share.
         </p>
       </div>
 
@@ -1536,30 +1536,14 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
         </div>
       </div>
 
-      {/* Bot number */}
-      <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 mb-6 flex items-center justify-between gap-4">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Bot number — add this to your group</div>
-          <div className="font-display text-2xl font-semibold tabular-nums tracking-tight">{number}</div>
-        </div>
-        <button
-          onClick={copy}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all shrink-0 ${
-            copied ? "bg-google-green/15 text-google-green" : "bg-foreground text-background hover:opacity-80"
-          }`}
-        >
-          {copied ? "✓ Copied" : "Copy"}
-        </button>
-      </div>
-
       {/* Step-by-step */}
       <div className="mb-6">
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">How to share</div>
         <ol className="space-y-3">
           {[
-            { step: "Share the plan link above to your squad's WhatsApp group — everyone taps it to view the itinerary and say they're in.", tag: "Works now" },
-            { step: `For a dramatic reveal: open your squad group → Tap the group name → Add Participants → add ${number}`, tag: "Bot reveal" },
-            { step: "The bot's first message drops the plan without warning — the squad won't see it coming.", tag: null },
+            { step: "Share the plan link above with your squad — everyone taps it to view the itinerary and say they're in.", tag: "Works now" },
+            { step: "Each person gets their own payment link for their share, so nobody has to front the money.", tag: "Works now" },
+            { step: "We email whoever hasn't paid yet, on a schedule, until the trip is fully funded.", tag: null },
           ].map(({ step, tag }, i) => (
             <li key={i} className="flex items-start gap-3 text-sm">
               <span className="w-6 h-6 rounded-full bg-primary/15 text-foreground grid place-items-center text-xs font-semibold shrink-0 mt-0.5">{i + 1}</span>

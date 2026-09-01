@@ -63,7 +63,7 @@ export const Hero = () => (
             style={{ animationDelay: "0.12s" }}
           >
             From the first idea to the last contribution paid —
-            Karije handles the itinerary, hotels, WhatsApp updates,
+            Karije handles the itinerary, hotels, email follow-ups,
             and squad money.{" "}
             <span className="text-foreground font-medium">
               Your squad just shows up.
@@ -92,12 +92,12 @@ export const Hero = () => (
                 <path d="M5 12h14M13 5l7 7-7 7" />
               </svg>
             </Link>
-            <a
-              href="#agencies"
+            <Link
+              to="/pro/login"
               className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-7 py-3.5 text-sm font-jost font-light tracking-[0.06em] hover:border-primary hover:text-foreground/60 transition-colors"
             >
               For agencies
-            </a>
+            </Link>
           </div>
 
           {/* Social proof */}

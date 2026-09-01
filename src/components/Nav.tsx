@@ -90,7 +90,7 @@ export const KarijeLogo = ({
 const navLinks = [
   { label: "Services",  href: "/#services" },
   { label: "Pricing",   href: "/pricing" },
-  { label: "Pro Plan",  href: "/#agencies" },
+  { label: "Pro Plan",  href: "/pro" },
 ];
 
 // ── Main Nav ───────────────────────────────────────────────────────────────
@@ -231,10 +231,11 @@ export const Nav = () => {
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
-        {/* Top strip */}
-        <div className="h-16 shrink-0 flex items-center px-5 border-b border-border">
-          <KarijeLogo onClick={close} />
-        </div>
+        {/* Top strip — a spacer only. The fixed header sits above this panel
+           at z-50 and already shows the logo and the close button; rendering a
+           second KarijeLogo here stacked two offset copies on top of each
+           other. Height matches the unscrolled header (16 + 10 + 44 + 10 + 16). */}
+        <div className="h-24 shrink-0 border-b border-border" />
 
         {/* Tagline rule */}
         <div className="px-5 py-4 flex items-center gap-4">
