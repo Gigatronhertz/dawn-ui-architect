@@ -252,7 +252,7 @@ const AgenciesSection = () => (
         </div>
 
         {/* Right — form */}
-        <div className="bg-parchment text-foreground p-8">
+        <div className="bg-card text-foreground p-8">
           <div className="mb-6">
             <h3 className="font-marcellus text-xl text-foreground">Get early access</h3>
             <p className="font-jost font-light text-sm text-muted-foreground mt-1.5">
