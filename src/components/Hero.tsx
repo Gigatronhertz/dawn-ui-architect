@@ -19,11 +19,6 @@ export const Hero = () => (
   <section className="relative pt-24 pb-16 md:pt-36 md:pb-24 bg-hero-mesh overflow-hidden">
     <div className="relative mx-auto max-w-6xl px-6">
 
-      {/* ── Wordmark ────────────────────────────────────────────────── */}
-      <div className="animate-rise mb-8">
-        <KarijeWordmark className="h-20 md:h-28 w-auto text-logo" />
-      </div>
-
       {/* ── Eyebrow ─────────────────────────────────────────────────── */}
       <div className="animate-rise flex items-center gap-4 mb-10" style={{ animationDelay: "0.03s" }}>
         <span className="h-px w-10 bg-primary" />
@@ -37,6 +32,9 @@ export const Hero = () => (
 
         {/* Left — copy ─────────────────────────────────────────────── */}
         <div>
+          {/* Wordmark — the headline reads as its subtitle */}
+          <KarijeWordmark className="animate-rise h-28 md:h-40 lg:h-48 w-auto text-logo mb-7" />
+
           {/* Headline */}
           <h1
             className="animate-rise font-marcellus text-4xl sm:text-5xl md:text-5xl lg:text-6xl leading-[1.08] text-foreground"
