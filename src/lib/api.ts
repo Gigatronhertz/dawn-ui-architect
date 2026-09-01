@@ -174,6 +174,12 @@ export type TripRow = {
   paid_count: number;
   total_members: number;
   total_collected: number;
+  /** Set when the trip is owned by an agency rather than a squad organiser. */
+  agent_id?: string | null;
+  title?: string | null;
+  summary?: string | null;
+  listed?: number | null;
+  selected_date?: string | null;
 };
 
 export type DashboardSummary = {
@@ -211,6 +217,17 @@ async function get<T>(path: string, headers?: Record<string, string>): Promise<T
 
 }
 
+async function patch<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data as T;
+}
+
 function bearer(token: string) { return { Authorization: `Bearer ${token}` }; }
 
 // ── Session token helpers ──────────────────────────────────────────────────
@@ -232,6 +249,44 @@ export const session = {
     const qs = params.toString();
     return qs ? `${base}?${qs}` : base;
   },
+};
+
+/** One stop on an agency-built day. */
+export type AgencyStop = { time: string; title: string; cost_per_person: number };
+
+/** One traveller on an agency trip, as the dashboard sees them. */
+export type AgencySquadMember = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  waNumber: string | null;
+  paid: boolean;
+  amount: number | null;
+  paidAt: number | null;
+  wantsReminders: boolean;
+  joinedAt: number;
+  remindersSent: number;
+  lastRemindedAt: number | null;
+};
+
+export type AgencyTripDetail = {
+  trip: {
+    id: string; title: string | null; summary: string | null; city: string;
+    days: number; squadSize: number; listed: boolean; status: string;
+    selectedDate: string | null; createdAt: number; perPerson: number;
+  };
+  plan: TripPlan | null;
+  squad: AgencySquadMember[];
+  summary: { joined: number; paid: number; pending: number; collected: number };
+};
+
+/** A trip an agency has chosen to list in the Karije catalog. */
+export type AgencyListing = {
+  kind: 'agency_trip';
+  id: string; name: string; tagline: string; location: string;
+  days: number; groupMax: number | null; date: string | null;
+  perPerson: number; imageId: string | null; colorFallback: string;
+  agency: string; href: string;
 };
 
 export const api = {
@@ -408,6 +463,48 @@ export const api = {
   /** Submit an agency / pro plan lead. */
   submitAgencyLead: (payload: { name: string; agencyName: string; phone: string; email: string }) =>
     post<{ ok: boolean }>('/api/agency-leads', payload),
+  // ── Agency-owned trips ───────────────────────────────────────────────────
+  /** Create a trip the agency owns. Costs are re-derived server-side. */
+  createAgencyTrip: (
+    payload: {
+      title: string; summary?: string; city: string; squadSize: number;
+      listed?: boolean; selectedDate?: string | null;
+      days: { activities: AgencyStop[] }[];
+    },
+    token: string,
+  ) => post<{ ok: boolean; tripId: string; perPerson: number; total: number }>(
+    '/api/pro/trips', payload, bearer(token),
+  ),
+
+  /** The agency's view of one of its trips: itinerary, travellers, money. */
+  getAgencyTrip: (tripId: string, token: string) =>
+    get<AgencyTripDetail>(`/api/pro/trips/${tripId}`, bearer(token)),
+
+  /** Edit a trip, including flipping it on or off the Karije catalog. */
+  updateAgencyTrip: (
+    tripId: string,
+    payload: {
+      title?: string; summary?: string; listed?: boolean; squadSize?: number;
+      selectedDate?: string; days?: { activities: AgencyStop[] }[];
+    },
+    token: string,
+  ) => patch<{ ok: boolean; trip: { id: string; title: string; listed: boolean } }>(
+    `/api/pro/trips/${tripId}`, payload, bearer(token),
+  ),
+
+  /** Chase unpaid travellers now. Omit participantIds to chase everyone unpaid. */
+  remindAgencyTrip: (tripId: string, participantIds: string[] | undefined, token: string) =>
+    post<{
+      ok: boolean; sent: number; skipped?: number; message?: string;
+      results: { participantId: string; ok: boolean; channel?: string; reason?: string }[];
+    }>(`/api/pro/trips/${tripId}/remind`, participantIds ? { participantIds } : {}, bearer(token)),
+
+  /** The public catalog: Karije experiences plus listed agency trips. */
+  getListings: (city?: string) =>
+    get<{ experiences: import('./experienceTypes').Experience[]; agencyTrips: AgencyListing[] }>(
+      city ? `/api/listings?city=${encodeURIComponent(city)}` : '/api/listings',
+    ),
+
   registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),
   getAgent: (phone: string) => get<{ agent: AgentProfile }>(`/api/agents/${encodeURIComponent(phone)}`),
   getDashboard: (phone: string) => get<DashboardData>(`/api/dashboard/${encodeURIComponent(phone)}`),

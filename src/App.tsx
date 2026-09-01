@@ -13,6 +13,8 @@ import Explore from "./pages/Explore.tsx";
 import ProDemo from "./pages/ProDemo.tsx";
 import ProSetup from "./pages/ProSetup.tsx";
 import ProDashboard from "./pages/ProDashboard.tsx";
+import ProTripBuilder from "./pages/ProTripBuilder.tsx";
+import ProTripDetail from "./pages/ProTripDetail.tsx";
 import MyPlans from "./pages/MyPlans.tsx";
 import PlanView from "./pages/PlanView.tsx";
 import Admin from "./pages/Admin.tsx";
@@ -51,6 +53,8 @@ const App = () => (
             <Route path="/pro/login" element={<ProLogin />} />
             <Route path="/pro/setup" element={<ProSetup />} />
             <Route path="/pro/dashboard" element={<ProDashboard />} />
+            <Route path="/pro/trips/new" element={<ProTripBuilder />} />
+            <Route path="/pro/trips/:tripId" element={<ProTripDetail />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/login"   element={<Login />} />
             <Route path="/privacy" element={<Privacy />} />

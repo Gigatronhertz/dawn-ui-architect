@@ -173,6 +173,51 @@ async function remindOne(row, { payBase }) {
   return channel;
 }
 
+/** How long an agency must wait before chasing the same person again. */
+const MANUAL_COOLDOWN = 60 * 60;   // one hour, in seconds
+
+/**
+ * Send one participant a reminder right now, on an agency's say-so.
+ *
+ * Skips the findDue schedule — that is the whole point — but keeps the guards
+ * that matter: never chase someone who has paid, and never let a dashboard
+ * button turn into a spam cannon. Tone is clamped to the last step so a
+ * participant who has already run out the schedule still gets a sane message
+ * instead of an undefined step.
+ *
+ * Returns { ok, channel } on success, or { ok: false, reason } so the caller
+ * can tell "already paid" apart from "we have no way to reach them".
+ */
+async function remindNow(participantId) {
+  const row = await db.raw(
+    `SELECT p.id, p.trip_id, p.name, p.email, p.wa_number, p.paid,
+            p.reminders_sent, p.last_reminded_at, p.created_at,
+            t.plan, t.selected_date, t.status
+       FROM participants p
+       JOIN trips t ON t.id = p.trip_id
+      WHERE p.id = ?`,
+    [participantId]
+  );
+
+  if (!row)      return { ok: false, reason: 'not_found' };
+  if (row.paid)  return { ok: false, reason: 'already_paid' };
+
+  const last = Number(row.last_reminded_at || 0);
+  const now  = Math.floor(Date.now() / 1000);
+  if (last && now - last < MANUAL_COOLDOWN) {
+    return { ok: false, reason: 'too_soon', retryAfter: MANUAL_COOLDOWN - (now - last) };
+  }
+
+  const payBase = (process.env.BACKEND_URL || 'https://dawn-ui-architect.onrender.com').replace(/\/$/, '');
+
+  // remindOne indexes STEPS by reminders_sent; past the end of the schedule
+  // that is undefined, so hold at the final tone.
+  const clamped = { ...row, reminders_sent: Math.min(Number(row.reminders_sent || 0), STEPS.length - 1) };
+
+  const channel = await remindOne(clamped, { payBase });
+  return channel ? { ok: true, channel } : { ok: false, reason: 'unreachable' };
+}
+
 /** One pass. Safe to call repeatedly; does nothing when nothing is due. */
 async function runOnce() {
   // The pay link is a backend URL. Falling back to localhost here is what put
@@ -202,4 +247,4 @@ function start({ intervalMs = HOUR * 1000 } = {}) {
   return timer;
 }
 
-module.exports = { start, runOnce, findDue, messageFor, STEPS };
+module.exports = { start, runOnce, findDue, remindNow, messageFor, STEPS, MANUAL_COOLDOWN };

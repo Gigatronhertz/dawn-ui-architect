@@ -165,12 +165,12 @@ const ProSetup = () => {
 
           {/* WhatsApp contact */}
           <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
-            <div className="font-semibold text-sm">WhatsApp contact</div>
+            <div className="font-semibold text-sm">Contact number</div>
             <p className="text-xs text-muted-foreground -mt-1">
-              This is the number your clients message and where the bot sends trip updates. <strong>Not used for sign-in</strong> — you sign in with {user.email}.
+              How we reach you about your agency, and the number that identifies it. <strong>Not used for sign-in</strong> — you sign in with {user.email}.
             </p>
             <div>
-              <label className="text-xs text-muted-foreground block mb-1.5">Your WhatsApp number *</label>
+              <label className="text-xs text-muted-foreground block mb-1.5">Your phone number *</label>
               <input
                 required
                 type="tel"
@@ -182,7 +182,7 @@ const ProSetup = () => {
             </div>
             <div>
               <label className="text-xs text-muted-foreground block mb-1.5">
-                Client-facing number <span className="opacity-50">(if different from above)</span>
+                WhatsApp number <span className="opacity-50">(optional — for check-ins once WhatsApp is live)</span>
               </label>
               <input
                 type="tel"
@@ -197,7 +197,7 @@ const ProSetup = () => {
           {/* Service fee */}
           <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
             <div className="font-semibold text-sm">Your service fee</div>
-            <p className="text-xs text-muted-foreground">Charged per trip, split invisibly across squad members on Paystack. You keep 100%.</p>
+            <p className="text-xs text-muted-foreground">Your own margin per trip. Karije takes no cut of what you collect — the ₦10,000/month covers the platform. You keep 100%.</p>
             <div className="flex items-center gap-3">
               <span className="font-display text-lg font-semibold shrink-0">₦</span>
               <input
@@ -246,29 +246,16 @@ const ProSetup = () => {
             </div>
           </div>
 
-          {/* Plan */}
-          <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
-            <div className="font-semibold text-sm">Choose your plan</div>
-            <div className="grid grid-cols-2 gap-3">
-              {([
-                { key: "starter", label: "Pro Starter", price: "₦10,000/mo", desc: "Up to 3 active trips" },
-                { key: "growth",  label: "Pro Growth",  price: "₦20,000/mo", desc: "Unlimited trips + analytics" },
-              ] as const).map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => set("plan", p.key)}
-                  className={`rounded-2xl p-4 text-left transition-all ${
-                    form.plan === p.key
-                      ? "bg-foreground text-background ring-2 ring-foreground"
-                      : "bg-secondary/60 ring-hairline hover:bg-secondary"
-                  }`}
-                >
-                  <div className="font-semibold text-sm">{p.label}</div>
-                  <div className="font-display text-lg font-semibold mt-1 tabular-nums">{p.price}</div>
-                  <div className={`text-[11px] mt-0.5 ${form.plan === p.key ? "opacity-70" : "text-muted-foreground"}`}>{p.desc}</div>
-                </button>
-              ))}
+          {/* Plan — one plan, so there is nothing to choose */}
+          <div className="rounded-3xl bg-card ring-hairline p-6">
+            <div className="flex items-baseline justify-between gap-4 flex-wrap">
+              <div>
+                <div className="font-semibold text-sm">Karije Pro</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  Unlimited trips · keep 100% of what you collect
+                </div>
+              </div>
+              <div className="font-display text-2xl font-semibold tabular-nums">₦10,000<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
             </div>
           </div>
 

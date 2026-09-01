@@ -230,6 +230,16 @@ const MIGRATIONS = [
   `ALTER TABLE trips ADD COLUMN payout_bank_code    TEXT`,
   `ALTER TABLE trips ADD COLUMN payout_account_no   TEXT`,
   `ALTER TABLE trips ADD COLUMN payout_account_name TEXT`,
+  // Phase 12 — agency-owned trips. A Pro agency authors the trip itself, owns
+  // it, and chooses whether it shows in the Karije catalog or lives only at
+  // its share link. agent_id is kept separate from user_id on purpose:
+  // user_id is whoever clicked save, agent_id is the agency the trip belongs
+  // to, so the trip survives a change of login behind the agency.
+  `ALTER TABLE trips ADD COLUMN agent_id       TEXT`,
+  `ALTER TABLE trips ADD COLUMN listed         INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE trips ADD COLUMN title          TEXT`,
+  `ALTER TABLE trips ADD COLUMN summary        TEXT`,
+  `ALTER TABLE trips ADD COLUMN cover_image_id TEXT`,
 ];
 
 const ready = (async () => {
@@ -591,22 +601,39 @@ async function getAgentByEmail(email) {
  * Dashboard trips for an authenticated Pro user.
  * Matches trips by user_id (web-created) OR organiser_phone (WhatsApp-created).
  */
-async function getAgentDashboardByUser(userId, phone) {
+/**
+ * Every trip an agency can see, with its live headcount and takings.
+ *
+ * Aggregates `participants`, not `members`. `members` is only ever written by
+ * the retired WhatsApp group bot (backend/bot/, backend/webhook.js); everyone
+ * who joins through a share link lands in `participants`. Joining the wrong
+ * table is why this dashboard reported zero travellers and zero collected for
+ * every trip.
+ *
+ * Matched three ways so nothing an agency owns falls out of view: trips it
+ * authored (agent_id), trips saved under its login (user_id), and older trips
+ * keyed only by the organiser phone.
+ */
+async function getAgentDashboardByUser(userId, phone, agentId = null) {
   const res = await client.execute({
     sql: `SELECT
       t.id, t.origin, t.destination, t.days, t.squad_size, t.status, t.created_at,
-      COUNT(m.id)                                                     AS total_members,
-      COALESCE(SUM(CASE WHEN m.paid = 1 THEN 1 ELSE 0 END), 0)      AS paid_count,
-      COALESCE(SUM(CASE WHEN m.paid = 1 THEN m.amount ELSE 0 END),0) AS total_collected
+      t.title, t.summary, t.listed, t.agent_id, t.selected_date,
+      COUNT(p.id)                                                      AS total_members,
+      COALESCE(SUM(CASE WHEN p.paid = 1 THEN 1 ELSE 0 END), 0)         AS paid_count,
+      COALESCE(SUM(CASE WHEN p.paid = 1 THEN p.amount ELSE 0 END), 0)  AS total_collected
     FROM trips t
-    LEFT JOIN members m ON m.trip_id = t.id
-    WHERE t.user_id = ? OR (? IS NOT NULL AND t.organiser_phone = ?)
+    LEFT JOIN participants p ON p.trip_id = t.id
+    WHERE (? IS NOT NULL AND t.agent_id = ?)
+       OR t.user_id = ?
+       OR (? IS NOT NULL AND t.organiser_phone = ?)
     GROUP BY t.id
     ORDER BY t.created_at DESC`,
-    args: [userId, phone || null, phone || null],
+    args: [agentId || null, agentId || null, userId, phone || null, phone || null],
   });
   return res.rows;
 }
+
 
 // ── User helpers ───────────────────────────────────────────────────────────
 

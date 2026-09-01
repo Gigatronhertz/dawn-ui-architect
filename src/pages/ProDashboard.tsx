@@ -60,8 +60,10 @@ const KPI = ({ label, value, sub, color }: { label: string; value: string; sub?:
 const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolean; onToggle: () => void }) => {
   const statusInfo = STATUS_MAP[trip.status] ?? { label: trip.status, tone: "default" as const };
   const actionText = ACTION_MAP[trip.status]?.(trip) ?? "";
-  const pct = trip.squad_size ? Math.round((trip.paid_count / trip.squad_size) * 100) : 0;
-  const pending = Math.max(0, (trip.squad_size || 0) - trip.paid_count);
+  const denom = Number(trip.total_members ?? 0) || trip.squad_size || 0;
+  const pct = denom ? Math.round((trip.paid_count / denom) * 100) : 0;
+  const joined  = Number(trip.total_members ?? 0);
+  const pending = Math.max(0, joined - trip.paid_count);
 
   return (
     <div className="border-t border-border">
@@ -71,7 +73,7 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
       >
         <div className="col-span-4">
           <div className="font-semibold flex items-center gap-2 flex-wrap">
-            {trip.destination || "Unknown"}
+            {trip.title || trip.destination || "Unknown"}
             <Chip tone={statusInfo.tone}>{statusInfo.label}</Chip>
           </div>
           <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -89,7 +91,7 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
               <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                 <div className="h-full bg-gradient-primary transition-all" style={{ width: `${pct}%` }} />
               </div>
-              <span className="tabular-nums text-[10px] text-muted-foreground">{trip.paid_count}/{trip.squad_size}</span>
+              <span className="tabular-nums text-[10px] text-muted-foreground">{trip.paid_count}/{denom || "—"}</span>
             </div>
           ) : (
             <span className="text-muted-foreground">—</span>
@@ -110,6 +112,14 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
             </div>
           )}
           <div className="flex flex-wrap gap-2 pt-2">
+            {trip.agent_id && (
+              <Link
+                to={`/pro/trips/${trip.id}`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-signal text-ink px-3 py-1.5 text-[11px] font-medium hover:opacity-90 transition"
+              >
+                Manage trip →
+              </Link>
+            )}
             {trip.status === 'plan_review' && (
               <Link
                 to={`/start?job=${trip.id}`}
@@ -218,7 +228,7 @@ const ProDashboard = () => {
             <div>
               <div className="font-display font-semibold text-sm leading-tight">{agencyName || user.email}</div>
               <div className="text-[10px] text-muted-foreground">
-                Pro {planType === "growth" ? "Growth" : "Starter"}
+                Karije Pro
               </div>
             </div>
           </div>
@@ -277,7 +287,7 @@ const ProDashboard = () => {
                 { label: "WhatsApp number",    value: agent.phone },
                 { label: "Client-facing WA",   value: agent.wa_number || agent.phone },
                 { label: "Service fee",         value: fmtNGN(agent.service_fee ?? 0) + " per trip" },
-                { label: "Plan",               value: `Pro ${planType === "growth" ? "Growth" : "Starter"}` },
+                { label: "Plan",               value: "Karije Pro · ₦10,000/mo" },
               ] as { label: string; value: string }[]).map((r) => (
                 <div key={r.label} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{r.label}</span>
@@ -305,7 +315,7 @@ const ProDashboard = () => {
                 <KPI
                   label="Active trips"
                   value={String(summary.active_trips)}
-                  sub={planType === "starter" ? "of 3 allowed" : "unlimited"}
+                  sub="unlimited"
                 />
                 <KPI
                   label="Trips completed"
@@ -340,7 +350,7 @@ const ProDashboard = () => {
                     ↺
                   </button>
                   <Link
-                    to="/start"
+                    to="/pro/trips/new"
                     className="inline-flex items-center gap-1.5 text-xs rounded-lg bg-foreground text-background px-3 py-1.5 hover:opacity-90 transition-opacity"
                   >
                     <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -360,13 +370,13 @@ const ProDashboard = () => {
                   <div className="text-3xl mb-3">🚌</div>
                   <h3 className="font-display font-semibold text-lg mb-1">No trips yet</h3>
                   <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-                    Plan a trip from the web app — it'll appear here automatically.
+                    Build a trip, share one link, and watch who joins and pays — all from here.
                   </p>
                   <Link
-                    to="/start"
+                    to="/pro/trips/new"
                     className="inline-flex items-center gap-2 rounded-lg bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90"
                   >
-                    Plan your first trip →
+                    Build your first trip →
                   </Link>
                 </div>
               ) : (
@@ -387,7 +397,7 @@ const ProDashboard = () => {
                     />
                   ))}
                   <div className="px-4 py-3 text-[10px] text-muted-foreground border-t border-border">
-                    {planType === "starter" ? "Pro Starter — up to 3 active trips." : "Pro Growth — unlimited trips."}
+                    Karije Pro — ₦10,000/month, unlimited trips.
                   </div>
                 </>
               )}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { KarijeLogo } from "@/components/Nav";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
+import type { AgencyListing } from "@/lib/api";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { tripImageUrl } from "@/lib/tripImage";
@@ -80,6 +81,31 @@ function PageHeader({ onBack }: { onBack?: () => void }) {
         )}
       </div>
     </header>
+  );
+}
+
+/**
+ * A trip an agency listed. It links straight to the public plan page, which is
+ * the same page its share link points at — one destination, one behaviour.
+ */
+function AgencyTripCard({ trip }: { trip: AgencyListing }) {
+  return (
+    <Link
+      to={trip.href}
+      className="group relative aspect-square overflow-hidden text-left flex flex-col justify-end p-4 border border-border hover:border-foreground transition-colors"
+    >
+      <span className="absolute top-3 left-3 text-[9px] font-jost font-medium tracking-[0.14em] uppercase bg-signal text-ink px-2 py-0.5">
+        {trip.agency}
+      </span>
+      <div className="font-marcellus text-lg text-foreground leading-tight">{trip.name}</div>
+      {trip.tagline && (
+        <div className="font-jost font-light text-xs text-muted-foreground mt-1 line-clamp-2">{trip.tagline}</div>
+      )}
+      <div className="font-jost text-xs text-muted-foreground mt-2 tabular-nums">
+        {trip.location} · {trip.days}{trip.days === 1 ? " day" : " days"}
+        {trip.perPerson > 0 ? ` · ${formatNGN(trip.perPerson)}` : ""}
+      </div>
+    </Link>
   );
 }
 
@@ -179,7 +205,31 @@ type BuiltStop = { id: string; time: string; title: string; cost: number; emoji:
  * they picked. Nothing is generated for them — this is the "you're the planner"
  * half of Explore.
  */
-function BuildYourOwn({ city }: { city: string }) {
+/**
+ * The day/stop builder: pick a city, stack stops from the venue library, and
+ * the per-person cost falls out of the stops themselves.
+ *
+ * Shared by the squad flow in Explore and the agency flow in ProTripBuilder.
+ * With no overrides it behaves exactly as it always has — saves a custom trip
+ * and jumps to the plan page. Pass `onSave` to own the save yourself.
+ */
+export function BuildYourOwn({
+  city,
+  onSave,
+  saveLabel,
+  extraFields,
+  requireSignIn = true,
+}: {
+  city: string;
+  /** Take over saving. Receives the built days and headcount. */
+  onSave?: (payload: { city: string; squadSize: number; days: { activities: { time: string; title: string; cost_per_person: number }[] }[] }) => Promise<void>;
+  /** Label for the save button when there is something to save. */
+  saveLabel?: string;
+  /** Rendered just above the total, for fields the host page needs. */
+  extraFields?: React.ReactNode;
+  /** Agency pages are already behind auth, so they skip the sign-in prompt. */
+  requireSignIn?: boolean;
+}) {
   const { user, getIdToken } = useAuth();
   const navigate = useNavigate();
 
@@ -255,23 +305,32 @@ function BuildYourOwn({ city }: { city: string }) {
     }));
   }
 
+  /** The stops as the API wants them — the same shape for both callers. */
+  function buildPayload() {
+    return {
+      city,
+      squadSize,
+      days: days.map(d => ({
+        activities: (stops[d] ?? []).map(s => ({
+          time: s.time || "—:—",
+          title: `${s.emoji} ${s.title}`,
+          cost_per_person: s.cost,
+        })),
+      })),
+    };
+  }
+
   async function handleSave() {
     setSaving(true);
     setErr("");
     try {
+      if (onSave) {
+        await onSave(buildPayload());
+        return;
+      }
       const token = await getIdToken();
       if (!token) throw new Error("Please sign in first.");
-      const res = await api.saveCustomTrip({
-        city,
-        squadSize,
-        days: days.map(d => ({
-          activities: (stops[d] ?? []).map(s => ({
-            time: s.time || "—:—",
-            title: `${s.emoji} ${s.title}`,
-            cost_per_person: s.cost,
-          })),
-        })),
-      }, token);
+      const res = await api.saveCustomTrip(buildPayload(), token);
       navigate(`/plan/${res.tripId}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not save your trip.");
@@ -353,6 +412,7 @@ function BuildYourOwn({ city }: { city: string }) {
 
         {/* Total + save */}
         <div className="border border-border p-5 space-y-3">
+          {extraFields}
           <div className="flex items-end justify-between">
             <div>
               <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Per person</div>
@@ -364,13 +424,13 @@ function BuildYourOwn({ city }: { city: string }) {
             </div>
           </div>
 
-          {user ? (
+          {user || !requireSignIn ? (
             <button
               onClick={handleSave}
               disabled={saving || totalStops === 0}
-              className="w-full bg-forest text-parchment py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-40"
+              className="w-full bg-signal text-ink py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-ink hover:text-signal transition-colors disabled:opacity-40"
             >
-              {saving ? "Saving…" : totalStops === 0 ? "Add a stop to continue" : "Create shareable link →"}
+              {saving ? "Saving…" : totalStops === 0 ? "Add a stop to continue" : (saveLabel ?? "Create shareable link →")}
             </button>
           ) : (
             <Link
@@ -569,6 +629,9 @@ export default function Explore() {
   // Curated trips for this city, from the API. LAGOS_EXPERIENCES is only an
   // offline fallback so the page still renders if the backend is unreachable.
   const [experiences, setExperiences] = useState<Experience[]>(LAGOS_EXPERIENCES);
+  // Trips an agency built and chose to list. They sit in the same catalog as
+  // Karije's own, but say who is running them.
+  const [agencyTrips, setAgencyTrips] = useState<AgencyListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [vibe, setVibe] = useState("all");
   // "ours" = trips Karije picked and runs. "own" = build your own day out.
@@ -577,8 +640,12 @@ export default function Explore() {
   useEffect(() => {
     let live = true;
     setLoading(true);
-    api.getExperiences(city)
-      .then(d => { if (live) setExperiences(d.experiences ?? []); })
+    api.getListings(city)
+      .then(d => {
+        if (!live) return;
+        setExperiences(d.experiences ?? []);
+        setAgencyTrips(d.agencyTrips ?? []);
+      })
       .catch(() => {/* keep whatever is on screen */})
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
@@ -792,7 +859,7 @@ export default function Explore() {
             </div>
           )}
 
-          {tab === "ours" && !loading && shown.length > 0 && (
+          {tab === "ours" && !loading && (shown.length > 0 || agencyTrips.length > 0) && (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               {shown.map((exp) => (
                 <ExperienceCard
@@ -801,11 +868,17 @@ export default function Explore() {
                   onSelect={() => handleSelect(exp)}
                 />
               ))}
+              {/* Vibe filters describe Karije's own categories, so agency trips
+                  are only shown on the unfiltered view rather than silently
+                  dropped by a filter that does not apply to them. */}
+              {vibe === "all" && agencyTrips.map((t) => (
+                <AgencyTripCard key={t.id} trip={t} />
+              ))}
             </div>
           )}
 
           {/* Nothing for this city yet, or nothing under the chosen vibe */}
-          {tab === "ours" && !loading && shown.length === 0 && (
+          {tab === "ours" && !loading && shown.length === 0 && agencyTrips.length === 0 && (
             <div className="border border-border p-10 text-center">
               <div className="text-4xl mb-4">🗺️</div>
               <h2 className="font-marcellus text-2xl text-foreground mb-3">

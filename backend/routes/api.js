@@ -17,6 +17,7 @@ const paystack               = require('../services/paystack');
 const { processPayment }     = require('../webhook');
 const { CHAT_MODEL }         = require('../services/llm');
 const ledger                 = require('../services/ledger');
+const reminders              = require('../services/reminders');
 
 let _groq;
 const getGroq = () => { if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); return _groq; };
@@ -269,14 +270,20 @@ router.get('/dashboard/:phone', async (req, res) => {
 
   const trips = await db.agents.dashboard(phone);
 
-  const activeStatuses = new Set(['awaiting_group', 'voting_dates', 'voting_hotel', 'payment']);
+  const activeStatuses = new Set(['awaiting_group', 'custom', 'payment']);
   const monthStart = Math.floor(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000);
 
   const summary = {
     active_trips: trips.filter(t => activeStatuses.has(t.status)).length,
     trips_completed: trips.filter(t => t.status === 'active').length,
     total_collected: trips.reduce((s, t) => s + (t.total_collected || 0), 0),
-    pending_payments: trips.filter(t => t.status === 'payment').reduce((s, t) => s + Math.max(0, (t.squad_size || 0) - t.paid_count), 0),
+    // People who actually joined an active trip and have not paid. The old
+    // version measured against the planned squad size on payment-status trips
+    // only, so it counted seats nobody had claimed and read zero for the
+    // agency trips that carry status custom.
+    pending_payments: trips
+      .filter(t => activeStatuses.has(t.status))
+      .reduce((s, t) => s + Math.max(0, Number(t.total_members || 0) - Number(t.paid_count || 0)), 0),
     revenue_mtd: trips.filter(t => t.created_at >= monthStart).reduce((s, t) => s + (t.total_collected || 0), 0),
   };
 
@@ -770,6 +777,271 @@ router.get('/pro/me', requireAuth, async (req, res) => {
   return res.json({ agent });
 });
 
+// ── Pro: agency-owned trips ───────────────────────────────────────────────────
+// An agency authors its own trips here. The trip belongs to the agency, is
+// shared by link, and collects through the same public join/pay endpoints a
+// squad trip uses — nothing about the traveller's side is special-cased.
+
+/**
+ * requireAuth, plus the agency profile behind the token. 403 rather than 404
+ * when there is no profile: the caller is authenticated, just not an agency
+ * yet, and the client should send them to /pro/setup.
+ */
+async function requireAgent(req, res, next) {
+  const { uid, email } = req.user;
+  let agent = await db.agents.getByUser(uid);
+  if (!agent && email) agent = await db.agents.getByEmail(email);
+  if (!agent) {
+    return res.status(403).json({ error: 'Finish setting up your agency first.', needsSetup: true });
+  }
+  req.agent = agent;
+  next();
+}
+
+/**
+ * Rebuild a plan from posted days, pricing it from the activities themselves.
+ * A tampered total cannot stick, because nothing in the request is trusted for
+ * money — the same rule /custom-trip already follows.
+ */
+function buildAgencyPlan(days, squad) {
+  const planDays = (Array.isArray(days) ? days : []).map((d, i) => ({
+    day: i + 1,
+    activities: (Array.isArray(d.activities) ? d.activities : []).map(a => ({
+      time:            String(a.time || '').slice(0, 10),
+      title:           String(a.title || '').slice(0, 140),
+      cost_per_person: Math.max(0, Math.round(Number(a.cost_per_person) || 0)),
+    })),
+  }));
+
+  const perPerson = planDays.reduce(
+    (sum, d) => sum + d.activities.reduce((s, a) => s + a.cost_per_person, 0), 0
+  );
+  const total = perPerson * squad;
+
+  return {
+    planDays,
+    perPerson,
+    total,
+    plan: {
+      hotel: null,
+      transport: null,
+      days: planDays,
+      date_options: [],
+      cost_breakdown: {
+        transport_total: 0, lodging_total: 0, food_total: 0,
+        activities_total: total, buffer: 0, total, per_person: perPerson,
+      },
+      highlights: [],
+      offline_note: '',
+    },
+  };
+}
+
+/** Load a trip only if it belongs to the calling agency. */
+async function agentTripOr403(req, res) {
+  const trip = await db.trips.get(req.params.tripId);
+  if (!trip) { res.status(404).json({ error: 'Trip not found.' }); return null; }
+  if (trip.agent_id !== req.agent.id) {
+    res.status(403).json({ error: 'This trip belongs to another agency.' });
+    return null;
+  }
+  return trip;
+}
+
+// POST /api/pro/trips
+// Body: { title, summary?, city, squadSize, days[], listed?, selectedDate? }
+router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const { title, summary, city, squadSize, days, listed, selectedDate } = req.body || {};
+
+    if (!title || !String(title).trim()) return res.status(400).json({ error: 'Give the trip a name.' });
+    if (!city  || !String(city).trim())  return res.status(400).json({ error: 'Pick a city first.' });
+    if (!Array.isArray(days) || days.length === 0) {
+      return res.status(400).json({ error: 'Add at least one stop before saving.' });
+    }
+
+    const squad = Math.max(1, Number(squadSize) || 1);
+    const built = buildAgencyPlan(days, squad);
+    const tripId = uuid();
+
+    await db.trips.insert({ id: tripId, organiser_phone: `agency_${tripId}` });
+    await db.raw(
+      `UPDATE trips SET user_id=?, agent_id=?, origin=?, destination=?, days=?,
+         squad_size=?, status=?, plan=?, intake_json=?, service_fee_per_person=?,
+         title=?, summary=?, listed=?, selected_date=? WHERE id=?`,
+      [
+        req.user.uid,
+        req.agent.id,
+        String(city).trim(),
+        String(city).trim(),
+        built.planDays.length,
+        squad,
+        'custom',
+        JSON.stringify(built.plan),
+        JSON.stringify({ city, squadSize: squad, dayCount: built.planDays.length, agency: req.agent.agency_name }),
+        // The agency pays a flat monthly subscription, so Karije takes no
+        // per-head cut on its trips — the agency keeps 100% of what it collects.
+        0,
+        String(title).trim().slice(0, 140),
+        typeof summary === 'string' ? summary.trim().slice(0, 240) : null,
+        listed ? 1 : 0,
+        typeof selectedDate === 'string' ? selectedDate.slice(0, 40) : null,
+        tripId,
+      ]
+    );
+
+    res.json({ ok: true, tripId, perPerson: built.perPerson, total: built.total });
+  } catch (err) {
+    console.error('[api/pro/trips:create]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/pro/trips/:tripId — the agency's view of one trip
+router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const trip = await agentTripOr403(req, res);
+    if (!trip) return;
+
+    const rows = await db.rawAll(
+      `SELECT id, name, email, wa_number, paid, amount, paid_at, wants_reminders,
+              created_at, reminders_sent, last_reminded_at
+         FROM participants WHERE trip_id = ? ORDER BY paid ASC, created_at ASC`,
+      [trip.id]
+    );
+
+    const plan      = trip.plan ? JSON.parse(trip.plan) : null;
+    const perPerson = plan?.cost_breakdown?.per_person || 0;
+    const squad     = rows.map(r => ({
+      id:             r.id,
+      name:           r.name,
+      email:          r.email,
+      waNumber:       r.wa_number,
+      paid:           !!r.paid,
+      amount:         r.amount ? Number(r.amount) : null,
+      paidAt:         r.paid_at ? Number(r.paid_at) : null,
+      wantsReminders: !!r.wants_reminders,
+      joinedAt:       Number(r.created_at),
+      remindersSent:  Number(r.reminders_sent || 0),
+      lastRemindedAt: r.last_reminded_at ? Number(r.last_reminded_at) : null,
+    }));
+
+    res.json({
+      trip: {
+        id:           trip.id,
+        title:        trip.title,
+        summary:      trip.summary,
+        city:         trip.destination,
+        days:         trip.days,
+        squadSize:    trip.squad_size,
+        listed:       !!trip.listed,
+        status:       trip.status,
+        selectedDate: trip.selected_date,
+        createdAt:    Number(trip.created_at),
+        perPerson,
+      },
+      plan,
+      squad,
+      summary: {
+        joined:    squad.length,
+        paid:      squad.filter(s => s.paid).length,
+        pending:   squad.filter(s => !s.paid).length,
+        collected: squad.reduce((sum, s) => sum + (s.paid ? (s.amount || 0) : 0), 0),
+      },
+    });
+  } catch (err) {
+    console.error('[api/pro/trips:get]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/pro/trips/:tripId — edit, including the listing toggle
+router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const trip = await agentTripOr403(req, res);
+    if (!trip) return;
+
+    const { title, summary, listed, squadSize, days, selectedDate } = req.body || {};
+    const sets = [];
+    const args = [];
+
+    if (typeof title === 'string' && title.trim()) { sets.push('title=?');         args.push(title.trim().slice(0, 140)); }
+    if (typeof summary === 'string')               { sets.push('summary=?');       args.push(summary.trim().slice(0, 240)); }
+    if (listed !== undefined)                      { sets.push('listed=?');        args.push(listed ? 1 : 0); }
+    if (typeof selectedDate === 'string')          { sets.push('selected_date=?'); args.push(selectedDate.slice(0, 40)); }
+
+    // Re-price whenever the itinerary or headcount moves, so the stored plan
+    // and the per-person cost can never drift apart.
+    if (Array.isArray(days) && days.length) {
+      const squad = Math.max(1, Number(squadSize) || Number(trip.squad_size) || 1);
+      const built = buildAgencyPlan(days, squad);
+      sets.push('plan=?', 'days=?', 'squad_size=?');
+      args.push(JSON.stringify(built.plan), built.planDays.length, squad);
+    } else if (squadSize !== undefined) {
+      sets.push('squad_size=?');
+      args.push(Math.max(1, Number(squadSize) || 1));
+    }
+
+    if (!sets.length) return res.status(400).json({ error: 'Nothing to update.' });
+
+    args.push(trip.id);
+    await db.raw(`UPDATE trips SET ${sets.join(', ')} WHERE id=?`, args);
+
+    const updated = await db.trips.get(trip.id);
+    res.json({ ok: true, trip: { id: updated.id, title: updated.title, listed: !!updated.listed } });
+  } catch (err) {
+    console.error('[api/pro/trips:patch]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// POST /api/pro/trips/:tripId/remind
+// Body: { participantIds?: string[] } — omit to chase everyone still unpaid.
+// Email goes out today; the same call starts using WhatsApp the moment
+// REMINDER_CHANNELS and a provider are configured, because remindNow walks
+// the same channel order the scheduled runner does.
+router.post('/pro/trips/:tripId/remind', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const trip = await agentTripOr403(req, res);
+    if (!trip) return;
+
+    const { participantIds } = req.body || {};
+
+    let targets;
+    if (Array.isArray(participantIds) && participantIds.length) {
+      // Only ids that really belong to this trip — an id from someone else's
+      // trip must not become a send just because it was posted here.
+      const rows = await db.rawAll(
+        `SELECT id FROM participants WHERE trip_id = ? AND paid = 0`,
+        [trip.id]
+      );
+      const mine = new Set(rows.map(r => r.id));
+      targets = participantIds.filter(id => mine.has(id));
+    } else {
+      const rows = await db.rawAll(
+        `SELECT id FROM participants WHERE trip_id = ? AND paid = 0 ORDER BY created_at ASC`,
+        [trip.id]
+      );
+      targets = rows.map(r => r.id);
+    }
+
+    if (!targets.length) return res.json({ ok: true, sent: 0, results: [], message: 'Everyone has paid.' });
+
+    const results = [];
+    for (const id of targets) {
+      const r = await reminders.remindNow(id);
+      results.push({ participantId: id, ...r });
+    }
+
+    const sent = results.filter(r => r.ok).length;
+    res.json({ ok: true, sent, skipped: results.length - sent, results });
+  } catch (err) {
+    console.error('[api/pro/trips:remind]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/pro/dashboard
 // Returns the full dashboard (agent + trips + summary) for the authenticated user.
 router.get('/pro/dashboard', requireAuth, async (req, res) => {
@@ -779,16 +1051,21 @@ router.get('/pro/dashboard', requireAuth, async (req, res) => {
   if (!agent && email) agent = await db.agents.getByEmail(email);
   if (!agent) return res.status(404).json({ error: 'No agency profile found. Please complete setup first.' });
 
-  const trips = await db.agents.dashboardByUser(uid, agent.phone);
+  const trips = await db.agents.dashboardByUser(uid, agent.phone, agent.id);
 
-  const activeStatuses = new Set(['awaiting_group', 'voting_dates', 'voting_hotel', 'payment']);
+  const activeStatuses = new Set(['awaiting_group', 'custom', 'payment']);
   const monthStart = Math.floor(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000);
 
   const summary = {
     active_trips:     trips.filter(t => activeStatuses.has(t.status)).length,
     trips_completed:  trips.filter(t => t.status === 'active').length,
     total_collected:  trips.reduce((s, t) => s + (Number(t.total_collected) || 0), 0),
-    pending_payments: trips.filter(t => t.status === 'payment').reduce((s, t) => s + Math.max(0, (t.squad_size || 0) - t.paid_count), 0),
+    // Unpaid people who actually joined an active trip. Measuring against
+    // squad_size counted seats nobody had claimed, and gating on status
+    // payment read zero for agency trips, which carry status custom.
+    pending_payments: trips
+      .filter(t => activeStatuses.has(t.status))
+      .reduce((s, t) => s + Math.max(0, Number(t.total_members || 0) - Number(t.paid_count || 0)), 0),
     revenue_mtd:      trips.filter(t => t.created_at >= monthStart).reduce((s, t) => s + (Number(t.total_collected) || 0), 0),
   };
 
@@ -896,6 +1173,55 @@ router.get('/auth/me', requireAuth, async (req, res) => {
 
 // ── GET /api/experiences ────────────────────────────────────────────────────
 // Public endpoint — returns published experiences for a given state.
+
+// GET /api/listings
+// The Explore catalog: Karije's curated experiences plus any agency trip its
+// owner has chosen to list. Agency trips carry the agency name so a traveller
+// can see who is actually running the trip.
+router.get('/listings', async (req, res) => {
+  try {
+    const city = typeof req.query.city === 'string' ? req.query.city.trim() : '';
+    const experiences = await db.experiences.list();
+
+    const agencyRows = await db.rawAll(
+      `SELECT t.id, t.title, t.summary, t.destination, t.days, t.squad_size,
+              t.selected_date, t.plan, t.created_at, t.cover_image_id,
+              a.agency_name, a.color
+         FROM trips t
+         JOIN agents a ON a.id = t.agent_id
+        WHERE t.listed = 1 AND t.status = 'custom'
+          AND (? = '' OR t.destination = ?)
+        ORDER BY t.created_at DESC`,
+      [city, city]
+    );
+
+    const agencyTrips = agencyRows.map(r => {
+      let perPerson = 0;
+      try { perPerson = JSON.parse(r.plan)?.cost_breakdown?.per_person || 0; } catch (_) {}
+      return {
+        kind:        'agency_trip',
+        id:          r.id,
+        name:        r.title || r.destination,
+        tagline:     r.summary || '',
+        location:    r.destination,
+        days:        Number(r.days) || 1,
+        groupMax:    Number(r.squad_size) || null,
+        date:        r.selected_date || null,
+        perPerson,
+        imageId:     r.cover_image_id || null,
+        colorFallback: r.color || '#0B0B0B',
+        agency:      r.agency_name,
+        href:        `/plan/${r.id}`,
+      };
+    });
+
+    res.json({ experiences, agencyTrips });
+  } catch (err) {
+    console.error('[api/listings]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/experiences', async (req, res) => {
   try {
     const { state = 'Lagos' } = req.query;

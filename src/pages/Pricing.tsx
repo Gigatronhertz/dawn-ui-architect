@@ -240,7 +240,7 @@ export default function Pricing() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="max-w-lg mx-auto">
 
             {/* ── Pro Starter ───────────────────────────────────── */}
             <div className="rounded-3xl border border-parchment/10 bg-parchment/5 p-8 flex flex-col">
@@ -271,46 +271,6 @@ export default function Pricing() {
               <Link
                 to="/pro"
                 className="w-full text-center py-3 rounded-sm border border-parchment/20 text-parchment font-jost font-medium text-sm tracking-[0.06em] hover:bg-parchment/10 transition-colors"
-              >
-                Join the waitlist →
-              </Link>
-              <p className="text-center text-[11px] font-jost font-light text-parchment/30 mt-3">
-                14 days free · no card required
-              </p>
-            </div>
-
-            {/* ── Pro Growth ─────────────────────────────────────── */}
-            <div className="rounded-3xl border border-primary/30 bg-primary/10 p-8 flex flex-col relative">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-4 py-1.5 rounded-full bg-primary text-ink whitespace-nowrap shadow-glow">
-                  Best for agencies
-                </span>
-              </div>
-
-              <div className="mb-6 mt-2">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full border border-primary/30 text-foreground/80 mb-4">
-                  Pro Growth
-                </span>
-                <div className="font-marcellus text-5xl text-parchment leading-none mb-1">₦20,000</div>
-                <div className="text-sm font-jost font-light text-parchment/50">/ month · unlimited trips</div>
-              </div>
-
-              <p className="text-sm font-jost font-light text-parchment/60 leading-relaxed mb-7">
-                For agencies doing high volume. Unlimited trips, real-time analytics, and priority support.
-              </p>
-
-              <ul className="space-y-3 text-sm font-jost font-light text-parchment/80 flex-1 mb-8">
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Everything in Pro Starter</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Unlimited active trips</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Trip analytics &amp; revenue dashboard</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Priority support (WhatsApp + email)</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Early access to new features</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Multi-agent seat (coming soon)</span></li>
-              </ul>
-
-              <Link
-                to="/pro"
-                className="w-full text-center py-3 rounded-sm bg-primary text-ink font-jost font-medium text-sm tracking-[0.06em] hover:opacity-90 transition-opacity shadow-glow"
               >
                 Join the waitlist →
               </Link>
@@ -372,10 +332,11 @@ export default function Pricing() {
                   ["Trip history (unlimited)",           "—",     "✓",  "✓",  "✓"],
                   ["Pre-built curated packages",        "Browse", "—", "✓",  "—"],
                   ["Karije coordination support",        "—",     "—",  "✓",  "—"],
-                  ["White-label WhatsApp bot",           "—",     "—",  "—",  "✓"],
+                  ["Build and own your own trips",       "—",     "—",  "—",  "✓"],
                   ["Agency dashboard + branding",        "—",     "—",  "—",  "✓"],
+                  ["Send payment reminders yourself",    "—",     "—",  "—",  "✓"],
                   ["Set own service fee (keep 100%)",    "—",     "—",  "—",  "✓"],
-                  ["Analytics & revenue dashboard",      "—",     "—",  "—",  "Growth"],
+                  ["Analytics & revenue dashboard",      "—",     "—",  "—",  "✓"],
                 ].map(([feature, free, ai, ready, pro]) => (
                   <tr key={feature} className="hover:bg-secondary/30 transition-colors">
                     <td className="py-3.5 pr-4 text-foreground">{feature}</td>
