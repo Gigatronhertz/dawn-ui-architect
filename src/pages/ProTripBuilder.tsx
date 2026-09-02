@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, session } from "@/lib/api";
+import { api, session, type TripTemplate } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
 import { BuildYourOwn } from "@/pages/Explore";
 
@@ -32,6 +32,15 @@ export default function ProTripBuilder() {
   const [listed, setListed]     = useState(true);
   const [err, setErr]           = useState("");
 
+  // Templates this agency has saved, and the one currently loaded.
+  const [templates, setTemplates] = useState<TripTemplate[]>([]);
+  const [seed, setSeed]           = useState<{ days: TripTemplate["days"]; squadSize?: number } | null>(null);
+  const [usedTemplate, setUsedTemplate] = useState<string | null>(null);
+
+  // Whether to keep this trip's shape for next time.
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName]     = useState("");
+
   useEffect(() => {
     const t = setTimeout(() => setBuilderCity(city.trim() || "Lagos"), 600);
     return () => clearTimeout(t);
@@ -45,7 +54,13 @@ export default function ProTripBuilder() {
     const token = session.get();
     if (!token) { navigate("/pro/login", { replace: true }); return; }
     api.getProMe(token)
-      .then(() => setChecking(false))
+      .then(() => {
+        setChecking(false);
+        // Not fatal if this fails — the builder works without templates.
+        api.listTripTemplates(token)
+          .then(d => setTemplates(d.templates ?? []))
+          .catch(() => setTemplates([]));
+      })
       .catch(() => navigate("/pro/setup", { replace: true }));
   }, [user, loading, navigate]);
 
@@ -70,9 +85,30 @@ export default function ProTripBuilder() {
       days: payload.days,
       listed,
       selectedDate: date || null,
+      saveAsTemplate,
+      templateName: saveAsTemplate ? (templateName.trim() || title.trim()) : undefined,
     }, token);
 
     navigate(`/pro/trips/${res.tripId}`);
+  }
+
+  /** Load a saved shape into the builder. */
+  function applyTemplate(t: TripTemplate) {
+    if (t.city) setCity(t.city);
+    // A new object each time, so re-picking the same template reloads it.
+    setSeed({ days: t.days, squadSize: t.squadSize });
+    setUsedTemplate(t.id);
+    setErr("");
+  }
+
+  async function removeTemplate(t: TripTemplate) {
+    const token = await getIdToken();
+    if (!token) return;
+    try {
+      await api.deleteTripTemplate(t.id, token);
+      setTemplates(prev => prev.filter(x => x.id !== t.id));
+      if (usedTemplate === t.id) setUsedTemplate(null);
+    } catch { /* leave it listed; deleting again is harmless */ }
   }
 
   if (loading || checking) {
@@ -107,6 +143,52 @@ export default function ProTripBuilder() {
           Add your days and stops. The per-person price comes from the stops themselves.
           You get one link to share — everyone who opens it can join and pay their own share.
         </p>
+
+        {/* ── Start from a template ─────────────────────────────────────── */}
+        {templates.length > 0 && (
+          <div className="border border-border p-4 mb-8">
+            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-3">
+              Start from a saved template
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {templates.map(t => (
+                <div
+                  key={t.id}
+                  className={`flex items-center gap-2 border px-3 py-2 transition-colors ${
+                    usedTemplate === t.id
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:border-foreground"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className="text-left"
+                  >
+                    <div className="font-jost text-sm font-medium">{t.name}</div>
+                    <div className="font-jost text-[10px] text-muted-foreground tabular-nums">
+                      {t.city ? `${t.city} · ` : ""}{t.dayCount}{t.dayCount === 1 ? " day" : " days"}
+                      {t.perPerson > 0 ? ` · ₦${t.perPerson.toLocaleString()}` : ""}
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeTemplate(t)}
+                    aria-label={`Delete the ${t.name} template`}
+                    className="text-muted-foreground hover:text-destructive text-xs px-1 shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            {usedTemplate && (
+              <p className="text-[11px] font-jost font-light text-muted-foreground mt-3">
+                Loaded. Edit anything below — the template stays as it is.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ── Trip identity ─────────────────────────────────────────────── */}
         <div className="grid md:grid-cols-2 gap-4 mb-8">
@@ -177,7 +259,32 @@ export default function ProTripBuilder() {
           requireSignIn={false}
           allowCustomPlaces
           saveLabel="Create the trip →"
+          seed={seed}
           extraFields={
+            <>
+              <label className="flex items-start gap-3 pb-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={saveAsTemplate}
+                  onChange={(e) => setSaveAsTemplate(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-primary shrink-0"
+                />
+                <span className="text-xs font-jost font-light leading-relaxed">
+                  <span className="text-foreground font-medium">Save as a template</span>
+                  <span className="text-muted-foreground">
+                    {" "}— keep this shape so your next run of it starts here.
+                  </span>
+                </span>
+              </label>
+              {saveAsTemplate && (
+                <input
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder={title.trim() || "Template name"}
+                  maxLength={120}
+                  className="w-full border border-border bg-background px-3 py-2 text-xs font-jost focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/60"
+                />
+              )}
             <label className="flex items-start gap-3 pb-1 cursor-pointer">
               <input
                 type="checkbox"
@@ -193,6 +300,7 @@ export default function ProTripBuilder() {
                 </span>
               </span>
             </label>
+            </>
           }
         />
       </div>

@@ -187,6 +187,23 @@ const SCHEMA = [
     byte_size  INTEGER NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // An agency runs the same shape of trip again and again — the same stops at
+  // the same prices, with only the dates moving. A template stores that shape
+  // so the next one starts from it instead of from an empty day.
+  //
+  // days_json holds the builder's own day/stop structure, so applying a
+  // template is a straight restore rather than a lossy reconstruction.
+  `CREATE TABLE IF NOT EXISTS trip_templates (
+    id          TEXT PRIMARY KEY,
+    agent_id    TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    city        TEXT,
+    squad_size  INTEGER NOT NULL DEFAULT 1,
+    day_count   INTEGER NOT NULL DEFAULT 1,
+    per_person  INTEGER NOT NULL DEFAULT 0,
+    days_json   TEXT NOT NULL,
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
 ];
 
 // Safe schema migrations — new columns added after initial release.

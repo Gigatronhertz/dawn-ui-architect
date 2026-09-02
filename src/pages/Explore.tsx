@@ -220,6 +220,7 @@ export function BuildYourOwn({
   extraFields,
   requireSignIn = true,
   allowCustomPlaces = false,
+  seed = null,
 }: {
   city: string;
   /** Take over saving. Receives the built days and headcount. */
@@ -236,6 +237,12 @@ export function BuildYourOwn({
    * venues we have never listed — or in cities we have not seeded at all.
    */
   allowCustomPlaces?: boolean;
+  /**
+   * Prefill the days from a saved template. Pass a NEW object each time you
+   * want it applied — the effect keys off identity, so picking the same
+   * template twice still reloads it.
+   */
+  seed?: { days: { activities: { time: string; title: string; cost_per_person: number }[] }[]; squadSize?: number } | null;
 }) {
   const { user, getIdToken } = useAuth();
   const navigate = useNavigate();
@@ -272,6 +279,31 @@ export function BuildYourOwn({
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [city]);
+
+  /**
+   * Load a template into the builder. Stored titles carry their emoji inline
+   * (that is how they were saved), so split it back off — otherwise re-saving
+   * would stack a second emoji on every stop.
+   */
+  useEffect(() => {
+    if (!seed) return;
+    const next: Record<number, BuiltStop[]> = {};
+    seed.days.forEach((d, i) => {
+      next[i] = (d.activities ?? []).map((a, k) => {
+        const m = /^(\p{Extended_Pictographic}\uFE0F?)\s+(.*)$/u.exec(a.title || "");
+        return {
+          id:    `seed-${i}-${k}-${Date.now()}`,
+          time:  a.time === "—:—" ? "" : (a.time || ""),
+          title: m ? m[2] : (a.title || ""),
+          cost:  Math.max(0, Number(a.cost_per_person) || 0),
+          emoji: m ? m[1] : "📍",
+        };
+      });
+    });
+    setStops(next);
+    setDayCount(Math.max(1, seed.days.length));
+    if (seed.squadSize) setSquad(Math.max(1, seed.squadSize));
+  }, [seed]);
 
   const matches = useMemo(() => {
     const q = search.trim().toLowerCase();

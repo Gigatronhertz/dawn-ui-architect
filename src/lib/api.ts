@@ -273,6 +273,18 @@ export const session = {
   },
 };
 
+/** A trip shape an agency saved to run again. */
+export type TripTemplate = {
+  id: string;
+  name: string;
+  city: string | null;
+  squadSize: number;
+  dayCount: number;
+  perPerson: number;
+  days: { activities: AgencyStop[] }[];
+  createdAt: number;
+};
+
 /** One stop on an agency-built day. */
 export type AgencyStop = { time: string; title: string; cost_per_person: number };
 
@@ -528,11 +540,27 @@ export const api = {
       title: string; summary?: string; city: string; squadSize: number;
       listed?: boolean; selectedDate?: string | null;
       days: { activities: AgencyStop[] }[];
+      /** Also keep this trip's shape as a reusable template. */
+      saveAsTemplate?: boolean;
+      templateName?: string;
     },
     token: string,
-  ) => post<{ ok: boolean; tripId: string; perPerson: number; total: number }>(
+  ) => post<{ ok: boolean; tripId: string; perPerson: number; total: number; templateId: string | null }>(
     '/api/pro/trips', payload, bearer(token),
   ),
+
+  /** Templates this agency has saved. */
+  listTripTemplates: (token: string) =>
+    get<{ templates: TripTemplate[] }>('/api/pro/templates', bearer(token)),
+
+  /** Save a shape as a template outside of creating a trip. */
+  createTripTemplate: (
+    payload: { name: string; city?: string; squadSize?: number; days: { activities: AgencyStop[] }[] },
+    token: string,
+  ) => post<{ ok: boolean; template: TripTemplate }>('/api/pro/templates', payload, bearer(token)),
+
+  deleteTripTemplate: (templateId: string, token: string) =>
+    del<{ ok: boolean }>(`/api/pro/templates/${templateId}`, bearer(token)),
 
   /** The agency's view of one of its trips: itinerary, travellers, money. */
   getAgencyTrip: (tripId: string, token: string) =>

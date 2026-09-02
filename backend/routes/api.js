@@ -917,11 +917,98 @@ router.delete('/pro/logo', requireAuth, requireAgent, async (req, res) => {
   }
 });
 
+
+// ── Pro: trip templates ───────────────────────────────────────────────────────
+// Scoped to the agency that made them. Nothing here is shared between agencies.
+
+/** Shape a stored row for the client. */
+function templateRow(r) {
+  let days = [];
+  try { days = JSON.parse(r.days_json); } catch (_) {}
+  return {
+    id:        r.id,
+    name:      r.name,
+    city:      r.city,
+    squadSize: Number(r.squad_size) || 1,
+    dayCount:  Number(r.day_count) || 1,
+    perPerson: Number(r.per_person) || 0,
+    days,
+    createdAt: Number(r.created_at),
+  };
+}
+
+// GET /api/pro/templates
+router.get('/pro/templates', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const rows = await db.rawAll(
+      `SELECT * FROM trip_templates WHERE agent_id = ? ORDER BY created_at DESC`,
+      [req.agent.id]
+    );
+    res.json({ templates: rows.map(templateRow) });
+  } catch (err) {
+    console.error('[api/pro/templates:list]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/pro/templates
+// Body: { name, city?, squadSize?, days[] }
+router.post('/pro/templates', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const { name, city, squadSize, days } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ error: 'Give the template a name.' });
+    if (!Array.isArray(days) || days.length === 0) {
+      return res.status(400).json({ error: 'A template needs at least one stop.' });
+    }
+
+    const squad = Math.max(1, Number(squadSize) || 1);
+    const built = buildAgencyPlan(days, squad);
+    const id = `tpl_${uuid().replace(/-/g, '')}`;
+
+    await db.raw(
+      `INSERT INTO trip_templates (id, agent_id, name, city, squad_size, day_count, per_person, days_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id, req.agent.id, String(name).trim().slice(0, 120),
+        typeof city === 'string' ? city.trim().slice(0, 80) : null,
+        squad, built.planDays.length, built.perPerson,
+        JSON.stringify(built.planDays.map(d => ({ activities: d.activities }))),
+      ]
+    );
+
+    const row = await db.raw(`SELECT * FROM trip_templates WHERE id = ?`, [id]);
+    res.json({ ok: true, template: templateRow(row) });
+  } catch (err) {
+    console.error('[api/pro/templates:create]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/pro/templates/:templateId
+router.delete('/pro/templates/:templateId', requireAuth, requireAgent, async (req, res) => {
+  try {
+    // Scoped by agent_id in the WHERE, so one agency cannot delete another's.
+    const row = await db.raw(
+      `SELECT id FROM trip_templates WHERE id = ? AND agent_id = ?`,
+      [req.params.templateId, req.agent.id]
+    );
+    if (!row) return res.status(404).json({ error: 'Template not found.' });
+
+    await db.raw(`DELETE FROM trip_templates WHERE id = ? AND agent_id = ?`,
+      [req.params.templateId, req.agent.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api/pro/templates:delete]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/pro/trips
 // Body: { title, summary?, city, squadSize, days[], listed?, selectedDate? }
 router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
   try {
-    const { title, summary, city, squadSize, days, listed, selectedDate } = req.body || {};
+    const { title, summary, city, squadSize, days, listed, selectedDate,
+            saveAsTemplate, templateName } = req.body || {};
 
     if (!title || !String(title).trim()) return res.status(400).json({ error: 'Give the trip a name.' });
     if (!city  || !String(city).trim())  return res.status(400).json({ error: 'Pick a city first.' });
@@ -959,7 +1046,25 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
       ]
     );
 
-    res.json({ ok: true, tripId, perPerson: built.perPerson, total: built.total });
+    // Asked for at the moment of saving, when the planner already knows
+    // whether this is a one-off or something they will run again.
+    let templateId = null;
+    if (saveAsTemplate) {
+      templateId = `tpl_${uuid().replace(/-/g, '')}`;
+      await db.raw(
+        `INSERT INTO trip_templates (id, agent_id, name, city, squad_size, day_count, per_person, days_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          templateId, req.agent.id,
+          String(templateName || title).trim().slice(0, 120),
+          String(city).trim().slice(0, 80),
+          squad, built.planDays.length, built.perPerson,
+          JSON.stringify(built.planDays.map(d => ({ activities: d.activities }))),
+        ]
+      );
+    }
+
+    res.json({ ok: true, tripId, perPerson: built.perPerson, total: built.total, templateId });
   } catch (err) {
     console.error('[api/pro/trips:create]', err.message);
     res.status(500).json({ error: err.message });
