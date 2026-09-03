@@ -856,11 +856,22 @@ function buildAgencyPlan(days, squad) {
   };
 }
 
-/** Load a trip only if it belongs to the calling agency. */
+/** Load a trip only if the caller owns it — as its agency, or as its organiser. */
 async function agentTripOr403(req, res) {
   const trip = await db.trips.get(req.params.tripId);
   if (!trip) { res.status(404).json({ error: 'Trip not found.' }); return null; }
-  if (trip.agent_id !== req.agent.id) {
+
+  // The same three-way ownership test the dashboard listing runs, so anything
+  // that appears on the dashboard opens its own page. Agency-authored trips
+  // match on agent_id; the older ones an agency organised before there was an
+  // agency to author them match on the user or the phone. Checking agent_id
+  // alone listed those legacy rows fine and then 403'd the moment you clicked.
+  const owns =
+    trip.agent_id === req.agent.id ||
+    (trip.user_id && trip.user_id === req.user.uid) ||
+    (trip.organiser_phone && trip.organiser_phone === req.agent.phone);
+
+  if (!owns) {
     res.status(403).json({ error: 'This trip belongs to another agency.' });
     return null;
   }

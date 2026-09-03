@@ -1,36 +1,56 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, imageUrl, type DashboardData, type TripRow } from "@/lib/api";
+import { api, imageUrl, type DashboardData, type TripRow, type TripTemplate } from "@/lib/api";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
 
+/**
+ * How a trip's status reads on the dashboard.
+ *
+ * `custom` is the status every agency-authored trip carries, and it had no
+ * entry here at all — so the trips this dashboard exists to show rendered a
+ * raw "custom" chip and an empty next-action cell. The voting statuses below
+ * it belong to the retired group flow; nothing sets them any more, and they
+ * stay only so an old row does not render a bare string.
+ */
 const STATUS_MAP: Record<string, { label: string; tone: "default" | "warn" | "good" | "brand" }> = {
+  custom:         { label: "Collecting",     tone: "warn"    },
   intake:         { label: "Intake",         tone: "default" },
   generating:     { label: "AI Planning",    tone: "brand"   },
   plan_review:    { label: "Review",         tone: "brand"   },
-  awaiting_group: { label: "Awaiting Group", tone: "warn"    },
-  voting_dates:   { label: "Voting Dates",   tone: "brand"   },
-  voting_hotel:   { label: "Voting Hotel",   tone: "brand"   },
   payment:        { label: "Collecting",     tone: "warn"    },
   active:         { label: "Active",         tone: "good"    },
   error:          { label: "Error",          tone: "default" },
+  // Legacy — the group flow that no longer runs.
+  awaiting_group: { label: "Awaiting squad", tone: "warn"    },
+  voting_dates:   { label: "Voting Dates",   tone: "brand"   },
+  voting_hotel:   { label: "Voting Hotel",   tone: "brand"   },
+};
+
+/** Unpaid people who actually joined — seats nobody claimed are not a chase. */
+const unpaidOf = (t: TripRow) =>
+  Math.max(0, Number(t.total_members ?? 0) - Number(t.paid_count ?? 0));
+
+const chaseText = (t: TripRow) => {
+  const n = unpaidOf(t);
+  if (n > 0) return `${n} ${n === 1 ? "person has" : "people have"}n't paid`;
+  return Number(t.total_members ?? 0) > 0 ? "Everyone has paid" : "Waiting for the first join";
 };
 
 const ACTION_MAP: Record<string, (t: TripRow) => string> = {
+  custom:         chaseText,
   intake:         () => "Collecting trip details",
   generating:     () => "AI building the plan…",
   plan_review:    () => "Review plan → /start",
-  awaiting_group: () => "Waiting for squad to join",
-  voting_dates:   () => "Squad is voting on dates",
-  voting_hotel:   () => "Squad is voting on hotel",
-  payment:        (t) => {
-    const pending = Math.max(0, (t.squad_size || 0) - t.paid_count);
-    return pending > 0 ? `${pending} member${pending > 1 ? "s" : ""} haven't paid` : "Finalising";
-  },
+  payment:        chaseText,
   active:         () => "Confirmed — everyone paid",
   error:          () => "Something went wrong",
+  // Legacy — the group flow that no longer runs.
+  awaiting_group: chaseText,
+  voting_dates:   () => "Legacy trip — group voting",
+  voting_hotel:   () => "Legacy trip — group voting",
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -57,26 +77,28 @@ const KPI = ({ label, value, sub, color }: { label: string; value: string; sub?:
   </div>
 );
 
-const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolean; onToggle: () => void }) => {
+/**
+ * One trip, and the whole row opens its management page — who joined, who
+ * paid, who still needs chasing. It used to open that page only for
+ * agency-authored trips and drop everything else into an inline accordion
+ * whose one action ("Send reminder via WhatsApp") was a div with no handler.
+ * Every trip listed here now has a real page behind it.
+ */
+const TripRowItem = ({ trip }: { trip: TripRow }) => {
   const statusInfo = STATUS_MAP[trip.status] ?? { label: trip.status, tone: "default" as const };
   const actionText = ACTION_MAP[trip.status]?.(trip) ?? "";
   const denom = Number(trip.total_members ?? 0) || trip.squad_size || 0;
   const pct = denom ? Math.round((trip.paid_count / denom) * 100) : 0;
   const joined  = Number(trip.total_members ?? 0);
-  const pending = Math.max(0, joined - trip.paid_count);
-
-  // Only agency-authored trips have a management page to open.
-  const ownsPage = !!trip.agent_id;
-  const RowTag: any = ownsPage ? Link : "button";
-  const rowProps = ownsPage
-    ? { to: `/pro/trips/${trip.id}` }
-    : { onClick: onToggle, type: "button" as const };
+  const pending = unpaidOf(trip);
 
   return (
     <div className="border-t border-border">
-      <RowTag
-        {...rowProps}
-        className="w-full grid grid-cols-12 items-center px-4 py-3 text-xs text-left hover:bg-secondary/30 transition-colors"
+      <Link
+        to={`/pro/trips/${trip.id}`}
+        target="_blank"
+        rel="noopener"
+        className="group w-full grid grid-cols-12 gap-3 items-center px-4 py-3 text-xs text-left hover:bg-secondary/30 transition-colors"
       >
         <div className="col-span-4">
           <div className="font-semibold flex items-center gap-2 flex-wrap">
@@ -114,55 +136,10 @@ const TripRowItem = ({ trip, isOpen, onToggle }: { trip: TripRow; isOpen: boolea
         <div className={`col-span-2 text-[11px] ${statusInfo.tone === "warn" ? "text-yellow-700 dark:text-yellow-400" : "text-muted-foreground"}`}>
           {actionText}
         </div>
-        <div className="col-span-1 text-right text-muted-foreground text-[10px]">
-          {ownsPage ? "→" : isOpen ? "▲" : "▼"}
+        <div className="col-span-1 text-right text-[10px] font-medium text-muted-foreground group-hover:text-foreground transition-colors whitespace-nowrap">
+          Manage →
         </div>
-      </RowTag>
-
-      {isOpen && !ownsPage && (
-        <div className="px-4 pb-4 bg-secondary/20">
-          {trip.total_collected > 0 && (
-            <div className="pt-3 pb-2 flex gap-4 text-xs text-muted-foreground border-b border-border mb-3">
-              <span>Collected: <strong className="text-foreground">{fmtNGN(trip.total_collected)}</strong></span>
-              {trip.squad_size && <span>Paid: <strong className="text-foreground">{trip.paid_count}/{trip.squad_size}</strong></span>}
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2 pt-2">
-            {trip.agent_id && (
-              <Link
-                to={`/pro/trips/${trip.id}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-signal text-ink px-3 py-1.5 text-[11px] font-medium hover:opacity-90 transition"
-              >
-                Manage trip →
-              </Link>
-            )}
-            {trip.status === 'plan_review' && (
-              <Link
-                to={`/start?job=${trip.id}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-foreground px-3 py-1.5 text-[11px] font-medium hover:bg-primary/15 transition"
-              >
-                Review plan →
-              </Link>
-            )}
-            {trip.status === 'awaiting_group' && (
-              <Link
-                to={`/plan/${trip.id}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-foreground text-background px-3 py-1.5 text-[11px] font-medium hover:opacity-90 transition"
-              >
-                View squad page →
-              </Link>
-            )}
-            {pending > 0 && trip.status === "payment" && (
-              <div className="inline-flex items-center gap-2 rounded-full bg-foreground text-background px-3 py-1.5 text-[11px] font-medium cursor-pointer hover:opacity-90">
-                <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 11.5a8.4 8.4 0 01-1.3 4.5 8.5 8.5 0 01-7.3 4 8.4 8.4 0 01-4.4-1.2L3 20l1.4-4.9a8.4 8.4 0 01-1.3-4.5 8.5 8.5 0 014-7.3 8.4 8.4 0 014.5-1.3 8.5 8.5 0 018.5 8.5z" />
-                </svg>
-                Send reminder via WhatsApp
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      </Link>
     </div>
   );
 };
@@ -175,8 +152,8 @@ const ProDashboard = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState("");
-  const [expandedTrip, setExpandedTrip] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"trips" | "settings">("trips");
+  const [activeTab, setActiveTab] = useState<"trips" | "templates" | "settings">("trips");
+  const [templates, setTemplates] = useState<TripTemplate[]>([]);
 
   const load = useCallback(async () => {
     const token = getIdToken();
@@ -199,6 +176,31 @@ const ProDashboard = () => {
     }
   }, [getIdToken, navigate]);
 
+  // Templates load beside the dashboard rather than inside it: a failure here
+  // is not a reason to show an error where the trips and the money are.
+  const loadTemplates = useCallback(async () => {
+    const token = getIdToken();
+    if (!token) return;
+    try {
+      const d = await api.listTripTemplates(token);
+      setTemplates(d.templates ?? []);
+    } catch {
+      setTemplates([]);
+    }
+  }, [getIdToken]);
+
+  async function removeTemplate(t: TripTemplate) {
+    const token = getIdToken();
+    if (!token) return;
+    const before = templates;
+    setTemplates(prev => prev.filter(x => x.id !== t.id));
+    try {
+      await api.deleteTripTemplate(t.id, token);
+    } catch {
+      setTemplates(before); // put it back — the delete never landed
+    }
+  }
+
   useEffect(() => {
     document.title = "Pro Dashboard · Karije";
     if (!authLoading && !user) {
@@ -207,8 +209,8 @@ const ProDashboard = () => {
   }, [authLoading, user, navigate]);
 
   useEffect(() => {
-    if (user) load();
-  }, [user, load]);
+    if (user) { load(); loadTemplates(); }
+  }, [user, load, loadTemplates]);
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (authLoading || (!data && !error && user)) {
@@ -252,12 +254,26 @@ const ProDashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab(activeTab === "settings" ? "trips" : "settings")}
-              className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-secondary transition-colors"
-            >
-              {activeTab === "settings" ? "← Dashboard" : "Settings"}
-            </button>
+            {/* Three real tabs — a two-way toggle could not reach templates. */}
+            <nav className="flex items-center gap-0.5 rounded-lg bg-secondary/60 p-0.5">
+              {([
+                { id: "trips",     label: "Trips" },
+                { id: "templates", label: templates.length ? `Templates (${templates.length})` : "Templates" },
+                { id: "settings",  label: "Settings" },
+              ] as const).map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                    activeTab === t.id
+                      ? "bg-background text-foreground font-medium shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </nav>
             <Link
               to="/pro/setup"
               className="text-xs rounded-lg bg-foreground text-background px-3 py-1.5 hover:opacity-90 transition-opacity"
@@ -281,6 +297,77 @@ const ProDashboard = () => {
           <div className="mb-6 rounded-2xl bg-destructive/10 ring-1 ring-destructive/20 px-5 py-4 flex items-center justify-between gap-4">
             <p className="text-sm text-destructive">{error}</p>
             <button onClick={load} className="text-xs underline text-muted-foreground shrink-0">Retry</button>
+          </div>
+        )}
+
+        {/* Templates tab */}
+        {activeTab === "templates" && (
+          <div className="rounded-3xl bg-card ring-hairline overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border gap-4">
+              <div>
+                <h2 className="font-display font-semibold">Trip templates</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  A shape you run again — the same stops at the same prices, with only the dates moving.
+                </p>
+              </div>
+              <Link
+                to="/pro/trips/new"
+                className="shrink-0 text-xs rounded-lg bg-foreground text-background px-3 py-1.5 hover:opacity-90 transition-opacity"
+              >
+                New trip
+              </Link>
+            </div>
+
+            {templates.length === 0 ? (
+              <div className="px-6 py-16 text-center">
+                <div className="text-3xl mb-3">🗂️</div>
+                <h3 className="font-display font-semibold text-lg mb-1">No templates yet</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                  Build a trip and tick <span className="text-foreground font-medium">Save as a template</span> before
+                  you create it. The next one starts from that shape instead of an empty day.
+                </p>
+                <Link
+                  to="/pro/trips/new"
+                  className="inline-flex items-center gap-2 rounded-lg bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90"
+                >
+                  Build a trip →
+                </Link>
+              </div>
+            ) : (
+              templates.map((t) => (
+                <div
+                  key={t.id}
+                  className="border-t border-border px-4 py-3 flex items-center justify-between gap-4"
+                >
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold truncate">{t.name}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {t.city ? `${t.city} · ` : ""}
+                      {t.dayCount} day{t.dayCount === 1 ? "" : "s"}
+                      {" · "}{fmtNGN(t.perPerson)}/person
+                      {" · "}{t.squadSize} {t.squadSize === 1 ? "seat" : "seats"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* The builder hydrates from this id, so "run it again"
+                        starts here rather than three clicks into the builder. */}
+                    <Link
+                      to={`/pro/trips/new?template=${t.id}`}
+                      className="text-[11px] rounded-lg bg-foreground text-background px-3 py-1.5 font-medium hover:opacity-90 transition"
+                    >
+                      Start a trip from this →
+                    </Link>
+                    <button
+                      onClick={() => removeTemplate(t)}
+                      aria-label={`Delete the ${t.name} template`}
+                      className="text-[11px] text-muted-foreground hover:text-destructive px-2 py-1.5 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
 
@@ -410,12 +497,7 @@ const ProDashboard = () => {
                     <div className="col-span-1" />
                   </div>
                   {trips.map((t) => (
-                    <TripRowItem
-                      key={t.id}
-                      trip={t}
-                      isOpen={expandedTrip === t.id}
-                      onToggle={() => setExpandedTrip(expandedTrip === t.id ? null : t.id)}
-                    />
+                    <TripRowItem key={t.id} trip={t} />
                   ))}
                   <div className="px-4 py-3 text-[10px] text-muted-foreground border-t border-border">
                     Karije Pro — ₦10,000/month, unlimited trips.

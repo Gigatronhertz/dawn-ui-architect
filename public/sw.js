@@ -10,10 +10,12 @@ self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
 self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {};
   event.waitUntil(
-    self.registration.showNotification(data.title || 'MySquadGo', {
+    self.registration.showNotification(data.title || 'Karije', {
       body:  data.body  || 'Your plan is ready!',
-      icon:  '/favicon.ico',
-      badge: '/favicon.ico',
+      // PNG, not the .ico — Android and desktop notification surfaces render
+      // a plain PNG reliably and an icon file only sometimes.
+      icon:  '/icon-192.png',
+      badge: '/favicon-32.png',
       tag:   'plan-ready',   // replaces any previous plan-ready notification
       renotify: true,
       data:  { url: data.url || '/' },

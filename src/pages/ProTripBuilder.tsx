@@ -58,7 +58,16 @@ export default function ProTripBuilder() {
         setChecking(false);
         // Not fatal if this fails — the builder works without templates.
         api.listTripTemplates(token)
-          .then(d => setTemplates(d.templates ?? []))
+          .then(d => {
+            const list = d.templates ?? [];
+            setTemplates(list);
+            // Arriving from "Start a trip from this" on the dashboard: apply
+            // that template straight away, so the intent survives the
+            // navigation instead of making them pick it again here.
+            const wanted = new URLSearchParams(window.location.search).get("template");
+            const match  = wanted ? list.find(t => t.id === wanted) : null;
+            if (match) applyTemplate(match);
+          })
           .catch(() => setTemplates([]));
       })
       .catch(() => navigate("/pro/setup", { replace: true }));

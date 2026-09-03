@@ -146,7 +146,7 @@ const ProDemo = () => {
             <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
             <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
             <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-            <div className="ml-3 text-[10px] opacity-50">chiomatravel.karije.com / dashboard</div>
+            <div className="ml-3 text-[10px] opacity-50">karije.com / pro / dashboard</div>
           </div>
           <div className="rounded-2xl bg-background text-foreground p-5 md:p-7">
             {/* topline */}
@@ -155,23 +155,24 @@ const ProDemo = () => {
                 <div className="w-9 h-9 rounded-lg bg-gradient-primary grid place-items-center text-primary-foreground text-xs font-display font-bold">CT</div>
                 <div>
                   <div className="font-display font-semibold leading-tight">Chioma Travels</div>
-                  <div className="text-[11px] text-muted-foreground">Pro Growth · 4 active trips</div>
+                  <div className="text-[11px] text-muted-foreground">Karije Pro · 4 active trips</div>
                 </div>
               </div>
               <div className="hidden md:flex items-center gap-2">
                 <Chip tone="good">+ New trip</Chip>
                 <Chip>Templates (8)</Chip>
-                <Chip>Clients (47)</Chip>
+                <Chip>Settings</Chip>
               </div>
             </div>
 
             {/* KPI strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {[
-                { k: "Active trips", v: "4", s: "of unlimited" },
-                { k: "December revenue", v: "₦2.72m", s: "+38% vs Nov" },
+                // The four the real dashboard shows, in its own words.
+                { k: "Active trips", v: "4", s: "unlimited" },
+                { k: "Total collected", v: "₦2.72m", s: "via Paystack" },
                 { k: "Service fees", v: "₦480k", s: "kept 100%" },
-                { k: "Pending follow-ups", v: "3", s: "1 overdue" },
+                { k: "Pending payments", v: "3", s: "follow up" },
               ].map((m) => (
                 <div key={m.k} className="rounded-xl bg-secondary/60 p-3">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{m.k}</div>
@@ -241,13 +242,13 @@ const ProDemo = () => {
               })}
             </div>
 
-            <div className="mt-3 text-[10px] text-muted-foreground">↑ Pro Growth view. Pro Starter caps at 3 active trips.</div>
+            <div className="mt-3 text-[10px] text-muted-foreground">↑ Your dashboard. One plan, unlimited active trips.</div>
           </div>
         </div>
       </Section>
 
       {/* White label */}
-      <Section eyebrow="White label" title="Your clients never see Karije." sub="Itinerary, WhatsApp messages, payment page, booking page — all branded as your agency. We get paid quietly in the background.">
+      <Section eyebrow="White label" title="Your clients never see Karije." sub="Trip page, payment page, reminders — all branded as your agency. We get paid quietly in the background.">
         <div className="grid md:grid-cols-2 gap-6">
           {/* Branded itinerary */}
           <div className="rounded-3xl bg-card ring-hairline p-6 shadow-card">
@@ -326,7 +327,7 @@ const ProDemo = () => {
       </Section>
 
       {/* Interactive branding demo */}
-      <Section id="try-it" eyebrow="Try it yourself" title={<>Type your name. <span className="text-muted-foreground">Watch it apply.</span></>} sub="Every client-facing surface updates instantly — itinerary, WhatsApp messages, payment page. Your clients never see us.">
+      <Section id="try-it" eyebrow="Try it yourself" title={<>Type your name. <span className="text-muted-foreground">Watch it apply.</span></>} sub="Every client-facing surface updates instantly — trip page, payment reminders, payment page. Your clients never see us.">
         <div>
           {/* Agency name input */}
           <div className="flex items-center gap-3 mb-8 max-w-md">
@@ -344,25 +345,25 @@ const ProDemo = () => {
 
           {/* Live preview panels */}
           <div className="grid md:grid-cols-3 gap-4">
-            {/* Panel 1: WhatsApp message */}
+            {/* Panel 1: the payment reminder — one person, not a group. */}
             <div className="rounded-2xl bg-card ring-hairline p-5">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">WhatsApp · Group message</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Payment reminder · Email</div>
               <div className="rounded-xl bg-secondary/60 p-4 space-y-2.5">
-                <div className="text-[11px] font-semibold text-foreground">{agencyName || "Your Agency"} Bot</div>
+                <div className="text-[11px] font-semibold text-foreground">From {agencyName || "Your Agency"}</div>
                 <div className="text-sm text-foreground/90 leading-snug whitespace-pre-line">
-                  👋 Hey Calabar Carnival squad!{"\n"}{agencyName || "Your Agency"} here.{"\n"}Tolu's trip is ready:
+                  Hi Tolu,{"\n"}Your place on Calabar Carnival is held — here's what's outstanding:
                 </div>
                 <div className="rounded-lg bg-card p-3 text-xs space-y-1">
-                  <div>📍 Lagos → Calabar · 4 days · 14 squad</div>
-                  <div>🏨 Transcorp Calabar · ₦22k/night</div>
-                  <div>💰 Est. ₦65,000/person all-in</div>
+                  <div>📍 Lagos → Calabar · 4 days</div>
+                  <div>💰 ₦65,000 your share</div>
+                  <div className="text-muted-foreground">→ Pay with Paystack</div>
                 </div>
               </div>
             </div>
 
             {/* Panel 2: Itinerary header */}
             <div className="rounded-2xl bg-card ring-hairline p-5">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">PDF Itinerary · Header</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Trip page · Header</div>
               <div className="rounded-xl bg-secondary/40 p-4">
                 <div className="flex items-center gap-2.5 mb-4">
                   <div className="w-9 h-9 rounded-lg bg-gradient-primary grid place-items-center text-primary-foreground text-xs font-display font-bold shrink-0">
@@ -370,10 +371,7 @@ const ProDemo = () => {
                   </div>
                   <div>
                     <div className="font-semibold text-sm">{agencyName || "Your Agency"}</div>
-                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-                      Verified Pro
-                    </div>
+                    <div className="text-[10px] text-muted-foreground">Your agency, your branding</div>
                   </div>
                 </div>
                 <div className="font-display text-base font-semibold">Calabar Carnival 2026</div>
@@ -419,12 +417,12 @@ const ProDemo = () => {
       <Section eyebrow="What's in the box" title="Everything you cobble together today — in one tool.">
         <div className="grid md:grid-cols-3 gap-4">
           {[
-            { i: "🎨", t: "Branded itineraries", d: "Your logo, your colors, your agency name on every PDF and message." },
-            { i: "💸", t: "Service fee collection", d: "Set flat or %. Added to each Paystack link. You keep 100%." },
-            { i: "👥", t: "Client profiles", d: "Trip history, payment status, notes — 'always pays late', 'vegetarian'." },
-            { i: "🧱", t: "Trip templates", d: "Save full configs. New trip in one click — just change dates." },
-            { i: "📊", t: "Revenue dashboard", d: "Monthly earnings, most profitable routes, service fees vs platform fees." },
-            { i: "🌐", t: "Custom booking page", d: "chiomatravel.karije.com. Looks fully owned by you." },
+            { i: "🎨", t: "Branded trip pages", d: "Your logo, your colors, your agency name on every trip page and reminder." },
+            { i: "💸", t: "Service fee collection", d: "Set your fee once. Added to each Paystack link. You keep 100%." },
+            { i: "🧱", t: "Trip templates", d: "Save a trip's shape and start the next one from it — only the dates move." },
+            { i: "📋", t: "Payment tracking", d: "Who joined, who paid, when, and the Paystack reference for each one." },
+            { i: "🔔", t: "Payment reminders", d: "Chase one person or everyone still owing, without typing the message." },
+            { i: "📤", t: "Export to CSV", d: "The full traveller list — names, contacts, payment status — in one file." },
           ].map((f) => (
             <div key={f.t} className="rounded-2xl bg-card ring-hairline p-5">
               <div className="text-2xl mb-2">{f.i}</div>
@@ -437,41 +435,34 @@ const ProDemo = () => {
 
       {/* Pricing */}
       <Section id="pricing" eyebrow="Pricing" title="₦10,000/month to run your business properly." sub="One trip. One service fee. Pro pays for itself in less than half a trip.">
-        <div className="grid md:grid-cols-2 gap-5">
-          <div className="rounded-3xl bg-card ring-hairline p-7">
+        {/* One plan. The two-tier split promised a 3-trip cap and a Growth
+            tier that nothing in the product enforces or delivers. */}
+        <div className="max-w-md">
+          <div className="rounded-3xl bg-gradient-primary text-primary-foreground p-7 shadow-glow">
             <div className="flex items-center justify-between">
-              <div className="font-display text-lg font-semibold">Pro Starter</div>
-              <Chip>Solo agent</Chip>
+              <div className="font-display text-lg font-semibold">Karije Pro</div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/20">Everything</span>
             </div>
             <div className="mt-5 flex items-baseline gap-1">
               <span className="font-display text-4xl font-semibold tabular-nums">₦10,000</span>
-              <span className="text-sm text-muted-foreground">/month</span>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">Move from WhatsApp chaos to a proper system.</p>
-            <ul className="mt-6 space-y-2.5 text-[13px]">
-              {["Up to 3 active trips", "Branded itineraries (no Karije branding)", "Service fee collection — keep 100%", "Paystack contribution links", "Auto reminders", "Trip templates (5)", "Verified Pro badge + directory listing", "WhatsApp bot fully branded"].map((f) => (
-                <li key={f} className="flex gap-2"><span className="text-foreground">✓</span>{f}</li>
-              ))}
-            </ul>
-            <Link to="/pro/setup" className="mt-7 block text-center rounded-lg bg-foreground text-background py-3 text-sm font-medium hover:opacity-90">Start Pro Starter</Link>
-          </div>
-
-          <div className="rounded-3xl bg-gradient-primary text-primary-foreground p-7 shadow-glow">
-            <div className="flex items-center justify-between">
-              <div className="font-display text-lg font-semibold">Pro Growth</div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/20">Scaling</span>
-            </div>
-            <div className="mt-5 flex items-baseline gap-1">
-              <span className="font-display text-4xl font-semibold tabular-nums">₦20,000</span>
               <span className="text-sm opacity-80">/month</span>
             </div>
-            <p className="text-sm opacity-90 mt-2">When 3 trips a month isn't enough anymore.</p>
+            <p className="text-sm opacity-90 mt-2">Unlimited trips. No per-trip cut.</p>
             <ul className="mt-6 space-y-2.5 text-[13px]">
-              {["Unlimited active trips", "Everything in Starter", "Full client dashboard with payment tracking", "Revenue analytics & route profitability", "Unlimited trip templates", "Multiple agent seats (assistant / partner)", "Priority WhatsApp support", "Custom subdomain — chiomatravel.karije.com"].map((f) => (
+              {[
+                "Unlimited active trips",
+                "Branded trip pages — no Karije branding",
+                "Service fee collection — keep 100%",
+                "Paystack payment links",
+                "Payment tracking — who paid, when, which reference",
+                "Payment reminders, one person or everyone",
+                "Unlimited trip templates",
+                "Traveller list export (CSV)",
+              ].map((f) => (
                 <li key={f} className="flex gap-2"><span>✓</span>{f}</li>
               ))}
             </ul>
-            <Link to="/pro/setup?plan=growth" className="mt-7 block text-center rounded-lg bg-white text-foreground py-3 text-sm font-medium hover:bg-white/90">Start Pro Growth</Link>
+            <Link to="/pro/setup" className="mt-7 block text-center rounded-lg bg-white text-foreground py-3 text-sm font-medium hover:bg-white/90">Start Karije Pro</Link>
           </div>
         </div>
 
@@ -482,7 +473,7 @@ const ProDemo = () => {
             <span className="text-foreground">= ₦40,000 / month</span>
           </div>
           <div className="text-sm text-muted-foreground max-w-md">
-            At a single ₦10,000 service fee per trip and just 4 trips a month, Pro Starter pays for itself in less than half a trip. Everything beyond that is profit you weren't capturing before.
+            At a single ₦10,000 service fee per trip and just 4 trips a month, Pro pays for itself in less than half a trip. Everything beyond that is profit you weren't capturing before.
           </div>
         </div>
       </Section>
@@ -491,9 +482,9 @@ const ProDemo = () => {
       <Section eyebrow="Onboarding" title="Live in 10 minutes.">
         <div className="grid md:grid-cols-3 gap-4">
           {[
-            { n: "01", t: "Agency setup", d: "Name, logo, WhatsApp number, brand color, default service fee. Once." },
-            { n: "02", t: "First branded trip", d: "Bot walks you through. You see exactly what your client will receive." },
-            { n: "03", t: "Public profile live", d: "karije.com/chioma — drop in your bio. Clients book directly." },
+            { n: "01", t: "Agency setup", d: "Name, logo, phone number, brand color, default service fee. Once." },
+            { n: "02", t: "First branded trip", d: "The builder walks you through. You see exactly what your client will receive." },
+            { n: "03", t: "Share one link", d: "Send it out. Watch who joins and who pays, from your dashboard." },
           ].map((s) => (
             <div key={s.n} className="rounded-2xl bg-card ring-hairline p-5">
               <div className="font-display text-3xl font-semibold text-foreground tabular-nums">{s.n}</div>
@@ -538,10 +529,10 @@ const ProDemo = () => {
             <span className="opacity-60">Our infrastructure.</span>
           </h2>
           <p className="mt-5 text-base opacity-80 max-w-xl mx-auto">
-            Start with Pro Starter for ₦10,000/month. Upgrade to Growth the moment you're juggling more than 3 trips. Cancel anytime.
+            ₦10,000/month, unlimited trips, no cut of what you collect. Cancel anytime.
           </p>
           <div className="mt-8 flex flex-wrap gap-3 justify-center">
-            <Link to="/pro/setup" className="rounded-lg bg-white text-foreground px-6 py-3 text-sm font-medium hover:bg-white/90">Start Pro Starter</Link>
+            <Link to="/pro/setup" className="rounded-lg bg-white text-foreground px-6 py-3 text-sm font-medium hover:bg-white/90">Start Karije Pro</Link>
             <a href="#try-it" className="rounded-lg ring-1 ring-white/30 px-6 py-3 text-sm font-medium hover:bg-white/10">Brand it as yours ↑</a>
           </div>
         </div>
