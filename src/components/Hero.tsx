@@ -17,12 +17,12 @@ function img(id: string, w: number, h: number) {
 
 export const Hero = () => (
   <section className="relative pt-24 pb-16 md:pt-36 md:pb-24 bg-hero-mesh overflow-hidden">
-    {/* Faint beachfront sunset overlay — barely visible backdrop */}
+    {/* Beachfront sunset overlay — visible backdrop */}
     <img
       src={img("1507525428034-b723cf961d3e", 1600, 900)}
       alt=""
       aria-hidden="true"
-      className="absolute inset-0 w-full h-full object-cover opacity-[0.06] pointer-events-none select-none"
+      className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
     />
     <div className="relative mx-auto max-w-6xl px-6">
 
