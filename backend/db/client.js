@@ -4,6 +4,7 @@ const fs = require('fs');
 const { SEED_DATA } = require('../services/attractions');
 const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
 const { IMPORTED_TRIP_EXPERIENCES } = require('../services/curatedTripsSeed');
+const { NIGHTLIFE_SEED, EVENTS_SEED } = require('../services/nightlifeEventsSeed');
 
 const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -350,6 +351,42 @@ const ready = (async () => {
       });
     }
     console.log(`[db] Curated trips seed applied (${seed.length} entries)`);
+  }
+  // Demo content for the Nightlife and Events tabs. Same INSERT OR IGNORE
+  // idempotency as the curated trips above — an admin edit or delete is
+  // never overwritten by this running again.
+  {
+    for (const v of NIGHTLIFE_SEED) {
+      await client.execute({
+        sql: `INSERT OR IGNORE INTO nightlife_venues
+              (id, name, tagline, vibe, location, image_id, color_fallback,
+               fee_min, fee_max, fee_note, state, sort_order)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        args: [
+          v.id, v.name, v.tagline || '', v.vibe || 'Bar', v.location || '',
+          v.imageId || '', v.colorFallback || '#1A1A1A',
+          v.feeMin || 0, v.feeMax || 0, v.feeNote || null,
+          v.state || 'Lagos', v.sortOrder || 0,
+        ],
+      });
+    }
+    for (const e of EVENTS_SEED) {
+      await client.execute({
+        sql: `INSERT OR IGNORE INTO events
+              (id, name, tagline, description, category, location, event_date,
+               image_id, color_fallback, price_min, price_max, price_note, ticket_url,
+               state, sort_order)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        args: [
+          e.id, e.name, e.tagline || '', e.description || '', e.category || 'other',
+          e.location || '', e.eventDate || null,
+          e.imageId || '', e.colorFallback || '#2F4A33',
+          e.priceMin || 0, e.priceMax || 0, e.priceNote || null, e.ticketUrl || null,
+          e.state || 'Lagos', e.sortOrder || 0,
+        ],
+      });
+    }
+    console.log(`[db] Nightlife/events demo seed applied (${NIGHTLIFE_SEED.length} venues, ${EVENTS_SEED.length} events)`);
   }
 })().catch((err) => {
   console.error('[db] schema init failed:', err.message);

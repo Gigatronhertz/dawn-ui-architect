@@ -198,10 +198,20 @@ function NightlifeSection({
   }
 
   return (
-    <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-2 pb-2">
-      {curated.length > 0
-        ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} />)
-        : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} />)}
+    <div>
+      <div className="flex items-center justify-end mb-4">
+        <button
+          onClick={onPlanNight}
+          className="text-xs font-jost font-medium text-foreground border-b border-foreground hover:text-forest hover:border-forest transition-colors"
+        >
+          Or build your own night out →
+        </button>
+      </div>
+      <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-2 pb-2">
+        {curated.length > 0
+          ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} />)
+          : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} />)}
+      </div>
     </div>
   );
 }
@@ -295,8 +305,18 @@ function EventsSection({ city, events, loading, onPlanNight }: { city: string; e
   }
 
   return (
-    <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-3 pb-2">
-      {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
+    <div>
+      <div className="flex items-center justify-end mb-4">
+        <button
+          onClick={onPlanNight}
+          className="text-xs font-jost font-medium text-foreground border-b border-foreground hover:text-forest hover:border-forest transition-colors"
+        >
+          Or build your own night out →
+        </button>
+      </div>
+      <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-3 pb-2">
+        {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
+      </div>
     </div>
   );
 }
