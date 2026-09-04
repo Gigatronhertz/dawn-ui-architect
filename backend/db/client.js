@@ -391,6 +391,25 @@ const ready = (async () => {
         ],
       });
     }
+    // Backfill photos onto rows seeded before imageId was added to this file.
+    // INSERT OR IGNORE above only fires for a row that doesn't exist yet, so
+    // an install that already had these demo rows never picked up the photos
+    // added later. Scoped to "still has no photo" so an admin's own edit —
+    // including deliberately clearing a photo — is never overwritten.
+    for (const v of NIGHTLIFE_SEED) {
+      if (!v.imageId) continue;
+      await client.execute({
+        sql: `UPDATE nightlife_venues SET image_id = ? WHERE id = ? AND (image_id IS NULL OR image_id = '')`,
+        args: [v.imageId, v.id],
+      });
+    }
+    for (const e of EVENTS_SEED) {
+      if (!e.imageId) continue;
+      await client.execute({
+        sql: `UPDATE events SET image_id = ? WHERE id = ? AND (image_id IS NULL OR image_id = '')`,
+        args: [e.imageId, e.id],
+      });
+    }
     console.log(`[db] Nightlife/events demo seed applied (${NIGHTLIFE_SEED.length} venues, ${EVENTS_SEED.length} events)`);
   }
 })().catch((err) => {
