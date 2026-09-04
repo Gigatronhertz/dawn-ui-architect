@@ -30,6 +30,25 @@ function formatNGN(amount: number): string {
 
 const cdnImg = tripImageUrl;
 
+/** A Google Maps search link for a place name/address — no API key needed,
+ *  works for any location string. */
+function mapsSearchUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+/**
+ * Generic nightlife photos for fallback venues — drawn from the real
+ * attractions price table, which carries no photo of its own. Verified,
+ * on-theme Unsplash photos, cycled by index so a grid of them isn't the
+ * exact same picture repeated.
+ */
+const FALLBACK_NIGHTLIFE_IMAGES = [
+  "1470225620780-dba8ba36b745", // DJ mixer, club lights
+  "1566737236500-c8ac43014a67", // nightclub interior, crowd
+  "1470337458703-46ad1756a187", // cocktail being poured
+  "1543007630-9710e4a00a20",    // bar interior, warm lighting
+];
+
 function getScheduleForDays(exp: Experience, days: number): DaySchedule[][] {
   const result: DaySchedule[][] = [];
   for (let d = 0; d < days; d++) {
@@ -155,18 +174,29 @@ function CuratedNightlifeCard({ v, onSelect }: { v: NightlifeVenue; onSelect: ()
 }
 
 /** Fallback nightlife card — drawn from the real per-city attractions table
- *  when no admin-curated venue has been added for this city yet. No photo
- *  in that table, so it leans on the emoji and a plain colour block. */
-function FallbackNightlifeCard({ v, onSelect }: { v: VenueItem; onSelect: () => void }) {
+ *  when no admin-curated venue has been added for this city yet. That table
+ *  carries no photo per venue, so it wears a generic on-theme nightlife
+ *  photo (cycled by position) rather than a bare colour block. */
+function FallbackNightlifeCard({ v, index, onSelect }: { v: VenueItem; index: number; onSelect: () => void }) {
+  const image = FALLBACK_NIGHTLIFE_IMAGES[index % FALLBACK_NIGHTLIFE_IMAGES.length];
   return (
     <button
       onClick={onSelect}
-      className="aspect-square bg-secondary border border-border p-4 flex flex-col justify-between text-left hover:border-forest transition-colors"
+      className="group relative aspect-square overflow-hidden text-left"
     >
-      <span className="text-3xl leading-none">{v.emoji}</span>
-      <div>
-        <div className="font-marcellus text-base text-foreground truncate">{v.name}</div>
-        <div className="text-[11px] font-jost font-light text-muted-foreground mt-1">{v.feeNote}</div>
+      <img
+        src={cdnImg(image, 600, 600)}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
+        loading="lazy"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/15" />
+      <div className="absolute top-0 left-0 right-0 p-3">
+        <span className="text-2xl leading-none">{v.emoji}</span>
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-4">
+        <h3 className="font-marcellus text-base leading-snug text-white truncate">{v.name}</h3>
+        <p className="text-[11px] font-jost font-light text-white/70 mt-1">{v.feeNote}</p>
       </div>
     </button>
   );
@@ -213,7 +243,7 @@ function NightlifeSection({
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
       {curated.length > 0
         ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} onSelect={() => onSelectVenue(v)} />)
-        : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} onSelect={() => onSelectFallback(v)} />)}
+        : fallback.map((v, i) => <FallbackNightlifeCard key={v.id} v={v} index={i} onSelect={() => onSelectFallback(v)} />)}
     </div>
   );
 }
@@ -308,6 +338,38 @@ function EventsSection({
   );
 }
 
+/**
+ * A pair of actions for getting a place into whatever maps app someone
+ * actually uses: a direct Google Maps link (zero-step, opens right there),
+ * and a copy button for pasting into Apple Maps, Waze, or anything else.
+ */
+function MapsActions({ location }: { location: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex items-center gap-4 mt-2">
+      <a
+        href={mapsSearchUrl(location)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[11px] font-jost font-medium text-forest hover:underline"
+      >
+        Open in Maps →
+      </a>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard?.writeText(location)
+            .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); })
+            .catch(() => {});
+        }}
+        className="text-[11px] font-jost font-light text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {copied ? "✓ Copied" : "📋 Copy location"}
+      </button>
+    </div>
+  );
+}
+
 /** Shared overlay shell for the three detail views below — a bottom sheet on
  *  a phone, a centred card on a wider screen. */
 function DetailOverlay({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
@@ -364,6 +426,7 @@ function NightlifeVenueDetail({ venue, onClose }: { venue: NightlifeVenue; onClo
           <div>
             <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Location</div>
             <div className="font-jost text-sm text-foreground">📍 {venue.location}</div>
+            <MapsActions location={venue.location} />
           </div>
           <div className="text-right shrink-0">
             <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Entry</div>
@@ -415,6 +478,7 @@ function FallbackVenueDetail({ venue, onClose }: { venue: VenueItem; onClose: ()
         <div>
           <h2 className="font-marcellus text-2xl text-foreground leading-snug">{venue.name}</h2>
           <p className="text-xs font-jost font-light text-muted-foreground mt-1">{venue.vibe}</p>
+          <MapsActions location={venue.name} />
         </div>
         <div className="border-t border-border pt-4">
           <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Entry</div>
@@ -1387,7 +1451,7 @@ export default function Explore() {
               {tab === "ours" &&
                 "Trips we've picked, priced and will run for your squad. Pick one, choose your days and squad size, and we handle the rest."}
               {tab === "nightlife" &&
-                `The best bars, clubs and lounges in ${city} — pick one, or build a full night out from the places we have listed.`}
+                `Just some fun spots we found in ${city}'s nightlife scene — no strings attached. Tap one, copy the location into your maps app, and go have fun. No hassle. You're welcome.`}
               {tab === "events" &&
                 `Concerts, festivals and pop-ups happening in ${city} that your squad can plan a trip around.`}
               {tab === "own" &&
