@@ -1207,6 +1207,25 @@ export default function Explore() {
 
           {tab === "own" && <BuildYourOwn city={city} />}
 
+          {tab === "nightlife" && (
+            <NightlifeSection
+              city={city}
+              curated={nightlifeCurated}
+              fallback={nightlifeFallback}
+              loading={venuesLoading || curatedLoading}
+              onPlanNight={() => setTab("own")}
+            />
+          )}
+
+          {tab === "events" && (
+            <EventsSection
+              city={city}
+              events={events}
+              loading={eventsLoading}
+              onPlanNight={() => setTab("own")}
+            />
+          )}
+
           {tab === "ours" && loading && (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -1274,19 +1293,6 @@ export default function Explore() {
             </div>
           )}
 
-          <NightlifeSection
-            city={city}
-            curated={nightlifeCurated}
-            fallback={nightlifeFallback}
-            loading={venuesLoading || curatedLoading}
-            onPlanNight={() => setTab("own")}
-          />
-          <EventsSection
-            city={city}
-            events={events}
-            loading={eventsLoading}
-            onPlanNight={() => setTab("own")}
-          />
         </div>
       </main>
     );
