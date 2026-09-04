@@ -220,6 +220,7 @@ const SCHEMA = [
     fee_min        INTEGER NOT NULL DEFAULT 0,
     fee_max        INTEGER NOT NULL DEFAULT 0,
     fee_note       TEXT,
+    weekly_program TEXT NOT NULL DEFAULT '[]',
     state          TEXT NOT NULL DEFAULT 'Lagos',
     published      INTEGER NOT NULL DEFAULT 1,
     sort_order     INTEGER NOT NULL DEFAULT 0,
@@ -305,6 +306,9 @@ const MIGRATIONS = [
   // generic blob store despite the name, so logos get the same immutable
   // caching the trip photos already have.
   `ALTER TABLE agents ADD COLUMN logo_image_id TEXT`,
+  // Phase 14 — a nightlife venue's weekly line-up (Wednesday karaoke, Friday
+  // party night, etc.), shown when someone opens the venue's detail view.
+  `ALTER TABLE nightlife_venues ADD COLUMN weekly_program TEXT NOT NULL DEFAULT '[]'`,
 ];
 
 const ready = (async () => {
@@ -360,12 +364,13 @@ const ready = (async () => {
       await client.execute({
         sql: `INSERT OR IGNORE INTO nightlife_venues
               (id, name, tagline, vibe, location, image_id, color_fallback,
-               fee_min, fee_max, fee_note, state, sort_order)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+               fee_min, fee_max, fee_note, weekly_program, state, sort_order)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         args: [
           v.id, v.name, v.tagline || '', v.vibe || 'Bar', v.location || '',
           v.imageId || '', v.colorFallback || '#1A1A1A',
           v.feeMin || 0, v.feeMax || 0, v.feeNote || null,
+          JSON.stringify(v.weeklyProgram || []),
           v.state || 'Lagos', v.sortOrder || 0,
         ],
       });
@@ -890,6 +895,7 @@ function parseNightlifeRow(row) {
     feeMin:        Number(row.fee_min),
     feeMax:        Number(row.fee_max),
     feeNote:       row.fee_note || null,
+    weeklyProgram: JSON.parse(row.weekly_program || '[]'),
     state:         row.state,
     published:     Boolean(row.published),
     sortOrder:     Number(row.sort_order || 0),
@@ -918,13 +924,14 @@ async function upsertNightlifeVenue(v) {
     await client.execute({
       sql: `UPDATE nightlife_venues SET
               name=?, tagline=?, vibe=?, location=?, image_id=?, color_fallback=?,
-              fee_min=?, fee_max=?, fee_note=?, state=?, published=?, sort_order=?,
+              fee_min=?, fee_max=?, fee_note=?, weekly_program=?, state=?, published=?, sort_order=?,
               updated_at=unixepoch()
             WHERE id=?`,
       args: [
         v.name, v.tagline || '', v.vibe || 'Bar', v.location || '',
         v.imageId || '', v.colorFallback || '#1A1A1A',
         v.feeMin || 0, v.feeMax || 0, v.feeNote || null,
+        JSON.stringify(v.weeklyProgram || []),
         v.state || 'Lagos', v.published !== false ? 1 : 0, v.sortOrder || 0,
         v.id,
       ],
@@ -933,12 +940,13 @@ async function upsertNightlifeVenue(v) {
     await client.execute({
       sql: `INSERT INTO nightlife_venues
               (id, name, tagline, vibe, location, image_id, color_fallback,
-               fee_min, fee_max, fee_note, state, published, sort_order)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+               fee_min, fee_max, fee_note, weekly_program, state, published, sort_order)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [
         v.id, v.name, v.tagline || '', v.vibe || 'Bar', v.location || '',
         v.imageId || '', v.colorFallback || '#1A1A1A',
         v.feeMin || 0, v.feeMax || 0, v.feeNote || null,
+        JSON.stringify(v.weeklyProgram || []),
         v.state || 'Lagos', v.published !== false ? 1 : 0, v.sortOrder || 0,
       ],
     });

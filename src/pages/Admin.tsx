@@ -16,6 +16,8 @@ import {
   type NightlifeVenue,
   EMPTY_NIGHTLIFE_VENUE,
   NIGHTLIFE_VIBES,
+  type WeeklyProgramEntry,
+  DAYS_OF_WEEK,
   type EventItem,
   EMPTY_EVENT,
   EVENT_CATEGORIES,
@@ -125,6 +127,75 @@ function ListEditor({
           </button>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── Weekly program editor (nightlife venues) ───────────────────────────────────
+// What's on which night — Wednesday karaoke, Friday party night, that sort of
+// thing. Shown on the venue's detail view so someone can plan around it.
+
+function WeeklyProgramEditor({
+  items,
+  onChange,
+}: {
+  items: WeeklyProgramEntry[];
+  onChange: (items: WeeklyProgramEntry[]) => void;
+}) {
+  const [day, setDay] = useState<string>(DAYS_OF_WEEK[0]);
+  const [activity, setActivity] = useState("");
+
+  function add() {
+    if (!activity.trim()) return;
+    onChange([...items, { day, activity: activity.trim() }]);
+    setActivity("");
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+        Weekly program <span className="text-gray-400 normal-case font-normal">(what's on, which night)</span>
+      </label>
+      <div className="flex gap-2">
+        <select
+          value={day}
+          onChange={(e) => setDay(e.target.value)}
+          className="border border-gray-200 rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+        >
+          {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <input
+          value={activity}
+          onChange={(e) => setActivity(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder="Karaoke Night"
+          className="flex-1 border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+        />
+        <button
+          type="button"
+          onClick={add}
+          disabled={!activity.trim()}
+          className="px-3 py-2 bg-gray-800 text-white rounded text-sm hover:bg-gray-700 disabled:opacity-40"
+        >
+          + Add
+        </button>
+      </div>
+      {items.map((entry, i) => (
+        <div key={i} className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded px-3 py-1.5">
+          <span className="text-xs font-medium text-gray-500 w-20 shrink-0">{entry.day}</span>
+          <span className="flex-1 text-sm">{entry.activity}</span>
+          <button
+            type="button"
+            onClick={() => onChange(items.filter((_, j) => j !== i))}
+            className="text-gray-400 hover:text-red-500 text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+      {items.length === 0 && (
+        <p className="text-xs text-gray-400">Nothing added — shown only if this venue has a regular line-up.</p>
+      )}
     </div>
   );
 }
@@ -1887,6 +1958,15 @@ function NightlifeForm({
             <label className={labelCls}>Fee note <span className="text-gray-400 normal-case font-normal">(optional, overrides the range shown)</span></label>
             <input value={form.feeNote || ""} onChange={e => set("feeNote", e.target.value || null)} className={inp} placeholder="Free before 10pm, ₦5,000 after" />
           </div>
+        </div>
+
+        <div className={section}>
+          <h2 className="font-semibold text-gray-900">Weekly program</h2>
+          <p className="text-xs text-gray-400">
+            What's on which night — Karaoke every Wednesday, Party Night every Friday, that kind of thing.
+            Shown to anyone who opens this venue's details.
+          </p>
+          <WeeklyProgramEditor items={form.weeklyProgram} onChange={v => set("weeklyProgram", v)} />
         </div>
 
         <div className={section}>

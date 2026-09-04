@@ -67,6 +67,16 @@ export const EMPTY_EXPERIENCE: Omit<Experience, 'id' | 'createdAt' | 'updatedAt'
 
 // ── Nightlife venues — curated for Explore's "Nightlife in {city}" section ──
 
+/** One line of a venue's weekly line-up, e.g. { day: "Wednesday", activity: "Karaoke Night" }. */
+export interface WeeklyProgramEntry {
+  day: string;
+  activity: string;
+}
+
+export const DAYS_OF_WEEK = [
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+] as const;
+
 export interface NightlifeVenue {
   id: string;
   name: string;
@@ -78,6 +88,8 @@ export interface NightlifeVenue {
   feeMin: number;
   feeMax: number;
   feeNote: string | null;
+  /** What's on which night, e.g. Wednesday → Karaoke, Friday → Party Night. */
+  weeklyProgram: WeeklyProgramEntry[];
   state: string;
   published: boolean;
   sortOrder: number;
@@ -97,6 +109,7 @@ export const EMPTY_NIGHTLIFE_VENUE: Omit<NightlifeVenue, 'id' | 'createdAt' | 'u
   feeMin:        0,
   feeMax:        0,
   feeNote:       null,
+  weeklyProgram: [],
   state:         'Lagos',
   published:     true,
   sortOrder:     0,

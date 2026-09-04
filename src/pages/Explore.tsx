@@ -114,11 +114,13 @@ function AgencyTripCard({ trip }: { trip: AgencyListing }) {
  * A curated nightlife venue — admin-added, with a photo, from /admin →
  * Nightlife. Same aspect-square card shape as a Trip, so switching between
  * tabs on Explore feels like one consistent grid rather than a different UI.
+ * Clicking it opens the full detail — location, entry fee, weekly program.
  */
-function CuratedNightlifeCard({ v }: { v: NightlifeVenue }) {
+function CuratedNightlifeCard({ v, onSelect }: { v: NightlifeVenue; onSelect: () => void }) {
   return (
-    <div
-      className="group relative aspect-square overflow-hidden"
+    <button
+      onClick={onSelect}
+      className="group relative aspect-square overflow-hidden text-left"
       style={{ backgroundColor: v.colorFallback }}
     >
       {v.imageId && (
@@ -143,24 +145,30 @@ function CuratedNightlifeCard({ v }: { v: NightlifeVenue }) {
           <span className="font-marcellus text-sm text-white">
             {v.feeNote || (v.feeMax > 0 ? `₦${v.feeMin.toLocaleString()}–₦${v.feeMax.toLocaleString()}` : "Free entry")}
           </span>
+          <span className="text-[11px] font-jost font-light text-white/70 group-hover:text-white transition">
+            Details →
+          </span>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
 /** Fallback nightlife card — drawn from the real per-city attractions table
  *  when no admin-curated venue has been added for this city yet. No photo
  *  in that table, so it leans on the emoji and a plain colour block. */
-function FallbackNightlifeCard({ v }: { v: VenueItem }) {
+function FallbackNightlifeCard({ v, onSelect }: { v: VenueItem; onSelect: () => void }) {
   return (
-    <div className="aspect-square bg-foreground text-background p-4 flex flex-col justify-between">
+    <button
+      onClick={onSelect}
+      className="aspect-square bg-foreground text-background p-4 flex flex-col justify-between text-left hover:opacity-90 transition-opacity"
+    >
       <span className="text-3xl leading-none">{v.emoji}</span>
       <div>
         <div className="font-marcellus text-base truncate">{v.name}</div>
         <div className="text-[11px] font-jost font-light text-background/60 mt-1">{v.feeNote}</div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -171,9 +179,11 @@ function FallbackNightlifeCard({ v }: { v: VenueItem }) {
  * still has something real to show rather than sitting empty.
  */
 function NightlifeSection({
-  city, curated, fallback, loading,
+  city, curated, fallback, loading, onSelectVenue, onSelectFallback,
 }: {
   city: string; curated: NightlifeVenue[]; fallback: VenueItem[]; loading: boolean;
+  onSelectVenue: (v: NightlifeVenue) => void;
+  onSelectFallback: (v: VenueItem) => void;
 }) {
   if (loading) {
     return (
@@ -202,23 +212,25 @@ function NightlifeSection({
   return (
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
       {curated.length > 0
-        ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} />)
-        : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} />)}
+        ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} onSelect={() => onSelectVenue(v)} />)
+        : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} onSelect={() => onSelectFallback(v)} />)}
     </div>
   );
 }
 
 /**
  * A single curated event — admin-added, from /admin → Events. Same
- * aspect-square card shape as a Trip and a nightlife venue.
+ * aspect-square card shape as a Trip and a nightlife venue. Clicking it
+ * opens the full detail — location, description and the ticket link.
  */
-function EventCard({ ev }: { ev: EventItem }) {
+function EventCard({ ev, onSelect }: { ev: EventItem; onSelect: () => void }) {
   const dateLabel = ev.eventDate
     ? new Date(ev.eventDate).toLocaleDateString(undefined, { day: "numeric", month: "short" })
     : "Date TBA";
   return (
-    <div
-      className="group relative aspect-square overflow-hidden"
+    <button
+      onClick={onSelect}
+      className="group relative aspect-square overflow-hidden text-left"
       style={{ backgroundColor: ev.colorFallback }}
     >
       {ev.imageId && (
@@ -246,20 +258,12 @@ function EventCard({ ev }: { ev: EventItem }) {
           <span className="font-marcellus text-sm text-white">
             {ev.priceNote || (ev.priceMax > 0 ? `₦${ev.priceMin.toLocaleString()}–₦${ev.priceMax.toLocaleString()}` : "Free")}
           </span>
-          {ev.ticketUrl && (
-            <a
-              href={ev.ticketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-[11px] font-jost font-light text-white/70 hover:text-white transition"
-            >
-              Tickets →
-            </a>
-          )}
+          <span className="text-[11px] font-jost font-light text-white/70 group-hover:text-white transition">
+            Details →
+          </span>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -268,7 +272,11 @@ function EventCard({ ev }: { ev: EventItem }) {
  * back to an honest "coming soon" rather than inventing listings — matching
  * the empty states used elsewhere on this page.
  */
-function EventsSection({ city, events, loading }: { city: string; events: EventItem[]; loading: boolean }) {
+function EventsSection({
+  city, events, loading, onSelectEvent,
+}: {
+  city: string; events: EventItem[]; loading: boolean; onSelectEvent: (ev: EventItem) => void;
+}) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
@@ -295,8 +303,205 @@ function EventsSection({ city, events, loading }: { city: string; events: EventI
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-      {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
+      {events.map(ev => <EventCard key={ev.id} ev={ev} onSelect={() => onSelectEvent(ev)} />)}
     </div>
+  );
+}
+
+/** Shared overlay shell for the three detail views below — a bottom sheet on
+ *  a phone, a centred card on a wider screen. */
+function DetailOverlay({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <button
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+      />
+      <div className="relative bg-card w-full sm:max-w-lg sm:mx-4 max-h-[88vh] overflow-y-auto rounded-t-2xl sm:rounded-none border border-border">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Full detail for an admin-curated nightlife venue — location, entry fee,
+ *  and what's on which night, if the admin has set one up. */
+function NightlifeVenueDetail({ venue, onClose }: { venue: NightlifeVenue; onClose: () => void }) {
+  return (
+    <DetailOverlay onClose={onClose}>
+      <div className="relative h-48" style={{ backgroundColor: venue.colorFallback }}>
+        {venue.imageId && (
+          <img
+            src={cdnImg(venue.imageId, 800, 480)}
+            alt={venue.name}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-3 right-3 w-8 h-8 grid place-items-center bg-black/50 text-white hover:bg-black/70 transition"
+        >
+          ✕
+        </button>
+        <div className="absolute bottom-4 left-5 right-5 text-white">
+          <span className="text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-white/20 backdrop-blur-sm mb-2 inline-block">
+            🌙 {venue.vibe}
+          </span>
+          <h2 className="font-marcellus text-2xl leading-snug">{venue.name}</h2>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {venue.tagline && (
+          <p className="font-jost font-light text-sm text-foreground leading-relaxed">{venue.tagline}</p>
+        )}
+
+        <div className="flex items-start justify-between gap-4 border-y border-border py-4">
+          <div>
+            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Location</div>
+            <div className="font-jost text-sm text-foreground">📍 {venue.location}</div>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Entry</div>
+            <div className="font-marcellus text-base text-foreground">
+              {venue.feeNote || (venue.feeMax > 0 ? `₦${venue.feeMin.toLocaleString()}–₦${venue.feeMax.toLocaleString()}` : "Free entry")}
+            </div>
+          </div>
+        </div>
+
+        {venue.weeklyProgram.length > 0 && (
+          <div>
+            <div className="flex items-center gap-4 mb-3">
+              <span className="h-px w-6 bg-primary" />
+              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                What's on
+              </span>
+            </div>
+            <ul className="space-y-2">
+              {venue.weeklyProgram.map((entry, i) => (
+                <li key={i} className="flex items-center justify-between gap-4 py-2 border-b border-border last:border-0">
+                  <span className="font-jost font-medium text-sm text-foreground">{entry.day}</span>
+                  <span className="font-jost font-light text-sm text-muted-foreground text-right">{entry.activity}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </DetailOverlay>
+  );
+}
+
+/** Lighter detail for a fallback venue drawn from the attractions table —
+ *  no photo or weekly program in that data, just what's actually known. */
+function FallbackVenueDetail({ venue, onClose }: { venue: VenueItem; onClose: () => void }) {
+  return (
+    <DetailOverlay onClose={onClose}>
+      <div className="p-6 space-y-5">
+        <div className="flex items-start justify-between">
+          <span className="text-4xl leading-none">{venue.emoji}</span>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="w-8 h-8 grid place-items-center bg-secondary text-muted-foreground hover:text-foreground transition"
+          >
+            ✕
+          </button>
+        </div>
+        <div>
+          <h2 className="font-marcellus text-2xl text-foreground leading-snug">{venue.name}</h2>
+          <p className="text-xs font-jost font-light text-muted-foreground mt-1">{venue.vibe}</p>
+        </div>
+        <div className="border-t border-border pt-4">
+          <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Entry</div>
+          <div className="font-marcellus text-base text-foreground">{venue.feeNote}</div>
+        </div>
+        <p className="text-xs font-jost font-light text-muted-foreground leading-relaxed">
+          We don't have a full write-up for this one yet — it's listed from our venue price table.
+        </p>
+      </div>
+    </DetailOverlay>
+  );
+}
+
+/** Full detail for a curated event — location, description and, if the
+ *  admin added one, the ticket link telling the squad where to buy. */
+function EventDetail({ event, onClose }: { event: EventItem; onClose: () => void }) {
+  const dateLabel = event.eventDate
+    ? new Date(event.eventDate).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : "Date to be announced";
+  return (
+    <DetailOverlay onClose={onClose}>
+      <div className="relative h-48" style={{ backgroundColor: event.colorFallback }}>
+        {event.imageId && (
+          <img
+            src={cdnImg(event.imageId, 800, 480)}
+            alt={event.name}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-3 right-3 w-8 h-8 grid place-items-center bg-black/50 text-white hover:bg-black/70 transition"
+        >
+          ✕
+        </button>
+        <div className="absolute bottom-4 left-5 right-5 text-white">
+          <span className="text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-signal text-ink capitalize mb-2 inline-block">
+            {event.category}
+          </span>
+          <h2 className="font-marcellus text-2xl leading-snug">{event.name}</h2>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {event.description && (
+          <p className="font-jost font-light text-sm text-foreground leading-relaxed">{event.description}</p>
+        )}
+
+        <div className="grid grid-cols-2 gap-4 border-y border-border py-4">
+          <div>
+            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Date</div>
+            <div className="font-jost text-sm text-foreground">{dateLabel}</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Location</div>
+            <div className="font-jost text-sm text-foreground">📍 {event.location}</div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Price</div>
+            <div className="font-marcellus text-lg text-foreground">
+              {event.priceNote || (event.priceMax > 0 ? `₦${event.priceMin.toLocaleString()}–₦${event.priceMax.toLocaleString()}` : "Free")}
+            </div>
+          </div>
+          {event.ticketUrl && (
+            <a
+              href={event.ticketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
+            >
+              Get tickets →
+            </a>
+          )}
+        </div>
+        {!event.ticketUrl && (
+          <p className="text-xs font-jost font-light text-muted-foreground leading-relaxed">
+            No ticket link yet — check back closer to the date, or ask around at the venue.
+          </p>
+        )}
+      </div>
+    </DetailOverlay>
   );
 }
 
@@ -989,6 +1194,12 @@ export default function Explore() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
 
+  // Which card is open in a detail overlay, if any — one of the three, never
+  // more than one at once.
+  const [openVenue, setOpenVenue] = useState<NightlifeVenue | null>(null);
+  const [openFallbackVenue, setOpenFallbackVenue] = useState<VenueItem | null>(null);
+  const [openEvent, setOpenEvent] = useState<EventItem | null>(null);
+
   useEffect(() => {
     let live = true;
     setCuratedLoading(true);
@@ -1212,6 +1423,8 @@ export default function Explore() {
               curated={nightlifeCurated}
               fallback={nightlifeFallback}
               loading={venuesLoading || curatedLoading}
+              onSelectVenue={setOpenVenue}
+              onSelectFallback={setOpenFallbackVenue}
             />
           )}
 
@@ -1220,6 +1433,7 @@ export default function Explore() {
               city={city}
               events={events}
               loading={eventsLoading}
+              onSelectEvent={setOpenEvent}
             />
           )}
 
@@ -1291,6 +1505,10 @@ export default function Explore() {
           )}
 
         </div>
+
+        {openVenue && <NightlifeVenueDetail venue={openVenue} onClose={() => setOpenVenue(null)} />}
+        {openFallbackVenue && <FallbackVenueDetail venue={openFallbackVenue} onClose={() => setOpenFallbackVenue(null)} />}
+        {openEvent && <EventDetail event={openEvent} onClose={() => setOpenEvent(null)} />}
       </main>
     );
   }
