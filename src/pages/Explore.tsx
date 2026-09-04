@@ -351,7 +351,7 @@ function MapsActions({ location }: { location: string }) {
         href={mapsSearchUrl(location)}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-[11px] font-jost font-medium text-forest hover:underline"
+        className="text-[11px] font-jost font-medium text-signal hover:underline"
       >
         Open in Maps →
       </a>
@@ -362,9 +362,13 @@ function MapsActions({ location }: { location: string }) {
             .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); })
             .catch(() => {});
         }}
-        className="text-[11px] font-jost font-light text-muted-foreground hover:text-foreground transition-colors"
+        className={`border px-3 py-1.5 text-[11px] font-jost font-medium tracking-[0.04em] transition-colors ${
+          copied
+            ? "border-signal text-signal"
+            : "border-border text-foreground hover:border-signal hover:text-signal"
+        }`}
       >
-        {copied ? "✓ Copied" : "📋 Copy location"}
+        {copied ? "✓ Copied" : "Copy location"}
       </button>
     </div>
   );
@@ -553,7 +557,7 @@ function EventDetail({ event, onClose }: { event: EventItem; onClose: () => void
               href={event.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
+              className="inline-flex items-center gap-2 bg-signal text-ink px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:opacity-90 transition-opacity"
             >
               Get tickets →
             </a>
@@ -1447,7 +1451,9 @@ export default function Explore() {
               ))}
             </div>
 
-            <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-xl mb-6">
+            <p className={`font-jost text-sm leading-relaxed max-w-xl mb-6 ${
+              tab === "nightlife" ? "font-medium text-foreground" : "font-light text-muted-foreground"
+            }`}>
               {tab === "ours" &&
                 "Trips we've picked, priced and will run for your squad. Pick one, choose your days and squad size, and we handle the rest."}
               {tab === "nightlife" &&
