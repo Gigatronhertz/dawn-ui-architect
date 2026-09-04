@@ -109,6 +109,85 @@ function AgencyTripCard({ trip }: { trip: AgencyListing }) {
   );
 }
 
+/** A single nightlife venue pulled from the real per-city attractions table. */
+function NightlifeCard({ v }: { v: VenueItem }) {
+  return (
+    <div className="flex-none w-44 bg-foreground text-background p-4 flex flex-col justify-between h-32">
+      <span className="text-2xl leading-none">{v.emoji}</span>
+      <div>
+        <div className="font-jost font-medium text-sm truncate">{v.name}</div>
+        <div className="text-[11px] font-jost font-light text-background/60 mt-0.5">{v.feeNote}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Real bars, clubs and lounges for this city — same 272-venue table the
+ * "Build your own" planner draws from, filtered to the Nightlife vibe.
+ */
+function NightlifeSection({ city, venues, loading, onPlanNight }: { city: string; venues: VenueItem[]; loading: boolean; onPlanNight: () => void }) {
+  if (loading || venues.length === 0) return null;
+  return (
+    <section className="mt-14 pt-10 border-t border-border">
+      <div className="flex items-end justify-between mb-5 gap-4 flex-wrap">
+        <div>
+          <div className="flex items-center gap-4 mb-3">
+            <span className="h-px w-8 bg-primary" />
+            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+              🌙 After dark
+            </span>
+          </div>
+          <h2 className="font-marcellus text-2xl text-foreground">Nightlife in {city}</h2>
+        </div>
+        <button
+          onClick={onPlanNight}
+          className="text-xs font-jost font-medium text-foreground border-b border-foreground hover:text-forest hover:border-forest transition-colors shrink-0"
+        >
+          Build a night out →
+        </button>
+      </div>
+      <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-2 pb-2">
+        {venues.map(v => <NightlifeCard key={v.id} v={v} />)}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Events aren't backed by a data source yet — this stays an honest "coming
+ * soon" rather than invented listings, matching the empty states elsewhere
+ * on this page.
+ */
+function EventsSection({ city, onPlanNight }: { city: string; onPlanNight: () => void }) {
+  return (
+    <section className="mt-14 pt-10 border-t border-border">
+      <div className="flex items-center gap-4 mb-5">
+        <span className="h-px w-8 bg-primary" />
+        <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+          🎟️ What's on
+        </span>
+      </div>
+      <div className="border border-border p-10 text-center">
+        <div className="text-4xl mb-4">🎟️</div>
+        <h2 className="font-marcellus text-2xl text-foreground mb-3">
+          Events in {city} — coming soon
+        </h2>
+        <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
+          We're building out concerts, festivals and pop-ups your squad can plan a trip around.
+          Until then, build your own night out from the places we already have listed.
+        </p>
+        <button
+          onClick={onPlanNight}
+          className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
+        >
+          Build your own night out
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function ExperienceCard({ exp, onSelect }: { exp: Experience; onSelect: () => void }) {
   return (
     <button
@@ -755,6 +834,12 @@ export default function Explore() {
   // "ours" = trips Karije picked and runs. "own" = build your own day out.
   const [tab, setTab] = useState<"ours" | "own">("ours");
 
+  // Real venues for this city, from the same 272-venue table the "Build your
+  // own" planner uses — powers the Nightlife section regardless of which tab
+  // is active.
+  const [cityVenues, setCityVenues] = useState<VenueItem[]>([]);
+  const [venuesLoading, setVenuesLoading] = useState(true);
+
   useEffect(() => {
     let live = true;
     setLoading(true);
@@ -768,6 +853,21 @@ export default function Explore() {
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [city]);
+
+  useEffect(() => {
+    let live = true;
+    setVenuesLoading(true);
+    api.getAttractions(city)
+      .then(d => { if (live) setCityVenues((d.attractions ?? []).map(toVenue)); })
+      .catch(() => { if (live) setCityVenues([]); })
+      .finally(() => { if (live) setVenuesLoading(false); });
+    return () => { live = false; };
+  }, [city]);
+
+  const nightlifeVenues = useMemo(
+    () => cityVenues.filter(v => v.vibe === "Nightlife").slice(0, 10),
+    [cityVenues]
+  );
 
   // Reset to browse when city changes
   useEffect(() => {
@@ -1029,6 +1129,14 @@ export default function Explore() {
               )}
             </div>
           )}
+
+          <NightlifeSection
+            city={city}
+            venues={nightlifeVenues}
+            loading={venuesLoading}
+            onPlanNight={() => setTab("own")}
+          />
+          <EventsSection city={city} onPlanNight={() => setTab("own")} />
         </div>
       </main>
     );
