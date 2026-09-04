@@ -13,11 +13,17 @@ import {
   type Experience,
   type DaySchedule,
   EMPTY_EXPERIENCE,
+  type NightlifeVenue,
+  EMPTY_NIGHTLIFE_VENUE,
+  NIGHTLIFE_VIBES,
+  type EventItem,
+  EMPTY_EVENT,
+  EVENT_CATEGORIES,
 } from "@/lib/experienceTypes";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-type Tab = "experiences" | "attractions" | "money";
+type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money";
 
 type MoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
@@ -598,6 +604,354 @@ function ExperiencesSection({ adminKey }: { adminKey: string }) {
                 >
                   Delete
                 </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Nightlife section ─────────────────────────────────────────────────────────
+// Curated venues for Explore's "Nightlife in {city}" section — the same
+// list/create/edit/delete/reorder shape as Trips, minus the day-by-day plan.
+
+function NightlifeSection({ adminKey }: { adminKey: string }) {
+  const [venues, setVenues] = useState<NightlifeVenue[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [listErr, setListErr] = useState("");
+  const [stateFilter, setStateFilter] = useState("All");
+  const [editing, setEditing] = useState<NightlifeVenue | null>(null);
+  const [formBusy, setFormBusy] = useState(false);
+  const [formErr, setFormErr] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    setListErr("");
+    apiFetch<{ venues: NightlifeVenue[] }>("/admin/nightlife", adminKey)
+      .then(d => setVenues(d.venues))
+      .catch(e => setListErr(e.message))
+      .finally(() => setLoading(false));
+  }, [adminKey]);
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    try {
+      await apiFetch(`/admin/nightlife/${id}`, adminKey, { method: "DELETE" });
+      setVenues(prev => prev.filter(v => v.id !== id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Delete failed.");
+    }
+  }
+
+  async function handleSave(v: NightlifeVenue) {
+    setFormBusy(true);
+    setFormErr("");
+    try {
+      const isNew = !venues.find(x => x.id === v.id);
+      const result = await apiFetch<{ ok: boolean; venue: NightlifeVenue }>(
+        isNew ? "/admin/nightlife" : `/admin/nightlife/${v.id}`,
+        adminKey,
+        { method: isNew ? "POST" : "PUT", body: JSON.stringify(v) }
+      );
+      setVenues(prev => isNew ? [...prev, result.venue] : prev.map(x => x.id === v.id ? result.venue : x));
+      setEditing(null);
+    } catch (err) {
+      setFormErr(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setFormBusy(false);
+    }
+  }
+
+  async function move(v: NightlifeVenue, dir: -1 | 1) {
+    const group = venues.filter(x => x.state === v.state).sort((a, b) => a.sortOrder - b.sortOrder);
+    const i = group.findIndex(x => x.id === v.id);
+    const swap = group[i + dir];
+    if (!swap) return;
+
+    const a = { ...v,    sortOrder: i + dir };
+    const b = { ...swap, sortOrder: i };
+    setVenues(prev => prev.map(x => x.id === a.id ? a : x.id === b.id ? b : x));
+
+    try {
+      await Promise.all([a, b].map(x =>
+        apiFetch(`/admin/nightlife/${x.id}`, adminKey, { method: "PUT", body: JSON.stringify(x) })
+      ));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not save the new order.");
+      setVenues(prev => prev.map(x => x.id === v.id ? v : x.id === swap.id ? swap : x));
+    }
+  }
+
+  if (editing) {
+    return (
+      <NightlifeForm
+        initial={editing}
+        onSave={handleSave}
+        onCancel={() => { setEditing(null); setFormErr(""); }}
+        busy={formBusy}
+        error={formErr}
+        adminKey={adminKey}
+      />
+    );
+  }
+
+  const filtered = venues
+    .filter(v => stateFilter === "All" || v.state === stateFilter)
+    .sort((a, b) => a.state.localeCompare(b.state) || a.sortOrder - b.sortOrder);
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
+          {["All", ...Array.from(new Set(venues.map(v => v.state))).sort()].map(s => (
+            <button
+              key={s}
+              onClick={() => setStateFilter(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                stateFilter === s
+                  ? "bg-[#2F4A33] text-[#F7F1E7]"
+                  : "bg-white border border-gray-200 text-gray-600 hover:border-gray-400"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setEditing({ id: `night_${Date.now()}`, ...EMPTY_NIGHTLIFE_VENUE } as NightlifeVenue)}
+          className="bg-[#2F4A33] text-[#F7F1E7] px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
+        >
+          + New venue
+        </button>
+      </div>
+
+      {loading && <p className="text-sm text-gray-500">Loading…</p>}
+      {listErr && <p className="text-sm text-red-500">{listErr}</p>}
+
+      {!loading && filtered.length === 0 && (
+        <div className="text-center py-16 text-gray-400">
+          <div className="text-4xl mb-3">🌙</div>
+          <p className="text-sm">No nightlife venues for {stateFilter}. Add one above.</p>
+        </div>
+      )}
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(v => (
+          <div key={v.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <div className="h-32 relative" style={{ backgroundColor: v.colorFallback }}>
+              {v.imageId && (
+                <img
+                  src={tripImageUrl(v.imageId, 480, 200)}
+                  alt={v.name}
+                  className="w-full h-full object-cover"
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+              <div className="absolute top-2 left-2 flex gap-1.5">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${v.published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {v.published ? "Published" : "Draft"}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/80 text-gray-600 font-medium">
+                  🌙 {v.vibe}
+                </span>
+              </div>
+              <div className="absolute top-2 right-2 flex gap-1">
+                <button type="button" onClick={() => move(v, -1)} title="Show this earlier" className="w-7 h-7 grid place-items-center rounded-full bg-white/90 text-gray-700 hover:bg-white hover:text-green-700 shadow-sm text-sm">↑</button>
+                <button type="button" onClick={() => move(v, 1)} title="Show this later" className="w-7 h-7 grid place-items-center rounded-full bg-white/90 text-gray-700 hover:bg-white hover:text-green-700 shadow-sm text-sm">↓</button>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <div className="text-[10px] text-gray-400 font-mono mb-1">{v.id}</div>
+              <h3 className="font-semibold text-gray-900">{v.name}</h3>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">{v.tagline}</p>
+
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-xs font-mono text-gray-800">
+                  {v.feeMax > 0 ? `₦${v.feeMin.toLocaleString()}–₦${v.feeMax.toLocaleString()}` : "Free entry"}
+                </span>
+                <span className="text-[10px] text-gray-400">{v.state}</span>
+              </div>
+
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => setEditing(v)} className="flex-1 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">Edit</button>
+                <button onClick={() => handleDelete(v.id, v.name)} className="flex-1 text-center border border-red-100 rounded-lg py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition">Delete</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Events section ─────────────────────────────────────────────────────────────
+// Curated events for Explore's "What's on" section. Same shape as Nightlife,
+// with a date and a ticket link in place of a vibe tag.
+
+function EventsSection({ adminKey }: { adminKey: string }) {
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [listErr, setListErr] = useState("");
+  const [stateFilter, setStateFilter] = useState("All");
+  const [editing, setEditing] = useState<EventItem | null>(null);
+  const [formBusy, setFormBusy] = useState(false);
+  const [formErr, setFormErr] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    setListErr("");
+    apiFetch<{ events: EventItem[] }>("/admin/events", adminKey)
+      .then(d => setEvents(d.events))
+      .catch(e => setListErr(e.message))
+      .finally(() => setLoading(false));
+  }, [adminKey]);
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    try {
+      await apiFetch(`/admin/events/${id}`, adminKey, { method: "DELETE" });
+      setEvents(prev => prev.filter(e => e.id !== id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Delete failed.");
+    }
+  }
+
+  async function handleSave(ev: EventItem) {
+    setFormBusy(true);
+    setFormErr("");
+    try {
+      const isNew = !events.find(x => x.id === ev.id);
+      const result = await apiFetch<{ ok: boolean; event: EventItem }>(
+        isNew ? "/admin/events" : `/admin/events/${ev.id}`,
+        adminKey,
+        { method: isNew ? "POST" : "PUT", body: JSON.stringify(ev) }
+      );
+      setEvents(prev => isNew ? [...prev, result.event] : prev.map(x => x.id === ev.id ? result.event : x));
+      setEditing(null);
+    } catch (err) {
+      setFormErr(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setFormBusy(false);
+    }
+  }
+
+  async function move(ev: EventItem, dir: -1 | 1) {
+    const group = events.filter(x => x.state === ev.state).sort((a, b) => a.sortOrder - b.sortOrder);
+    const i = group.findIndex(x => x.id === ev.id);
+    const swap = group[i + dir];
+    if (!swap) return;
+
+    const a = { ...ev,   sortOrder: i + dir };
+    const b = { ...swap, sortOrder: i };
+    setEvents(prev => prev.map(x => x.id === a.id ? a : x.id === b.id ? b : x));
+
+    try {
+      await Promise.all([a, b].map(x =>
+        apiFetch(`/admin/events/${x.id}`, adminKey, { method: "PUT", body: JSON.stringify(x) })
+      ));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not save the new order.");
+      setEvents(prev => prev.map(x => x.id === ev.id ? ev : x.id === swap.id ? swap : x));
+    }
+  }
+
+  if (editing) {
+    return (
+      <EventForm
+        initial={editing}
+        onSave={handleSave}
+        onCancel={() => { setEditing(null); setFormErr(""); }}
+        busy={formBusy}
+        error={formErr}
+        adminKey={adminKey}
+      />
+    );
+  }
+
+  const filtered = events
+    .filter(e => stateFilter === "All" || e.state === stateFilter)
+    .sort((a, b) => a.state.localeCompare(b.state) || a.sortOrder - b.sortOrder);
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
+          {["All", ...Array.from(new Set(events.map(e => e.state))).sort()].map(s => (
+            <button
+              key={s}
+              onClick={() => setStateFilter(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                stateFilter === s
+                  ? "bg-[#2F4A33] text-[#F7F1E7]"
+                  : "bg-white border border-gray-200 text-gray-600 hover:border-gray-400"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setEditing({ id: `evt_${Date.now()}`, ...EMPTY_EVENT } as EventItem)}
+          className="bg-[#2F4A33] text-[#F7F1E7] px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
+        >
+          + New event
+        </button>
+      </div>
+
+      {loading && <p className="text-sm text-gray-500">Loading…</p>}
+      {listErr && <p className="text-sm text-red-500">{listErr}</p>}
+
+      {!loading && filtered.length === 0 && (
+        <div className="text-center py-16 text-gray-400">
+          <div className="text-4xl mb-3">🎟️</div>
+          <p className="text-sm">No events for {stateFilter}. Add one above.</p>
+        </div>
+      )}
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(ev => (
+          <div key={ev.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <div className="h-32 relative" style={{ backgroundColor: ev.colorFallback }}>
+              {ev.imageId && (
+                <img
+                  src={tripImageUrl(ev.imageId, 480, 200)}
+                  alt={ev.name}
+                  className="w-full h-full object-cover"
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+              <div className="absolute top-2 left-2 flex gap-1.5">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ev.published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {ev.published ? "Published" : "Draft"}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/80 text-gray-600 font-medium capitalize">
+                  🎟️ {ev.category}
+                </span>
+              </div>
+              <div className="absolute top-2 right-2 flex gap-1">
+                <button type="button" onClick={() => move(ev, -1)} title="Show this earlier" className="w-7 h-7 grid place-items-center rounded-full bg-white/90 text-gray-700 hover:bg-white hover:text-green-700 shadow-sm text-sm">↑</button>
+                <button type="button" onClick={() => move(ev, 1)} title="Show this later" className="w-7 h-7 grid place-items-center rounded-full bg-white/90 text-gray-700 hover:bg-white hover:text-green-700 shadow-sm text-sm">↓</button>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <div className="text-[10px] text-gray-400 font-mono mb-1">{ev.id}</div>
+              <h3 className="font-semibold text-gray-900">{ev.name}</h3>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">{ev.tagline}</p>
+
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-xs font-mono text-gray-800">
+                  {ev.eventDate ? new Date(ev.eventDate).toLocaleDateString() : "Date TBA"}
+                </span>
+                <span className="text-[10px] text-gray-400">{ev.state}</span>
+              </div>
+
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => setEditing(ev)} className="flex-1 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">Edit</button>
+                <button onClick={() => handleDelete(ev.id, ev.name)} className="flex-1 text-center border border-red-100 rounded-lg py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition">Delete</button>
               </div>
             </div>
           </div>
@@ -1199,6 +1553,8 @@ export default function Admin() {
 
   const TABS: { id: Tab; label: string; hint: string }[] = [
     { id: "experiences", label: "Trips",       hint: "Curated trips on /start/explore" },
+    { id: "nightlife",   label: "Nightlife",   hint: "Venues on Explore's Nightlife section" },
+    { id: "events",      label: "Events",      hint: "Events on Explore's What's on section" },
     { id: "money",       label: "Money",       hint: "Collected, owed, and paid out" },
     { id: "attractions", label: "Attractions", hint: "Prices the planner quotes" },
   ];
@@ -1232,6 +1588,8 @@ export default function Admin() {
       </header>
 
       {tab === "experiences" && <ExperiencesSection adminKey={adminKey} />}
+      {tab === "nightlife"   && <NightlifeSection   adminKey={adminKey} />}
+      {tab === "events"      && <EventsSection      adminKey={adminKey} />}
       {tab === "money"       && <MoneySection       adminKey={adminKey} />}
       {tab === "attractions" && <AttractionsSection adminKey={adminKey} />}
     </main>
@@ -1429,6 +1787,299 @@ function ExperienceForm({
             className="bg-[#2F4A33] text-[#F7F1E7] px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
           >
             {busy ? "Saving…" : "Save experience"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NightlifeForm({
+  initial,
+  onSave,
+  onCancel,
+  busy,
+  error,
+  adminKey,
+}: {
+  initial: NightlifeVenue;
+  onSave: (v: NightlifeVenue) => void;
+  onCancel: () => void;
+  busy: boolean;
+  error: string;
+  adminKey: string;
+}) {
+  const [form, setForm] = useState<NightlifeVenue>(initial);
+
+  const set = <K extends keyof NightlifeVenue>(key: K, val: NightlifeVenue[K]) =>
+    setForm(f => ({ ...f, [key]: val }));
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    onSave(form);
+  }
+
+  return (
+    <div className="pb-24">
+      <div className="sticky top-[97px] z-[9] bg-gray-50/95 backdrop-blur border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-800">← Back</button>
+          <span className="text-sm font-semibold text-gray-900">
+            {initial.name ? `Edit: ${initial.name}` : "New venue"}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {error && <span className="text-xs text-red-500">{error}</span>}
+          <button
+            onClick={handleSubmit}
+            disabled={busy}
+            className="bg-[#2F4A33] text-[#F7F1E7] px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
+          >
+            {busy ? "Saving…" : "Save venue"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-3xl px-6 pt-8 space-y-6">
+        <div className={section}>
+          <h2 className="font-semibold text-gray-900">Basic info</h2>
+          <div>
+            <label className={labelCls}>Name</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)} className={inp} placeholder="Quilox" required />
+          </div>
+          <div>
+            <label className={labelCls}>Tagline <span className="text-gray-400 normal-case font-normal">(1 short sentence)</span></label>
+            <input value={form.tagline} onChange={e => set("tagline", e.target.value)} className={inp} placeholder="Lagos's biggest club night, every Friday" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>State</label>
+              <select value={form.state} onChange={e => set("state", e.target.value)} className={inp}>
+                {ALL_STATES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Vibe</label>
+              <select value={form.vibe} onChange={e => set("vibe", e.target.value)} className={inp}>
+                {NIGHTLIFE_VIBES.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Location <span className="text-gray-400 normal-case font-normal">(display address)</span></label>
+            <input value={form.location} onChange={e => set("location", e.target.value)} className={inp} placeholder="Victoria Island, Lagos" />
+          </div>
+        </div>
+
+        <div className={section}>
+          <h2 className="font-semibold text-gray-900">Entry fee</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Fee min (₦)</label>
+              <input type="number" min={0} value={form.feeMin} onChange={e => set("feeMin", Number(e.target.value))} className={inp} />
+            </div>
+            <div>
+              <label className={labelCls}>Fee max (₦)</label>
+              <input type="number" min={0} value={form.feeMax} onChange={e => set("feeMax", Number(e.target.value))} className={inp} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Fee note <span className="text-gray-400 normal-case font-normal">(optional, overrides the range shown)</span></label>
+            <input value={form.feeNote || ""} onChange={e => set("feeNote", e.target.value || null)} className={inp} placeholder="Free before 10pm, ₦5,000 after" />
+          </div>
+        </div>
+
+        <div className={section}>
+          <h2 className="font-semibold text-gray-900">Media</h2>
+          <PhotoField value={form.imageId} onChange={v => set("imageId", v)} adminKey={adminKey} />
+          <div>
+            <label className={labelCls}>Colour fallback <span className="text-gray-400 normal-case font-normal">(shown if image fails)</span></label>
+            <div className="flex items-center gap-3">
+              <input type="color" value={form.colorFallback} onChange={e => set("colorFallback", e.target.value)} className="h-10 w-14 border border-gray-200 rounded cursor-pointer" />
+              <input value={form.colorFallback} onChange={e => set("colorFallback", e.target.value)} className={`${inp} w-32`} />
+            </div>
+          </div>
+        </div>
+
+        <div className={section}>
+          <h2 className="font-semibold text-gray-900">Settings</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Position on the page</label>
+              <p className="text-sm text-gray-500 pt-2">Use the ↑ ↓ arrows on the venue cards to change what shows first.</p>
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={form.published} onChange={e => set("published", e.target.checked)} className="w-4 h-4 accent-green-700" />
+                <span className="text-sm font-medium text-gray-700">Published</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pb-8">
+          <button onClick={onCancel} className="px-5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button
+            onClick={handleSubmit}
+            disabled={busy}
+            className="bg-[#2F4A33] text-[#F7F1E7] px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
+          >
+            {busy ? "Saving…" : "Save venue"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EventForm({
+  initial,
+  onSave,
+  onCancel,
+  busy,
+  error,
+  adminKey,
+}: {
+  initial: EventItem;
+  onSave: (e: EventItem) => void;
+  onCancel: () => void;
+  busy: boolean;
+  error: string;
+  adminKey: string;
+}) {
+  const [form, setForm] = useState<EventItem>(initial);
+
+  const set = <K extends keyof EventItem>(key: K, val: EventItem[K]) =>
+    setForm(f => ({ ...f, [key]: val }));
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    onSave(form);
+  }
+
+  return (
+    <div className="pb-24">
+      <div className="sticky top-[97px] z-[9] bg-gray-50/95 backdrop-blur border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-800">← Back</button>
+          <span className="text-sm font-semibold text-gray-900">
+            {initial.name ? `Edit: ${initial.name}` : "New event"}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {error && <span className="text-xs text-red-500">{error}</span>}
+          <button
+            onClick={handleSubmit}
+            disabled={busy}
+            className="bg-[#2F4A33] text-[#F7F1E7] px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
+          >
+            {busy ? "Saving…" : "Save event"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-3xl px-6 pt-8 space-y-6">
+        <div className={section}>
+          <h2 className="font-semibold text-gray-900">Basic info</h2>
+          <div>
+            <label className={labelCls}>Name</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)} className={inp} placeholder="Lagos Jazz Festival" required />
+          </div>
+          <div>
+            <label className={labelCls}>Tagline <span className="text-gray-400 normal-case font-normal">(1 short sentence)</span></label>
+            <input value={form.tagline} onChange={e => set("tagline", e.target.value)} className={inp} placeholder="A weekend of live jazz on the waterfront" />
+          </div>
+          <div>
+            <label className={labelCls}>Description</label>
+            <textarea rows={4} value={form.description} onChange={e => set("description", e.target.value)} className={inp} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>State</label>
+              <select value={form.state} onChange={e => set("state", e.target.value)} className={inp}>
+                {ALL_STATES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Category</label>
+              <select value={form.category} onChange={e => set("category", e.target.value)} className={inp}>
+                {EVENT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Location <span className="text-gray-400 normal-case font-normal">(venue / address)</span></label>
+            <input value={form.location} onChange={e => set("location", e.target.value)} className={inp} placeholder="Landmark Beach, Victoria Island" />
+          </div>
+          <div>
+            <label className={labelCls}>Date</label>
+            <input
+              type="date"
+              value={form.eventDate ? form.eventDate.slice(0, 10) : ""}
+              onChange={e => set("eventDate", e.target.value || null)}
+              className={inp}
+            />
+          </div>
+        </div>
+
+        <div className={section}>
+          <h2 className="font-semibold text-gray-900">Tickets</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Price min (₦)</label>
+              <input type="number" min={0} value={form.priceMin} onChange={e => set("priceMin", Number(e.target.value))} className={inp} />
+            </div>
+            <div>
+              <label className={labelCls}>Price max (₦)</label>
+              <input type="number" min={0} value={form.priceMax} onChange={e => set("priceMax", Number(e.target.value))} className={inp} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Price note <span className="text-gray-400 normal-case font-normal">(optional, overrides the range shown)</span></label>
+            <input value={form.priceNote || ""} onChange={e => set("priceNote", e.target.value || null)} className={inp} placeholder="Free entry, or ₦10,000 VIP" />
+          </div>
+          <div>
+            <label className={labelCls}>Ticket link <span className="text-gray-400 normal-case font-normal">(optional)</span></label>
+            <input value={form.ticketUrl || ""} onChange={e => set("ticketUrl", e.target.value || null)} className={inp} placeholder="https://…" />
+          </div>
+        </div>
+
+        <div className={section}>
+          <h2 className="font-semibold text-gray-900">Media</h2>
+          <PhotoField value={form.imageId} onChange={v => set("imageId", v)} adminKey={adminKey} />
+          <div>
+            <label className={labelCls}>Colour fallback <span className="text-gray-400 normal-case font-normal">(shown if image fails)</span></label>
+            <div className="flex items-center gap-3">
+              <input type="color" value={form.colorFallback} onChange={e => set("colorFallback", e.target.value)} className="h-10 w-14 border border-gray-200 rounded cursor-pointer" />
+              <input value={form.colorFallback} onChange={e => set("colorFallback", e.target.value)} className={`${inp} w-32`} />
+            </div>
+          </div>
+        </div>
+
+        <div className={section}>
+          <h2 className="font-semibold text-gray-900">Settings</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Position on the page</label>
+              <p className="text-sm text-gray-500 pt-2">Use the ↑ ↓ arrows on the event cards to change what shows first.</p>
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={form.published} onChange={e => set("published", e.target.checked)} className="w-4 h-4 accent-green-700" />
+                <span className="text-sm font-medium text-gray-700">Published</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pb-8">
+          <button onClick={onCancel} className="px-5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button
+            onClick={handleSubmit}
+            disabled={busy}
+            className="bg-[#2F4A33] text-[#F7F1E7] px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
+          >
+            {busy ? "Saving…" : "Save event"}
           </button>
         </div>
       </div>

@@ -204,6 +204,49 @@ const SCHEMA = [
     days_json   TEXT NOT NULL,
     created_at  INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // Curated nightlife venues for Explore's "Nightlife in {city}" section.
+  // Separate from `attractions` — that table is the AI planner's price sheet
+  // and classifies "Nightlife" by name heuristic; this one is admin-picked,
+  // with a photo and a tagline, the same way an experience is.
+  `CREATE TABLE IF NOT EXISTS nightlife_venues (
+    id             TEXT PRIMARY KEY,
+    name           TEXT NOT NULL,
+    tagline        TEXT NOT NULL DEFAULT '',
+    vibe           TEXT NOT NULL DEFAULT 'Bar',
+    location       TEXT NOT NULL DEFAULT '',
+    image_id       TEXT NOT NULL DEFAULT '',
+    color_fallback TEXT NOT NULL DEFAULT '#1A1A1A',
+    fee_min        INTEGER NOT NULL DEFAULT 0,
+    fee_max        INTEGER NOT NULL DEFAULT 0,
+    fee_note       TEXT,
+    state          TEXT NOT NULL DEFAULT 'Lagos',
+    published      INTEGER NOT NULL DEFAULT 1,
+    sort_order     INTEGER NOT NULL DEFAULT 0,
+    created_at     INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at     INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  // Curated events for Explore's "What's on" section — concerts, festivals,
+  // pop-ups. Nothing generates these; an admin adds only events that are real.
+  `CREATE TABLE IF NOT EXISTS events (
+    id             TEXT PRIMARY KEY,
+    name           TEXT NOT NULL,
+    tagline        TEXT NOT NULL DEFAULT '',
+    description    TEXT NOT NULL DEFAULT '',
+    category       TEXT NOT NULL DEFAULT 'other',
+    location       TEXT NOT NULL DEFAULT '',
+    event_date     TEXT,
+    image_id       TEXT NOT NULL DEFAULT '',
+    color_fallback TEXT NOT NULL DEFAULT '#2F4A33',
+    price_min      INTEGER NOT NULL DEFAULT 0,
+    price_max      INTEGER NOT NULL DEFAULT 0,
+    price_note     TEXT,
+    ticket_url     TEXT,
+    state          TEXT NOT NULL DEFAULT 'Lagos',
+    published      INTEGER NOT NULL DEFAULT 1,
+    sort_order     INTEGER NOT NULL DEFAULT 0,
+    created_at     INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at     INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
 ];
 
 // Safe schema migrations — new columns added after initial release.
@@ -795,6 +838,162 @@ function parseExpRow(row) {
   };
 }
 
+// ── Nightlife venue helpers ─────────────────────────────────────────────────
+
+function parseNightlifeRow(row) {
+  if (!row) return null;
+  return {
+    id:            row.id,
+    name:          row.name,
+    tagline:       row.tagline,
+    vibe:          row.vibe,
+    location:      row.location,
+    imageId:       row.image_id,
+    colorFallback: row.color_fallback,
+    feeMin:        Number(row.fee_min),
+    feeMax:        Number(row.fee_max),
+    feeNote:       row.fee_note || null,
+    state:         row.state,
+    published:     Boolean(row.published),
+    sortOrder:     Number(row.sort_order || 0),
+    createdAt:     Number(row.created_at),
+    updatedAt:     Number(row.updated_at),
+  };
+}
+
+/** List curated nightlife venues. `state: null` spans every state. */
+async function getNightlifeVenues({ state = 'Lagos', all = false } = {}) {
+  const where = [];
+  const args  = [];
+  if (state) { where.push('state = ?'); args.push(state); }
+  if (!all)    where.push('published = 1');
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const rows = await rawAll(
+    `SELECT * FROM nightlife_venues ${clause} ORDER BY sort_order, created_at`,
+    args
+  );
+  return rows.map(parseNightlifeRow);
+}
+
+async function upsertNightlifeVenue(v) {
+  const existing = await raw('SELECT id FROM nightlife_venues WHERE id = ?', [v.id]);
+  if (existing) {
+    await client.execute({
+      sql: `UPDATE nightlife_venues SET
+              name=?, tagline=?, vibe=?, location=?, image_id=?, color_fallback=?,
+              fee_min=?, fee_max=?, fee_note=?, state=?, published=?, sort_order=?,
+              updated_at=unixepoch()
+            WHERE id=?`,
+      args: [
+        v.name, v.tagline || '', v.vibe || 'Bar', v.location || '',
+        v.imageId || '', v.colorFallback || '#1A1A1A',
+        v.feeMin || 0, v.feeMax || 0, v.feeNote || null,
+        v.state || 'Lagos', v.published !== false ? 1 : 0, v.sortOrder || 0,
+        v.id,
+      ],
+    });
+  } else {
+    await client.execute({
+      sql: `INSERT INTO nightlife_venues
+              (id, name, tagline, vibe, location, image_id, color_fallback,
+               fee_min, fee_max, fee_note, state, published, sort_order)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [
+        v.id, v.name, v.tagline || '', v.vibe || 'Bar', v.location || '',
+        v.imageId || '', v.colorFallback || '#1A1A1A',
+        v.feeMin || 0, v.feeMax || 0, v.feeNote || null,
+        v.state || 'Lagos', v.published !== false ? 1 : 0, v.sortOrder || 0,
+      ],
+    });
+  }
+  return raw('SELECT * FROM nightlife_venues WHERE id = ?', [v.id]).then(parseNightlifeRow);
+}
+
+async function deleteNightlifeVenue(id) {
+  await client.execute({ sql: 'DELETE FROM nightlife_venues WHERE id = ?', args: [id] });
+}
+
+// ── Event helpers ────────────────────────────────────────────────────────────
+
+function parseEventRow(row) {
+  if (!row) return null;
+  return {
+    id:            row.id,
+    name:          row.name,
+    tagline:       row.tagline,
+    description:   row.description,
+    category:      row.category,
+    location:      row.location,
+    eventDate:     row.event_date || null,
+    imageId:       row.image_id,
+    colorFallback: row.color_fallback,
+    priceMin:      Number(row.price_min),
+    priceMax:      Number(row.price_max),
+    priceNote:     row.price_note || null,
+    ticketUrl:     row.ticket_url || null,
+    state:         row.state,
+    published:     Boolean(row.published),
+    sortOrder:     Number(row.sort_order || 0),
+    createdAt:     Number(row.created_at),
+    updatedAt:     Number(row.updated_at),
+  };
+}
+
+/** List curated events. `state: null` spans every state. */
+async function getEvents({ state = 'Lagos', all = false } = {}) {
+  const where = [];
+  const args  = [];
+  if (state) { where.push('state = ?'); args.push(state); }
+  if (!all)    where.push('published = 1');
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const rows = await rawAll(
+    `SELECT * FROM events ${clause} ORDER BY sort_order, created_at`,
+    args
+  );
+  return rows.map(parseEventRow);
+}
+
+async function upsertEvent(e) {
+  const existing = await raw('SELECT id FROM events WHERE id = ?', [e.id]);
+  if (existing) {
+    await client.execute({
+      sql: `UPDATE events SET
+              name=?, tagline=?, description=?, category=?, location=?, event_date=?,
+              image_id=?, color_fallback=?, price_min=?, price_max=?, price_note=?,
+              ticket_url=?, state=?, published=?, sort_order=?, updated_at=unixepoch()
+            WHERE id=?`,
+      args: [
+        e.name, e.tagline || '', e.description || '', e.category || 'other',
+        e.location || '', e.eventDate || null,
+        e.imageId || '', e.colorFallback || '#2F4A33',
+        e.priceMin || 0, e.priceMax || 0, e.priceNote || null, e.ticketUrl || null,
+        e.state || 'Lagos', e.published !== false ? 1 : 0, e.sortOrder || 0,
+        e.id,
+      ],
+    });
+  } else {
+    await client.execute({
+      sql: `INSERT INTO events
+              (id, name, tagline, description, category, location, event_date,
+               image_id, color_fallback, price_min, price_max, price_note, ticket_url,
+               state, published, sort_order)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [
+        e.id, e.name, e.tagline || '', e.description || '', e.category || 'other',
+        e.location || '', e.eventDate || null,
+        e.imageId || '', e.colorFallback || '#2F4A33',
+        e.priceMin || 0, e.priceMax || 0, e.priceNote || null, e.ticketUrl || null,
+        e.state || 'Lagos', e.published !== false ? 1 : 0, e.sortOrder || 0,
+      ],
+    });
+  }
+  return raw('SELECT * FROM events WHERE id = ?', [e.id]).then(parseEventRow);
+}
+
+async function deleteEvent(id) {
+  await client.execute({ sql: 'DELETE FROM events WHERE id = ?', args: [id] });
+}
+
 // ── Trip photo helpers ─────────────────────────────────────────────────────
 
 async function insertTripImage({ id, mime, bytes }) {
@@ -907,6 +1106,8 @@ module.exports = {
     remove:      deleteAttraction,
   },
   experiences:  { list: getExperiences, upsert: upsertExperience },
+  nightlifeVenues: { list: getNightlifeVenues, upsert: upsertNightlifeVenue, remove: deleteNightlifeVenue },
+  events:          { list: getEvents,          upsert: upsertEvent,          remove: deleteEvent },
   tripImages:   { insert: insertTripImage, get: getTripImage, remove: deleteTripImage },
   users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },
   participants: {

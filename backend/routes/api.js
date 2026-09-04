@@ -1492,6 +1492,37 @@ router.get('/experiences', async (req, res) => {
   }
 });
 
+// ── GET /api/nightlife ───────────────────────────────────────────────────────
+// Public endpoint — curated nightlife venues for Explore's "Nightlife in
+// {city}" section. Same city→state resolution as /api/attractions.
+router.get('/nightlife', async (req, res) => {
+  try {
+    const { city = 'Lagos' } = req.query;
+    const { cityToState } = require('../services/attractions');
+    const stateName = cityToState(city) || city;
+    const venues = await db.nightlifeVenues.list({ state: stateName, all: false });
+    res.json({ venues });
+  } catch (err) {
+    console.error('[api/nightlife]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/events ────────────────────────────────────────────────────────────
+// Public endpoint — curated events for Explore's "What's on" section.
+router.get('/events', async (req, res) => {
+  try {
+    const { city = 'Lagos' } = req.query;
+    const { cityToState } = require('../services/attractions');
+    const stateName = cityToState(city) || city;
+    const events = await db.events.list({ state: stateName, all: false });
+    res.json({ events });
+  } catch (err) {
+    console.error('[api/events]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/plan/:tripId/draft-days ───────────────────────────────────────
 // "Give me a starting point." Fills the day schedule from the AI, leaving the
 // squad's transport and hotel choices untouched — they only asked for ideas

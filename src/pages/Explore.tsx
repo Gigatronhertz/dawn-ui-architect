@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { tripImageUrl } from "@/lib/tripImage";
 import { toVenue, VENUE_VIBES, VIBE_EMOJI, type VenueItem } from "@/lib/attractions";
+import type { NightlifeVenue, EventItem } from "@/lib/experienceTypes";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ExploreStep = "browse" | "detail" | "share";
@@ -109,8 +110,40 @@ function AgencyTripCard({ trip }: { trip: AgencyListing }) {
   );
 }
 
-/** A single nightlife venue pulled from the real per-city attractions table. */
-function NightlifeCard({ v }: { v: VenueItem }) {
+/** A curated nightlife venue — admin-added, with a photo, from /admin → Nightlife. */
+function CuratedNightlifeCard({ v }: { v: NightlifeVenue }) {
+  return (
+    <div
+      className="flex-none w-56 h-40 relative overflow-hidden"
+      style={{ backgroundColor: v.colorFallback }}
+    >
+      {v.imageId && (
+        <img
+          src={cdnImg(v.imageId, 400, 320)}
+          alt={v.name}
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
+      <span className="absolute top-3 left-3 text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-black/50 text-white/90">
+        🌙 {v.vibe}
+      </span>
+      <div className="absolute bottom-3 left-3 right-3">
+        <h3 className="font-marcellus text-sm text-white leading-snug truncate">{v.name}</h3>
+        <p className="text-[11px] font-jost font-light text-white/60 mt-0.5 truncate">📍 {v.location}</p>
+        <p className="text-[11px] font-jost font-light text-white/80 mt-1">
+          {v.feeNote || (v.feeMax > 0 ? `₦${v.feeMin.toLocaleString()}–₦${v.feeMax.toLocaleString()}` : "Free entry")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Fallback nightlife chip — drawn from the real per-city attractions table
+ *  when no admin-curated venue has been added for this city yet. */
+function FallbackNightlifeCard({ v }: { v: VenueItem }) {
   return (
     <div className="flex-none w-44 bg-foreground text-background p-4 flex flex-col justify-between h-32">
       <span className="text-2xl leading-none">{v.emoji}</span>
@@ -123,11 +156,17 @@ function NightlifeCard({ v }: { v: VenueItem }) {
 }
 
 /**
- * Real bars, clubs and lounges for this city — same 272-venue table the
- * "Build your own" planner draws from, filtered to the Nightlife vibe.
+ * Nightlife in this city. Admin-curated venues (with a photo and a tagline)
+ * take priority; where none have been added yet, falls back to the real
+ * 272-venue attractions table filtered to the Nightlife vibe, so the section
+ * still has something real to show rather than sitting empty.
  */
-function NightlifeSection({ city, venues, loading, onPlanNight }: { city: string; venues: VenueItem[]; loading: boolean; onPlanNight: () => void }) {
-  if (loading || venues.length === 0) return null;
+function NightlifeSection({
+  city, curated, fallback, loading, onPlanNight,
+}: {
+  city: string; curated: NightlifeVenue[]; fallback: VenueItem[]; loading: boolean; onPlanNight: () => void;
+}) {
+  if (loading || (curated.length === 0 && fallback.length === 0)) return null;
   return (
     <section className="mt-14 pt-10 border-t border-border">
       <div className="flex items-end justify-between mb-5 gap-4 flex-wrap">
@@ -148,18 +187,71 @@ function NightlifeSection({ city, venues, loading, onPlanNight }: { city: string
         </button>
       </div>
       <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-2 pb-2">
-        {venues.map(v => <NightlifeCard key={v.id} v={v} />)}
+        {curated.length > 0
+          ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} />)
+          : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} />)}
       </div>
     </section>
   );
 }
 
+/** A single curated event — admin-added, from /admin → Events. */
+function EventCard({ ev }: { ev: EventItem }) {
+  const dateLabel = ev.eventDate
+    ? new Date(ev.eventDate).toLocaleDateString(undefined, { day: "numeric", month: "short" })
+    : "Date TBA";
+  return (
+    <div
+      className="flex-none w-64 relative overflow-hidden border border-border"
+      style={{ backgroundColor: ev.colorFallback }}
+    >
+      <div className="h-32 relative">
+        {ev.imageId && (
+          <img
+            src={cdnImg(ev.imageId, 420, 260)}
+            alt={ev.name}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+        <span className="absolute top-3 left-3 text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-signal text-ink capitalize">
+          {ev.category}
+        </span>
+        <span className="absolute bottom-3 left-3 text-[11px] font-jost font-medium px-2 py-1 bg-black/60 text-white">
+          {dateLabel}
+        </span>
+      </div>
+      <div className="p-4 bg-card">
+        <h3 className="font-marcellus text-sm text-foreground leading-snug truncate">{ev.name}</h3>
+        <p className="text-[11px] font-jost font-light text-muted-foreground mt-0.5 truncate">📍 {ev.location}</p>
+        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-border">
+          <span className="text-[11px] font-jost font-light text-muted-foreground">
+            {ev.priceNote || (ev.priceMax > 0 ? `₦${ev.priceMin.toLocaleString()}–₦${ev.priceMax.toLocaleString()}` : "Free")}
+          </span>
+          {ev.ticketUrl && (
+            <a
+              href={ev.ticketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-jost font-medium text-forest hover:underline"
+            >
+              Tickets →
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
- * Events aren't backed by a data source yet — this stays an honest "coming
- * soon" rather than invented listings, matching the empty states elsewhere
- * on this page.
+ * What's on in this city. Shows admin-curated events when any exist; falls
+ * back to an honest "coming soon" rather than inventing listings — matching
+ * the empty states used elsewhere on this page.
  */
-function EventsSection({ city, onPlanNight }: { city: string; onPlanNight: () => void }) {
+function EventsSection({ city, events, loading, onPlanNight }: { city: string; events: EventItem[]; loading: boolean; onPlanNight: () => void }) {
   return (
     <section className="mt-14 pt-10 border-t border-border">
       <div className="flex items-center gap-4 mb-5">
@@ -168,22 +260,32 @@ function EventsSection({ city, onPlanNight }: { city: string; onPlanNight: () =>
           🎟️ What's on
         </span>
       </div>
-      <div className="border border-border p-10 text-center">
-        <div className="text-4xl mb-4">🎟️</div>
-        <h2 className="font-marcellus text-2xl text-foreground mb-3">
-          Events in {city} — coming soon
-        </h2>
-        <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
-          We're building out concerts, festivals and pop-ups your squad can plan a trip around.
-          Until then, build your own night out from the places we already have listed.
-        </p>
-        <button
-          onClick={onPlanNight}
-          className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
-        >
-          Build your own night out
-        </button>
-      </div>
+
+      {!loading && events.length > 0 ? (
+        <>
+          <h2 className="font-marcellus text-2xl text-foreground mb-5">Events in {city}</h2>
+          <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-3 pb-2">
+            {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
+          </div>
+        </>
+      ) : !loading ? (
+        <div className="border border-border p-10 text-center">
+          <div className="text-4xl mb-4">🎟️</div>
+          <h2 className="font-marcellus text-2xl text-foreground mb-3">
+            Events in {city} — coming soon
+          </h2>
+          <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
+            We're building out concerts, festivals and pop-ups your squad can plan a trip around.
+            Until then, build your own night out from the places we already have listed.
+          </p>
+          <button
+            onClick={onPlanNight}
+            className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
+          >
+            Build your own night out
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -864,10 +966,37 @@ export default function Explore() {
     return () => { live = false; };
   }, [city]);
 
-  const nightlifeVenues = useMemo(
+  const nightlifeFallback = useMemo(
     () => cityVenues.filter(v => v.vibe === "Nightlife").slice(0, 10),
     [cityVenues]
   );
+
+  // Admin-curated nightlife venues and events for this city — added from
+  // /admin → Nightlife / Events, the same way trips are.
+  const [nightlifeCurated, setNightlifeCurated] = useState<NightlifeVenue[]>([]);
+  const [curatedLoading, setCuratedLoading] = useState(true);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+
+  useEffect(() => {
+    let live = true;
+    setCuratedLoading(true);
+    api.getNightlifeVenues(city)
+      .then(d => { if (live) setNightlifeCurated(d.venues ?? []); })
+      .catch(() => { if (live) setNightlifeCurated([]); })
+      .finally(() => { if (live) setCuratedLoading(false); });
+    return () => { live = false; };
+  }, [city]);
+
+  useEffect(() => {
+    let live = true;
+    setEventsLoading(true);
+    api.getEvents(city)
+      .then(d => { if (live) setEvents(d.events ?? []); })
+      .catch(() => { if (live) setEvents([]); })
+      .finally(() => { if (live) setEventsLoading(false); });
+    return () => { live = false; };
+  }, [city]);
 
   // Reset to browse when city changes
   useEffect(() => {
@@ -1132,11 +1261,17 @@ export default function Explore() {
 
           <NightlifeSection
             city={city}
-            venues={nightlifeVenues}
-            loading={venuesLoading}
+            curated={nightlifeCurated}
+            fallback={nightlifeFallback}
+            loading={venuesLoading || curatedLoading}
             onPlanNight={() => setTab("own")}
           />
-          <EventsSection city={city} onPlanNight={() => setTab("own")} />
+          <EventsSection
+            city={city}
+            events={events}
+            loading={eventsLoading}
+            onPlanNight={() => setTab("own")}
+          />
         </div>
       </main>
     );

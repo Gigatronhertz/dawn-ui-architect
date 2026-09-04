@@ -497,6 +497,14 @@ export const api = {
   getExperiences: (state = 'Lagos') =>
     get<{ experiences: import('./experienceTypes').Experience[] }>(`/api/experiences?state=${encodeURIComponent(state)}`),
 
+  /** Curated nightlife venues for one city — Explore's "Nightlife" section. */
+  getNightlifeVenues: (city: string) =>
+    get<{ venues: import('./experienceTypes').NightlifeVenue[] }>(`/api/nightlife?city=${encodeURIComponent(city)}`),
+
+  /** Curated events for one city — Explore's "What's on" section. */
+  getEvents: (city: string) =>
+    get<{ events: import('./experienceTypes').EventItem[] }>(`/api/events?city=${encodeURIComponent(city)}`),
+
   /** Create or update the agency profile tied to the authenticated user. */
   setupPro: (
     payload: { agencyName: string; tagline?: string; phone: string; waNumber?: string; serviceFee?: number; color?: string; planType?: string },

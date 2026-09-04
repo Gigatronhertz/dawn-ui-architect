@@ -16,6 +16,8 @@
  *   POST /admin/attractions              — create
  *   PUT  /admin/attractions/:id          — update (prices)
  *   DELETE /admin/attractions/:id        — delete
+ *   GET/POST/PUT/DELETE /admin/nightlife — curated venues for Explore's Nightlife section
+ *   GET/POST/PUT/DELETE /admin/events    — curated events for Explore's Events section
  */
 const express    = require('express');
 const { Router } = require('express');
@@ -267,6 +269,100 @@ router.post('/seed', requireAdmin, async (req, res) => {
     res.json({ ok: true, seeded: count });
   } catch (err) {
     console.error('[admin] seed failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /admin/nightlife ────────────────────────────────────────────────────────
+router.get('/nightlife', requireAdmin, async (req, res) => {
+  try {
+    const { state } = req.query;
+    const venues = await db.nightlifeVenues.list({ state: state || null, all: true });
+    res.json({ venues });
+  } catch (err) {
+    console.error('[admin] GET nightlife failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /admin/nightlife ───────────────────────────────────────────────────────
+router.post('/nightlife', requireAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const id = body.id || `night_${crypto.randomBytes(6).toString('hex')}`;
+    const venue = await db.nightlifeVenues.upsert({ id, ...body });
+    res.json({ ok: true, venue });
+  } catch (err) {
+    console.error('[admin] POST nightlife failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /admin/nightlife/:id ─────────────────────────────────────────────────────
+router.put('/nightlife/:id', requireAdmin, async (req, res) => {
+  try {
+    const venue = await db.nightlifeVenues.upsert({ id: req.params.id, ...req.body });
+    res.json({ ok: true, venue });
+  } catch (err) {
+    console.error('[admin] PUT nightlife failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /admin/nightlife/:id ──────────────────────────────────────────────────
+router.delete('/nightlife/:id', requireAdmin, async (req, res) => {
+  try {
+    await db.nightlifeVenues.remove(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] DELETE nightlife failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /admin/events ────────────────────────────────────────────────────────────
+router.get('/events', requireAdmin, async (req, res) => {
+  try {
+    const { state } = req.query;
+    const events = await db.events.list({ state: state || null, all: true });
+    res.json({ events });
+  } catch (err) {
+    console.error('[admin] GET events failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /admin/events ────────────────────────────────────────────────────────────
+router.post('/events', requireAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const id = body.id || `evt_${crypto.randomBytes(6).toString('hex')}`;
+    const event = await db.events.upsert({ id, ...body });
+    res.json({ ok: true, event });
+  } catch (err) {
+    console.error('[admin] POST event failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /admin/events/:id ──────────────────────────────────────────────────────────
+router.put('/events/:id', requireAdmin, async (req, res) => {
+  try {
+    const event = await db.events.upsert({ id: req.params.id, ...req.body });
+    res.json({ ok: true, event });
+  } catch (err) {
+    console.error('[admin] PUT event failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /admin/events/:id ─────────────────────────────────────────────────────────
+router.delete('/events/:id', requireAdmin, async (req, res) => {
+  try {
+    await db.events.remove(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] DELETE event failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
