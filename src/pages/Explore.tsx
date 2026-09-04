@@ -166,32 +166,43 @@ function NightlifeSection({
 }: {
   city: string; curated: NightlifeVenue[]; fallback: VenueItem[]; loading: boolean; onPlanNight: () => void;
 }) {
-  if (loading || (curated.length === 0 && fallback.length === 0)) return null;
-  return (
-    <section className="mt-14 pt-10 border-t border-border">
-      <div className="flex items-end justify-between mb-5 gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-4 mb-3">
-            <span className="h-px w-8 bg-primary" />
-            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-              🌙 After dark
-            </span>
-          </div>
-          <h2 className="font-marcellus text-2xl text-foreground">Nightlife in {city}</h2>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex gap-2 overflow-hidden">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex-none w-56 h-40 bg-secondary animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (curated.length === 0 && fallback.length === 0) {
+    return (
+      <div className="border border-border p-10 text-center">
+        <div className="text-4xl mb-4">🌙</div>
+        <h2 className="font-marcellus text-2xl text-foreground mb-3">
+          Nightlife in {city} — coming soon
+        </h2>
+        <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
+          We're still picking out the best bars, clubs and lounges here. In the meantime,
+          build your own night out from the places we already have listed.
+        </p>
         <button
           onClick={onPlanNight}
-          className="text-xs font-jost font-medium text-foreground border-b border-foreground hover:text-forest hover:border-forest transition-colors shrink-0"
+          className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
         >
-          Build a night out →
+          Build your own night out
         </button>
       </div>
-      <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-2 pb-2">
-        {curated.length > 0
-          ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} />)
-          : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} />)}
-      </div>
-    </section>
+    );
+  }
+
+  return (
+    <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-2 pb-2">
+      {curated.length > 0
+        ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} />)
+        : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} />)}
+    </div>
   );
 }
 
@@ -252,41 +263,41 @@ function EventCard({ ev }: { ev: EventItem }) {
  * the empty states used elsewhere on this page.
  */
 function EventsSection({ city, events, loading, onPlanNight }: { city: string; events: EventItem[]; loading: boolean; onPlanNight: () => void }) {
-  return (
-    <section className="mt-14 pt-10 border-t border-border">
-      <div className="flex items-center gap-4 mb-5">
-        <span className="h-px w-8 bg-primary" />
-        <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-          🎟️ What's on
-        </span>
+  if (loading) {
+    return (
+      <div className="flex gap-3 overflow-hidden">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex-none w-64 h-52 bg-secondary animate-pulse" />
+        ))}
       </div>
+    );
+  }
 
-      {!loading && events.length > 0 ? (
-        <>
-          <h2 className="font-marcellus text-2xl text-foreground mb-5">Events in {city}</h2>
-          <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-3 pb-2">
-            {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
-          </div>
-        </>
-      ) : !loading ? (
-        <div className="border border-border p-10 text-center">
-          <div className="text-4xl mb-4">🎟️</div>
-          <h2 className="font-marcellus text-2xl text-foreground mb-3">
-            Events in {city} — coming soon
-          </h2>
-          <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
-            We're building out concerts, festivals and pop-ups your squad can plan a trip around.
-            Until then, build your own night out from the places we already have listed.
-          </p>
-          <button
-            onClick={onPlanNight}
-            className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
-          >
-            Build your own night out
-          </button>
-        </div>
-      ) : null}
-    </section>
+  if (events.length === 0) {
+    return (
+      <div className="border border-border p-10 text-center">
+        <div className="text-4xl mb-4">🎟️</div>
+        <h2 className="font-marcellus text-2xl text-foreground mb-3">
+          Events in {city} — coming soon
+        </h2>
+        <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
+          We're building out concerts, festivals and pop-ups your squad can plan a trip around.
+          Until then, build your own night out from the places we already have listed.
+        </p>
+        <button
+          onClick={onPlanNight}
+          className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
+        >
+          Build your own night out
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-3 pb-2">
+      {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
+    </div>
   );
 }
 
@@ -933,8 +944,9 @@ export default function Explore() {
   const [agencyTrips, setAgencyTrips] = useState<AgencyListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [vibe, setVibe] = useState("all");
-  // "ours" = trips Karije picked and runs. "own" = build your own day out.
-  const [tab, setTab] = useState<"ours" | "own">("ours");
+  // "ours" = trips Karije picked and runs. "nightlife"/"events" = curated
+  // after-dark content for the city. "own" = build your own day out.
+  const [tab, setTab] = useState<"ours" | "nightlife" | "events" | "own">("ours");
 
   // Real venues for this city, from the same 272-venue table the "Build your
   // own" planner uses — powers the Nightlife section regardless of which tab
@@ -1139,34 +1151,37 @@ export default function Explore() {
               </div>
             </div>
 
-            {/* Two ways to end up with a trip: take ours, or build your own */}
-            <div className="flex gap-0 mb-6">
-              <button
-                onClick={() => setTab("ours")}
-                className={`px-5 py-2.5 text-sm font-jost border transition-colors ${
-                  tab === "ours"
-                    ? "border-forest bg-forest text-parchment font-medium"
-                    : "border-border text-muted-foreground hover:border-forest hover:text-forest"
-                }`}
-              >
-                Trips we run
-              </button>
-              <button
-                onClick={() => setTab("own")}
-                className={`px-5 py-2.5 text-sm font-jost border -ml-px transition-colors ${
-                  tab === "own"
-                    ? "border-forest bg-forest text-parchment font-medium"
-                    : "border-border text-muted-foreground hover:border-forest hover:text-forest"
-                }`}
-              >
-                Build your own
-              </button>
+            {/* Four ways into this city: our trips, nightlife, events, or build your own */}
+            <div className="flex gap-0 mb-6 flex-wrap">
+              {([
+                { id: "ours",      label: "Trips we run" },
+                { id: "nightlife", label: "🌙 Nightlife" },
+                { id: "events",    label: "🎟️ Events" },
+                { id: "own",       label: "Build your own" },
+              ] as const).map(({ id, label }, i) => (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  className={`px-5 py-2.5 text-sm font-jost border transition-colors ${i > 0 ? "-ml-px" : ""} ${
+                    tab === id
+                      ? "border-forest bg-forest text-parchment font-medium"
+                      : "border-border text-muted-foreground hover:border-forest hover:text-forest"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
             <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-xl mb-6">
-              {tab === "ours"
-                ? "Trips we've picked, priced and will run for your squad. Pick one, choose your days and squad size, and we handle the rest."
-                : `Plan your own day out in ${city}. Add the places you want, we'll tell you what they cost, then share it with your squad to collect everyone's share.`}
+              {tab === "ours" &&
+                "Trips we've picked, priced and will run for your squad. Pick one, choose your days and squad size, and we handle the rest."}
+              {tab === "nightlife" &&
+                `The best bars, clubs and lounges in ${city} — pick one, or build a full night out from the places we have listed.`}
+              {tab === "events" &&
+                `Concerts, festivals and pop-ups happening in ${city} that your squad can plan a trip around.`}
+              {tab === "own" &&
+                `Plan your own day out in ${city}. Add the places you want, we'll tell you what they cost, then share it with your squad to collect everyone's share.`}
             </p>
 
             {/* Vibe filter — chips only appear for vibes this city actually has */}
