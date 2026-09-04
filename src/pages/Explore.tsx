@@ -110,46 +110,55 @@ function AgencyTripCard({ trip }: { trip: AgencyListing }) {
   );
 }
 
-/** A curated nightlife venue — admin-added, with a photo, from /admin → Nightlife. */
+/**
+ * A curated nightlife venue — admin-added, with a photo, from /admin →
+ * Nightlife. Same aspect-square card shape as a Trip, so switching between
+ * tabs on Explore feels like one consistent grid rather than a different UI.
+ */
 function CuratedNightlifeCard({ v }: { v: NightlifeVenue }) {
   return (
     <div
-      className="flex-none w-56 h-40 relative overflow-hidden"
+      className="group relative aspect-square overflow-hidden"
       style={{ backgroundColor: v.colorFallback }}
     >
       {v.imageId && (
         <img
-          src={cdnImg(v.imageId, 400, 320)}
+          src={cdnImg(v.imageId, 600, 600)}
           alt={v.name}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
           loading="lazy"
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
         />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
-      <span className="absolute top-3 left-3 text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-black/50 text-white/90">
-        🌙 {v.vibe}
-      </span>
-      <div className="absolute bottom-3 left-3 right-3">
-        <h3 className="font-marcellus text-sm text-white leading-snug truncate">{v.name}</h3>
+      <div className="absolute top-0 left-0 right-0 flex items-start justify-between p-3">
+        <span className="text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-foreground text-background">
+          🌙 {v.vibe}
+        </span>
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-4">
+        <h3 className="font-marcellus text-base leading-snug text-white">{v.name}</h3>
         <p className="text-[11px] font-jost font-light text-white/60 mt-0.5 truncate">📍 {v.location}</p>
-        <p className="text-[11px] font-jost font-light text-white/80 mt-1">
-          {v.feeNote || (v.feeMax > 0 ? `₦${v.feeMin.toLocaleString()}–₦${v.feeMax.toLocaleString()}` : "Free entry")}
-        </p>
+        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/15">
+          <span className="font-marcellus text-sm text-white">
+            {v.feeNote || (v.feeMax > 0 ? `₦${v.feeMin.toLocaleString()}–₦${v.feeMax.toLocaleString()}` : "Free entry")}
+          </span>
+        </div>
       </div>
     </div>
   );
 }
 
-/** Fallback nightlife chip — drawn from the real per-city attractions table
- *  when no admin-curated venue has been added for this city yet. */
+/** Fallback nightlife card — drawn from the real per-city attractions table
+ *  when no admin-curated venue has been added for this city yet. No photo
+ *  in that table, so it leans on the emoji and a plain colour block. */
 function FallbackNightlifeCard({ v }: { v: VenueItem }) {
   return (
-    <div className="flex-none w-44 bg-foreground text-background p-4 flex flex-col justify-between h-32">
-      <span className="text-2xl leading-none">{v.emoji}</span>
+    <div className="aspect-square bg-foreground text-background p-4 flex flex-col justify-between">
+      <span className="text-3xl leading-none">{v.emoji}</span>
       <div>
-        <div className="font-jost font-medium text-sm truncate">{v.name}</div>
-        <div className="text-[11px] font-jost font-light text-background/60 mt-0.5">{v.feeNote}</div>
+        <div className="font-marcellus text-base truncate">{v.name}</div>
+        <div className="text-[11px] font-jost font-light text-background/60 mt-1">{v.feeNote}</div>
       </div>
     </div>
   );
@@ -168,9 +177,9 @@ function NightlifeSection({
 }) {
   if (loading) {
     return (
-      <div className="flex gap-2 overflow-hidden">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex-none w-56 h-40 bg-secondary animate-pulse" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="aspect-square bg-secondary animate-pulse" />
         ))}
       </div>
     );
@@ -191,7 +200,7 @@ function NightlifeSection({
   }
 
   return (
-    <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-2 pb-2">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
       {curated.length > 0
         ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} />)
         : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} />)}
@@ -199,39 +208,42 @@ function NightlifeSection({
   );
 }
 
-/** A single curated event — admin-added, from /admin → Events. */
+/**
+ * A single curated event — admin-added, from /admin → Events. Same
+ * aspect-square card shape as a Trip and a nightlife venue.
+ */
 function EventCard({ ev }: { ev: EventItem }) {
   const dateLabel = ev.eventDate
     ? new Date(ev.eventDate).toLocaleDateString(undefined, { day: "numeric", month: "short" })
     : "Date TBA";
   return (
     <div
-      className="flex-none w-64 relative overflow-hidden border border-border"
+      className="group relative aspect-square overflow-hidden"
       style={{ backgroundColor: ev.colorFallback }}
     >
-      <div className="h-32 relative">
-        {ev.imageId && (
-          <img
-            src={cdnImg(ev.imageId, 420, 260)}
-            alt={ev.name}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-        <span className="absolute top-3 left-3 text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-signal text-ink capitalize">
+      {ev.imageId && (
+        <img
+          src={cdnImg(ev.imageId, 600, 600)}
+          alt={ev.name}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
+          loading="lazy"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
+      <div className="absolute top-0 left-0 right-0 flex items-start justify-between p-3">
+        <span className="text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-signal text-ink capitalize">
           {ev.category}
         </span>
-        <span className="absolute bottom-3 left-3 text-[11px] font-jost font-medium px-2 py-1 bg-black/60 text-white">
+        <span className="text-[10px] font-jost font-light px-2 py-1 bg-black/50 text-white/90">
           {dateLabel}
         </span>
       </div>
-      <div className="p-4 bg-card">
-        <h3 className="font-marcellus text-sm text-foreground leading-snug truncate">{ev.name}</h3>
-        <p className="text-[11px] font-jost font-light text-muted-foreground mt-0.5 truncate">📍 {ev.location}</p>
-        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-border">
-          <span className="text-[11px] font-jost font-light text-muted-foreground">
+      <div className="absolute bottom-0 left-0 right-0 p-4">
+        <h3 className="font-marcellus text-base leading-snug text-white">{ev.name}</h3>
+        <p className="text-[11px] font-jost font-light text-white/60 mt-0.5 truncate">📍 {ev.location}</p>
+        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/15">
+          <span className="font-marcellus text-sm text-white">
             {ev.priceNote || (ev.priceMax > 0 ? `₦${ev.priceMin.toLocaleString()}–₦${ev.priceMax.toLocaleString()}` : "Free")}
           </span>
           {ev.ticketUrl && (
@@ -239,7 +251,8 @@ function EventCard({ ev }: { ev: EventItem }) {
               href={ev.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] font-jost font-medium text-forest hover:underline"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[11px] font-jost font-light text-white/70 hover:text-white transition"
             >
               Tickets →
             </a>
@@ -258,9 +271,9 @@ function EventCard({ ev }: { ev: EventItem }) {
 function EventsSection({ city, events, loading }: { city: string; events: EventItem[]; loading: boolean }) {
   if (loading) {
     return (
-      <div className="flex gap-3 overflow-hidden">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex-none w-64 h-52 bg-secondary animate-pulse" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="aspect-square bg-secondary animate-pulse" />
         ))}
       </div>
     );
@@ -281,7 +294,7 @@ function EventsSection({ city, events, loading }: { city: string; events: EventI
   }
 
   return (
-    <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-3 pb-2">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
       {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
     </div>
   );

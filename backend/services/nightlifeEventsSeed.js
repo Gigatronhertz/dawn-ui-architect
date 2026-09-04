@@ -3,10 +3,11 @@
  * `nightlife_venues` and `events` tables on first boot, the same idempotent
  * way LAGOS_EXPERIENCES_SEED fills in curated trips.
  *
- * No photos: colorFallback alone renders a clean card, and it avoids
- * shipping an unverified Unsplash id that might not resolve or might not
- * actually match the place. An admin can drop a real photo on any of these
- * from /admin at any time — INSERT OR IGNORE never overwrites that edit.
+ * Every imageId below is a real Unsplash photo id, checked to actually
+ * resolve and to match the scene it's used for (club/bar interiors, crowds,
+ * runners, etc.) before being added here. An admin can replace any of these
+ * with a real photo of the actual place from /admin at any time — INSERT OR
+ * IGNORE never overwrites that edit.
  */
 
 const NIGHTLIFE_SEED = [
@@ -16,6 +17,7 @@ const NIGHTLIFE_SEED = [
     tagline: "Lagos's best-known club night, every weekend",
     vibe: 'Club',
     location: 'Victoria Island, Lagos',
+    imageId: '1470225620780-dba8ba36b745',
     colorFallback: '#1A1A2E',
     feeMin: 5000,
     feeMax: 20000,
@@ -29,6 +31,7 @@ const NIGHTLIFE_SEED = [
     tagline: 'Cocktails, live DJs, and the VI crowd',
     vibe: 'Lounge',
     location: 'Victoria Island, Lagos',
+    imageId: '1470337458703-46ad1756a187',
     colorFallback: '#3D1F2B',
     feeMin: 3000,
     feeMax: 10000,
@@ -42,6 +45,7 @@ const NIGHTLIFE_SEED = [
     tagline: 'Skyline views over Lekki, drink in hand',
     vibe: 'Rooftop',
     location: 'Lekki Phase 1, Lagos',
+    imageId: '1571896349842-33c89424de2d',
     colorFallback: '#2B3A4A',
     feeMin: 0,
     feeMax: 5000,
@@ -55,6 +59,7 @@ const NIGHTLIFE_SEED = [
     tagline: 'Live bands and a full bar most nights',
     vibe: 'Live Music',
     location: 'Victoria Island, Lagos',
+    imageId: '1543007630-9710e4a00a20',
     colorFallback: '#4A1F1F',
     feeMin: 2000,
     feeMax: 8000,
@@ -68,6 +73,7 @@ const NIGHTLIFE_SEED = [
     tagline: 'Bonfire, music and the ocean right there',
     vibe: 'Beach Club',
     location: 'Elegushi Beach, Lagos',
+    imageId: '1533106497176-45ae19e68ba2',
     colorFallback: '#1F3A3A',
     feeMin: 2000,
     feeMax: 5000,
@@ -81,6 +87,7 @@ const NIGHTLIFE_SEED = [
     tagline: "Abuja's after-dark spot for the FCT crowd",
     vibe: 'Lounge',
     location: 'Wuse II, Abuja',
+    imageId: '1541532713592-79a0317b6b77',
     colorFallback: '#2B2B40',
     feeMin: 3000,
     feeMax: 12000,
@@ -94,6 +101,7 @@ const NIGHTLIFE_SEED = [
     tagline: 'Lake views, live acts, weekend crowd',
     vibe: 'Rooftop',
     location: 'Jabi, Abuja',
+    imageId: '1566737236500-c8ac43014a67',
     colorFallback: '#1F3550',
     feeMin: 1000,
     feeMax: 6000,
@@ -113,6 +121,7 @@ const EVENTS_SEED = [
     category: 'concert',
     location: 'Muri Okunola Park, Victoria Island, Lagos',
     eventDate: '2026-10-18',
+    imageId: '1516450360452-9312f5e86fc7',
     colorFallback: '#2F4A33',
     priceMin: 5000,
     priceMax: 25000,
@@ -130,6 +139,7 @@ const EVENTS_SEED = [
     category: 'festival',
     location: 'Eko Atlantic City, Lagos',
     eventDate: '2026-12-15',
+    imageId: '1470229722913-7c0e2dbbafd3',
     colorFallback: '#8B4513',
     priceMin: 10000,
     priceMax: 50000,
@@ -147,6 +157,7 @@ const EVENTS_SEED = [
     category: 'comedy',
     location: 'Terra Kulture, Victoria Island, Lagos',
     eventDate: '2026-09-27',
+    imageId: '1516307365426-bea591f05011',
     colorFallback: '#4A2F45',
     priceMin: 3000,
     priceMax: 8000,
@@ -164,6 +175,7 @@ const EVENTS_SEED = [
     category: 'sports',
     location: 'National Stadium, Surulere, Lagos',
     eventDate: '2026-11-08',
+    imageId: '1552674605-db6ffd4facb5',
     colorFallback: '#1E5F8E',
     priceMin: 0,
     priceMax: 0,
@@ -181,6 +193,7 @@ const EVENTS_SEED = [
     category: 'festival',
     location: 'Eagle Square, Abuja',
     eventDate: '2026-11-22',
+    imageId: '1514525253161-7a46d19cd819',
     colorFallback: '#B0682F',
     priceMin: 0,
     priceMax: 0,
