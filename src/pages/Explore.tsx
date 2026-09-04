@@ -161,12 +161,12 @@ function FallbackNightlifeCard({ v, onSelect }: { v: VenueItem; onSelect: () => 
   return (
     <button
       onClick={onSelect}
-      className="aspect-square bg-foreground text-background p-4 flex flex-col justify-between text-left hover:opacity-90 transition-opacity"
+      className="aspect-square bg-secondary border border-border p-4 flex flex-col justify-between text-left hover:border-forest transition-colors"
     >
       <span className="text-3xl leading-none">{v.emoji}</span>
       <div>
-        <div className="font-marcellus text-base truncate">{v.name}</div>
-        <div className="text-[11px] font-jost font-light text-background/60 mt-1">{v.feeNote}</div>
+        <div className="font-marcellus text-base text-foreground truncate">{v.name}</div>
+        <div className="text-[11px] font-jost font-light text-muted-foreground mt-1">{v.feeNote}</div>
       </div>
     </button>
   );
