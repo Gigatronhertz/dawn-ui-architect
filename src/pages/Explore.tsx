@@ -162,9 +162,9 @@ function FallbackNightlifeCard({ v }: { v: VenueItem }) {
  * still has something real to show rather than sitting empty.
  */
 function NightlifeSection({
-  city, curated, fallback, loading, onPlanNight,
+  city, curated, fallback, loading,
 }: {
-  city: string; curated: NightlifeVenue[]; fallback: VenueItem[]; loading: boolean; onPlanNight: () => void;
+  city: string; curated: NightlifeVenue[]; fallback: VenueItem[]; loading: boolean;
 }) {
   if (loading) {
     return (
@@ -183,35 +183,18 @@ function NightlifeSection({
         <h2 className="font-marcellus text-2xl text-foreground mb-3">
           Nightlife in {city} — coming soon
         </h2>
-        <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
-          We're still picking out the best bars, clubs and lounges here. In the meantime,
-          build your own night out from the places we already have listed.
+        <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
+          We're still picking out the best bars, clubs and lounges here.
         </p>
-        <button
-          onClick={onPlanNight}
-          className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
-        >
-          Build your own night out
-        </button>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-end mb-4">
-        <button
-          onClick={onPlanNight}
-          className="text-xs font-jost font-medium text-foreground border-b border-foreground hover:text-forest hover:border-forest transition-colors"
-        >
-          Or build your own night out →
-        </button>
-      </div>
-      <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-2 pb-2">
-        {curated.length > 0
-          ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} />)
-          : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} />)}
-      </div>
+    <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-2 pb-2">
+      {curated.length > 0
+        ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} />)
+        : fallback.map(v => <FallbackNightlifeCard key={v.id} v={v} />)}
     </div>
   );
 }
@@ -272,7 +255,7 @@ function EventCard({ ev }: { ev: EventItem }) {
  * back to an honest "coming soon" rather than inventing listings — matching
  * the empty states used elsewhere on this page.
  */
-function EventsSection({ city, events, loading, onPlanNight }: { city: string; events: EventItem[]; loading: boolean; onPlanNight: () => void }) {
+function EventsSection({ city, events, loading }: { city: string; events: EventItem[]; loading: boolean }) {
   if (loading) {
     return (
       <div className="flex gap-3 overflow-hidden">
@@ -290,33 +273,16 @@ function EventsSection({ city, events, loading, onPlanNight }: { city: string; e
         <h2 className="font-marcellus text-2xl text-foreground mb-3">
           Events in {city} — coming soon
         </h2>
-        <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
+        <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
           We're building out concerts, festivals and pop-ups your squad can plan a trip around.
-          Until then, build your own night out from the places we already have listed.
         </p>
-        <button
-          onClick={onPlanNight}
-          className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
-        >
-          Build your own night out
-        </button>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-end mb-4">
-        <button
-          onClick={onPlanNight}
-          className="text-xs font-jost font-medium text-foreground border-b border-foreground hover:text-forest hover:border-forest transition-colors"
-        >
-          Or build your own night out →
-        </button>
-      </div>
-      <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-3 pb-2">
-        {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
-      </div>
+    <div className="-mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto flex gap-3 pb-2">
+      {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
     </div>
   );
 }
@@ -1233,7 +1199,6 @@ export default function Explore() {
               curated={nightlifeCurated}
               fallback={nightlifeFallback}
               loading={venuesLoading || curatedLoading}
-              onPlanNight={() => setTab("own")}
             />
           )}
 
@@ -1242,7 +1207,6 @@ export default function Explore() {
               city={city}
               events={events}
               loading={eventsLoading}
-              onPlanNight={() => setTab("own")}
             />
           )}
 
