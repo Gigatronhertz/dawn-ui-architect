@@ -823,23 +823,21 @@ export default function PlanView() {
                 <img
                   src={data.transport.logo || (data.transport.type?.toLowerCase().includes("flight") ? FLIGHT_FALLBACK_IMAGE : BUS_FALLBACK_IMAGE)}
                   alt=""
-                  className={`h-24 w-full shrink-0 print:hidden ${data.transport.logo ? "object-contain bg-white" : "object-cover"}`}
+                  className={`h-14 w-full shrink-0 print:hidden ${data.transport.logo ? "object-contain bg-white" : "object-cover"}`}
                   onError={(e) => { (e.target as HTMLImageElement).src = data.transport!.type?.toLowerCase().includes("flight") ? FLIGHT_FALLBACK_IMAGE : BUS_FALLBACK_IMAGE; }}
                 />
-                <div className="p-4 flex flex-col flex-1 min-h-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Transport</div>
-                  <div className="font-display font-semibold truncate mt-1">{data.transport.operator}</div>
-                  <div className="text-xs text-muted-foreground">{data.transport.type}</div>
+                <div className="p-2.5 flex flex-col flex-1 min-h-0">
+                  <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Transport</div>
+                  <div className="font-display text-sm font-semibold truncate mt-0.5">{data.transport.operator}</div>
                   {(data.transport.depart_time || data.transport.arrive_time) && (
-                    <div className="text-[11px] text-muted-foreground mt-1">
+                    <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
                       {data.transport.depart_time && `Departs ${data.transport.depart_time}`}
                       {data.transport.depart_time && data.transport.arrive_time && " · "}
                       {data.transport.arrive_time && `Arrives ${data.transport.arrive_time}`}
                     </div>
                   )}
-                  <div className="mt-auto pt-2 border-t border-border/50">
-                    <div className="font-display font-semibold tabular-nums">{fmtNGN(data.transport.price_per_person)}</div>
-                    <div className="text-[10px] text-muted-foreground">/person</div>
+                  <div className="mt-auto pt-1.5 border-t border-border/50">
+                    <div className="font-display text-sm font-semibold tabular-nums">{fmtNGN(data.transport.price_per_person)}</div>
                   </div>
                 </div>
               </Card>
@@ -850,25 +848,17 @@ export default function PlanView() {
                 <img
                   src={(data.hotel.imageUrl && (imageUrl(data.hotel.imageUrl) || data.hotel.imageUrl)) || HOTEL_FALLBACK_IMAGE}
                   alt=""
-                  className="h-24 w-full object-cover shrink-0 print:hidden"
+                  className="h-14 w-full object-cover shrink-0 print:hidden"
                   onError={(e) => { (e.target as HTMLImageElement).src = HOTEL_FALLBACK_IMAGE; }}
                 />
-                <div className="p-4 flex flex-col flex-1 min-h-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Accommodation</div>
-                  <div className="font-display font-semibold truncate mt-1">{data.hotel.name}</div>
-                  <div className="text-xs text-muted-foreground truncate">
+                <div className="p-2.5 flex flex-col flex-1 min-h-0">
+                  <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Accommodation</div>
+                  <div className="font-display text-sm font-semibold truncate mt-0.5">{data.hotel.name}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">
                     {data.hotel.area}{data.hotel.rating ? ` · ⭐ ${data.hotel.rating.toFixed(1)}` : ''}
                   </div>
-                  {data.hotel.perks?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5 print:gap-0">
-                      {data.hotel.perks.slice(0, 3).map(p => (
-                        <span key={p} className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary/60 text-muted-foreground print:bg-transparent print:after:content-['·'] print:px-0 print:mr-2">{p}</span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="mt-auto pt-2 border-t border-border/50">
-                    <div className="font-display font-semibold tabular-nums">{fmtNGN(data.hotel.price_per_night)}</div>
-                    <div className="text-[10px] text-muted-foreground">/night</div>
+                  <div className="mt-auto pt-1.5 border-t border-border/50">
+                    <div className="font-display text-sm font-semibold tabular-nums">{fmtNGN(data.hotel.price_per_night)}</div>
                   </div>
                 </div>
               </Card>

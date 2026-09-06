@@ -1005,30 +1005,29 @@ function PlanStep({
           )}
 
           {isBusMode && busOffers.length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {busOffers.map((bus, i) => (
                 <button key={i} type="button"
                   onClick={() => { setSelectedBusIdx(i === selectedBusIdx ? null : i); setSelectedFlightIdx(null); }}
-                  className={`relative text-left rounded-xl overflow-hidden ring-hairline transition flex flex-col h-full ${selectedBusIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                  className={`relative text-left rounded-lg overflow-hidden ring-hairline transition flex flex-col h-full ${selectedBusIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                   {/* Selected checkmark */}
                   {selectedBusIdx === i && (
-                    <span className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
+                    <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center text-[9px]">✓</span>
                   )}
                   <img
                     src={BUS_IMAGES[i % BUS_IMAGES.length]}
                     alt=""
-                    className="h-24 w-full object-cover shrink-0"
+                    className="h-12 w-full object-cover shrink-0"
                     loading="lazy"
                   />
-                  <div className="p-3 flex flex-col flex-1 min-h-0">
-                    <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">GIGM · {bus.class}</div>
-                    <div className="font-display text-xl font-semibold mt-1.5 tabular-nums leading-none">
+                  <div className="p-2 flex flex-col flex-1 min-h-0">
+                    <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wide truncate">GIGM · {bus.class}</div>
+                    <div className="font-display text-sm font-semibold mt-0.5 tabular-nums leading-none">
                       {bus.departureTime?.slice(0, 5) || '—'}
                     </div>
-                    <div className="text-[11px] text-muted-foreground mt-1">{bus.seatsAvailable} seats left</div>
-                    <div className="mt-auto pt-2 border-t border-border/50">
-                      <div className="font-display text-base font-semibold text-foreground tabular-nums">{fmtNGN(bus.price)}</div>
-                      <div className="text-[10px] text-muted-foreground">per seat</div>
+                    <div className="text-[9px] text-muted-foreground mt-0.5">{bus.seatsAvailable} seats left</div>
+                    <div className="mt-auto pt-1 border-t border-border/50">
+                      <div className="font-display text-xs font-semibold text-foreground tabular-nums">{fmtNGN(bus.price)}</div>
                     </div>
                   </div>
                 </button>
@@ -1036,7 +1035,7 @@ function PlanStep({
               {/* AI pick — spans full width */}
               <button type="button"
                 onClick={() => { setSelectedBusIdx(null); setSelectedFlightIdx(null); }}
-                className={`col-span-2 text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedBusIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                className={`col-span-full text-left rounded-lg px-3 py-2 ring-hairline transition text-xs ${selectedBusIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                 <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator} · {initialPlan.transport.type}</span>
                 {selectedBusIdx === null && <span className="ml-2 text-[11px] text-foreground font-medium">✓ Active</span>}
@@ -1045,31 +1044,30 @@ function PlanStep({
           )}
 
           {!isBusMode && flightOffers.length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {flightOffers.slice(0, 4).map((f, i) => {
                 return (
                   <button key={i} type="button"
                     onClick={() => { setSelectedFlightIdx(i === selectedFlightIdx ? null : i); setSelectedBusIdx(null); }}
-                    className={`relative text-left rounded-xl overflow-hidden ring-hairline transition flex flex-col h-full ${selectedFlightIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                    className={`relative text-left rounded-lg overflow-hidden ring-hairline transition flex flex-col h-full ${selectedFlightIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                     {selectedFlightIdx === i && (
-                      <span className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
+                      <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center text-[9px]">✓</span>
                     )}
                     <img
                       src={FLIGHT_IMAGES[i % FLIGHT_IMAGES.length]}
                       alt=""
-                      className="h-24 w-full object-cover shrink-0"
+                      className="h-12 w-full object-cover shrink-0"
                       loading="lazy"
                     />
-                    <div className="p-3 flex flex-col flex-1 min-h-0">
-                      <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide truncate">
-                        {f.stops === 0 ? 'Nonstop' : f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}` : 'Stops unknown'}{f.duration ? ` · ${f.duration}` : ''}
+                    <div className="p-2 flex flex-col flex-1 min-h-0">
+                      <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wide truncate">
+                        {f.stops === 0 ? 'Nonstop' : f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}` : 'Stops unknown'}
                       </div>
-                      <div className="font-display text-sm font-semibold mt-1.5 leading-snug truncate">
+                      <div className="font-display text-xs font-semibold mt-0.5 leading-snug truncate">
                         {f.airline || 'Unknown'}
                       </div>
-                      <div className="mt-auto pt-2 border-t border-border/50">
-                        <div className="font-display text-base font-semibold text-foreground tabular-nums">{fmtNGN(f.price)}</div>
-                        <div className="text-[10px] text-muted-foreground">per person</div>
+                      <div className="mt-auto pt-1 border-t border-border/50">
+                        <div className="font-display text-xs font-semibold text-foreground tabular-nums">{fmtNGN(f.price)}</div>
                       </div>
                     </div>
                   </button>
@@ -1078,7 +1076,7 @@ function PlanStep({
               {/* AI pick — spans full width */}
               <button type="button"
                 onClick={() => { setSelectedFlightIdx(null); setSelectedBusIdx(null); }}
-                className={`col-span-2 text-left rounded-xl p-3 ring-hairline transition text-sm ${selectedFlightIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                className={`col-span-full text-left rounded-lg px-3 py-2 ring-hairline transition text-xs ${selectedFlightIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                 <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator}</span>
                 {selectedFlightIdx === null && <span className="ml-2 text-[11px] text-foreground font-medium">✓ Active</span>}
@@ -1336,17 +1334,17 @@ function PlanStep({
       <Card>
         <SectionLabel>Accommodation</SectionLabel>
         <h2 className="font-display text-base font-semibold mb-4">Pick your hotel.</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {allHotelOptions.map((opt, i) => (
             <button key={opt.key} type="button"
               onClick={() => setSelectedHotelKey(opt.key)}
-              className={`relative text-left rounded-xl overflow-hidden ring-hairline transition flex flex-col h-full ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+              className={`relative text-left rounded-lg overflow-hidden ring-hairline transition flex flex-col h-full ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
               {/* Selected checkmark */}
               {selectedHotelKey === opt.key && (
-                <span className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
+                <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center text-[9px]">✓</span>
               )}
               {opt.badge && (
-                <span className="absolute top-2.5 left-2.5 z-10 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{opt.badge}</span>
+                <span className="absolute top-1.5 left-1.5 z-10 text-[9px] font-semibold px-1 py-0.5 rounded-full bg-primary text-primary-foreground">{opt.badge}</span>
               )}
 
               {/* Real photo when we have one (Google Places); a generic,
@@ -1355,26 +1353,25 @@ function PlanStep({
               <img
                 src={(opt.imageUrl && (imageUrl(opt.imageUrl) || opt.imageUrl)) || HOTEL_FALLBACK_IMAGES[i % HOTEL_FALLBACK_IMAGES.length]}
                 alt=""
-                className="h-24 w-full object-cover shrink-0"
+                className="h-12 w-full object-cover shrink-0"
                 loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).src = HOTEL_FALLBACK_IMAGES[i % HOTEL_FALLBACK_IMAGES.length]; }}
               />
 
-              <div className="p-3 flex flex-col flex-1 min-h-0">
+              <div className="p-2 flex flex-col flex-1 min-h-0">
                 {/* Hotel name */}
-                <div className="font-display text-sm font-semibold leading-snug line-clamp-2">
+                <div className="font-display text-xs font-semibold leading-snug line-clamp-2">
                   {opt.name}
                 </div>
 
                 {/* Area + rating, one line */}
-                <div className="text-[11px] text-muted-foreground mt-1 truncate">
+                <div className="text-[9px] text-muted-foreground mt-0.5 truncate">
                   {opt.area || '—'}{opt.rating ? ` · ⭐ ${opt.rating}` : ''}
                 </div>
 
                 {/* Price at bottom */}
-                <div className="mt-auto pt-2 border-t border-border/50">
-                  <div className="font-display text-base font-semibold tabular-nums">{opt.price ? fmtNGN(opt.price) : '—'}</div>
-                  <div className="text-[10px] text-muted-foreground">per night</div>
+                <div className="mt-auto pt-1 border-t border-border/50">
+                  <div className="font-display text-xs font-semibold tabular-nums">{opt.price ? fmtNGN(opt.price) : '—'}</div>
                 </div>
               </div>
             </button>
