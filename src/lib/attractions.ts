@@ -49,6 +49,9 @@ export type VenueItem = {
   cost: number;
   /** Human-readable price, e.g. "₦1,000–₦2,000" or "Free". */
   feeNote: string;
+  /** Real photo when the venue was imported with one — run through imageUrl(). */
+  imageUrl?: string | null;
+  address?: string | null;
 };
 
 /** Shape a raw attraction row for the venue pickers. */
@@ -61,5 +64,7 @@ export function toVenue(a: Attraction): VenueItem {
     cost:    a.fee_max > 0 ? Math.round((a.fee_min + a.fee_max) / 2) : 0,
     feeNote: a.fee_note
       || (a.fee_max > 0 ? `₦${a.fee_min.toLocaleString()}–₦${a.fee_max.toLocaleString()}` : 'Free'),
+    imageUrl: a.imageUrl ?? null,
+    address:  a.address ?? null,
   };
 }

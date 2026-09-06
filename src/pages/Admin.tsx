@@ -72,7 +72,7 @@ const ALL_STATES = [
   'Sokoto', 'Taraba', 'Yobe', 'Zamfara',
 ];
 
-const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30";
+const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-600/30";
 const labelCls = "block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1";
 const section = "bg-white border border-gray-200 rounded-xl p-6 space-y-5";
 
@@ -105,7 +105,7 @@ function ListEditor({
             }
           }}
           placeholder={placeholder}
-          className="flex-1 border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+          className="flex-1 border border-gray-200 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/30"
         />
         <button
           type="button"
@@ -169,7 +169,7 @@ function WeeklyProgramEditor({
           onChange={(e) => setActivity(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           placeholder="Karaoke Night"
-          className="flex-1 border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+          className="flex-1 border border-gray-200 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/30"
         />
         <button
           type="button"
@@ -223,19 +223,19 @@ function ScheduleEditor({
             value={s.time}
             onChange={(e) => update(i, "time", e.target.value)}
             placeholder="HH:MM"
-            className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500/40"
+            className="border border-gray-200 rounded px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500/40"
           />
           <input
             value={s.activity}
             onChange={(e) => update(i, "activity", e.target.value)}
             placeholder="Activity name"
-            className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500/40"
+            className="border border-gray-200 rounded px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500/40"
           />
           <input
             value={s.details || ""}
             onChange={(e) => update(i, "details", e.target.value)}
             placeholder="Details (optional)"
-            className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500/40"
+            className="border border-gray-200 rounded px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500/40"
           />
           <button
             type="button"
@@ -1181,12 +1181,12 @@ function TripMoneyDetail({ tripId, adminKey, onChange }: {
               type="number" min={1} max={data.outstanding} value={amount}
               onChange={e => setAmount(e.target.value)}
               placeholder="Amount"
-              className="w-28 border border-gray-200 rounded px-2 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-green-600/30"
+              className="w-28 border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-green-600/30"
             />
             <input
               value={note} onChange={e => setNote(e.target.value)}
               placeholder="What for? e.g. bus deposit"
-              className="flex-1 min-w-[10rem] border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30"
+              className="flex-1 min-w-[10rem] border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-600/30"
             />
             <button
               onClick={recordPayout}
@@ -1238,6 +1238,9 @@ type AttractionRow = {
   fee_min: number;
   fee_max: number;
   fee_note: string | null;
+  imageUrl?: string | null;
+  address?: string | null;
+  phone?: string | null;
 };
 
 type StateCount = { state: string; total: number; unpriced: number };
@@ -1354,7 +1357,7 @@ function AttractionsSection({ adminKey }: { adminKey: string }) {
   const visible = rows.filter(r =>
     !search || r.name.toLowerCase().includes(search.toLowerCase())
   );
-  const cell = "border border-gray-200 rounded px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-green-500/40";
+  const cell = "border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-green-500/40";
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -1422,7 +1425,7 @@ function AttractionsSection({ adminKey }: { adminKey: string }) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={`Search ${active}…`}
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-green-600/30"
+              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 w-56 focus:outline-none focus:ring-2 focus:ring-green-600/30"
             />
           </div>
 
@@ -1431,7 +1434,8 @@ function AttractionsSection({ adminKey }: { adminKey: string }) {
           {!loading && (
             <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
               {/* Header */}
-              <div className="hidden md:grid grid-cols-[1fr,110px,110px,1fr,120px] gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+              <div className="hidden md:grid grid-cols-[40px,1fr,110px,110px,1fr,120px] gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                <span></span>
                 <span>Name</span>
                 <span>Fee min (₦)</span>
                 <span>Fee max (₦)</span>
@@ -1445,10 +1449,16 @@ function AttractionsSection({ adminKey }: { adminKey: string }) {
                 return (
                   <div
                     key={row.id}
-                    className={`grid md:grid-cols-[1fr,110px,110px,1fr,120px] gap-2 px-3 py-2 border-b border-gray-100 last:border-0 items-center ${
+                    title={[row.address, row.phone].filter(Boolean).join(' · ') || undefined}
+                    className={`grid md:grid-cols-[40px,1fr,110px,110px,1fr,120px] gap-2 px-3 py-2 border-b border-gray-100 last:border-0 items-center ${
                       isDirty ? "bg-amber-50/60" : unpriced ? "bg-amber-50/25" : ""
                     }`}
                   >
+                    {row.imageUrl ? (
+                      <img src={`${API}${row.imageUrl}`} alt="" className="w-9 h-9 rounded object-cover" onError={e => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
+                    ) : (
+                      <span className="w-9 h-9 rounded bg-gray-100" />
+                    )}
                     <input
                       value={row.name}
                       onChange={e => edit(row.id, { name: e.target.value })}
@@ -1505,8 +1515,9 @@ function AttractionsSection({ adminKey }: { adminKey: string }) {
               {/* Add row */}
               <form
                 onSubmit={addRow}
-                className="grid md:grid-cols-[1fr,110px,110px,1fr,120px] gap-2 px-3 py-3 bg-gray-50 border-t border-gray-200 items-center"
+                className="grid md:grid-cols-[40px,1fr,110px,110px,1fr,120px] gap-2 px-3 py-3 bg-gray-50 border-t border-gray-200 items-center"
               >
+                <span className="hidden md:block w-9 h-9" />
                 <input
                   value={draft.name}
                   onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
@@ -1606,7 +1617,7 @@ export default function Admin() {
               placeholder="Admin key"
               required
               autoFocus
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30"
+              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-600/30"
             />
             {loginErr && <p className="text-xs text-red-500">{loginErr}</p>}
             <button

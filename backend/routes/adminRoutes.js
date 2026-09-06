@@ -392,12 +392,25 @@ router.get('/attractions/states', requireAdmin, async (req, res) => {
   }
 });
 
+// A PhotoField's value is a full `/api/trip-image/<id>` path (or an absolute
+// URL, or empty) — the attractions column stores the bare blob id, so strip
+// the known prefix rather than double it up in the exposed imageUrl.
+function toImageId(value) {
+  if (!value) return null;
+  const m = /\/api\/trip-image\/(.+)$/.exec(value);
+  return m ? m[1] : value;
+}
+function withImageUrl(a) {
+  return { ...a, imageUrl: a.image_id ? `/api/trip-image/${a.image_id}` : null };
+}
+
 // ── GET /admin/attractions?state=Lagos ─────────────────────────────────────────
 router.get('/attractions', requireAdmin, async (req, res) => {
   try {
     const { state } = req.query;
     if (!state) return res.status(400).json({ error: 'A state query param is required.' });
-    res.json({ attractions: await db.attractions.byState(state) });
+    const rows = await db.attractions.byState(state);
+    res.json({ attractions: rows.map(withImageUrl) });
   } catch (err) {
     console.error('[admin] GET attractions failed:', err.message);
     res.status(500).json({ error: err.message });
@@ -407,11 +420,18 @@ router.get('/attractions', requireAdmin, async (req, res) => {
 // ── POST /admin/attractions ────────────────────────────────────────────────────
 router.post('/attractions', requireAdmin, async (req, res) => {
   try {
-    const { state, name, fee_min = 0, fee_max = 0, fee_note = null } = req.body || {};
+    const {
+      state, name, fee_min = 0, fee_max = 0, fee_note = null,
+      imageUrl, address = null, phone = null, google_maps_link = null,
+      description = null, source_url = null,
+    } = req.body || {};
     if (!state || !name) return res.status(400).json({ error: 'state and name are required.' });
 
-    const attraction = await db.attractions.upsert({ state, name, fee_min, fee_max, fee_note });
-    res.json({ ok: true, attraction });
+    const attraction = await db.attractions.upsert({
+      state, name, fee_min, fee_max, fee_note,
+      image_id: toImageId(imageUrl), address, phone, google_maps_link, description, source_url,
+    });
+    res.json({ ok: true, attraction: withImageUrl(attraction) });
   } catch (err) {
     // UNIQUE(state, name) — surface the clash rather than a raw SQLite error
     if (/UNIQUE/i.test(err.message)) {
@@ -436,8 +456,14 @@ router.put('/attractions/:id', requireAdmin, async (req, res) => {
       fee_min:  req.body.fee_min  ?? existing.fee_min,
       fee_max:  req.body.fee_max  ?? existing.fee_max,
       fee_note: req.body.fee_note ?? existing.fee_note,
+      image_id:         req.body.imageUrl !== undefined ? toImageId(req.body.imageUrl) : existing.image_id,
+      address:          req.body.address          ?? existing.address,
+      phone:            req.body.phone            ?? existing.phone,
+      google_maps_link: req.body.google_maps_link ?? existing.google_maps_link,
+      description:      req.body.description      ?? existing.description,
+      source_url:       req.body.source_url       ?? existing.source_url,
     });
-    res.json({ ok: true, attraction });
+    res.json({ ok: true, attraction: withImageUrl(attraction) });
   } catch (err) {
     if (/UNIQUE/i.test(err.message)) {
       return res.status(409).json({ error: 'Another attraction in this state already has that name.' });

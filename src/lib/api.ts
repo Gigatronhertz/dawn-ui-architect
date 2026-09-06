@@ -21,7 +21,16 @@ export type IntakeData = {
   roundTrip?: boolean;
 };
 
-export type Attraction = { id: number; state: string; name: string; fee_min: number; fee_max: number; fee_note: string | null };
+export type Attraction = {
+  id: number; state: string; name: string; fee_min: number; fee_max: number; fee_note: string | null;
+  /** Points into the image store — run it through imageUrl() before rendering, same as other stored photos. */
+  imageUrl?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  google_maps_link?: string | null;
+  description?: string | null;
+  source_url?: string | null;
+};
 
 export type Activity = { time: string; title: string; cost_per_person: number };
 export type PlanDay = { day: number; title: string; activities: Activity[] };

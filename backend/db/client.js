@@ -309,6 +309,15 @@ const MIGRATIONS = [
   // Phase 14 — a nightlife venue's weekly line-up (Wednesday karaoke, Friday
   // party night, etc.), shown when someone opens the venue's detail view.
   `ALTER TABLE nightlife_venues ADD COLUMN weekly_program TEXT NOT NULL DEFAULT '[]'`,
+  // Phase 15 — the attractions table started as a bare name+fee price sheet
+  // for the AI planner; a real Lagos places import (Sept 2026) needs it to
+  // carry a photo and contact details too, same as any other venue.
+  `ALTER TABLE attractions ADD COLUMN image_id         TEXT`,
+  `ALTER TABLE attractions ADD COLUMN address          TEXT`,
+  `ALTER TABLE attractions ADD COLUMN phone            TEXT`,
+  `ALTER TABLE attractions ADD COLUMN google_maps_link TEXT`,
+  `ALTER TABLE attractions ADD COLUMN description      TEXT`,
+  `ALTER TABLE attractions ADD COLUMN source_url       TEXT`,
 ];
 
 const ready = (async () => {
@@ -631,20 +640,53 @@ async function getAttraction(id) {
 }
 
 /** Insert when `id` is absent, update in place when present. */
-async function upsertAttraction({ id, state, name, fee_min, fee_max, fee_note }) {
-  const args = [state, name, Number(fee_min) || 0, Number(fee_max) || 0, fee_note || null];
+async function upsertAttraction({
+  id, state, name, fee_min, fee_max, fee_note,
+  image_id, address, phone, google_maps_link, description, source_url,
+}) {
+  const args = [
+    state, name, Number(fee_min) || 0, Number(fee_max) || 0, fee_note || null,
+    image_id || null, address || null, phone || null, google_maps_link || null,
+    description || null, source_url || null,
+  ];
   if (id) {
     await client.execute({
-      sql: `UPDATE attractions SET state=?, name=?, fee_min=?, fee_max=?, fee_note=? WHERE id=?`,
+      sql: `UPDATE attractions SET
+              state=?, name=?, fee_min=?, fee_max=?, fee_note=?,
+              image_id=?, address=?, phone=?, google_maps_link=?, description=?, source_url=?
+            WHERE id=?`,
       args: [...args, id],
     });
     return getAttraction(id);
   }
   const res = await client.execute({
-    sql: 'INSERT INTO attractions (state, name, fee_min, fee_max, fee_note) VALUES (?, ?, ?, ?, ?)',
+    sql: `INSERT INTO attractions
+            (state, name, fee_min, fee_max, fee_note,
+             image_id, address, phone, google_maps_link, description, source_url)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
     args,
   });
   return getAttraction(Number(res.lastInsertRowid));
+}
+
+/**
+ * Add the new fields (image/address/phone/etc.) onto an existing attraction
+ * without touching its price — used by the bulk places import so re-running
+ * it never clobbers a fee an admin already researched and set by hand.
+ */
+async function enrichAttraction(id, { image_id, address, phone, google_maps_link, description, source_url }) {
+  await client.execute({
+    sql: `UPDATE attractions SET
+            image_id         = COALESCE(?, image_id),
+            address          = COALESCE(?, address),
+            phone            = COALESCE(?, phone),
+            google_maps_link = COALESCE(?, google_maps_link),
+            description      = COALESCE(?, description),
+            source_url       = COALESCE(?, source_url)
+          WHERE id = ?`,
+    args: [image_id || null, address || null, phone || null, google_maps_link || null, description || null, source_url || null, id],
+  });
+  return getAttraction(id);
 }
 
 async function deleteAttraction(id) {
@@ -1167,6 +1209,7 @@ module.exports = {
     stateCounts: getAttractionStateCounts,
     get:         getAttraction,
     upsert:      upsertAttraction,
+    enrich:      enrichAttraction,
     remove:      deleteAttraction,
   },
   experiences:  { list: getExperiences, upsert: upsertExperience },

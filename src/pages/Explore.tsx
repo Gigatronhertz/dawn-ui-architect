@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { KarijeLogo } from "@/components/Nav";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
 import type { AgencyListing } from "@/lib/api";
-import { api } from "@/lib/api";
+import { api, imageUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { tripImageUrl } from "@/lib/tripImage";
 import { toVenue, VENUE_VIBES, VIBE_EMOJI, type VenueItem } from "@/lib/attractions";
@@ -174,21 +174,24 @@ function CuratedNightlifeCard({ v, onSelect }: { v: NightlifeVenue; onSelect: ()
 }
 
 /** Fallback nightlife card — drawn from the real per-city attractions table
- *  when no admin-curated venue has been added for this city yet. That table
- *  carries no photo per venue, so it wears a generic on-theme nightlife
- *  photo (cycled by position) rather than a bare colour block. */
+ *  when no admin-curated venue has been added for this city yet. Most of
+ *  these venues now carry a real photo from the places import; the rest
+ *  wear a generic on-theme nightlife photo (cycled by position) rather than
+ *  a bare colour block. */
 function FallbackNightlifeCard({ v, index, onSelect }: { v: VenueItem; index: number; onSelect: () => void }) {
-  const image = FALLBACK_NIGHTLIFE_IMAGES[index % FALLBACK_NIGHTLIFE_IMAGES.length];
+  const realPhoto = imageUrl(v.imageUrl);
+  const image = realPhoto || cdnImg(FALLBACK_NIGHTLIFE_IMAGES[index % FALLBACK_NIGHTLIFE_IMAGES.length], 600, 600);
   return (
     <button
       onClick={onSelect}
       className="group relative aspect-square overflow-hidden text-left"
     >
       <img
-        src={cdnImg(image, 600, 600)}
+        src={image}
         alt=""
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
         loading="lazy"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/15" />
       <div className="absolute top-0 left-0 right-0 p-3">
@@ -464,12 +467,35 @@ function NightlifeVenueDetail({ venue, onClose }: { venue: NightlifeVenue; onClo
 }
 
 /** Lighter detail for a fallback venue drawn from the attractions table —
- *  no photo or weekly program in that data, just what's actually known. */
+ *  most now carry a real photo and address from the places import; a venue
+ *  still missing either just shows what's actually known. */
 function FallbackVenueDetail({ venue, onClose }: { venue: VenueItem; onClose: () => void }) {
+  const photo = imageUrl(venue.imageUrl);
   return (
     <DetailOverlay onClose={onClose}>
-      <div className="p-6 space-y-5">
-        <div className="flex items-start justify-between">
+      {photo ? (
+        <div className="relative h-40">
+          <img
+            src={photo}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-3 right-3 w-8 h-8 grid place-items-center bg-black/50 text-white hover:bg-black/70 transition"
+          >
+            ✕
+          </button>
+          <div className="absolute bottom-3 left-5 right-5 text-white">
+            <span className="text-2xl leading-none">{venue.emoji}</span>
+            <h2 className="font-marcellus text-xl leading-snug">{venue.name}</h2>
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 pb-0 flex items-start justify-between">
           <span className="text-4xl leading-none">{venue.emoji}</span>
           <button
             onClick={onClose}
@@ -479,18 +505,27 @@ function FallbackVenueDetail({ venue, onClose }: { venue: VenueItem; onClose: ()
             ✕
           </button>
         </div>
+      )}
+      <div className="p-6 space-y-5">
+        {!photo && (
+          <h2 className="font-marcellus text-2xl text-foreground leading-snug -mt-2">{venue.name}</h2>
+        )}
         <div>
-          <h2 className="font-marcellus text-2xl text-foreground leading-snug">{venue.name}</h2>
-          <p className="text-xs font-jost font-light text-muted-foreground mt-1">{venue.vibe}</p>
-          <MapsActions location={venue.name} />
+          <p className="text-xs font-jost font-light text-muted-foreground">{venue.vibe}</p>
+          {venue.address && (
+            <p className="text-sm font-jost font-light text-foreground mt-2">📍 {venue.address}</p>
+          )}
+          <MapsActions location={venue.address || venue.name} />
         </div>
         <div className="border-t border-border pt-4">
           <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Entry</div>
           <div className="font-marcellus text-base text-foreground">{venue.feeNote}</div>
         </div>
-        <p className="text-xs font-jost font-light text-muted-foreground leading-relaxed">
-          We don't have a full write-up for this one yet — it's listed from our venue price table.
-        </p>
+        {!venue.address && (
+          <p className="text-xs font-jost font-light text-muted-foreground leading-relaxed">
+            We don't have a full write-up for this one yet — it's listed from our venue price table.
+          </p>
+        )}
       </div>
     </DetailOverlay>
   );
@@ -1150,7 +1185,17 @@ export function BuildYourOwn({
           <ul className="max-h-[26rem] overflow-y-auto -mx-1 px-1">
             {matches.map(v => (
               <li key={v.id} className="flex items-center gap-2 py-2 border-b border-border/50 last:border-0">
-                <span className="text-base shrink-0 leading-none">{v.emoji}</span>
+                {imageUrl(v.imageUrl) ? (
+                  <img
+                    src={imageUrl(v.imageUrl)!}
+                    alt=""
+                    className="w-8 h-8 rounded-lg object-cover shrink-0"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                ) : (
+                  <span className="w-8 h-8 grid place-items-center text-base shrink-0 leading-none">{v.emoji}</span>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-jost font-medium truncate">{v.name}</div>
                   <div className="text-[10px] font-jost font-light text-muted-foreground truncate">

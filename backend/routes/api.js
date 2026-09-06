@@ -1619,7 +1619,11 @@ router.get('/attractions', async (req, res) => {
     const { city = 'Lagos' } = req.query;
     const { cityToState } = require('../services/attractions');
     const stateName = cityToState(city) || city;
-    const attractions = await db.attractions.byState(stateName).catch(() => []);
+    const rows = await db.attractions.byState(stateName).catch(() => []);
+    const attractions = rows.map(a => ({
+      ...a,
+      imageUrl: a.image_id ? `/api/trip-image/${a.image_id}` : null,
+    }));
     res.json({ city, state: stateName, attractions });
   } catch (err) {
     console.error('[api/attractions]', err.message);
