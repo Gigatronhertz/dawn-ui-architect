@@ -355,7 +355,7 @@ function IntakeForm({ onSubmit, onBack }: { onSubmit: (i: Intake) => void; onBac
           <p className="mt-2 text-[11px] text-muted-foreground">GIGM live prices · {GIGM_CITIES.length} cities covered</p>
         )}
         {transportMode === 'flight' && (
-          <p className="mt-2 text-[11px] text-muted-foreground">Google Travel + Amadeus · {FLIGHT_CITIES.length} airports covered</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">Google Travel live prices · {FLIGHT_CITIES.length} airports covered</p>
         )}
       </div>
 
@@ -477,10 +477,6 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
       if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase()))
         opts.push({ key: `gt-${i}`, name: h.name, area: h.location || '', price: h.pricePerNight, rating: h.rating, source: 'Google Travel', perks: h.amenities.slice(0, 3) });
     });
-    (scraped?.bHotels ?? []).forEach((h, i) => {
-      if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase()))
-        opts.push({ key: `bk-${i}`, name: h.name, area: h.address?.split(',')[0] || '', price: h.pricePerNight, rating: h.rating ? +(h.rating / 2).toFixed(1) : null, source: 'Booking.com', perks: [] });
-    });
     return opts;
   }, [realPlan, scraped]);
 
@@ -493,9 +489,6 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
     const opts: RentalOpt[] = [];
     (scraped?.gtRentals ?? []).forEach((r, i) =>
       opts.push({ key: `gr-${i}`, name: r.name, details: [r.type, r.sleeps ? `sleeps ${r.sleeps}` : null, r.bedrooms ? `${r.bedrooms} bed` : null].filter(Boolean).join(' · '), price: r.pricePerNight, source: 'Google Travel' })
-    );
-    (scraped?.bApartments ?? []).forEach((r, i) =>
-      opts.push({ key: `ba-${i}`, name: r.name, details: r.propertyType || 'Apartment', price: r.pricePerNight, source: 'Booking.com' })
     );
     return opts;
   }, [scraped, intake.accommodationType]);
@@ -851,7 +844,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
             {(flightOffers.length > 0 || scraped?.flights) && (
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center justify-between">
-                  <span>Flights — {scraped?.flights?.source === 'google_travel' ? 'Google Travel' : 'Amadeus'}</span>
+                  <span>Flights — Google Travel</span>
                   {scraped?.flights?.directAvailable && <span className="text-[10px] px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">Direct available</span>}
                 </div>
                 <div className="space-y-1.5">

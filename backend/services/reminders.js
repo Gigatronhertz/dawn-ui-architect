@@ -11,7 +11,6 @@
  * attempt, so the organiser's chase list shows who has been nudged and when.
  */
 const db = require('../db/client');
-const { sendText, sendTemplate, available: waAvailable } = require('./whatsapp');
 const { sendPaymentReminderEmail, available: emailAvailable } = require('./email');
 
 const HOUR = 3600;
@@ -31,11 +30,11 @@ const STEPS = [
 /**
  * Which channels to try, in order, stopping at the first that lands.
  *
- * Email leads because it is the one that currently works — WhatsApp is set
- * aside until the Zavu account has a sender configured. WhatsApp is still
- * tried as a fallback, so nobody with a number and no email goes unreminded.
+ * Email-only for now — WhatsApp is parked while the interstate flow settles
+ * on one consistent channel story. Re-add 'whatsapp' here (and restore its
+ * attempt below) when that changes.
  */
-const CHANNEL_ORDER = (process.env.REMINDER_CHANNELS || 'email,whatsapp')
+const CHANNEL_ORDER = (process.env.REMINDER_CHANNELS || 'email')
   .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 
 const fmtNGN = (n) =>
@@ -100,15 +99,7 @@ async function remindOne(row, { payBase }) {
     if (diff >= 0) daysLeft = diff;
   }
 
-  const body = messageFor({
-    tone: step.tone, name: row.name, tripName, perPerson, link, daysLeft,
-  });
-
-  // Email leads for now. WhatsApp is parked until the Zavu account has a
-  // sender, and until then every WhatsApp attempt fails and falls through to
-  // email anyway — so try the channel that actually works first, rather than
-  // after a failure. Order is config, not code: set REMINDER_CHANNELS to
-  // `whatsapp,email` to put it back in front the day it's live again.
+  // Email-only for now — see CHANNEL_ORDER above.
   const attempts = {
     async email() {
       if (!row.email || !emailAvailable()) return false;
@@ -119,33 +110,6 @@ async function remindOne(row, { payBase }) {
         return true;
       } catch (err) {
         console.warn(`[reminders] email failed for ${row.id}: ${err.message}`);
-        return false;
-      }
-    },
-
-    // A reminder is always days after the person last spoke to us, so the
-    // 24-hour window is shut and WhatsApp requires an approved template. Plain
-    // text is tried only for the rare case where they messaged us recently; it
-    // fails cleanly with whatsapp_window_closed otherwise.
-    async whatsapp() {
-      if (!row.wa_number || !waAvailable()) return false;
-      const templateName = process.env.ZAVU_REMINDER_TEMPLATE;
-      try {
-        if (templateName) {
-          await sendTemplate(row.wa_number, templateName, [
-            row.name || 'there',
-            tripName,
-            fmtNGN(perPerson),
-            link,
-          ]);
-        } else {
-          await sendText(row.wa_number, body);
-        }
-        return true;
-      } catch (err) {
-        if (err.code === 'whatsapp_window_closed' && !templateName) {
-          console.warn('[reminders] set ZAVU_REMINDER_TEMPLATE to reach people over WhatsApp');
-        }
         return false;
       }
     },

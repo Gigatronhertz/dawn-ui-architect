@@ -265,7 +265,7 @@ function PaymentSection({
 
   /**
    * We already have their email from joining, so go straight to paying. Only
-   * someone who joined without one — a WhatsApp-only signup — still sees a form.
+   * someone who skipped the email field on join still sees a form.
    */
   function handlePayNow() {
     if (hasEmail) {
@@ -368,7 +368,6 @@ function JoinSection({
   const [joinState, setJoinState]     = useState<JoinState>(participantId ? "joined" : "idle");
   const [nameInput, setNameInput]     = useState("");
   const [emailInput, setEmailInput]   = useState("");
-  const [waInput, setWaInput]         = useState("");
   const [error, setError]             = useState("");
   const pollRef                        = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -400,7 +399,6 @@ function JoinSection({
       const { count: newCount, participantId: pid } = await api.joinPlan(tripId, {
         name:     nameInput.trim()  || undefined,
         email:    emailInput.trim() || undefined,
-        waNumber: waInput.trim()    || undefined,
         remindMe,
       });
       setCount(newCount);
@@ -512,12 +510,6 @@ function JoinSection({
             className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition placeholder:text-muted-foreground/60"
           />
           <input
-            type="tel" inputMode="tel" value={waInput}
-            onChange={e => setWaInput(e.target.value)}
-            placeholder="WhatsApp number"
-            className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition placeholder:text-muted-foreground/60"
-          />
-          <input
             type="email" inputMode="email" value={emailInput}
             onChange={e => setEmailInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleJoin(false); }}
@@ -525,7 +517,7 @@ function JoinSection({
             className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition placeholder:text-muted-foreground/60"
           />
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            We use these to send your receipt and let you know if anything about the trip changes.
+            We use this to send your receipt and let you know if anything about the trip changes.
           </p>
 
           <div className="flex gap-2">
@@ -820,8 +812,22 @@ export default function PlanView() {
               <Card>
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Transport</div>
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-2xl bg-primary/10 grid place-items-center text-xl shrink-0 print:hidden">
-                    {data.transport.type?.toLowerCase().includes("flight") ? "✈️" : "🚌"}
+                  <div className="w-11 h-11 rounded-2xl bg-primary/10 grid place-items-center text-xl shrink-0 print:hidden overflow-hidden">
+                    {data.transport.logo ? (
+                      <img
+                        src={data.transport.logo}
+                        alt=""
+                        className="w-full h-full object-contain bg-white"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : data.transport.type?.toLowerCase().includes("flight") ? "✈️" : (
+                      <img
+                        src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=88&h=88&q=70"
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-display font-semibold truncate">{data.transport.operator}</div>
@@ -850,7 +856,16 @@ export default function PlanView() {
               <Card>
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Accommodation</div>
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-2xl bg-primary/10 grid place-items-center text-xl shrink-0 print:hidden">🏨</div>
+                  <div className="w-11 h-11 rounded-2xl bg-primary/10 grid place-items-center text-xl shrink-0 print:hidden overflow-hidden">
+                    {data.hotel.imageUrl ? (
+                      <img
+                        src={imageUrl(data.hotel.imageUrl) || data.hotel.imageUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : "🏨"}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-display font-semibold truncate">{data.hotel.name}</div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">

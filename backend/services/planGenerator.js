@@ -4,15 +4,32 @@ const {
   searchHotels: googleHotels, searchHolidayRentals, searchActivities,
   formatHotelsForPrompt, formatRentalsForPrompt, formatActivitiesForPrompt,
 } = require('./googleMaps');
-const { searchFlights, formatFlightsForPrompt } = require('./amadeus');
-const {
-  searchHotels: bookingHotels, searchApartments, getDates, formatBookingHotelsForPrompt,
-} = require('./bookingCom');
 const GT   = require('./googleTravel');
 const GIGM = require('./gigm');
 const db   = require('../db/client');
 const { cityToState, formatAttractionsForPrompt } = require('./attractions');
 const { CHAT_MODEL } = require('./llm');
+
+// ── Stay dates ─────────────────────────────────────────────────────────────
+// Check-in/out for the Google Travel hotel scraper. Falls back to a reference
+// window 6 weeks out when the squad hasn't picked specific dates yet.
+function getDates(intake) {
+  const match = (intake.specific_dates || '').match(/(\d{4}-\d{2}-\d{2})/g);
+  if (match && match.length >= 1) {
+    const checkin = match[0];
+    const d = new Date(checkin);
+    d.setDate(d.getDate() + (intake.days || 2));
+    return { checkin, checkout: d.toISOString().split('T')[0] };
+  }
+  const checkin = new Date();
+  checkin.setDate(checkin.getDate() + 42);
+  const checkout = new Date(checkin);
+  checkout.setDate(checkout.getDate() + (intake.days || 2));
+  return {
+    checkin:  checkin.toISOString().split('T')[0],
+    checkout: checkout.toISOString().split('T')[0],
+  };
+}
 
 let _groq;
 function getGroq() {
@@ -85,8 +102,6 @@ async function fetchRealWorldContext(intake) {
   const [
     road,
     gHotels, gRentals, activities,
-    bHotels, bApartments,
-    amadeusFlights,
   ] = await Promise.allSettled([
     getRoadDistance(intake.origin, intake.destination),
     // Google Places — ratings, addresses, phone numbers
@@ -95,13 +110,6 @@ async function fetchRealWorldContext(intake) {
       ? searchHolidayRentals(intake.destination, coords?.lat, coords?.lng)
       : Promise.resolve([]),
     searchActivities(intake.destination, coords?.lat, coords?.lng),
-    // Booking.com — real NGN prices with availability
-    bookingHotels(intake.destination, checkin, checkout, intake.squad_size, budgetPerNight),
-    isShortlet
-      ? searchApartments(intake.destination, checkin, checkout, intake.squad_size)
-      : Promise.resolve([]),
-    // Amadeus — flight prices (skip in bus mode)
-    isFlightMode ? searchFlights(intake.origin, intake.destination, depDate) : Promise.resolve(null),
   ]);
 
   const gtHotels   = { status: 'fulfilled', value: gtHotelsRaw };
@@ -122,20 +130,15 @@ async function fetchRealWorldContext(intake) {
   logCount('GT rentals', gtRentals);
   logCount('GT flights', gtFlights);
   logCount('GIGM buses', gigmTrips);
-  logCount('Booking hotels', bHotels);
-  logCount('Booking apartments', bApartments);
-  logCount('Amadeus flights', amadeusFlights);
 
-  // Prefer Google Travel flights if Amadeus returned nothing
-  const flightData = val(amadeusFlights) || val(gtFlights);
+  // Flights come from Google Travel only now (Amadeus removed).
+  const flightData = val(gtFlights);
 
   return {
     road:              val(road),
     gHotels:           val(gHotels)     || [],
     gRentals:          val(gRentals)    || [],
     activities:        val(activities)  || {},
-    bHotels:           val(bHotels)     || [],
-    bApartments:       val(bApartments) || [],
     flights:           flightData,
     gtHotels:          val(gtHotels)    || [],
     gtRentals:         val(gtRentals)   || [],
@@ -175,23 +178,16 @@ function buildContextBlock(ctx, intake) {
   }
 
   if (ctx.flights) {
-    const src = ctx.flights.source === 'google_travel' ? 'Google Travel' : 'Amadeus';
-    sections.push(formatFlightsForPrompt(ctx.flights).replace('✈️  Flights', `✈️  Flights (${src})`));
+    sections.push(GT.formatFlightsForPrompt(ctx.flights).replace('✈️  Flights', '✈️  Flights (Google Travel)'));
   }
 
   // ── 3. Hotels ─────────────────────────────────────────────────────────────
   const gtHotelStr = GT.formatHotelsForPrompt(ctx.gtHotels || []);
-  const bHotelStr  = formatBookingHotelsForPrompt(ctx.bHotels, ctx.nights);
   const gHotelStr  = formatHotelsForPrompt(ctx.gHotels);
 
   if (gtHotelStr) {
     sections.push(
       `🏨  Hotels near ${intake.destination} — LIVE prices from Google Travel (highest priority, use these):\n${gtHotelStr}`
-    );
-  }
-  if (bHotelStr) {
-    sections.push(
-      `🏨  Hotels near ${intake.destination} — Booking.com NGN prices + availability:\n${bHotelStr}`
     );
   }
   if (gHotelStr) {
@@ -202,17 +198,11 @@ function buildContextBlock(ctx, intake) {
 
   // ── 4. Holiday rentals ────────────────────────────────────────────────────
   const gtRentalStr = GT.formatRentalsForPrompt(ctx.gtRentals || []);
-  const bRentalStr  = formatBookingHotelsForPrompt(ctx.bApartments, ctx.nights);
   const gRentalStr  = formatRentalsForPrompt(ctx.gRentals);
 
   if (gtRentalStr) {
     sections.push(
       `🏠  Shortlets / vacation rentals near ${intake.destination} — LIVE from Google Travel:\n${gtRentalStr}`
-    );
-  }
-  if (bRentalStr) {
-    sections.push(
-      `🏠  Apartments / shortlets near ${intake.destination} — Booking.com:\n${bRentalStr}`
     );
   }
   if (gRentalStr) {
@@ -232,6 +222,28 @@ function buildContextBlock(ctx, intake) {
   if (!sections.length) return '';
 
   return `\n## REAL-WORLD DATA — follow strictly; do not invent names or fees when real data is provided\n${sections.join('\n\n')}\n`;
+}
+
+/**
+ * The AI writes plan.hotel/plan.transport as prose it composed from the
+ * real-world context, not a copy of any one scraped record — asking it to
+ * also parrot back an exact image URL would be unreliable. Instead, match
+ * its chosen hotel/airline name back against the real records we already
+ * fetched and attach whatever photo/logo that record actually carries.
+ */
+function attachRealImages(plan, ctx) {
+  if (plan?.hotel?.name) {
+    const target = plan.hotel.name.toLowerCase();
+    const pool = [...(ctx.gtHotels || []), ...(ctx.gHotels || [])];
+    const match = pool.find(h => h.name && (
+      h.name.toLowerCase() === target
+      || h.name.toLowerCase().includes(target)
+      || target.includes(h.name.toLowerCase())
+    ));
+    if (match?.imageUrl) plan.hotel.imageUrl = match.imageUrl;
+  }
+  // No flight-logo source since Amadeus was removed — Google Travel's
+  // scraper only reads page text, which never carries a logo image.
 }
 
 // ── Main plan generation ───────────────────────────────────────────────────────
@@ -263,7 +275,7 @@ Trip details:
 - Transport: ${transportHint}
 ${contextBlock}
 INSTRUCTIONS:
-1. Pick the hotel from the "Hotels" section above if provided — use the EXACT name and address. If NO hotel data was scraped, do NOT invent a name. Set hotel.name to "See Hotels.ng or Booking.com for current availability" and estimate price_per_night (₦25,000–₦60,000 Abuja, ₦20,000–₦50,000 other cities).
+1. Pick the hotel from the "Hotels" section above if provided — use the EXACT name and address. If NO hotel data was scraped, do NOT invent a name. Set hotel.name to "Hotel to be confirmed" and estimate price_per_night (₦25,000–₦60,000 Abuja, ₦20,000–₦50,000 other cities).
 2. If shortlet/rental listings are provided and accommodation preference is "Shortlet", pick from that list instead.
 3. DAY SCHEDULE — STRICT SOURCE RULE:
    a. Every non-travel, non-hotel, non-meal slot MUST use a venue from the ACTIVITY MENU above — exact name, exact entry fee.
@@ -336,15 +348,12 @@ INSTRUCTIONS:
   "offline_note": "Hotel: [name] — [address]. Tel: [phone if available]. Transport: [operator], departs [terminal] at [time]. Attraction fees confirmed from curated list; food costs are estimates.",
   "data_sources": {
     "hotels_from_google_travel": ${(ctx.gtHotels || []).length > 0},
-    "hotels_from_booking": ${ctx.bHotels.length > 0},
     "hotels_from_places": ${ctx.gHotels.length > 0},
     "rentals_from_google_travel": ${(ctx.gtRentals || []).length > 0},
-    "rentals_from_booking": ${ctx.bApartments.length > 0},
     "rentals_from_places": ${ctx.gRentals.length > 0},
     "activities_from_google": ${Object.keys(ctx.activities || {}).length > 0},
     "distance_from_google": ${!!ctx.road},
-    "flights_from_amadeus": ${!!ctx.flights && ctx.flights.source !== 'google_travel'},
-    "flights_from_google_travel": ${!!ctx.flights && ctx.flights.source === 'google_travel'},
+    "flights_from_google_travel": ${!!ctx.flights},
     "buses_from_gigm": ${(ctx.gigmTrips || []).length > 0}
   }
 }`;
@@ -359,14 +368,14 @@ INSTRUCTIONS:
   // response_format:json_object guarantees raw JSON, but strip fences defensively
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const plan = JSON.parse(cleaned);
+  attachRealImages(plan, ctx);
   return {
     plan,
     scraped: {
       flights:     ctx.flights,
       gtHotels:    ctx.gtHotels    || [],
-      bHotels:     ctx.bHotels     || [],
+      gHotels:     ctx.gHotels     || [],
       gtRentals:   ctx.gtRentals   || [],
-      bApartments: ctx.bApartments || [],
       gigmTrips:        ctx.gigmTrips        || [],
       localAttractions: ctx.localAttractions || [],
     },
@@ -399,7 +408,7 @@ async function buildSkeletonPlan(intake) {
   // back to the cheapest available — showing a room at triple their budget as
   // the default is worse than showing one that's merely over.
   const ceiling    = hotelNightlyCeiling(intake);
-  const allHotels  = [...(ctx.bHotels || []), ...(ctx.gtHotels || [])]
+  const allHotels  = [...(ctx.gtHotels || [])]
     .filter(h => h?.pricePerNight > 0)
     .sort((a, b) => a.pricePerNight - b.pricePerNight);
   const hotel = allHotels.find(h => h.pricePerNight <= ceiling) || allHotels[0] || null;
@@ -422,6 +431,7 @@ async function buildSkeletonPlan(intake) {
         price_per_night: hotelNightly,
         rating:          hotel.rating || 0,
         perks:           hotel.amenities || [],
+        imageUrl:        hotel.imageUrl || null,
       } : null,
       // Always an object, even when nothing was scraped — the editor renders it
       // and a null here would blank the whole transport card. Empty operator is
@@ -433,6 +443,7 @@ async function buildSkeletonPlan(intake) {
         depart_time:     bus?.departureTime || '',
         arrive_time:     bus?.arrivalTime   || '',
         pickup:          bus?.terminal      || '',
+        logo:            isFlight ? (flight?.offers?.[0]?.logo || null) : null,
       },
       // Empty on purpose — this is the squad's to fill.
       days: Array.from({ length: days }, (_, i) => ({ day: i + 1, activities: [] })),
@@ -452,9 +463,8 @@ async function buildSkeletonPlan(intake) {
     scraped: {
       flights:     ctx.flights,
       gtHotels:    ctx.gtHotels    || [],
-      bHotels:     ctx.bHotels     || [],
+      gHotels:     ctx.gHotels     || [],
       gtRentals:   ctx.gtRentals   || [],
-      bApartments: ctx.bApartments || [],
       gigmTrips:        ctx.gigmTrips        || [],
       localAttractions: ctx.localAttractions || [],
     },

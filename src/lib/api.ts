@@ -27,8 +27,8 @@ export type Activity = { time: string; title: string; cost_per_person: number };
 export type PlanDay = { day: number; title: string; activities: Activity[] };
 
 export type TripPlan = {
-  hotel: { name: string; area: string; price_per_night: number; rating: number; perks: string[] };
-  transport: { operator: string; type: string; price_per_person: number; depart_time: string; arrive_time: string; pickup: string };
+  hotel: { name: string; area: string; price_per_night: number; rating: number; perks: string[]; imageUrl?: string | null };
+  transport: { operator: string; type: string; price_per_person: number; depart_time: string; arrive_time: string; pickup: string; logo?: string | null };
   days: PlanDay[];
   date_options: { id: string; label: string; sub: string }[];
   cost_breakdown: { transport_total: number; lodging_total: number; food_total: number; activities_total: number; buffer: number; total: number; per_person: number };
@@ -47,16 +47,17 @@ export type TripPlan = {
   } | null;
 };
 
-export type ScrapedFlightOffer = { price: number; airline: string | null; stops: number | null; duration: string | null; roundTrip: boolean };
+export type ScrapedFlightOffer = { price: number; airline: string | null; logo?: string | null; stops: number | null; duration: string | null; roundTrip: boolean };
 export type ScrapedFlights = { available: boolean; cheapestNGN: number; averageNGN: number; cheapestAirline: string; directAvailable: boolean; offers: ScrapedFlightOffer[]; source: string };
-export type GTHotel = { name: string; pricePerNight: number; rating: number | null; stars: number | null; deal: string | null; amenities: string[]; location: string | null };
+export type GTHotel = { name: string; pricePerNight: number; rating: number | null; stars: number | null; deal: string | null; amenities: string[]; location: string | null; imageUrl?: string | null };
 export type GTRental = { name: string; pricePerNight: number; type: string | null; sleeps: number | null; bedrooms: number | null; amenities: string[] };
-export type BHotel = { id: number; name: string; rating: number | null; address: string; pricePerNight: number | null; propertyType: string | null; stars: number | null; freeCancellation: boolean; url?: string | null };
+/** Google Places–sourced hotel — ratings/address/phone, no live pricing (see backend/services/googleMaps.js). */
+export type GHotel = { name: string; address: string; rating: number | null; ratingCount: number; priceLevel: string | null; phone: string | null; estimatedNightNGN: number | null; imageUrl?: string | null };
 export type GIGMTrip = { operator: string; departureTime: string | null; arrivalTime: string | null; price: number; class: string; seatsAvailable: number; terminal: string | null };
-export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[]; bHotels: BHotel[]; gtRentals: GTRental[]; bApartments: BHotel[]; gigmTrips: GIGMTrip[]; localAttractions?: Attraction[] };
+export type ScrapedData = { flights: ScrapedFlights | null; gtHotels: GTHotel[]; gHotels?: GHotel[]; gtRentals: GTRental[]; gigmTrips: GIGMTrip[]; localAttractions?: Attraction[] };
 
 export type PlanResponse = { tripId: string; plan: TripPlan; scraped?: ScrapedData };
-export type ConfirmResponse = { tripId: string; botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[]; selectedDate?: string | null };
+export type ConfirmResponse = { tripId: string; destination: string; squadSize: number; emailSent: boolean; selectedDate?: string | null };
 
 export type UserPlan = {
   tripId:           string;
@@ -148,11 +149,9 @@ export type PollPlanResponse = {
   error?:       string;
   // Present when status === 'awaiting_group' (trip already confirmed)
   confirmed?:    boolean;
-  botNumber?:    string;
   destination?:  string | null;
   squadSize?:    number | null;
   selectedDate?: string | null;
-  instructions?: string[];
 };
 
 /**
@@ -353,8 +352,8 @@ export const api = {
     get<{ from: string; to: string; count: number; trips: GIGMTrip[] }>(
       `/api/gigm-test?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${date ? `&date=${date}` : ''}`
     ),
-  confirmPlan: (tripId: string, plan: TripPlan, phone?: string, selectedDate?: string) =>
-    post<ConfirmResponse>('/api/confirm', { tripId, plan, phone, selectedDate: selectedDate || null }),
+  confirmPlan: (tripId: string, plan: TripPlan, email?: string, selectedDate?: string) =>
+    post<ConfirmResponse>('/api/confirm', { tripId, plan, email, selectedDate: selectedDate || null }),
   /** Save a push subscription and/or email address to notify when the plan is ready. */
   subscribeNotify: (tripId: string, opts: { subscription?: object; email?: string }) =>
     post<{ ok: boolean }>('/api/notify/subscribe', { tripId, ...opts }),
@@ -444,14 +443,13 @@ export const api = {
    */
   joinPlan: (
     tripId: string,
-    opts: { name?: string; email?: string; waNumber?: string; remindMe?: boolean } = {},
+    opts: { name?: string; email?: string; remindMe?: boolean } = {},
   ) =>
     post<{ ok: boolean; count: number; participantId: string }>(
       `/api/public/plan/${tripId}/join`,
       {
         name:     opts.name     || null,
         email:    opts.email    || null,
-        waNumber: opts.waNumber || null,
         remindMe: !!opts.remindMe,
       },
     ),

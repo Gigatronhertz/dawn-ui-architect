@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, session, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type BHotel, type Attraction } from "@/lib/api";
+import { api, session, imageUrl, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { KarijeLogo } from "@/components/Nav";
 
@@ -29,6 +29,16 @@ const FLIGHT_CITIES = [
   'Abuja','Akure','Asaba','Benin City','Calabar','Enugu','Ibadan',
   'Ilorin','Jos','Kaduna','Kano','Lagos','Maiduguri','Owerri',
   'Port Harcourt','Sokoto','Uyo','Warri','Yola',
+];
+
+/**
+ * GIGM has no per-trip photo of its own (it's one operator, not a catalog of
+ * venues), so bus cards get a generic, verified-working coach photo instead
+ * of a bare emoji — cycled by index for a little variety across the grid.
+ */
+const BUS_IMAGES = [
+  "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=100&h=100&q=70",
+  "https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?auto=format&fit=crop&w=100&h=100&q=70",
 ];
 
 // ── City coordinates for dynamic route map ───────────────────────────────────
@@ -120,8 +130,8 @@ const chipCls = (active: boolean) =>
   }`;
 
 /* ─── step 1: intake ────────────────────────────────────────────────────────── */
-function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) => void }) {
-  const [phone, setPhone] = useState("");
+function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, email: string) => void }) {
+  const [email, setEmail] = useState("");
   const [transportMode, setTransportMode] = useState<'bus' | 'flight'>('bus');
   const cities = transportMode === 'bus' ? GIGM_CITIES : FLIGHT_CITIES;
 
@@ -200,7 +210,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
           <p className="text-[11px] text-muted-foreground">
             {transportMode === 'bus'
               ? `GIGM live prices · ${GIGM_CITIES.length} cities covered`
-              : `Google Travel + Amadeus · ${FLIGHT_CITIES.length} airports covered`}
+              : `Google Travel live prices · ${FLIGHT_CITIES.length} airports covered`}
           </p>
           {/* Round trip toggle */}
           <button
@@ -326,19 +336,19 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
         </div>
 
         <div className="md:col-span-2">
-          <div className="rounded-2xl bg-whatsapp/8 ring-1 ring-whatsapp/20 p-4">
-            <Field n={10} label="Your WhatsApp number">
+          <div className="rounded-2xl bg-primary/8 ring-1 ring-primary/20 p-4">
+            <Field n={10} label="Your email">
               <input
-                type="tel"
+                type="email"
                 className={inputCls}
-                placeholder="+234 801 234 5678"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                placeholder="you@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </Field>
             <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-              The bot will DM you the plan and add-to-group instructions the moment you confirm.
-              No spam — one message only until the group is live.
+              We'll email you the plan and your share link the moment you confirm.
+              No spam — just the one message.
             </p>
           </div>
         </div>
@@ -346,11 +356,12 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, phone: string) 
 
       <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          Takes ~20 seconds. AI builds your plan with live prices from GIGM, Google Travel &amp; Booking.com.
+          Takes ~20 seconds. AI builds your plan with live prices from GIGM and Google Travel.
         </p>
         <button
-          onClick={() => onSubmit(form, phone)}
-          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform w-full sm:w-auto justify-center"
+          onClick={() => onSubmit(form, email)}
+          disabled={!email.includes("@")}
+          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform w-full sm:w-auto justify-center disabled:opacity-40 disabled:hover:scale-100"
         >
           Generate my squad plan
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -673,22 +684,22 @@ function PlanStep({
   const flightOffers = useMemo(() => scraped?.flights?.offers ?? [], [scraped]);
   const isBusMode = !/flight/i.test(intake.transport || '');
 
-  type HotelOpt = { key: string; name: string; area: string; price: number | null; rating: number | null; source: string; badge?: string; perks: string[]; url?: string | null };
+  type HotelOpt = { key: string; name: string; area: string; price: number | null; rating: number | null; source: string; badge?: string; perks: string[]; url?: string | null; imageUrl?: string | null };
   const allHotelOptions = useMemo<HotelOpt[]>(() => {
     const opts: HotelOpt[] = [];
     if (initialPlan?.hotel) {
       const aiUrl = `https://www.google.com/search?q=${encodeURIComponent(initialPlan.hotel.name + ' hotel ' + intake.destination)}`;
-      opts.push({ key: 'ai', name: initialPlan.hotel.name, area: initialPlan.hotel.area, price: initialPlan.hotel.price_per_night, rating: initialPlan.hotel.rating, source: 'AI Pick', badge: 'AI Pick', perks: initialPlan.hotel.perks || [], url: aiUrl });
+      opts.push({ key: 'ai', name: initialPlan.hotel.name, area: initialPlan.hotel.area, price: initialPlan.hotel.price_per_night, rating: initialPlan.hotel.rating, source: 'AI Pick', badge: 'AI Pick', perks: initialPlan.hotel.perks || [], url: aiUrl, imageUrl: initialPlan.hotel.imageUrl });
     }
     (scraped?.gtHotels ?? []).forEach((h: GTHotel, i: number) => {
       if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase())) {
         const gtUrl = `https://www.google.com/travel/hotels?q=${encodeURIComponent(h.name + ' ' + intake.destination + ' Nigeria')}`;
-        opts.push({ key: `gt-${i}`, name: h.name, area: h.location || '', price: h.pricePerNight, rating: h.rating, source: 'Google Travel', perks: h.amenities.slice(0, 3), url: gtUrl });
+        opts.push({ key: `gt-${i}`, name: h.name, area: h.location || '', price: h.pricePerNight, rating: h.rating, source: 'Google Travel', perks: h.amenities.slice(0, 3), url: gtUrl, imageUrl: h.imageUrl });
       }
     });
-    (scraped?.bHotels ?? []).forEach((h: BHotel, i: number) => {
+    (scraped?.gHotels ?? []).forEach((h, i) => {
       if (!opts.find(o => o.name.toLowerCase() === h.name.toLowerCase()))
-        opts.push({ key: `bk-${i}`, name: h.name, area: h.address?.split(',')[0] || '', price: h.pricePerNight, rating: h.rating ? +(h.rating / 2).toFixed(1) : null, source: 'Booking.com', perks: [], url: h.url || null });
+        opts.push({ key: `gp-${i}`, name: h.name, area: h.address?.split(',')[0] || '', price: h.estimatedNightNGN, rating: h.rating, source: 'Google Places', perks: [], url: null, imageUrl: h.imageUrl });
     });
     return opts;
   }, [initialPlan, scraped, intake.destination]);
@@ -827,12 +838,12 @@ function PlanStep({
   const selFlight = selectedFlightIdx !== null ? flightOffers[selectedFlightIdx] : null;
   const selHotel  = allHotelOptions.find(o => o.key === selectedHotelKey);
   const transport = selFlight
-    ? { ...initialPlan.transport, operator: selFlight.airline || 'Unknown', type: selFlight.stops === 0 ? 'Nonstop Flight' : 'Flight', price_per_person: selFlight.price }
+    ? { ...initialPlan.transport, operator: selFlight.airline || 'Unknown', type: selFlight.stops === 0 ? 'Nonstop Flight' : 'Flight', price_per_person: selFlight.price, logo: selFlight.logo ?? null }
     : selBus
-    ? { ...initialPlan.transport, operator: 'GIGM', type: `Bus · ${selBus.class}`, price_per_person: selBus.price, depart_time: selBus.departureTime?.slice(0, 5) || initialPlan.transport.depart_time, pickup: selBus.terminal || initialPlan.transport.pickup }
+    ? { ...initialPlan.transport, operator: 'GIGM', type: `Bus · ${selBus.class}`, price_per_person: selBus.price, depart_time: selBus.departureTime?.slice(0, 5) || initialPlan.transport.depart_time, pickup: selBus.terminal || initialPlan.transport.pickup, logo: null }
     : initialPlan.transport;
   const hotel = (selHotel && selHotel.key !== 'ai' && selHotel.price)
-    ? { ...initialPlan.hotel, name: selHotel.name, area: selHotel.area, price_per_night: selHotel.price, rating: selHotel.rating ?? initialPlan.hotel?.rating ?? null, perks: selHotel.perks }
+    ? { ...initialPlan.hotel, name: selHotel.name, area: selHotel.area, price_per_night: selHotel.price, rating: selHotel.rating ?? initialPlan.hotel?.rating ?? null, perks: selHotel.perks, imageUrl: selHotel.imageUrl ?? null }
     : initialPlan.hotel;
   // Null whenever nothing was scraped and nothing has been picked. Everything
   // below has to survive that rather than assume a hotel exists.
@@ -978,10 +989,18 @@ function PlanStep({
                   {selectedBusIdx === i && (
                     <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
                   )}
-                  <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-                    {intake.specificDates
-                      ? new Date(intake.specificDates).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })
-                      : 'GIGM'}
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={BUS_IMAGES[i % BUS_IMAGES.length]}
+                      alt=""
+                      className="w-7 h-7 rounded-lg object-cover shrink-0"
+                      loading="lazy"
+                    />
+                    <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+                      {intake.specificDates
+                        ? new Date(intake.specificDates).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })
+                        : 'GIGM'}
+                    </div>
                   </div>
                   <div className="font-display text-2xl font-semibold mt-2 tabular-nums leading-none">
                     {bus.departureTime?.slice(0, 5) || '—'}
@@ -1021,7 +1040,18 @@ function PlanStep({
                     {selectedFlightIdx === i && (
                       <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
                     )}
-                    <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">✈️ Flight</div>
+                    <div className="flex items-center gap-2">
+                      {f.logo && (
+                        <img
+                          src={f.logo}
+                          alt=""
+                          className="w-6 h-6 rounded object-contain bg-white shrink-0"
+                          loading="lazy"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      )}
+                      <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">✈️ Flight</div>
+                    </div>
                     <div className="font-display text-sm font-semibold mt-2 leading-snug truncate pr-6">
                       {f.airline || 'Unknown'}
                     </div>
@@ -1308,44 +1338,57 @@ function PlanStep({
           {allHotelOptions.map(opt => (
             <button key={opt.key} type="button"
               onClick={() => setSelectedHotelKey(opt.key)}
-              className={`relative text-left rounded-xl p-4 ring-hairline transition flex flex-col aspect-[4/5] ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+              className={`relative text-left rounded-xl overflow-hidden ring-hairline transition flex flex-col aspect-[4/5] ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
               {/* Selected checkmark */}
               {selectedHotelKey === opt.key && (
-                <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
+                <span className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
               )}
 
-              {/* Source label + badge */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-                  🏨 {opt.source}
-                </span>
-                {opt.badge && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{opt.badge}</span>
-                )}
-              </div>
-
-              {/* Hotel name */}
-              <div className="font-display text-sm font-semibold mt-2 leading-snug line-clamp-2 pr-6">
-                {opt.name}
-              </div>
-
-              {/* Area + rating */}
-              <div className="text-[11px] text-muted-foreground mt-1 truncate">{opt.area || '—'}</div>
-              {opt.rating && (
-                <div className="text-[11px] text-muted-foreground mt-0.5">⭐ {opt.rating}</div>
+              {/* Real photo when we have one — Google Places */}
+              {opt.imageUrl && (
+                <img
+                  src={imageUrl(opt.imageUrl) || opt.imageUrl}
+                  alt=""
+                  className="h-24 w-full object-cover shrink-0"
+                  loading="lazy"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
               )}
 
-              {/* Price at bottom */}
-              <div className="mt-auto pt-3 border-t border-border/50">
-                <div className="font-display text-base font-semibold tabular-nums">{opt.price ? fmtNGN(opt.price) : '—'}</div>
-                <div className="text-[10px] text-muted-foreground">per night</div>
-                {opt.url && (
-                  <a href={opt.url} target="_blank" rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-foreground text-background hover:opacity-80 transition whitespace-nowrap">
-                    {opt.source === 'Booking.com' ? 'Book →' : 'View →'}
-                  </a>
+              <div className="p-4 flex flex-col flex-1 min-h-0">
+                {/* Source label + badge */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+                    {opt.imageUrl ? opt.source : `🏨 ${opt.source}`}
+                  </span>
+                  {opt.badge && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{opt.badge}</span>
+                  )}
+                </div>
+
+                {/* Hotel name */}
+                <div className="font-display text-sm font-semibold mt-2 leading-snug line-clamp-2 pr-6">
+                  {opt.name}
+                </div>
+
+                {/* Area + rating */}
+                <div className="text-[11px] text-muted-foreground mt-1 truncate">{opt.area || '—'}</div>
+                {opt.rating && (
+                  <div className="text-[11px] text-muted-foreground mt-0.5">⭐ {opt.rating}</div>
                 )}
+
+                {/* Price at bottom */}
+                <div className="mt-auto pt-3 border-t border-border/50">
+                  <div className="font-display text-base font-semibold tabular-nums">{opt.price ? fmtNGN(opt.price) : '—'}</div>
+                  <div className="text-[10px] text-muted-foreground">per night</div>
+                  {opt.url && (
+                    <a href={opt.url} target="_blank" rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-foreground text-background hover:opacity-80 transition whitespace-nowrap">
+                      View →
+                    </a>
+                  )}
+                </div>
               </div>
             </button>
           ))}
@@ -1436,12 +1479,11 @@ function PlanStep({
 
 
 /* ─── step 4: confirm ────────────────────────────────────────────────────────── */
-function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, selectedDate }: {
-  botNumber: string; destination: string; instructions: string[]; tripId: string; squadSize: number; finalPlan?: TripPlan | null; selectedDate?: string | null;
+function ConfirmStep({ destination, tripId, squadSize, finalPlan, selectedDate, email, emailSent }: {
+  destination: string; tripId: string; squadSize: number; finalPlan?: TripPlan | null; selectedDate?: string | null;
+  email?: string; emailSent?: boolean;
 }) {
-  const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const number = botNumber.startsWith("+") ? botNumber : `+${botNumber}`;
   const planUrl = `${window.location.origin}/plan/${tripId}`;
   const tripDateLabel = selectedDate
     ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })
@@ -1449,12 +1491,6 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
   const waShareText = encodeURIComponent(
     `🛫 I've planned our squad trip to ${destination}! Check it out and say you're in:\n${planUrl}`
   );
-
-  const copy = () => {
-    navigator.clipboard.writeText(number);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const copyLink = () => {
     navigator.clipboard.writeText(planUrl);
@@ -1556,11 +1592,12 @@ function ConfirmStep({ botNumber, destination, tripId, squadSize, finalPlan, sel
         </ol>
       </div>
 
-      <div className="rounded-2xl bg-whatsapp/10 ring-1 ring-whatsapp/20 p-4 text-sm text-foreground/90 mb-6">
-        <span className="font-semibold text-whatsapp">They won't know you planned this.</span>{" "}
-        The bot's opening message is the reveal — squad sees{" "}
-        <em>"Someone's been planning something... 👀"</em> before the full plan drops.
-      </div>
+      {emailSent && email && (
+        <div className="rounded-2xl bg-primary/10 ring-1 ring-primary/20 p-4 text-sm text-foreground/90 mb-6">
+          <span className="font-semibold">Sent to {email}.</span>{" "}
+          We've emailed you this link too, so you can always find your way back to it.
+        </div>
+      )}
 
       <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-lg bg-card ring-hairline px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors w-full sm:w-auto">
         Back to home
@@ -1717,13 +1754,13 @@ export default function Start() {
   const { user, signOut } = useAuth();
   const [step, setStep] = useState<Step>("intake");
   const [intake, setIntake] = useState<IntakeData | null>(null);
-  const [phone, setPhone] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const [tripId, setTripId] = useState<string | null>(null);
   const [plan, setPlan] = useState<TripPlan | null>(null);
   const [scraped, setScraped] = useState<ScrapedData | null>(null);
   const [busLoading, setBusLoading] = useState(false);
   const [confirmedPlan, setConfirmedPlan] = useState<TripPlan | null>(null);
-  const [confirmData, setConfirmData] = useState<{ botNumber: string; destination: string; squadSize: number; dmSent: boolean; instructions: string[]; selectedDate?: string | null } | null>(null);
+  const [confirmData, setConfirmData] = useState<{ destination: string; squadSize: number; emailSent: boolean; selectedDate?: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1810,11 +1847,9 @@ export default function Start() {
         // Already confirmed — restore confirm step directly, no spinner
         setConfirmedPlan(result.plan);
         setConfirmData({
-          botNumber:    result.botNumber    ?? "234XXXXXXXXXX",
           destination:  result.destination  ?? "",
           squadSize:    result.squadSize    ?? 1,
-          dmSent:       false,
-          instructions: result.instructions ?? [],
+          emailSent:    false,
           selectedDate: result.selectedDate ?? null,
         });
         setStep("confirm");
@@ -1840,9 +1875,9 @@ export default function Start() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Plan creation ─────────────────────────────────────────────────────────────
-  async function handleIntakeSubmit(data: IntakeData, organisersPhone: string) {
+  async function handleIntakeSubmit(data: IntakeData, organisersEmail: string) {
     setIntake(data);
-    setPhone(organisersPhone);
+    setEmail(organisersEmail);
     setScraped(null);
     setError(null);
     setStep("generating"); // show spinner immediately
@@ -1869,14 +1904,12 @@ export default function Start() {
     if (!tripId) return;
     setError(null);
     try {
-      const result = await api.confirmPlan(tripId, finalPlan, phone || undefined, selectedDate);
+      const result = await api.confirmPlan(tripId, finalPlan, email || undefined, selectedDate);
       setConfirmedPlan(finalPlan);
       setConfirmData({
-        botNumber: result.botNumber,
         destination: result.destination,
         squadSize: result.squadSize,
-        dmSent: result.dmSent,
-        instructions: result.instructions,
+        emailSent: result.emailSent,
         selectedDate: result.selectedDate,
       });
       setStep("confirm");
@@ -1998,7 +2031,7 @@ export default function Start() {
                   const url = new URL(window.location.href);
                   url.searchParams.delete("job");
                   window.history.replaceState({}, "", url.toString());
-                  handleIntakeSubmit(intake, phone);
+                  handleIntakeSubmit(intake, email);
                 }}
                 className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-destructive text-white hover:opacity-80 active:scale-95 transition whitespace-nowrap"
               >
@@ -2016,7 +2049,7 @@ export default function Start() {
           <PlanStep tripId={tripId!} plan={plan} intake={intake} scraped={scraped} busLoading={busLoading} onConfirm={handleConfirm} />
         )}
         {step === "confirm" && confirmData && (
-          <ConfirmStep tripId={tripId!} botNumber={confirmData.botNumber} destination={confirmData.destination} squadSize={confirmData.squadSize} instructions={confirmData.instructions} finalPlan={confirmedPlan} selectedDate={confirmData.selectedDate} />
+          <ConfirmStep tripId={tripId!} destination={confirmData.destination} squadSize={confirmData.squadSize} emailSent={confirmData.emailSent} email={email} finalPlan={confirmedPlan} selectedDate={confirmData.selectedDate} />
         )}
       </div>
     </main>

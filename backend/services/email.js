@@ -158,6 +158,36 @@ async function sendPaymentReminderEmail({ to, name, tripName, perPerson, link, d
   });
 }
 
+/**
+ * Sent the moment an organiser confirms their interstate plan — this is the
+ * email equivalent of the old "DM the organiser to add our bot to your
+ * WhatsApp group" step. It just points them at the share link; there is no
+ * group-bot mechanic to walk them through any more.
+ */
+async function sendPlanConfirmedEmail({ to, destination, tripId, squadSize, selectedDate }) {
+  const resend = getResend();
+  if (!resend || !to) return;
+
+  const planUrl = `${FRONTEND}/plan/${tripId}`;
+  const dateLine = selectedDate
+    ? ` on <strong style="color:#22321f;">${new Date(selectedDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>`
+    : '';
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Your ${destination} trip is confirmed 🎉`,
+    html: shell({
+      heading: `You're all set for ${destination}`,
+      body: `<p style="margin:0 0 12px;">Your plan for <strong style="color:#22321f;">${squadSize} people</strong> is confirmed${dateLine}.</p>
+             <p style="margin:0;">Share the link below with your squad so they can join and pay their share.</p>`,
+      ctaLabel: 'View & share your plan',
+      ctaUrl: planUrl,
+      footnote: `Keep this email — it's how you get back to the plan.`,
+    }),
+  });
+}
+
 /** Confirmation that money was actually taken. People go looking for these. */
 async function sendPaymentReceiptEmail({ to, name, tripName, amount, link, reference }) {
   const resend = getResend();
@@ -180,6 +210,7 @@ async function sendPaymentReceiptEmail({ to, name, tripName, amount, link, refer
 
 module.exports = {
   sendPlanReadyEmail,
+  sendPlanConfirmedEmail,
   sendPaymentReminderEmail,
   sendPaymentReceiptEmail,
   available,

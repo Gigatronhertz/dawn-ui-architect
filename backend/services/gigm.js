@@ -206,12 +206,24 @@ async function scrapeGIGM(origin, destination, date) {
       await new Promise(r => setTimeout(r, 2500));
     }
 
-    // 1b. Click "Continue as a guest" — use evaluateHandle to get a real ElementHandle
-    // so Puppeteer dispatches proper mouse events (React ignores element.click() in evaluate).
+    // 1b. Click through the guest-checkout wall — use evaluateHandle to get a
+    // real ElementHandle so Puppeteer dispatches proper mouse events (React
+    // ignores element.click() in evaluate).
+    //
+    // GIGM has worded this wall differently across redesigns ("Continue as a
+    // guest", "Continue without an account", "Book as a guest" have all been
+    // seen) — match any button/h2 whose text is about proceeding without an
+    // account, rather than pinning one exact phrase that silently breaks the
+    // whole scrape the next time it's reworded.
     let guestClicked = false;
-    const guestTarget = await page.evaluateHandle(() => {
+    const GUEST_WALL_RE = /continue (as a guest|without an account)|book as a guest/i;
+    const guestTarget = await page.evaluateHandle((reSource) => {
+      const re = new RegExp(reSource, 'i');
+      const btn = Array.from(document.querySelectorAll('button'))
+        .find(b => re.test(b.textContent || ''));
+      if (btn) return btn;
       const h2 = Array.from(document.querySelectorAll('h2'))
-        .find(e => /continue as a guest/i.test(e.textContent));
+        .find(e => re.test(e.textContent || ''));
       if (!h2) return null;
       let node = h2.parentElement;
       while (node && node !== document.body) {
@@ -219,15 +231,15 @@ async function scrapeGIGM(origin, destination, date) {
         node = node.parentElement;
       }
       return h2;
-    });
+    }, GUEST_WALL_RE.source);
     const guestEl = guestTarget.asElement();
     if (guestEl) {
       await guestEl.click();
       guestClicked = true;
-      console.log('[gigm] Clicked "Continue as a guest"');
+      console.log('[gigm] Clicked past the guest-checkout wall');
       await new Promise(r => setTimeout(r, 3000));
     } else {
-      console.log('[gigm] No guest button found — assuming booking form is already visible');
+      console.log('[gigm] No guest-wall button found — assuming booking form is already visible');
     }
 
     // 2. Wait for booking form inputs to appear (after guest click)
@@ -248,16 +260,32 @@ async function scrapeGIGM(origin, destination, date) {
     // then click the dropdown option that appears.
 
     // Helper: fill one React Select. Throws if no option appears (route doesn't exist).
-    async function fillReactSelect(inputHandle, searchText, label) {
+    async function fillReactSelect(inputHandle, searchText, label, attempt = 1) {
       const inputId = await inputHandle.evaluate(el => el.id);
       const selectBase = inputId.replace('-input', '');
-      console.log(`[gigm] Filling ${label} via ${inputId}`);
+      console.log(`[gigm] Filling ${label} via ${inputId} (attempt ${attempt})`);
       await inputHandle.click();
+      // Clear first — a retry re-types into a field that may already hold the
+      // previous attempt's text, which would otherwise search for "LagosLagos".
+      await inputHandle.evaluate(el => { el.value = ''; });
       await inputHandle.type(searchText, { delay: 80 });
       await new Promise(r => setTimeout(r, 1500));
       const optSel = `[id^="${selectBase}-option"]`;
       const opt = await page.waitForSelector(optSel, { timeout: 7000 }).catch(() => null);
       if (!opt) {
+        // The "To" list in particular is fetched fresh after "From" is picked
+        // (GetDestinationTerminalsByX), and can still be loading when we start
+        // typing — GIGM's own widget then shows an explicit "No options"
+        // empty-state rather than nothing. One retry after a longer pause
+        // covers that race without slowing down the common case.
+        const emptyState = await page.evaluate(() =>
+          !!document.querySelector('[class*="no-options"], [class*="menu-notice"]')
+        );
+        if (emptyState && attempt === 1) {
+          console.log(`[gigm] ${label} dropdown still loading ("No options") — retrying once`);
+          await new Promise(r => setTimeout(r, 2500));
+          return fillReactSelect(inputHandle, searchText, label, 2);
+        }
         throw new Error(`No "${searchText}" option in ${label} dropdown — route may not be served by GIGM`);
       }
       const optText = await opt.evaluate(el => el.innerText).catch(() => searchText);
@@ -316,8 +344,12 @@ async function scrapeGIGM(origin, destination, date) {
     // 6. Submit / Search
     console.log('[gigm] Submitting search...');
     const submitted = await page.evaluate(() => {
+      // Excludes the guest-checkout wall's own wording — that button also
+      // matches /continue/i, and clicking it a second time here is what
+      // silently turned "search" into "dismiss the wall and go nowhere".
+      const isGuestWall = (t) => /without an account|book as a guest/i.test(t);
       const btns = Array.from(document.querySelectorAll('button'));
-      const btn = btns.find(b => /search|find|proceed|continue/i.test(b.innerText)) ||
+      const btn = btns.find(b => /search|find|proceed|continue/i.test(b.innerText) && !isGuestWall(b.innerText)) ||
                   btns.find(b => b.type === 'submit');
       if (btn) { btn.click(); return btn.innerText.trim(); }
       return null;

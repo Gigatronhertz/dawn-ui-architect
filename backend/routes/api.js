@@ -1,15 +1,14 @@
 const { Router, raw } = require('express');
+const axios = require('axios');
 const { v4: uuid } = require('uuid');
 const Groq = require('groq-sdk');
 const db = require('../db/client');
 const { generateTripPlan, buildSkeletonPlan } = require('../services/planGenerator');
-const { sendText } = require('../services/whatsapp');
-const M = require('../bot/messages');
 const GT   = require('../services/googleTravel');
 const GIGM = require('../services/gigm');
 const { getLines } = require('../utils/logger');
 const { requireAuth }        = require('../middleware/auth');
-const { sendPlanReadyEmail } = require('../services/email');
+const { sendPlanReadyEmail, sendPlanConfirmedEmail } = require('../services/email');
 const { sendPlanReadyPush  } = require('../services/webPush');
 const paystack               = require('../services/paystack');
 // Crediting a payment lives with the webhook that normally does it; the
@@ -137,19 +136,19 @@ router.post('/plan', async (req, res) => {
 });
 
 // POST /api/confirm
-// Organiser has reviewed/edited the plan and confirmed it.
-// Saves final plan, DMss the organiser immediately, returns bot number and instructions.
+// Organiser has reviewed/edited the plan and confirmed it. Saves the final
+// plan and emails the organiser their share link — that link is the whole
+// hand-off now, so there's nothing further for them to do to activate it.
 router.post('/confirm', async (req, res) => {
-  const { tripId, plan, phone, selectedDate } = req.body;
+  const { tripId, plan, email, selectedDate } = req.body;
   if (!tripId || !plan) return res.status(400).json({ error: 'Missing tripId or plan.' });
 
   const trip = await db.trips.get(tripId);
   if (!trip) return res.status(404).json({ error: 'Trip not found.' });
 
-  const botNumber = process.env.WA_DISPLAY_NUMBER || '234XXXXXXXXXX';
-
   // A valid YYYY-MM-DD date string; silently ignored if malformed
   const tripDate = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate || '') ? selectedDate : null;
+  const cleanEmail = typeof email === 'string' && /\S+@\S+\.\S+/.test(email.trim()) ? email.trim() : null;
 
   await db.trips.update({
     id: tripId,
@@ -160,32 +159,25 @@ router.post('/confirm', async (req, res) => {
     dealbreakers: null, selected_date: tripDate, selected_hotel: null, group_id: null,
   });
 
-  // If the organiser gave us their WhatsApp number, wire the trip to them directly
-  // so the dashboard and bot can reference them, then DM the add-to-group instructions.
-  if (phone && typeof phone === 'string' && phone.trim().length >= 7) {
-    const sanitisedPhone = phone.trim().replace(/\s+/g, '').replace(/^\+/, '');
-    await db.raw('UPDATE trips SET organiser_phone = ? WHERE id = ?', [sanitisedPhone, tripId]);
-    await db.conv.upsert({ phone: sanitisedPhone, name: null, state: 'awaiting_group', trip_id: tripId, temp: '{}' });
-    sendText(sanitisedPhone, M.WEB_PLAN_CONFIRMED(trip.destination, botNumber))
-      .catch((err) => console.warn('[confirm/dm]', err.message));
-  } else {
-    const webKey = `web_${tripId}`;
-    await db.conv.upsert({ phone: webKey, name: null, state: 'awaiting_group', trip_id: tripId, temp: '{}' });
+  if (cleanEmail) {
+    // Same column the "notify me when ready" step writes — reused here so an
+    // organiser who confirms is just as reachable for later reminders.
+    await db.raw('UPDATE trips SET notify_email = ? WHERE id = ?', [cleanEmail, tripId]);
+    sendPlanConfirmedEmail({
+      to: cleanEmail,
+      destination: trip.destination,
+      tripId,
+      squadSize: trip.squad_size,
+      selectedDate: tripDate,
+    }).catch((err) => console.warn('[confirm/email]', err.message));
   }
 
   return res.json({
     tripId,
-    botNumber,
     destination: trip.destination,
     squadSize: trip.squad_size,
     selectedDate: tripDate,
-    dmSent: !!(phone && phone.trim().length >= 7),
-    instructions: [
-      `Open your squad's WhatsApp group (or create one).`,
-      `Tap Group Info → Add Participants.`,
-      `Add: +${botNumber}`,
-      `The bot will reveal the plan the moment it joins.`,
-    ],
+    emailSent: !!cleanEmail,
   });
 });
 
@@ -207,19 +199,11 @@ router.get('/plan/:tripId', async (req, res) => {
     resp.scraped = trip.scraped ? JSON.parse(trip.scraped) : null;
   } else if (trip.status === 'awaiting_group' && trip.plan) {
     // Trip already confirmed — return enough data to restore the confirm step
-    const botNumber = process.env.WA_DISPLAY_NUMBER || '234XXXXXXXXXX';
     resp.plan         = JSON.parse(trip.plan);
     resp.confirmed    = true;
-    resp.botNumber    = botNumber;
     resp.destination  = trip.destination;
     resp.squadSize    = trip.squad_size;
     resp.selectedDate = trip.selected_date || null;
-    resp.instructions = [
-      `Open your squad's WhatsApp group (or create one).`,
-      `Tap Group Info → Add Participants.`,
-      `Add: +${botNumber}`,
-      `The bot will reveal the plan the moment it joins.`,
-    ];
   } else if (trip.status === 'error') {
     resp.error = 'Plan generation failed. Please try again.';
   }
@@ -1728,6 +1712,28 @@ router.get('/trip-image/:id', async (req, res) => {
   } catch (err) {
     console.error('[api/trip-image]', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/place-photo/:photoName ─────────────────────────────────────────
+// Proxies a Google Places (New) photo to a real image URL without ever
+// putting our GOOGLE_API_KEY in front of the browser — the media endpoint
+// 302s to a googleusercontent.com URL, and we just hand that redirect on.
+router.get('/place-photo/:photoName', async (req, res) => {
+  if (!process.env.GOOGLE_API_KEY) return res.status(404).end();
+  try {
+    const mediaUrl = `https://places.googleapis.com/v1/${req.params.photoName}/media`;
+    const upstream = await axios.get(mediaUrl, {
+      params: { maxWidthPx: 480, key: process.env.GOOGLE_API_KEY, skipHttpRedirect: true },
+      timeout: 6000,
+    });
+    const photoUri = upstream.data?.photoUri;
+    if (!photoUri) return res.status(404).end();
+    res.set('Cache-Control', 'public, max-age=86400'); // photo refs are stable for a while, not forever
+    res.redirect(302, photoUri);
+  } catch (err) {
+    console.warn('[api/place-photo]', err.response?.status, err.message);
+    res.status(404).end();
   }
 });
 

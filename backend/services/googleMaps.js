@@ -10,6 +10,16 @@ const axios = require('axios');
 
 const KEY = () => process.env.GOOGLE_API_KEY;
 
+/**
+ * A place's first photo, as our own proxy path rather than a raw Google URL —
+ * the actual media fetch happens server-side in the /api/place-photo route so
+ * the API key never rides along in an <img src> sent to the browser.
+ */
+function firstPhotoUrl(place) {
+  const name = place.photos?.[0]?.name; // "places/PLACE_ID/photos/PHOTO_ID"
+  return name ? `/api/place-photo/${encodeURIComponent(name)}` : null;
+}
+
 // ── Geocoding ──────────────────────────────────────────────────────────────────
 // Convert a city name to { lat, lng } using the Geocoding API.
 async function geocodeCity(city) {
@@ -81,6 +91,7 @@ async function placesTextSearch(query, lat, lng, radiusMetres = 15000) {
             'places.formattedAddress',
             'places.types',
             'places.internationalPhoneNumber',
+            'places.photos',
           ].join(','),
           'Content-Type': 'application/json',
         },
@@ -109,6 +120,7 @@ async function searchHotels(destination, lat, lng, maxBudgetPerNightNGN) {
       priceLevel: p.priceLevel || null,
       phone: p.internationalPhoneNumber || null,
       estimatedNightNGN: priceLevelToNGN(p.priceLevel),
+      imageUrl: firstPhotoUrl(p),
     }))
     .filter(h => !maxBudgetPerNightNGN || !h.estimatedNightNGN || h.estimatedNightNGN <= maxBudgetPerNightNGN * 1.5);
 }
@@ -133,6 +145,7 @@ async function searchHolidayRentals(destination, lat, lng) {
       priceLevel: p.priceLevel || null,
       phone: p.internationalPhoneNumber || null,
       type: 'shortlet',
+      imageUrl: firstPhotoUrl(p),
     }));
 }
 
