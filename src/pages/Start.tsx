@@ -37,8 +37,33 @@ const FLIGHT_CITIES = [
  * of a bare emoji — cycled by index for a little variety across the grid.
  */
 const BUS_IMAGES = [
-  "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=100&h=100&q=70",
-  "https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?auto=format&fit=crop&w=100&h=100&q=70",
+  "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=400&h=200&q=70",
+  "https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?auto=format&fit=crop&w=400&h=200&q=70",
+  "https://images.unsplash.com/photo-1583396618422-597b2755de2c?auto=format&fit=crop&w=400&h=200&q=70",
+];
+
+/**
+ * Flights come from Google Travel's text scrape only (Amadeus, the one
+ * source that ever carried a real airline logo, was removed) — there is no
+ * per-airline image to show. Same treatment as buses: a generic, verified
+ * flight photo instead of a bare emoji.
+ */
+const FLIGHT_IMAGES = [
+  "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=400&h=200&q=70",
+  "https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=400&h=200&q=70",
+];
+
+/**
+ * Real hotel photos come from Google Places and depend on that API key
+ * having billing enabled — when it doesn't (or a given hotel just has no
+ * photo on Places), fall back to a generic, verified hotel photo rather
+ * than leaving the card's header blank.
+ */
+const HOTEL_FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&h=200&q=70",
+  "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=400&h=200&q=70",
+  "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=400&h=200&q=70",
+  "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=400&h=200&q=70",
 ];
 
 // ── City coordinates for dynamic route map ───────────────────────────────────
@@ -984,37 +1009,27 @@ function PlanStep({
               {busOffers.map((bus, i) => (
                 <button key={i} type="button"
                   onClick={() => { setSelectedBusIdx(i === selectedBusIdx ? null : i); setSelectedFlightIdx(null); }}
-                  className={`relative text-left rounded-xl p-4 ring-hairline transition flex flex-col aspect-[4/5] ${selectedBusIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                  className={`relative text-left rounded-xl overflow-hidden ring-hairline transition flex flex-col h-full ${selectedBusIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                   {/* Selected checkmark */}
                   {selectedBusIdx === i && (
-                    <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
+                    <span className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
                   )}
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={BUS_IMAGES[i % BUS_IMAGES.length]}
-                      alt=""
-                      className="w-7 h-7 rounded-lg object-cover shrink-0"
-                      loading="lazy"
-                    />
-                    <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-                      {intake.specificDates
-                        ? new Date(intake.specificDates).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })
-                        : 'GIGM'}
+                  <img
+                    src={BUS_IMAGES[i % BUS_IMAGES.length]}
+                    alt=""
+                    className="h-24 w-full object-cover shrink-0"
+                    loading="lazy"
+                  />
+                  <div className="p-3 flex flex-col flex-1 min-h-0">
+                    <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">GIGM · {bus.class}</div>
+                    <div className="font-display text-xl font-semibold mt-1.5 tabular-nums leading-none">
+                      {bus.departureTime?.slice(0, 5) || '—'}
                     </div>
-                  </div>
-                  <div className="font-display text-2xl font-semibold mt-2 tabular-nums leading-none">
-                    {bus.departureTime?.slice(0, 5) || '—'}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground mt-1">{bus.class}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{bus.seatsAvailable} seats left</div>
-                  <div className="mt-auto pt-3 border-t border-border/50">
-                    <div className="font-display text-base font-semibold text-foreground tabular-nums">{fmtNGN(bus.price)}</div>
-                    <div className="text-[10px] text-muted-foreground">per seat · applied above ↑</div>
-                    <a href="https://www.gigm.com/book-a-seat" target="_blank" rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-foreground text-background hover:opacity-80 transition">
-                      Book on GIGM ↗
-                    </a>
+                    <div className="text-[11px] text-muted-foreground mt-1">{bus.seatsAvailable} seats left</div>
+                    <div className="mt-auto pt-2 border-t border-border/50">
+                      <div className="font-display text-base font-semibold text-foreground tabular-nums">{fmtNGN(bus.price)}</div>
+                      <div className="text-[10px] text-muted-foreground">per seat</div>
+                    </div>
                   </div>
                 </button>
               ))}
@@ -1032,43 +1047,30 @@ function PlanStep({
           {!isBusMode && flightOffers.length > 0 && (
             <div className="grid grid-cols-2 gap-3">
               {flightOffers.slice(0, 4).map((f, i) => {
-                const flightUrl = `https://www.google.com/travel/flights?hl=en&curr=NGN&q=${encodeURIComponent('flights from ' + intake.origin + ' to ' + intake.destination)}`;
                 return (
                   <button key={i} type="button"
                     onClick={() => { setSelectedFlightIdx(i === selectedFlightIdx ? null : i); setSelectedBusIdx(null); }}
-                    className={`relative text-left rounded-xl p-4 ring-hairline transition flex flex-col aspect-[4/5] ${selectedFlightIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+                    className={`relative text-left rounded-xl overflow-hidden ring-hairline transition flex flex-col h-full ${selectedFlightIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                     {selectedFlightIdx === i && (
-                      <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
+                      <span className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
                     )}
-                    <div className="flex items-center gap-2">
-                      {f.logo && (
-                        <img
-                          src={f.logo}
-                          alt=""
-                          className="w-6 h-6 rounded object-contain bg-white shrink-0"
-                          loading="lazy"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                        />
-                      )}
-                      <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">✈️ Flight</div>
-                    </div>
-                    <div className="font-display text-sm font-semibold mt-2 leading-snug truncate pr-6">
-                      {f.airline || 'Unknown'}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-1">
-                      {f.stops === 0 ? 'Nonstop' : `${f.stops} stop${f.stops > 1 ? 's' : ''}`}
-                    </div>
-                    {f.duration && (
-                      <div className="text-[11px] text-muted-foreground mt-0.5">{f.duration}</div>
-                    )}
-                    <div className="mt-auto pt-3 border-t border-border/50">
-                      <div className="font-display text-base font-semibold text-foreground tabular-nums">{fmtNGN(f.price)}</div>
-                      <div className="text-[10px] text-muted-foreground">per person</div>
-                      <a href={flightUrl} target="_blank" rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-foreground text-background hover:opacity-80 transition">
-                        Search →
-                      </a>
+                    <img
+                      src={FLIGHT_IMAGES[i % FLIGHT_IMAGES.length]}
+                      alt=""
+                      className="h-24 w-full object-cover shrink-0"
+                      loading="lazy"
+                    />
+                    <div className="p-3 flex flex-col flex-1 min-h-0">
+                      <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide truncate">
+                        {f.stops === 0 ? 'Nonstop' : f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}` : 'Stops unknown'}{f.duration ? ` · ${f.duration}` : ''}
+                      </div>
+                      <div className="font-display text-sm font-semibold mt-1.5 leading-snug truncate">
+                        {f.airline || 'Unknown'}
+                      </div>
+                      <div className="mt-auto pt-2 border-t border-border/50">
+                        <div className="font-display text-base font-semibold text-foreground tabular-nums">{fmtNGN(f.price)}</div>
+                        <div className="text-[10px] text-muted-foreground">per person</div>
+                      </div>
                     </div>
                   </button>
                 );
@@ -1335,59 +1337,44 @@ function PlanStep({
         <SectionLabel>Accommodation</SectionLabel>
         <h2 className="font-display text-base font-semibold mb-4">Pick your hotel.</h2>
         <div className="grid grid-cols-2 gap-3">
-          {allHotelOptions.map(opt => (
+          {allHotelOptions.map((opt, i) => (
             <button key={opt.key} type="button"
               onClick={() => setSelectedHotelKey(opt.key)}
-              className={`relative text-left rounded-xl overflow-hidden ring-hairline transition flex flex-col aspect-[4/5] ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
+              className={`relative text-left rounded-xl overflow-hidden ring-hairline transition flex flex-col h-full ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
               {/* Selected checkmark */}
               {selectedHotelKey === opt.key && (
                 <span className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-[10px]">✓</span>
               )}
-
-              {/* Real photo when we have one — Google Places */}
-              {opt.imageUrl && (
-                <img
-                  src={imageUrl(opt.imageUrl) || opt.imageUrl}
-                  alt=""
-                  className="h-24 w-full object-cover shrink-0"
-                  loading="lazy"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
+              {opt.badge && (
+                <span className="absolute top-2.5 left-2.5 z-10 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{opt.badge}</span>
               )}
 
-              <div className="p-4 flex flex-col flex-1 min-h-0">
-                {/* Source label + badge */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-                    {opt.imageUrl ? opt.source : `🏨 ${opt.source}`}
-                  </span>
-                  {opt.badge && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{opt.badge}</span>
-                  )}
-                </div>
+              {/* Real photo when we have one (Google Places); a generic,
+                  verified hotel photo otherwise — every card gets a header,
+                  none sit with a blank top half. */}
+              <img
+                src={(opt.imageUrl && (imageUrl(opt.imageUrl) || opt.imageUrl)) || HOTEL_FALLBACK_IMAGES[i % HOTEL_FALLBACK_IMAGES.length]}
+                alt=""
+                className="h-24 w-full object-cover shrink-0"
+                loading="lazy"
+                onError={(e) => { (e.target as HTMLImageElement).src = HOTEL_FALLBACK_IMAGES[i % HOTEL_FALLBACK_IMAGES.length]; }}
+              />
 
+              <div className="p-3 flex flex-col flex-1 min-h-0">
                 {/* Hotel name */}
-                <div className="font-display text-sm font-semibold mt-2 leading-snug line-clamp-2 pr-6">
+                <div className="font-display text-sm font-semibold leading-snug line-clamp-2">
                   {opt.name}
                 </div>
 
-                {/* Area + rating */}
-                <div className="text-[11px] text-muted-foreground mt-1 truncate">{opt.area || '—'}</div>
-                {opt.rating && (
-                  <div className="text-[11px] text-muted-foreground mt-0.5">⭐ {opt.rating}</div>
-                )}
+                {/* Area + rating, one line */}
+                <div className="text-[11px] text-muted-foreground mt-1 truncate">
+                  {opt.area || '—'}{opt.rating ? ` · ⭐ ${opt.rating}` : ''}
+                </div>
 
                 {/* Price at bottom */}
-                <div className="mt-auto pt-3 border-t border-border/50">
+                <div className="mt-auto pt-2 border-t border-border/50">
                   <div className="font-display text-base font-semibold tabular-nums">{opt.price ? fmtNGN(opt.price) : '—'}</div>
                   <div className="text-[10px] text-muted-foreground">per night</div>
-                  {opt.url && (
-                    <a href={opt.url} target="_blank" rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="mt-2 inline-block text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-foreground text-background hover:opacity-80 transition whitespace-nowrap">
-                      View →
-                    </a>
-                  )}
                 </div>
               </div>
             </button>

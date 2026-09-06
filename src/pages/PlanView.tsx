@@ -33,6 +33,15 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
   );
 }
 
+/** Generic, verified photos for transport/hotel cards when there's no real
+ *  one to show (GIGM has no per-trip photo; Google Travel's flight scrape
+ *  carries no logo since Amadeus was removed; Google Places hotel photos
+ *  depend on that API key having billing enabled) — same fallback set
+ *  Start.tsx uses, so the organiser's builder and this shared page match. */
+const BUS_FALLBACK_IMAGE    = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=400&h=200&q=70";
+const FLIGHT_FALLBACK_IMAGE = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=400&h=200&q=70";
+const HOTEL_FALLBACK_IMAGE  = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&h=200&q=70";
+
 // ── Countdown ─────────────────────────────────────────────────────────────────
 
 function Countdown({ selectedDate }: { selectedDate: string }) {
@@ -807,86 +816,64 @@ export default function PlanView() {
               </Card>
             )}
 
-            {/* Transport */}
+            {/* Transport + hotel — same small photo-card shape, side by side */}
+            <div className="grid grid-cols-2 gap-4">
             {data.transport && (
-              <Card>
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Transport</div>
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-2xl bg-primary/10 grid place-items-center text-xl shrink-0 print:hidden overflow-hidden">
-                    {data.transport.logo ? (
-                      <img
-                        src={data.transport.logo}
-                        alt=""
-                        className="w-full h-full object-contain bg-white"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                    ) : data.transport.type?.toLowerCase().includes("flight") ? "✈️" : (
-                      <img
-                        src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=88&h=88&q=70"
-                        alt=""
-                        className="w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-display font-semibold truncate">{data.transport.operator}</div>
-                    <div className="text-sm text-muted-foreground">{data.transport.type}</div>
-                    {(data.transport.depart_time || data.transport.arrive_time) && (
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {data.transport.depart_time && `Departs ${data.transport.depart_time}`}
-                        {data.transport.depart_time && data.transport.arrive_time && " · "}
-                        {data.transport.arrive_time && `Arrives ${data.transport.arrive_time}`}
-                      </div>
-                    )}
-                    {data.transport.pickup && (
-                      <div className="text-xs text-muted-foreground">Pickup: {data.transport.pickup}</div>
-                    )}
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-display font-semibold">{fmtNGN(data.transport.price_per_person)}</div>
+              <Card className="p-0 overflow-hidden flex flex-col">
+                <img
+                  src={data.transport.logo || (data.transport.type?.toLowerCase().includes("flight") ? FLIGHT_FALLBACK_IMAGE : BUS_FALLBACK_IMAGE)}
+                  alt=""
+                  className={`h-24 w-full shrink-0 print:hidden ${data.transport.logo ? "object-contain bg-white" : "object-cover"}`}
+                  onError={(e) => { (e.target as HTMLImageElement).src = data.transport!.type?.toLowerCase().includes("flight") ? FLIGHT_FALLBACK_IMAGE : BUS_FALLBACK_IMAGE; }}
+                />
+                <div className="p-4 flex flex-col flex-1 min-h-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Transport</div>
+                  <div className="font-display font-semibold truncate mt-1">{data.transport.operator}</div>
+                  <div className="text-xs text-muted-foreground">{data.transport.type}</div>
+                  {(data.transport.depart_time || data.transport.arrive_time) && (
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      {data.transport.depart_time && `Departs ${data.transport.depart_time}`}
+                      {data.transport.depart_time && data.transport.arrive_time && " · "}
+                      {data.transport.arrive_time && `Arrives ${data.transport.arrive_time}`}
+                    </div>
+                  )}
+                  <div className="mt-auto pt-2 border-t border-border/50">
+                    <div className="font-display font-semibold tabular-nums">{fmtNGN(data.transport.price_per_person)}</div>
                     <div className="text-[10px] text-muted-foreground">/person</div>
                   </div>
                 </div>
               </Card>
             )}
 
-            {/* Hotel */}
             {data.hotel && (
-              <Card>
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Accommodation</div>
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-2xl bg-primary/10 grid place-items-center text-xl shrink-0 print:hidden overflow-hidden">
-                    {data.hotel.imageUrl ? (
-                      <img
-                        src={imageUrl(data.hotel.imageUrl) || data.hotel.imageUrl}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                    ) : "🏨"}
+              <Card className="p-0 overflow-hidden flex flex-col">
+                <img
+                  src={(data.hotel.imageUrl && (imageUrl(data.hotel.imageUrl) || data.hotel.imageUrl)) || HOTEL_FALLBACK_IMAGE}
+                  alt=""
+                  className="h-24 w-full object-cover shrink-0 print:hidden"
+                  onError={(e) => { (e.target as HTMLImageElement).src = HOTEL_FALLBACK_IMAGE; }}
+                />
+                <div className="p-4 flex flex-col flex-1 min-h-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Accommodation</div>
+                  <div className="font-display font-semibold truncate mt-1">{data.hotel.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {data.hotel.area}{data.hotel.rating ? ` · ⭐ ${data.hotel.rating.toFixed(1)}` : ''}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-display font-semibold truncate">{data.hotel.name}</div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-                      {data.hotel.area && <span>{data.hotel.area}</span>}
-                      {data.hotel.rating && <span>⭐ {data.hotel.rating.toFixed(1)}</span>}
+                  {data.hotel.perks?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5 print:gap-0">
+                      {data.hotel.perks.slice(0, 3).map(p => (
+                        <span key={p} className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary/60 text-muted-foreground print:bg-transparent print:after:content-['·'] print:px-0 print:mr-2">{p}</span>
+                      ))}
                     </div>
-                    {data.hotel.perks?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5 print:gap-0">
-                        {data.hotel.perks.slice(0, 4).map(p => (
-                          <span key={p} className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary/60 text-muted-foreground print:bg-transparent print:after:content-['·'] print:px-0 print:mr-2">{p}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-display font-semibold">{fmtNGN(data.hotel.price_per_night)}</div>
+                  )}
+                  <div className="mt-auto pt-2 border-t border-border/50">
+                    <div className="font-display font-semibold tabular-nums">{fmtNGN(data.hotel.price_per_night)}</div>
                     <div className="text-[10px] text-muted-foreground">/night</div>
                   </div>
                 </div>
               </Card>
             )}
+            </div>
 
             {/* Highlights */}
             {data.highlights?.length > 0 && (
