@@ -66,42 +66,6 @@ const HOTEL_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=400&h=200&q=70",
 ];
 
-// ── City coordinates for dynamic route map ───────────────────────────────────
-const CITY_COORDS: Record<string, [number, number]> = {
-  'Abeokuta':     [7.1475,  3.3619],
-  'Abuja':        [9.0765,  7.3986],
-  'Akure':        [7.2526,  5.1938],
-  'Asaba':        [6.1814,  6.7463],
-  'Benin City':   [6.3350,  5.6286],
-  'Calabar':      [4.9517,  8.3220],
-  'Enugu':        [6.4584,  7.5464],
-  'Ibadan':       [7.3775,  3.9470],
-  'Ilorin':       [8.5003,  4.5500],
-  'Jos':          [9.8965,  8.8583],
-  'Kaduna':       [10.5222, 7.4383],
-  'Kano':         [11.9964, 8.5167],
-  'Lagos':        [6.5244,  3.3792],
-  'Maiduguri':    [11.8469, 13.1571],
-  'Onitsha':      [6.1429,  6.7866],
-  'Owerri':       [5.4836,  7.0333],
-  'Port Harcourt':[4.8156,  7.0498],
-  'Sokoto':       [13.0622, 5.2339],
-  'Uyo':          [5.0167,  7.9333],
-  'Warri':        [5.5167,  5.7500],
-  'Yola':         [9.2370,  12.4680],
-};
-
-function buildRouteMapUrl(origin: string, destination: string): string {
-  const o = CITY_COORDS[origin]      ?? [9.0765, 7.3986];  // fallback Abuja
-  const d = CITY_COORDS[destination] ?? CITY_COORDS[origin] ?? [6.5244, 3.3792];
-  const pad = 0.6;
-  const west  = (Math.min(o[1], d[1]) - pad).toFixed(4);
-  const east  = (Math.max(o[1], d[1]) + pad).toFixed(4);
-  const south = (Math.min(o[0], d[0]) - pad).toFixed(4);
-  const north = (Math.max(o[0], d[0]) + pad).toFixed(4);
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${west}%2C${south}%2C${east}%2C${north}&layer=mapnik&marker=${d[0]}%2C${d[1]}`;
-}
-
 const MAPS_PLACES = [
   { id: "p1", title: "Local cultural centre", tag: "Cultural", cost: 1500, emoji: "🏛️", blurb: "Heritage tours and local craft exhibitions." },
   { id: "p2", title: "Top-rated amala spot", tag: "Foodie", cost: 2500, emoji: "🍲", blurb: "Legendary street spot — locals queue out the door." },
@@ -699,7 +663,6 @@ function PlanStep({
   const [thinking, setThinking] = useState(false);
   // On a phone the library can't sit beside the plan, so it becomes a sheet.
   const [libOpen, setLibOpen] = useState(false);
-  const [mapLoaded, setMapLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [selectedBusIdx, setSelectedBusIdx] = useState<number | null>(null);
   const [selectedFlightIdx, setSelectedFlightIdx] = useState<number | null>(null);
@@ -913,9 +876,11 @@ function PlanStep({
           {[
             {
               label: "Transport",
-              val: fmtNGN(transportTotal),
-              sub: `${transport.operator} · ${intake.squadSize}×`,
-              badge: intake.roundTrip ? "↩ Return included" : null,
+              val: transportTotal > 0 ? fmtNGN(transportTotal) : "Price unavailable",
+              sub: transportTotal > 0
+                ? `${transport.operator} · ${intake.squadSize}×`
+                : "No live price found for this route",
+              badge: intake.roundTrip && transportTotal > 0 ? "↩ Return included" : null,
               color: "text-google-blue",
             },
             { label: "Lodging", val: fmtNGN(lodgingTotal), sub: `${hotelName} · ${intake.days} nights`, badge: null, color: "text-google-purple" },
@@ -944,52 +909,6 @@ function PlanStep({
             { label: "Buffer", value: bufferPerPerson, icon: "🔒", colorClass: "bg-muted-foreground" },
           ]}
         />
-      </Card>
-
-      {/* Map */}
-      <Card className="p-0 overflow-hidden">
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <div>
-            <div className="font-display font-semibold text-sm">Route map · {intake.origin} → {intake.destination}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{transport.operator} · departs {transport.depart_time} from {transport.pickup}</div>
-          </div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" />Live
-          </span>
-        </div>
-        <div className="relative">
-          {mapLoaded ? (
-            <>
-              <iframe
-                title={`Route map · ${intake.origin} → ${intake.destination}`}
-                className="w-full h-64 md:h-80 block"
-                loading="lazy"
-                src={buildRouteMapUrl(intake.origin!, intake.destination!)}
-              />
-              <div className="absolute bottom-0 inset-x-0 flex flex-wrap items-center justify-between gap-2 bg-card/85 backdrop-blur px-4 py-2 text-xs">
-                <div className="flex items-center gap-3 text-muted-foreground">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-foreground" />{intake.origin}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary animate-pulse" />{intake.destination}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-google-purple" />{hotelName}</span>
-                </div>
-                <span className="font-display font-semibold text-foreground">{initialPlan.offline_note?.split("·")[0] || "~128 km"}</span>
-              </div>
-            </>
-          ) : (
-            <button
-              onClick={() => setMapLoaded(true)}
-              className="w-full h-64 md:h-80 flex flex-col items-center justify-center gap-3 bg-secondary/60 hover:bg-secondary transition-colors"
-            >
-              <div className="grid place-items-center w-12 h-12 rounded-full bg-card ring-hairline text-muted-foreground">
-                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="3 11 22 2 13 21 11 13 3 11" />
-                </svg>
-              </div>
-              <span className="text-sm font-medium text-muted-foreground">Tap to load interactive map</span>
-              <span className="text-xs text-muted-foreground/60">{intake.origin} → {intake.destination}</span>
-            </button>
-          )}
-        </div>
       </Card>
 
       {/* Transport selection — live bus or flight options */}

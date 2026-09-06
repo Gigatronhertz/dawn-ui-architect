@@ -260,31 +260,49 @@ async function scrapeGIGM(origin, destination, date) {
     // then click the dropdown option that appears.
 
     // Helper: fill one React Select. Throws if no option appears (route doesn't exist).
-    async function fillReactSelect(inputHandle, searchText, label, attempt = 1) {
+    //
+    // `getInput` re-queries the live DOM for the input handle rather than being
+    // handed one — a retry that reused the original handle from the first
+    // attempt hit "Node is detached from document" here, because GIGM's form
+    // can re-render the field between attempts (the retry's longer pause gives
+    // it time to). Re-querying by position every attempt, including the
+    // first, means a retry always acts on whatever's actually in the DOM now.
+    async function fillReactSelect(getInput, searchText, label, attempt = 1) {
+      const inputHandle = await getInput();
+      if (!inputHandle) throw new Error(`${label} input not found in the form`);
       const inputId = await inputHandle.evaluate(el => el.id);
       const selectBase = inputId.replace('-input', '');
       console.log(`[gigm] Filling ${label} via ${inputId} (attempt ${attempt})`);
-      await inputHandle.click();
-      // Clear first — a retry re-types into a field that may already hold the
-      // previous attempt's text, which would otherwise search for "LagosLagos".
-      await inputHandle.evaluate(el => { el.value = ''; });
-      await inputHandle.type(searchText, { delay: 80 });
+      try {
+        await inputHandle.click();
+        // Clear first — a retry re-types into a field that may already hold the
+        // previous attempt's text, which would otherwise search for "LagosLagos".
+        await inputHandle.evaluate(el => { el.value = ''; });
+        await inputHandle.type(searchText, { delay: 80 });
+      } catch (err) {
+        if (attempt === 1 && /detached from document/i.test(err.message || '')) {
+          console.log(`[gigm] ${label} input went stale mid-fill — retrying once`);
+          await new Promise(r => setTimeout(r, 1000));
+          return fillReactSelect(getInput, searchText, label, 2);
+        }
+        throw err;
+      }
       await new Promise(r => setTimeout(r, 1500));
       const optSel = `[id^="${selectBase}-option"]`;
-      const opt = await page.waitForSelector(optSel, { timeout: 7000 }).catch(() => null);
+      const opt = await page.waitForSelector(optSel, { timeout: 9000 }).catch(() => null);
       if (!opt) {
-        // The "To" list in particular is fetched fresh after "From" is picked
-        // (GetDestinationTerminalsByX), and can still be loading when we start
-        // typing — GIGM's own widget then shows an explicit "No options"
-        // empty-state rather than nothing. One retry after a longer pause
-        // covers that race without slowing down the common case.
-        const emptyState = await page.evaluate(() =>
-          !!document.querySelector('[class*="no-options"], [class*="menu-notice"]')
-        );
-        if (emptyState && attempt === 1) {
-          console.log(`[gigm] ${label} dropdown still loading ("No options") — retrying once`);
-          await new Promise(r => setTimeout(r, 2500));
-          return fillReactSelect(inputHandle, searchText, label, 2);
+        // Both "From" and "To" fetch their terminal list from a live API as
+        // you type (GetDeparture/DestinationTerminalsByX) — either can still
+        // be loading when the option-list wait times out, whether or not
+        // GIGM's widget has rendered an explicit "No options" empty-state
+        // yet. Retry once after a longer pause on ANY missing option, not
+        // just the cases where that empty-state marker happened to show —
+        // a route that's genuinely unserved just fails the same way one
+        // retry later, so this costs nothing in the common case.
+        if (attempt === 1) {
+          console.log(`[gigm] ${label} dropdown had no option after the wait — retrying once`);
+          await new Promise(r => setTimeout(r, 3000));
+          return fillReactSelect(getInput, searchText, label, 2);
         }
         throw new Error(`No "${searchText}" option in ${label} dropdown — route may not be served by GIGM`);
       }
@@ -297,7 +315,8 @@ async function scrapeGIGM(origin, destination, date) {
     // Get all visible React Select inputs in DOM order.
     // GIGM form order: [0]=Trip Type, [1]=Travelling From, [2]=Travelling To,
     //                  [3]=Adults, [4]=Children
-    const rsHandles = await page.$$('input[id^="react-select"]');
+    const getReactSelects = () => page.$$('input[id^="react-select"]');
+    const rsHandles = await getReactSelects();
     console.log(`[gigm] Found ${rsHandles.length} react-select inputs`);
 
     if (rsHandles.length < 3) {
@@ -306,18 +325,18 @@ async function scrapeGIGM(origin, destination, date) {
 
     // 3. From = index 1 (index 0 is Trip Type — leave as default "One Way")
     if (rsHandles[1]) {
-      await fillReactSelect(rsHandles[1], from, 'From');
+      await fillReactSelect(async () => (await getReactSelects())[1], from, 'From');
     } else if (rsHandles[0]) {
       // Safety: if only 1 input, try it anyway
-      await fillReactSelect(rsHandles[0], from, 'From (fallback)');
+      await fillReactSelect(async () => (await getReactSelects())[0], from, 'From (fallback)');
     }
 
     // 4. To = index 2 (re-query after options close and DOM updates)
-    const rsHandles2 = await page.$$('input[id^="react-select"]');
+    const rsHandles2 = await getReactSelects();
     if (rsHandles2[2]) {
-      await fillReactSelect(rsHandles2[2], to, 'To');
+      await fillReactSelect(async () => (await getReactSelects())[2], to, 'To');
     } else if (rsHandles2[1]) {
-      await fillReactSelect(rsHandles2[1], to, 'To (fallback)');
+      await fillReactSelect(async () => (await getReactSelects())[1], to, 'To (fallback)');
     }
 
     // 5. Fill date — use Puppeteer click+type to properly trigger React's datepicker
