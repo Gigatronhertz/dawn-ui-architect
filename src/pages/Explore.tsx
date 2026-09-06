@@ -515,6 +515,14 @@ function FallbackVenueDetail({ venue, onClose }: { venue: VenueItem; onClose: ()
           {venue.address && (
             <p className="text-sm font-jost font-light text-foreground mt-2">📍 {venue.address}</p>
           )}
+          {venue.phone && (
+            <a
+              href={`tel:${venue.phone.replace(/[^\d+]/g, "")}`}
+              className="block text-sm font-jost font-light text-foreground mt-1 hover:text-signal"
+            >
+              📞 {venue.phone}
+            </a>
+          )}
           <MapsActions location={venue.address || venue.name} />
         </div>
         <div className="border-t border-border pt-4">
@@ -1201,6 +1209,30 @@ export function BuildYourOwn({
                   <div className="text-[10px] font-jost font-light text-muted-foreground truncate">
                     <span className="text-foreground/70">{v.vibe}</span> · {v.feeNote}
                   </div>
+                  {(v.address || v.phone) && (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {v.address && (
+                        <a
+                          href={mapsSearchUrl(v.address)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="text-[10px] font-jost font-medium text-signal hover:underline shrink-0"
+                        >
+                          📍 Maps
+                        </a>
+                      )}
+                      {v.phone && (
+                        <a
+                          href={`tel:${v.phone.replace(/[^\d+]/g, "")}`}
+                          onClick={e => e.stopPropagation()}
+                          className="text-[10px] font-jost font-light text-muted-foreground hover:text-foreground truncate"
+                        >
+                          📞 {v.phone}
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <select
                   value=""

@@ -52,6 +52,7 @@ export type VenueItem = {
   /** Real photo when the venue was imported with one — run through imageUrl(). */
   imageUrl?: string | null;
   address?: string | null;
+  phone?: string | null;
 };
 
 /** Shape a raw attraction row for the venue pickers. */
@@ -66,5 +67,6 @@ export function toVenue(a: Attraction): VenueItem {
       || (a.fee_max > 0 ? `₦${a.fee_min.toLocaleString()}–₦${a.fee_max.toLocaleString()}` : 'Free'),
     imageUrl: a.imageUrl ?? null,
     address:  a.address ?? null,
+    phone:    a.phone ?? null,
   };
 }
