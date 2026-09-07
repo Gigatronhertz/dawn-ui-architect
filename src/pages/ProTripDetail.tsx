@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, session, type AgencySquadMember, type AgencyTripDetail } from "@/lib/api";
-import { KarijeLogo } from "@/components/Nav";
+import ProShell from "@/components/ProShell";
 
 /**
  * One agency trip: who joined, who paid, and who still needs chasing.
@@ -80,7 +80,8 @@ function TravellerRow({ m, perPerson, onRemind, sending }: {
   sending: boolean;
 }) {
   return (
-    <div className="border-t border-border p-4 grid md:grid-cols-[1.4fr,1fr,auto] gap-4 items-start">
+    // first:border-t-0 — the card header above already draws that line.
+    <div className="border-t border-border first:border-t-0 px-5 py-4 grid md:grid-cols-[1.4fr,1fr,auto] gap-4 items-start">
       {/* Who */}
       <div className="min-w-0 space-y-1.5">
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -182,6 +183,12 @@ export default function ProTripDetail() {
     if (!user) { navigate("/pro/login", { replace: true }); return; }
     load();
   }, [user, loading, load, navigate]);
+
+  // Name the tab after the trip, so several open at once stay tellable apart.
+  useEffect(() => {
+    const name = data?.trip.title || data?.trip.city;
+    document.title = name ? `${name} · Karije Pro` : "Trip · Karije Pro";
+  }, [data]);
 
   const squad   = data?.squad ?? [];
   const paid    = useMemo(() => squad.filter(s => s.paid),  [squad]);
@@ -287,61 +294,48 @@ export default function ProTripDetail() {
     : "Nobody has joined yet. Share the link above and they'll show up here as they join.";
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-5xl px-6 py-10">
-
-        <div className="flex items-center justify-between mb-10 gap-4">
-          <KarijeLogo size="sm" />
-          <Link to="/pro/dashboard" className="text-sm font-jost font-light text-muted-foreground hover:text-foreground transition-colors">
-            ← Dashboard
-          </Link>
-        </div>
-
-        {/* ── Heading ───────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
-          <div className="min-w-0">
-            {/* The agency running it — the same branding a traveller sees. */}
-            {agency && (
-              <div className="flex items-center gap-2.5 mb-3">
-                {imageUrl(agency.logoUrl) && (
-                  <img
-                    src={imageUrl(agency.logoUrl)!}
-                    alt={agency.name}
-                    className="h-7 w-auto max-w-[6rem] object-contain"
-                  />
-                )}
-                <span className="text-[10px] font-jost tracking-label text-muted-foreground uppercase">
-                  {agency.name}
-                </span>
-              </div>
-            )}
-            <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight">
-              {trip.title || trip.city}
-            </h1>
-            <p className="text-muted-foreground font-jost font-light mt-1">
-              {trip.city} · {trip.days} {trip.days === 1 ? "day" : "days"} · {fmtNGN(trip.perPerson)} per person
-              {trip.selectedDate ? ` · ${trip.selectedDate}` : ""}
-            </p>
+    <ProShell
+      active="trips"
+      backTo="/pro/dashboard"
+      title={trip.title || trip.city}
+      subtitle={
+        `${trip.city} · ${trip.days} ${trip.days === 1 ? "day" : "days"} · ${fmtNGN(trip.perPerson)} per person`
+        + (trip.selectedDate ? ` · ${trip.selectedDate}` : "")
+      }
+      actions={
+        <button
+          onClick={toggleListed}
+          className={`text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap ${
+            trip.listed
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+          }`}
+        >
+          {trip.listed ? "Listed on Karije" : "Link only"}
+        </button>
+      }
+    >
+        {/* The agency running it — the same branding a traveller sees. */}
+        {agency && imageUrl(agency.logoUrl) && (
+          <div className="flex items-center gap-2.5 mb-5">
+            <img
+              src={imageUrl(agency.logoUrl)!}
+              alt={agency.name}
+              className="h-7 w-auto max-w-[6rem] object-contain"
+            />
+            <span className="text-[10px] tracking-label text-muted-foreground uppercase">
+              {agency.name}
+            </span>
           </div>
-          <button
-            onClick={toggleListed}
-            className={`text-xs font-jost font-medium tracking-[0.08em] uppercase px-4 py-2 border transition-colors ${
-              trip.listed
-                ? "border-primary bg-primary/10 text-foreground"
-                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
-            }`}
-          >
-            {trip.listed ? "Listed on Karije" : "Link only"}
-          </button>
-        </div>
+        )}
 
         {/* ── Share link ────────────────────────────────────────────────── */}
-        <div className="border border-border p-4 mb-6 flex flex-wrap items-center gap-3 justify-between">
+        <div className="rounded-2xl bg-card ring-hairline p-5 mb-6 flex flex-wrap items-center gap-3 justify-between">
           <div className="min-w-0">
-            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">
+            <div className="text-[11px] font-medium text-muted-foreground mb-1">
               Share this link
             </div>
-            <div className="font-jost text-sm truncate">{shareUrl}</div>
+            <div className="text-sm truncate">{shareUrl}</div>
           </div>
           <button
             onClick={() => {
@@ -349,81 +343,80 @@ export default function ProTripDetail() {
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
             }}
-            className="bg-signal text-ink px-5 py-2.5 text-xs font-jost font-medium tracking-[0.06em] hover:bg-ink hover:text-signal transition-colors shrink-0"
+            className="rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity shrink-0"
           >
             {copied ? "✓ Copied" : "Copy link"}
           </button>
         </div>
 
         {/* ── Money ─────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border mb-8">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           {[
             { label: "Joined",      value: String(summary.joined) },
             { label: "Paid",        value: `${summary.paid} of ${summary.joined}` },
             { label: "Collected",   value: fmtNGN(summary.collected) },
             { label: "Due to you",  value: fmtNGN(money?.dueToOrganiser ?? summary.collected) },
           ].map(s => (
-            <div key={s.label} className="bg-card p-4">
-              <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">
+            <div key={s.label} className="rounded-2xl bg-card ring-hairline p-5">
+              <div className="text-[11px] font-medium text-muted-foreground mb-1">
                 {s.label}
               </div>
-              <div className="font-display text-2xl font-semibold tabular-nums">{s.value}</div>
+              <div className="font-display text-2xl font-semibold tabular-nums truncate">{s.value}</div>
             </div>
           ))}
         </div>
 
         {/* ── Travellers ────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <h2 className="font-display text-xl font-semibold">Travellers</h2>
-          <div className="flex-1" />
-          <button
-            onClick={exportCsv}
-            disabled={exporting || squad.length === 0}
-            className="text-xs font-jost border border-border px-4 py-2 hover:border-foreground transition-colors disabled:opacity-40"
-          >
-            {exporting ? "Preparing…" : "↓ Export CSV"}
-          </button>
-          {pending.length > 0 && (
+        <div className="rounded-3xl bg-card ring-hairline overflow-hidden">
+          <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-border">
+            <h2 className="font-display font-semibold">Travellers</h2>
+            {/* Tabs */}
+            <div className="flex items-center gap-0.5 rounded-lg bg-secondary/60 p-0.5">
+              {([
+                { key: "all",     label: "All",     n: squad.length },
+                { key: "paid",    label: "Paid",    n: paid.length },
+                { key: "pending", label: "Pending", n: pending.length },
+              ] as const).map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  aria-pressed={tab === t.key}
+                  className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                    tab === t.key
+                      ? "bg-background text-foreground font-medium shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.label} <span className="tabular-nums opacity-60">{t.n}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex-1" />
             <button
-              onClick={() => remind()}
-              disabled={sending !== null}
-              className="text-xs font-jost font-medium tracking-[0.06em] bg-signal text-ink px-4 py-2 hover:bg-ink hover:text-signal transition-colors disabled:opacity-40"
+              onClick={exportCsv}
+              disabled={exporting || squad.length === 0}
+              className="text-xs rounded-lg border border-border px-3 py-2 hover:border-foreground transition-colors disabled:opacity-40 whitespace-nowrap"
             >
-              {sending === "all" ? "Sending…" : `Chase all ${pending.length} unpaid`}
+              {exporting ? "Preparing…" : "↓ Export CSV"}
             </button>
+            {pending.length > 0 && (
+              <button
+                onClick={() => remind()}
+                disabled={sending !== null}
+                className="text-xs font-medium rounded-lg bg-foreground text-background px-3 py-2 hover:opacity-90 transition-opacity disabled:opacity-40 whitespace-nowrap"
+              >
+                {sending === "all" ? "Sending…" : `Chase all ${pending.length} unpaid`}
+              </button>
+            )}
+          </div>
+
+          {note && (
+            <p className="text-xs bg-secondary/60 px-5 py-2.5 border-b border-border">{note}</p>
           )}
-        </div>
 
-        {/* Tabs */}
-        <div className="flex border border-border border-b-0">
-          {([
-            { key: "all",     label: "All",     n: squad.length },
-            { key: "paid",    label: "Paid",    n: paid.length },
-            { key: "pending", label: "Pending", n: pending.length },
-          ] as const).map((t, i) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              aria-pressed={tab === t.key}
-              className={`px-5 py-3 text-xs font-jost font-medium tracking-[0.06em] transition-colors ${i > 0 ? "border-l border-border" : ""} ${
-                tab === t.key
-                  ? "bg-secondary/60 text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label} <span className="tabular-nums opacity-60">{t.n}</span>
-            </button>
-          ))}
-        </div>
-
-        {note && (
-          <p className="text-xs font-jost bg-secondary/60 border-x border-border px-4 py-2">{note}</p>
-        )}
-
-        <div className="border border-border">
           {shown.length === 0 ? (
-            <div className="p-10 text-center">
-              <p className="font-jost font-light text-muted-foreground">{emptyCopy}</p>
+            <div className="p-12 text-center">
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">{emptyCopy}</p>
             </div>
           ) : (
             shown.map(m => (
@@ -438,11 +431,10 @@ export default function ProTripDetail() {
           )}
         </div>
 
-        <p className="text-xs font-jost font-light text-muted-foreground mt-4">
+        <p className="text-[11px] text-muted-foreground mt-4">
           Reminders go out by email. WhatsApp check-ins switch on automatically once
           the WhatsApp provider is configured — no change needed here.
         </p>
-      </div>
-    </main>
+    </ProShell>
   );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, session, type TripTemplate } from "@/lib/api";
-import { KarijeLogo } from "@/components/Nav";
+import ProShell from "@/components/ProShell";
 import { BuildYourOwn } from "@/pages/Explore";
 
 /**
@@ -40,6 +40,8 @@ export default function ProTripBuilder() {
   // Whether to keep this trip's shape for next time.
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName]     = useState("");
+
+  useEffect(() => { document.title = "New trip · Karije Pro"; }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setBuilderCity(city.trim() || "Lagos"), 600);
@@ -128,42 +130,27 @@ export default function ProTripBuilder() {
     );
   }
 
+  const inputCls =
+    "w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition";
+
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-6 py-10">
-
-        <div className="flex items-center justify-between mb-10 gap-4">
-          <KarijeLogo size="sm" />
-          <Link to="/pro/dashboard" className="text-sm font-jost font-light text-muted-foreground hover:text-foreground transition-colors">
-            ← Dashboard
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-4 mb-4">
-          <span className="h-px w-8 bg-primary" />
-          <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-            New trip
-          </span>
-        </div>
-        <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight mb-2">
-          Build a trip your travellers can join
-        </h1>
-        <p className="text-muted-foreground font-jost font-light mb-10 max-w-xl">
-          Add your days and stops. The per-person price comes from the stops themselves.
-          You get one link to share — everyone who opens it can join and pay their own share.
-        </p>
-
+    <ProShell
+      active="trips"
+      backTo="/pro/dashboard"
+      title="New trip"
+      subtitle="Add your days and stops — the per-person price comes from the stops themselves."
+    >
         {/* ── Start from a template ─────────────────────────────────────── */}
         {templates.length > 0 && (
-          <div className="border border-border p-4 mb-8">
-            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-3">
+          <div className="rounded-2xl bg-card ring-hairline p-5 mb-6">
+            <div className="text-[11px] font-medium text-muted-foreground mb-3">
               Start from a saved template
             </div>
             <div className="flex flex-wrap gap-2">
               {templates.map(t => (
                 <div
                   key={t.id}
-                  className={`flex items-center gap-2 border px-3 py-2 transition-colors ${
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors ${
                     usedTemplate === t.id
                       ? "border-primary bg-primary/10"
                       : "border-border hover:border-foreground"
@@ -174,8 +161,8 @@ export default function ProTripBuilder() {
                     onClick={() => applyTemplate(t)}
                     className="text-left"
                   >
-                    <div className="font-jost text-sm font-medium">{t.name}</div>
-                    <div className="font-jost text-[10px] text-muted-foreground tabular-nums">
+                    <div className="text-sm font-medium">{t.name}</div>
+                    <div className="text-[10px] text-muted-foreground tabular-nums">
                       {t.city ? `${t.city} · ` : ""}{t.dayCount}{t.dayCount === 1 ? " day" : " days"}
                       {t.perPerson > 0 ? ` · ₦${t.perPerson.toLocaleString()}` : ""}
                     </div>
@@ -192,7 +179,7 @@ export default function ProTripBuilder() {
               ))}
             </div>
             {usedTemplate && (
-              <p className="text-[11px] font-jost font-light text-muted-foreground mt-3">
+              <p className="text-[11px] text-muted-foreground mt-3">
                 Loaded. Edit anything below — the template stays as it is.
               </p>
             )}
@@ -200,60 +187,65 @@ export default function ProTripBuilder() {
         )}
 
         {/* ── Trip identity ─────────────────────────────────────────────── */}
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <div>
-            <label htmlFor="trip-title" className="text-xs font-jost text-muted-foreground block mb-1.5">
-              Trip name *
-            </label>
-            <input
-              id="trip-title"
-              value={title}
-              onChange={(e) => { setTitle(e.target.value); setErr(""); }}
-              placeholder="Calabar Carnival Weekend"
-              className="w-full bg-secondary/60 ring-hairline px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
-            />
+        <div className="rounded-2xl bg-card ring-hairline p-5 mb-6">
+          <div className="text-[11px] font-medium text-muted-foreground mb-4">
+            What travellers see
           </div>
-          <div>
-            <label htmlFor="trip-city" className="text-xs font-jost text-muted-foreground block mb-1.5">
-              City
-            </label>
-            <input
-              id="trip-city"
-              list="karije-city-suggestions"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Anywhere you run trips"
-              maxLength={80}
-              className="w-full bg-secondary/60 ring-hairline px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
-            />
-            <datalist id="karije-city-suggestions">
-              {CITY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
-            </datalist>
-          </div>
-          <div className="md:col-span-2">
-            <label htmlFor="trip-summary" className="text-xs font-jost text-muted-foreground block mb-1.5">
-              One-line description
-            </label>
-            <input
-              id="trip-summary"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              placeholder="Three days of carnival, food and the Marina."
-              maxLength={240}
-              className="w-full bg-secondary/60 ring-hairline px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
-            />
-          </div>
-          <div>
-            <label htmlFor="trip-date" className="text-xs font-jost text-muted-foreground block mb-1.5">
-              Start date
-            </label>
-            <input
-              id="trip-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
-            />
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="trip-title" className="text-xs text-muted-foreground block mb-1.5">
+                Trip name *
+              </label>
+              <input
+                id="trip-title"
+                value={title}
+                onChange={(e) => { setTitle(e.target.value); setErr(""); }}
+                placeholder="Calabar Carnival Weekend"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label htmlFor="trip-city" className="text-xs text-muted-foreground block mb-1.5">
+                City
+              </label>
+              <input
+                id="trip-city"
+                list="karije-city-suggestions"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Anywhere you run trips"
+                maxLength={80}
+                className={inputCls}
+              />
+              <datalist id="karije-city-suggestions">
+                {CITY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+            <div className="md:col-span-2">
+              <label htmlFor="trip-summary" className="text-xs text-muted-foreground block mb-1.5">
+                One-line description
+              </label>
+              <input
+                id="trip-summary"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                placeholder="Three days of carnival, food and the Marina."
+                maxLength={240}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label htmlFor="trip-date" className="text-xs text-muted-foreground block mb-1.5">
+                Start date
+              </label>
+              <input
+                id="trip-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={inputCls}
+              />
+            </div>
           </div>
         </div>
 
@@ -312,7 +304,6 @@ export default function ProTripBuilder() {
             </>
           }
         />
-      </div>
-    </main>
+    </ProShell>
   );
 }
