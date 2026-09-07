@@ -203,6 +203,10 @@ export type TripRow = {
   summary?: string | null;
   listed?: number | null;
   selected_date?: string | null;
+  /** Unix seconds the agency marked this done, or null while it's still active. */
+  completed_at?: number | null;
+  /** Times the public share link has been opened. */
+  view_count?: number;
 };
 
 export type DashboardSummary = {
@@ -211,6 +215,14 @@ export type DashboardSummary = {
   total_collected: number;
   pending_payments: number;
   revenue_mtd: number;
+  /** Times any of this agency's share links have been opened. */
+  total_views: number;
+  /** Of everyone who opened a link, the % who joined — null with no traffic yet. */
+  join_rate_pct: number | null;
+  /** Of everyone who joined, the % who paid — null with no joins yet. */
+  payment_rate_pct: number | null;
+  /** The trip that has collected the most so far, or null before anything has. */
+  top_trip: { id: string; title: string; collected: number } | null;
 };
 
 export type DashboardData = {
@@ -320,6 +332,7 @@ export type AgencyTripDetail = {
     id: string; title: string | null; summary: string | null; city: string;
     days: number; squadSize: number; listed: boolean; status: string;
     selectedDate: string | null; createdAt: number; perPerson: number;
+    completedAt: number | null; viewCount: number;
   };
   plan: TripPlan | null;
   squad: AgencySquadMember[];
@@ -581,15 +594,17 @@ export const api = {
   getAgencyTrip: (tripId: string, token: string) =>
     get<AgencyTripDetail>(`/api/pro/trips/${tripId}`, bearer(token)),
 
-  /** Edit a trip, including flipping it on or off the Karije catalog. */
+  /** Edit a trip, including flipping it on or off the Karije catalog, or
+   *  marking/unmarking it done — moves it to the Completed tab without
+   *  touching anything a traveller who already paid could be relying on. */
   updateAgencyTrip: (
     tripId: string,
     payload: {
       title?: string; summary?: string; listed?: boolean; squadSize?: number;
-      selectedDate?: string; days?: { activities: AgencyStop[] }[];
+      selectedDate?: string; days?: { activities: AgencyStop[] }[]; completed?: boolean;
     },
     token: string,
-  ) => patch<{ ok: boolean; trip: { id: string; title: string; listed: boolean } }>(
+  ) => patch<{ ok: boolean; trip: { id: string; title: string; listed: boolean; completedAt: number | null } }>(
     `/api/pro/trips/${tripId}`, payload, bearer(token),
   ),
 

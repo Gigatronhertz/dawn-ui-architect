@@ -17,10 +17,24 @@ import { api, imageUrl, session, type AgentProfile } from "@/lib/api";
 // Small stroke icons, matching the "+" glyph style already used across this
 // codebase — no icon library, just inline paths.
 
+export const IconOverview = (p: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="9" rx="1.5" />
+    <rect x="14" y="3" width="7" height="5" rx="1.5" />
+    <rect x="14" y="12" width="7" height="9" rx="1.5" />
+    <rect x="3" y="16" width="7" height="5" rx="1.5" />
+  </svg>
+);
 export const IconTrips = (p: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
     <circle cx="12" cy="9.8" r="2.4" />
+  </svg>
+);
+export const IconCompleted = (p: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8.5 12.5 2.4 2.4 4.6-5.4" />
   </svg>
 );
 export const IconTemplates = (p: { className?: string }) => (
@@ -53,7 +67,7 @@ const IconBack = (p: { className?: string }) => (
   </svg>
 );
 
-export type ProNav = "trips" | "templates" | "settings";
+export type ProNav = "overview" | "trips" | "completed" | "templates" | "settings";
 
 /** The agent shape both /api/pro/me and /api/pro/dashboard return. */
 export type ProAgent = AgentProfile & {
@@ -64,16 +78,20 @@ export type ProAgent = AgentProfile & {
 };
 
 const NAV: { id: ProNav; label: string; icon: (p: { className?: string }) => JSX.Element }[] = [
-  { id: "trips",     label: "Trips",     icon: IconTrips },
+  { id: "overview",  label: "Overview",  icon: IconOverview  },
+  { id: "trips",     label: "Trips",     icon: IconTrips     },
+  { id: "completed", label: "Completed", icon: IconCompleted },
   { id: "templates", label: "Templates", icon: IconTemplates },
-  { id: "settings",  label: "Settings",  icon: IconSettings },
+  { id: "settings",  label: "Settings",  icon: IconSettings  },
 ];
 
 function SidebarContent({
-  agent, active, templateCount, userEmail, onSignOut, onNavigate,
+  agent, active, tripCount, completedCount, templateCount, userEmail, onSignOut, onNavigate,
 }: {
   agent: ProAgent | null;
   active: ProNav | null;
+  tripCount?: number;
+  completedCount?: number;
   templateCount?: number;
   userEmail: string;
   onSignOut: () => void;
@@ -104,7 +122,10 @@ function SidebarContent({
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV.map(({ id, label, icon: Icon }) => {
-          const badge = id === "templates" ? templateCount : undefined;
+          const badge =
+            id === "trips"     ? tripCount :
+            id === "completed" ? completedCount :
+            id === "templates" ? templateCount : undefined;
           return (
             <Link
               key={id}
@@ -153,7 +174,8 @@ function SidebarContent({
 }
 
 export default function ProShell({
-  active, title, subtitle, actions, backTo, agent: agentProp, templateCount, children, contentClassName,
+  active, title, subtitle, actions, backTo, agent: agentProp,
+  tripCount, completedCount, templateCount, children, contentClassName,
 }: {
   /** Which sidebar item reads as current; null on pages that are not one of them. */
   active: ProNav | null;
@@ -165,6 +187,8 @@ export default function ProShell({
   backTo?: string;
   /** Pages that already loaded the agency pass it in; others let the shell fetch it. */
   agent?: ProAgent | null;
+  tripCount?: number;
+  completedCount?: number;
   templateCount?: number;
   children: ReactNode;
   contentClassName?: string;
@@ -192,6 +216,8 @@ export default function ProShell({
     <SidebarContent
       agent={agent}
       active={active}
+      tripCount={tripCount}
+      completedCount={completedCount}
       templateCount={templateCount}
       userEmail={user?.email ?? ""}
       onSignOut={() => { signOut(); navigate("/"); }}

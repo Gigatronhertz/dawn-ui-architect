@@ -488,6 +488,11 @@ const SHAREABLE = ['awaiting_group', 'curated', 'custom'];
 router.get('/public/plan/:tripId', async (req, res) => {
   const trip = await db.trips.get(req.params.tripId);
   if (!trip) return res.status(404).json({ error: 'Plan not found.' });
+  // Every open of the share link counts as a view, whether or not the
+  // visitor goes on to join — the organiser's dashboard turns this into
+  // "how many people even looked at this". Fire-and-forget: a write failure
+  // here should never be the reason a traveller can't see their itinerary.
+  db.raw('UPDATE trips SET view_count = view_count + 1 WHERE id = ?', [trip.id]).catch(() => {});
   if (!SHAREABLE.includes(trip.status)) {
     return res.status(403).json({ error: 'This plan has not been shared yet — ask the organiser to confirm it first.' });
   }
@@ -1118,6 +1123,8 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
         status:       trip.status,
         selectedDate: trip.selected_date,
         createdAt:    Number(trip.created_at),
+        completedAt:  trip.completed_at ? Number(trip.completed_at) : null,
+        viewCount:    Number(trip.view_count || 0),
         perPerson,
       },
       plan,
@@ -1189,7 +1196,7 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     const trip = await agentTripOr403(req, res);
     if (!trip) return;
 
-    const { title, summary, listed, squadSize, days, selectedDate } = req.body || {};
+    const { title, summary, listed, squadSize, days, selectedDate, completed } = req.body || {};
     const sets = [];
     const args = [];
 
@@ -1197,6 +1204,13 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     if (typeof summary === 'string')               { sets.push('summary=?');       args.push(summary.trim().slice(0, 240)); }
     if (listed !== undefined)                      { sets.push('listed=?');        args.push(listed ? 1 : 0); }
     if (typeof selectedDate === 'string')          { sets.push('selected_date=?'); args.push(selectedDate.slice(0, 40)); }
+    // Purely organisational — moves the trip out of the working list on the
+    // dashboard. Does not touch `status`, so a trip already paid into stays
+    // viewable and its receipts stay valid after it's marked done.
+    if (completed !== undefined) {
+      sets.push('completed_at=?');
+      args.push(completed ? Math.floor(Date.now() / 1000) : null);
+    }
 
     // Re-price whenever the itinerary or headcount moves, so the stored plan
     // and the per-person cost can never drift apart.
@@ -1216,7 +1230,15 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     await db.raw(`UPDATE trips SET ${sets.join(', ')} WHERE id=?`, args);
 
     const updated = await db.trips.get(trip.id);
-    res.json({ ok: true, trip: { id: updated.id, title: updated.title, listed: !!updated.listed } });
+    res.json({
+      ok: true,
+      trip: {
+        id:          updated.id,
+        title:       updated.title,
+        listed:      !!updated.listed,
+        completedAt: updated.completed_at ? Number(updated.completed_at) : null,
+      },
+    });
   } catch (err) {
     console.error('[api/pro/trips:patch]', err.message);
     res.status(500).json({ error: err.message });
@@ -1293,17 +1315,46 @@ router.get('/pro/dashboard', requireAuth, async (req, res) => {
   const activeStatuses = new Set(['awaiting_group', 'custom', 'payment']);
   const monthStart = Math.floor(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000);
 
+  // A trip the agency has marked done drops out of "active" regardless of
+  // its underlying status — status still gates viewing/joining/paying (see
+  // SHAREABLE above) and is left alone; completed_at is the organisational
+  // flag the dashboard actually sorts on.
+  const openTrips = trips.filter(t => !t.completed_at);
+
+  // Real, derived-not-guessed insights for the overview: how many times any
+  // share link was opened, and the two conversion steps between "someone
+  // looked" and "someone paid". Each rate is null rather than 0 when its
+  // denominator is empty, so a brand-new account reads "no data yet" instead
+  // of a misleading 0%.
+  const totalViews  = trips.reduce((s, t) => s + (Number(t.view_count)    || 0), 0);
+  const totalJoined = trips.reduce((s, t) => s + (Number(t.total_members) || 0), 0);
+  const totalPaid   = trips.reduce((s, t) => s + (Number(t.paid_count)    || 0), 0);
+
+  // The trip that has actually brought in the most money — worth knowing
+  // which shape of trip to repeat.
+  const topTrip = trips
+    .filter(t => Number(t.total_collected) > 0)
+    .sort((a, b) => Number(b.total_collected) - Number(a.total_collected))[0] || null;
+
   const summary = {
-    active_trips:     trips.filter(t => activeStatuses.has(t.status)).length,
-    trips_completed:  trips.filter(t => t.status === 'active').length,
+    active_trips:     openTrips.filter(t => activeStatuses.has(t.status)).length,
+    trips_completed:  trips.filter(t => t.completed_at || t.status === 'active').length,
     total_collected:  trips.reduce((s, t) => s + (Number(t.total_collected) || 0), 0),
     // Unpaid people who actually joined an active trip. Measuring against
     // squad_size counted seats nobody had claimed, and gating on status
     // payment read zero for agency trips, which carry status custom.
-    pending_payments: trips
+    pending_payments: openTrips
       .filter(t => activeStatuses.has(t.status))
       .reduce((s, t) => s + Math.max(0, Number(t.total_members || 0) - Number(t.paid_count || 0)), 0),
     revenue_mtd:      trips.filter(t => t.created_at >= monthStart).reduce((s, t) => s + (Number(t.total_collected) || 0), 0),
+    total_views:      totalViews,
+    join_rate_pct:    totalViews  > 0 ? Math.round((totalJoined / totalViews)  * 100) : null,
+    payment_rate_pct: totalJoined > 0 ? Math.round((totalPaid   / totalJoined) * 100) : null,
+    top_trip: topTrip ? {
+      id:        topTrip.id,
+      title:     topTrip.title || topTrip.destination || 'Untitled trip',
+      collected: Number(topTrip.total_collected) || 0,
+    } : null,
   };
 
   return res.json({ agent, trips, summary });

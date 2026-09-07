@@ -318,6 +318,16 @@ const MIGRATIONS = [
   `ALTER TABLE attractions ADD COLUMN google_maps_link TEXT`,
   `ALTER TABLE attractions ADD COLUMN description      TEXT`,
   `ALTER TABLE attractions ADD COLUMN source_url       TEXT`,
+  // Phase 16 — the Pro dashboard needed a way to get a finished trip out of
+  // the working list without touching `status` (which every join/pay/view
+  // route gates on — repurposing it to mean "done" would have locked
+  // travellers out of a plan they already paid into). completed_at is
+  // deliberately a separate, purely organisational flag the agency sets
+  // themselves; nothing else in the app reads it. view_count is a plain
+  // counter bumped every time the public share link is opened, so "how many
+  // people have even looked at this" stops being a guess.
+  `ALTER TABLE trips ADD COLUMN completed_at INTEGER`,
+  `ALTER TABLE trips ADD COLUMN view_count   INTEGER NOT NULL DEFAULT 0`,
 ];
 
 const ready = (async () => {
@@ -786,6 +796,7 @@ async function getAgentDashboardByUser(userId, phone, agentId = null) {
     sql: `SELECT
       t.id, t.origin, t.destination, t.days, t.squad_size, t.status, t.created_at,
       t.title, t.summary, t.listed, t.agent_id, t.selected_date,
+      t.completed_at, t.view_count,
       COUNT(p.id)                                                      AS total_members,
       COALESCE(SUM(CASE WHEN p.paid = 1 THEN 1 ELSE 0 END), 0)         AS paid_count,
       COALESCE(SUM(CASE WHEN p.paid = 1 THEN p.amount ELSE 0 END), 0)  AS total_collected

@@ -136,7 +136,7 @@ export default function ProTripBuilder() {
   return (
     <ProShell
       active="trips"
-      backTo="/pro/dashboard"
+      backTo="/pro/dashboard?tab=trips"
       title="New trip"
       subtitle="Add your days and stops — the per-person price comes from the stops themselves."
     >

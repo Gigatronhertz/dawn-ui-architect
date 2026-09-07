@@ -162,6 +162,7 @@ export default function ProTripDetail() {
   const [copied, setCopied]   = useState(false);
   const [tab, setTab]         = useState<Tab>("all");
   const [exporting, setExporting] = useState(false);
+  const [completedBusy, setCompletedBusy] = useState(false);
 
   const shareUrl = `${window.location.origin}/plan/${tripId}`;
 
@@ -265,6 +266,26 @@ export default function ProTripDetail() {
     }
   }
 
+  /** Purely organisational — moves the trip to the Completed tab without
+   *  touching its status, so a traveller who already paid keeps their
+   *  itinerary and receipt exactly as before. */
+  async function toggleCompleted() {
+    if (!data) return;
+    const next = !data.trip.completedAt;
+    setCompletedBusy(true);
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("Please sign in again.");
+      await api.updateAgencyTrip(tripId!, { completed: next }, token);
+      setNote(next ? "Marked completed — it's moved to the Completed tab." : "Reopened — it's back in your Trips list.");
+      await load();
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "Could not update the trip.");
+    } finally {
+      setCompletedBusy(false);
+    }
+  }
+
   if (loading || busy) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
@@ -295,26 +316,48 @@ export default function ProTripDetail() {
 
   return (
     <ProShell
-      active="trips"
-      backTo="/pro/dashboard"
+      active={trip.completedAt ? "completed" : "trips"}
+      backTo={trip.completedAt ? "/pro/dashboard?tab=completed" : "/pro/dashboard?tab=trips"}
       title={trip.title || trip.city}
       subtitle={
         `${trip.city} · ${trip.days} ${trip.days === 1 ? "day" : "days"} · ${fmtNGN(trip.perPerson)} per person`
         + (trip.selectedDate ? ` · ${trip.selectedDate}` : "")
       }
       actions={
-        <button
-          onClick={toggleListed}
-          className={`text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap ${
-            trip.listed
-              ? "border-primary bg-primary/10 text-foreground"
-              : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
-          }`}
-        >
-          {trip.listed ? "Listed on Karije" : "Link only"}
-        </button>
+        <>
+          <button
+            onClick={toggleCompleted}
+            disabled={completedBusy}
+            className={`text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap disabled:opacity-40 ${
+              trip.completedAt
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+            }`}
+          >
+            {completedBusy ? "Saving…" : trip.completedAt ? "✓ Completed" : "Mark completed"}
+          </button>
+          <button
+            onClick={toggleListed}
+            className={`text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap ${
+              trip.listed
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+            }`}
+          >
+            {trip.listed ? "Listed on Karije" : "Link only"}
+          </button>
+        </>
       }
     >
+        {/* This organisational flag never touches status, so a trip marked
+            done stays exactly as viewable/payable as it always was — this
+            banner is the only place that fact needs saying out loud. */}
+        {trip.completedAt && (
+          <div className="rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/20 px-5 py-3 mb-5 text-xs text-emerald-700 dark:text-emerald-400">
+            Marked completed {fmtDate(trip.completedAt)}. The share link and everyone's receipts still work as before.
+          </div>
+        )}
+
         {/* The agency running it — the same branding a traveller sees. */}
         {agency && imageUrl(agency.logoUrl) && (
           <div className="flex items-center gap-2.5 mb-5">
@@ -350,8 +393,9 @@ export default function ProTripDetail() {
         </div>
 
         {/* ── Money ─────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
           {[
+            { label: "Link views",  value: String(trip.viewCount) },
             { label: "Joined",      value: String(summary.joined) },
             { label: "Paid",        value: `${summary.paid} of ${summary.joined}` },
             { label: "Collected",   value: fmtNGN(summary.collected) },
