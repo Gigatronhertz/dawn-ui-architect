@@ -22,7 +22,13 @@ app.use((req, res, next) => {
   const origin = req.headers.origin || '*';
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  // PATCH was missing here — the preflight advertised it as disallowed, so
+  // the browser silently refused to ever send the real request for any
+  // PATCH route (the "Listed on Karije" toggle and the trip-completion
+  // toggle both use PATCH /api/pro/trips/:tripId). curl ignores CORS
+  // entirely, which is exactly why this tested fine from the command line
+  // while failing every time from an actual browser.
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Admin-Key');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
