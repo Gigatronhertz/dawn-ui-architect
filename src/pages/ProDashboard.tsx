@@ -642,19 +642,24 @@ const ProDashboard = () => {
                     </Link>
                   </div>
                 ) : (
-                  <>
-                    <div className="grid grid-cols-12 gap-3 px-5 py-3 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary/40">
-                      <div className="col-span-4">Trip</div>
-                      <div className="col-span-1">Status</div>
-                      <div className="col-span-2">Squad</div>
-                      <div className="col-span-2">Payments</div>
-                      <div className="col-span-2">Next action</div>
-                      <div className="col-span-1" />
+                  // The 12-col grid below needs real room to breathe — on a
+                  // narrow screen it would rather scroll sideways than
+                  // squeeze every column into unreadable overlapping text.
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[720px]">
+                      <div className="grid grid-cols-12 gap-3 px-5 py-3 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary/40">
+                        <div className="col-span-4">Trip</div>
+                        <div className="col-span-1">Status</div>
+                        <div className="col-span-2">Squad</div>
+                        <div className="col-span-2">Payments</div>
+                        <div className="col-span-2">Next action</div>
+                        <div className="col-span-1" />
+                      </div>
+                      {trips.map((t) => (
+                        <TripRowItem key={t.id} trip={t} />
+                      ))}
                     </div>
-                    {trips.map((t) => (
-                      <TripRowItem key={t.id} trip={t} />
-                    ))}
-                  </>
+                  </div>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground mt-4 text-center">
