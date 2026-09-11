@@ -45,10 +45,15 @@ export type VenueItem = {
   name: string;
   emoji: string;
   vibe: string;
-  /** Midpoint of the fee range — what gets added to the per-person cost. */
+  /** Midpoint of the fee range — the default before anyone drags the slider. */
   cost: number;
   /** Human-readable price, e.g. "₦1,000–₦2,000" or "Free". */
   feeNote: string;
+  /** The real gate-fee range this venue was priced at. feeMin === feeMax for
+   *  a fixed price; both 0 for free — either case means there's nothing for
+   *  a spend slider to actually do, so callers should check before showing one. */
+  feeMin: number;
+  feeMax: number;
   /** Real photo when the venue was imported with one — run through imageUrl(). */
   imageUrl?: string | null;
   address?: string | null;
@@ -65,6 +70,8 @@ export function toVenue(a: Attraction): VenueItem {
     cost:    a.fee_max > 0 ? Math.round((a.fee_min + a.fee_max) / 2) : 0,
     feeNote: a.fee_note
       || (a.fee_max > 0 ? `₦${a.fee_min.toLocaleString()}–₦${a.fee_max.toLocaleString()}` : 'Free'),
+    feeMin:  Math.max(0, a.fee_min || 0),
+    feeMax:  Math.max(0, a.fee_max || 0),
     imageUrl: a.imageUrl ?? null,
     address:  a.address ?? null,
     phone:    a.phone ?? null,

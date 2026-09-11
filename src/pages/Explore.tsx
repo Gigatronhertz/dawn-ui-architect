@@ -843,12 +843,97 @@ export function BuildYourOwn({
     }
   }
 
-  function addStop(day: number, v: VenueItem) {
+  /** `costOverride` is what the spend slider below hands in — the amount the
+   *  planner actually dragged to, rather than the fee range's midpoint. */
+  function addStop(day: number, v: VenueItem, costOverride?: number) {
     setStops(prev => ({
       ...prev,
-      [day]: [...(prev[day] ?? []), { id: `${v.id}-${Date.now()}`, time: "", title: v.name, cost: v.cost, emoji: v.emoji }],
+      [day]: [...(prev[day] ?? []), { id: `${v.id}-${Date.now()}`, time: "", title: v.name, cost: costOverride ?? v.cost, emoji: v.emoji }],
     }));
   }
+
+  /** Whether a venue's fee is a real range worth a slider — a fixed price or
+   *  a free entry both collapse feeMin/feeMax to the same number (or 0), and
+   *  a slider with nothing to slide between is just friction. */
+  function hasFeeRange(v: VenueItem): boolean {
+    return v.feeMax > v.feeMin;
+  }
+
+  /** The one row, across both the venue library and the ideas list, that's
+   *  mid-way through picking a spend amount before it gets added. Namespaced
+   *  by which list it came from — a venue is theoretically listed in both,
+   *  and confirming an idea also needs to pop it out of the ideas list. */
+  const [pendingAdd, setPendingAdd] = useState<{ key: string; v: VenueItem; day: number; cost: number; source: "ideas" | "matches" } | null>(null);
+
+  function openSpendPicker(key: string, v: VenueItem, source: "ideas" | "matches") {
+    setPendingAdd({ key, v, day: 0, cost: v.cost, source });
+  }
+  function confirmSpendPicker() {
+    if (!pendingAdd) return;
+    addStop(pendingAdd.day, pendingAdd.v, pendingAdd.cost);
+    if (pendingAdd.source === "ideas") {
+      setIdeas(prev => prev.filter(x => x.id !== pendingAdd.v.id));
+    }
+    setPendingAdd(null);
+  }
+
+  /** The expanded panel a range-priced venue opens into, in place of the
+   *  plain day-select — shown once, wherever `pendingAdd` currently points. */
+  function SpendPickerPanel() {
+    if (!pendingAdd) return null;
+    const { v, day, cost } = pendingAdd;
+    // Round the step to something that doesn't feel like it's crawling on a
+    // ₦50,000 range or jumping in ₦1 increments on a ₦500 one.
+    const step = Math.max(100, Math.round((v.feeMax - v.feeMin) / 20 / 100) * 100);
+    return (
+      <div className="mt-2 p-3 bg-secondary/50 border border-border space-y-2.5">
+        <div className="flex items-center justify-between text-xs font-jost">
+          <span className="text-muted-foreground">How much will you spend here?</span>
+          <span className="font-medium tabular-nums">{formatNGN(cost)}</span>
+        </div>
+        <input
+          type="range"
+          min={v.feeMin}
+          max={v.feeMax}
+          step={step}
+          value={cost}
+          onChange={e => setPendingAdd(p => p && { ...p, cost: Number(e.target.value) })}
+          className="w-full accent-forest"
+          aria-label={`Spend at ${v.name}`}
+        />
+        <div className="flex items-center justify-between text-[10px] font-jost text-muted-foreground/70 tabular-nums">
+          <span>{formatNGN(v.feeMin)}</span>
+          <span>{formatNGN(v.feeMax)}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <select
+            value={day}
+            onChange={e => setPendingAdd(p => p && { ...p, day: Number(e.target.value) })}
+            aria-label="Which day"
+            className="border border-border bg-background px-1.5 py-1.5 text-[11px] font-jost shrink-0"
+          >
+            {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
+          </select>
+          <button
+            type="button"
+            onClick={confirmSpendPicker}
+            className="flex-1 bg-signal text-ink py-1.5 text-[11px] font-jost font-medium tracking-[0.04em] hover:bg-ink hover:text-signal transition-colors"
+          >
+            Add to Day {day + 1}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPendingAdd(null)}
+            aria-label="Cancel"
+            className="text-muted-foreground hover:text-red-500 text-xs px-1.5 shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   /**
    * Add a place the planner typed in. It behaves exactly like a library venue
    * once added — same shape, same cost maths — it just never came from us.
@@ -865,6 +950,10 @@ export function BuildYourOwn({
       vibe:    "Custom",
       cost,
       feeNote: cost > 0 ? `₦${cost.toLocaleString()}` : "Free",
+      // A typed-in place has one number, not a range — feeMin === feeMax is
+      // exactly the signal the picker uses to skip the slider entirely.
+      feeMin:  cost,
+      feeMax:  cost,
     });
     setOwnName("");
     setOwnCost("");
@@ -936,11 +1025,40 @@ export function BuildYourOwn({
             ))}
           </div>
           <label className="text-xs font-jost font-light text-muted-foreground ml-2">Squad</label>
-          <input
-            type="number" min={1} max={60} value={squadSize}
-            onChange={e => setSquad(Math.max(1, Number(e.target.value) || 1))}
-            className="w-16 border border-border bg-background px-2 py-1.5 text-sm font-jost text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+          <div className="flex items-stretch border border-border">
+            <button
+              type="button"
+              onClick={() => setSquad(s => Math.max(1, s - 1))}
+              aria-label="Fewer people"
+              className="w-8 grid place-items-center text-muted-foreground hover:text-forest hover:bg-secondary/50 transition-colors border-r border-border"
+            >
+              −
+            </button>
+            <input
+              type="number" min={1} max={60}
+              // Empty string while they're mid-edit, not forced back to "1" —
+              // the old version re-clamped on every keystroke, so selecting
+              // the number and typing a replacement fought its own state and
+              // never actually let you type a new value.
+              value={squadSize === 0 ? "" : squadSize}
+              onChange={e => {
+                const raw = e.target.value;
+                if (raw === "") { setSquad(0); return; }
+                const n = Number(raw);
+                if (!Number.isNaN(n)) setSquad(Math.min(60, Math.max(0, Math.round(n))));
+              }}
+              onBlur={() => setSquad(s => Math.max(1, s))}
+              className="w-12 border-0 bg-background px-1 py-1.5 text-sm font-jost text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              type="button"
+              onClick={() => setSquad(s => Math.min(60, s + 1))}
+              aria-label="More people"
+              className="w-8 grid place-items-center text-muted-foreground hover:text-forest hover:bg-secondary/50 transition-colors border-l border-border"
+            >
+              +
+            </button>
+          </div>
         </div>
 
         {days.map(d => (
@@ -1147,33 +1265,51 @@ export function BuildYourOwn({
 
             {ideas.length > 0 && (
               <ul className="mt-2 space-y-1.5">
-                {ideas.map(v => (
-                  <li key={v.id} className="bg-secondary/40 p-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base shrink-0 leading-none">{v.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-jost font-medium truncate">{v.name}</div>
-                        <div className="text-[10px] font-jost font-light text-muted-foreground truncate">
-                          {v.reason || `${v.vibe} · ${v.feeNote}`}
+                {ideas.map(v => {
+                  const rowKey = `ideas-${v.id}`;
+                  const isPending = pendingAdd?.key === rowKey;
+                  return (
+                    <li key={v.id} className="bg-secondary/40 p-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base shrink-0 leading-none">{v.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-jost font-medium truncate">{v.name}</div>
+                          <div className="text-[10px] font-jost font-light text-muted-foreground truncate">
+                            {v.reason || `${v.vibe} · ${v.feeNote}`}
+                          </div>
                         </div>
+                        {hasFeeRange(v) ? (
+                          <button
+                            type="button"
+                            onClick={() => isPending ? setPendingAdd(null) : openSpendPicker(rowKey, v, "ideas")}
+                            aria-expanded={isPending}
+                            className={`text-[10px] font-jost border px-1.5 py-1 shrink-0 transition-colors ${
+                              isPending ? "border-forest bg-forest/5 text-forest font-medium" : "border-border hover:border-forest"
+                            }`}
+                          >
+                            {isPending ? "✕ Close" : "+ Add"}
+                          </button>
+                        ) : (
+                          <select
+                            value=""
+                            onChange={e => {
+                              if (e.target.value !== "") {
+                                addStop(Number(e.target.value), v);
+                                setIdeas(prev => prev.filter(x => x.id !== v.id));
+                              }
+                            }}
+                            aria-label={`Add ${v.name} to a day`}
+                            className="text-[10px] font-jost border border-border bg-background px-1.5 py-1 shrink-0 cursor-pointer hover:border-forest focus:outline-none focus:ring-1 focus:ring-primary/30"
+                          >
+                            <option value="">+ Add</option>
+                            {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
+                          </select>
+                        )}
                       </div>
-                      <select
-                        value=""
-                        onChange={e => {
-                          if (e.target.value !== "") {
-                            addStop(Number(e.target.value), v);
-                            setIdeas(prev => prev.filter(x => x.id !== v.id));
-                          }
-                        }}
-                        aria-label={`Add ${v.name} to a day`}
-                        className="text-[10px] font-jost border border-border bg-background px-1.5 py-1 shrink-0 cursor-pointer hover:border-forest focus:outline-none focus:ring-1 focus:ring-primary/30"
-                      >
-                        <option value="">+ Add</option>
-                        {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
-                      </select>
-                    </div>
-                  </li>
-                ))}
+                      {isPending && <SpendPickerPanel />}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -1191,60 +1327,80 @@ export function BuildYourOwn({
           </p>
         ) : (
           <ul className="max-h-[26rem] overflow-y-auto -mx-1 px-1">
-            {matches.map(v => (
-              <li key={v.id} className="flex items-center gap-2 py-2 border-b border-border/50 last:border-0">
-                {imageUrl(v.imageUrl) ? (
-                  <img
-                    src={imageUrl(v.imageUrl)!}
-                    alt=""
-                    className="w-8 h-8 rounded-lg object-cover shrink-0"
-                    loading="lazy"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                ) : (
-                  <span className="w-8 h-8 grid place-items-center text-base shrink-0 leading-none">{v.emoji}</span>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-jost font-medium truncate">{v.name}</div>
-                  <div className="text-[10px] font-jost font-light text-muted-foreground truncate">
-                    <span className="text-foreground/70">{v.vibe}</span> · {v.feeNote}
-                  </div>
-                  {(v.address || v.phone) && (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {v.address && (
-                        <a
-                          href={mapsSearchUrl(v.address)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          className="text-[10px] font-jost font-medium text-signal hover:underline shrink-0"
-                        >
-                          📍 Maps
-                        </a>
-                      )}
-                      {v.phone && (
-                        <a
-                          href={`tel:${v.phone.replace(/[^\d+]/g, "")}`}
-                          onClick={e => e.stopPropagation()}
-                          className="text-[10px] font-jost font-light text-muted-foreground hover:text-foreground truncate"
-                        >
-                          📞 {v.phone}
-                        </a>
+            {matches.map(v => {
+              const rowKey = `matches-${v.id}`;
+              const isPending = pendingAdd?.key === rowKey;
+              return (
+                <li key={v.id} className="py-2 border-b border-border/50 last:border-0">
+                  <div className="flex items-center gap-2">
+                    {imageUrl(v.imageUrl) ? (
+                      <img
+                        src={imageUrl(v.imageUrl)!}
+                        alt=""
+                        className="w-8 h-8 rounded-lg object-cover shrink-0"
+                        loading="lazy"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <span className="w-8 h-8 grid place-items-center text-base shrink-0 leading-none">{v.emoji}</span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-jost font-medium truncate">{v.name}</div>
+                      <div className="text-[10px] font-jost font-light text-muted-foreground truncate">
+                        <span className="text-foreground/70">{v.vibe}</span> · {v.feeNote}
+                      </div>
+                      {(v.address || v.phone) && (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {v.address && (
+                            <a
+                              href={mapsSearchUrl(v.address)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              className="text-[10px] font-jost font-medium text-signal hover:underline shrink-0"
+                            >
+                              📍 Maps
+                            </a>
+                          )}
+                          {v.phone && (
+                            <a
+                              href={`tel:${v.phone.replace(/[^\d+]/g, "")}`}
+                              onClick={e => e.stopPropagation()}
+                              className="text-[10px] font-jost font-light text-muted-foreground hover:text-foreground truncate"
+                            >
+                              📞 {v.phone}
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-                <select
-                  value=""
-                  onChange={e => { if (e.target.value !== "") addStop(Number(e.target.value), v); }}
-                  aria-label={`Add ${v.name} to a day`}
-                  className="text-[10px] font-jost border border-border bg-background px-1.5 py-1 shrink-0 cursor-pointer hover:border-forest focus:outline-none focus:ring-1 focus:ring-primary/30"
-                >
-                  <option value="">+ Add</option>
-                  {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
-                </select>
-              </li>
-            ))}
+                    {hasFeeRange(v) ? (
+                      <button
+                        type="button"
+                        onClick={() => isPending ? setPendingAdd(null) : openSpendPicker(rowKey, v, "matches")}
+                        aria-expanded={isPending}
+                        className={`text-[10px] font-jost border px-1.5 py-1 shrink-0 transition-colors ${
+                          isPending ? "border-forest bg-forest/5 text-forest font-medium" : "border-border hover:border-forest"
+                        }`}
+                      >
+                        {isPending ? "✕ Close" : "+ Add"}
+                      </button>
+                    ) : (
+                      <select
+                        value=""
+                        onChange={e => { if (e.target.value !== "") addStop(Number(e.target.value), v); }}
+                        aria-label={`Add ${v.name} to a day`}
+                        className="text-[10px] font-jost border border-border bg-background px-1.5 py-1 shrink-0 cursor-pointer hover:border-forest focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      >
+                        <option value="">+ Add</option>
+                        {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
+                      </select>
+                    )}
+                  </div>
+                  {isPending && <SpendPickerPanel />}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
