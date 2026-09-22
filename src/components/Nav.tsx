@@ -164,7 +164,7 @@ export const Nav = () => {
           <div
             className={`flex items-center justify-between px-4 py-2.5 transition-all duration-500 ${
               scrolled
-                ? "glass ring-hairline shadow-soft rounded-lg"
+                ? "glass border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] rounded-2xl"
                 : ""
             }`}
           >
@@ -227,7 +227,7 @@ export const Nav = () => {
               <Link
                 to="/start"
                 onClick={close}
-                className="inline-flex items-center gap-2 bg-signal text-ink px-5 py-2 text-[13px] font-jost font-medium tracking-[0.06em] hover:bg-ink hover:text-signal transition-colors rounded-sm"
+                className="inline-flex items-center gap-2 bg-signal text-ink border-2 border-foreground px-5 py-2 text-[13px] font-jost font-bold tracking-[0.06em] shadow-[3px_3px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_hsl(var(--foreground))] transition-transform rounded-full"
               >
                 Plan a trip
                 <svg

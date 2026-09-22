@@ -42,7 +42,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Can I switch between pay-per-plan and monthly?",
-    a: "Yes, anytime. If you're planning a big trip month and want unlimited plans, switch to monthly (₦4,500) before you start. Switch back to pay-per-plan the following month. No penalties, no questions asked.",
+    a: "Yes, anytime. If you're planning a big trip month and want unlimited plans, switch to monthly (₦1,000) before you start. Switch back to pay-per-plan the following month. No penalties, no questions asked.",
   },
   {
     q: "Is there a contract for Pro?",
@@ -78,7 +78,7 @@ export default function Pricing() {
             Pay for what you actually use.
           </h1>
           <p className="text-muted-foreground font-jost font-light text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            Start free. Generate an AI trip plan for ₦1,500. Book a curated Karije experience. Or power your travel agency on Pro — all priced for Nigeria.
+            Start free. Generate an AI trip plan for ₦500. Book a curated Karije experience. Or power your travel agency on Pro — all priced for Nigeria.
           </p>
         </div>
       </section>
@@ -94,7 +94,7 @@ export default function Pricing() {
           <div className="grid md:grid-cols-3 gap-6">
 
             {/* ── Free ──────────────────────────────────────────────── */}
-            <div className="rounded-3xl border border-border bg-card p-8 flex flex-col shadow-soft">
+            <div className="rounded-3xl border-[3px] border-foreground bg-card p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--foreground))]">
               <div className="mb-6">
                 <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full bg-secondary text-muted-foreground mb-4">
                   Free
@@ -118,16 +118,16 @@ export default function Pricing() {
 
               <Link
                 to="/start"
-                className="w-full text-center py-3 rounded-sm border border-border font-jost font-medium text-sm tracking-[0.06em] text-foreground hover:bg-secondary transition-colors"
+                className="w-full text-center py-3 rounded-full border-[3px] border-foreground font-jost font-bold text-sm tracking-[0.06em] text-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform"
               >
                 Start planning free →
               </Link>
             </div>
 
             {/* ── AI Curated (featured) ──────────────────────────── */}
-            <div className="rounded-3xl border border-primary/20 bg-primary-soft p-8 flex flex-col shadow-soft relative">
+            <div className="rounded-3xl border-[3px] border-foreground bg-primary-soft p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--signal))] relative">
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-4 py-1.5 rounded-full bg-primary text-primary-foreground shadow-glow whitespace-nowrap">
+                <span className="inline-block text-[10px] font-jost font-bold tracking-[0.12em] uppercase px-4 py-1.5 rounded-full bg-signal text-ink border-2 border-foreground whitespace-nowrap">
                   Most popular
                 </span>
               </div>
@@ -138,15 +138,15 @@ export default function Pricing() {
                 </span>
 
                 {/* Mode toggle */}
-                <div className="flex rounded-lg bg-white/60 border border-border p-0.5 mb-4 w-fit gap-0.5">
+                <div className="flex rounded-full bg-background border-[3px] border-foreground p-1 mb-4 w-fit gap-1">
                   {(["pay", "monthly"] as const).map((m) => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setAiMode(m)}
-                      className={`text-[11px] font-jost font-medium px-3 py-1.5 rounded-md transition-all ${
+                      className={`text-[11px] font-jost font-bold px-3.5 py-1.5 rounded-full transition-all ${
                         aiMode === m
-                          ? "bg-white shadow-sm text-foreground"
+                          ? "bg-signal text-ink shadow-[2px_2px_0_0_hsl(var(--foreground))]"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
@@ -157,15 +157,15 @@ export default function Pricing() {
 
                 {aiMode === "pay" ? (
                   <>
-                    <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦1,500</div>
+                    <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦500</div>
                     <div className="text-sm font-jost font-light text-muted-foreground">per AI plan generated</div>
                   </>
                 ) : (
                   <>
-                    <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦4,500</div>
+                    <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦1,000</div>
                     <div className="text-sm font-jost font-light text-muted-foreground">
                       / month · unlimited plans{" "}
-                      <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-foreground">saves ₦10,500+ vs per-plan</span>
+                      <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-foreground">saves ₦4,000+ vs per-plan</span>
                     </div>
                   </>
                 )}
@@ -186,14 +186,14 @@ export default function Pricing() {
 
               <Link
                 to="/start/trip"
-                className="w-full text-center py-3 rounded-sm bg-gradient-primary text-primary-foreground font-jost font-medium text-sm tracking-[0.06em] hover:opacity-90 transition-opacity shadow-glow"
+                className="w-full text-center py-3 rounded-full bg-signal text-ink border-[3px] border-foreground font-jost font-bold text-sm tracking-[0.06em] shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform"
               >
                 Generate your first plan →
               </Link>
             </div>
 
             {/* ── Ready-made Trips ───────────────────────────────── */}
-            <div className="rounded-3xl border border-border bg-card p-8 flex flex-col shadow-soft">
+            <div className="rounded-3xl border-[3px] border-foreground bg-card p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--foreground))]">
               <div className="mb-6">
                 <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full bg-secondary text-muted-foreground mb-4">
                   Ready-made Trips
@@ -217,7 +217,7 @@ export default function Pricing() {
 
               <Link
                 to="/start/explore"
-                className="w-full text-center py-3 rounded-sm border border-border font-jost font-medium text-sm tracking-[0.06em] text-foreground hover:bg-secondary transition-colors"
+                className="w-full text-center py-3 rounded-full border-[3px] border-foreground font-jost font-bold text-sm tracking-[0.06em] text-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform"
               >
                 Browse ready-made trips →
               </Link>
@@ -243,9 +243,9 @@ export default function Pricing() {
           <div className="max-w-lg mx-auto">
 
             {/* ── Pro Starter ───────────────────────────────────── */}
-            <div className="rounded-3xl border border-parchment/10 bg-parchment/5 p-8 flex flex-col">
+            <div className="rounded-3xl border-[3px] border-signal bg-parchment/5 p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--signal))]">
               <div className="mb-6">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full border border-parchment/20 text-parchment/60 mb-4">
+                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full border-2 border-signal text-parchment/80 mb-4">
                   Pro Starter
                 </span>
                 <div className="font-marcellus text-5xl text-parchment leading-none mb-1">₦10,000</div>
@@ -269,10 +269,10 @@ export default function Pricing() {
               </ul>
 
               <Link
-                to="/pro"
-                className="w-full text-center py-3 rounded-sm border border-parchment/20 text-parchment font-jost font-medium text-sm tracking-[0.06em] hover:bg-parchment/10 transition-colors"
+                to="/pro/login?mode=signup"
+                className="w-full text-center py-3 rounded-full bg-signal text-ink border-[3px] border-foreground font-jost font-bold text-sm tracking-[0.06em] shadow-[4px_4px_0_0_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-transform"
               >
-                Join the waitlist →
+                Create your account →
               </Link>
               <p className="text-center text-[11px] font-jost font-light text-parchment/30 mt-3">
                 14 days free · no card required
@@ -311,7 +311,7 @@ export default function Pricing() {
             Everything at a glance.
           </h2>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-2xl border-[3px] border-foreground p-4">
             <table className="w-full min-w-[560px] text-sm font-jost font-light">
               <thead>
                 <tr className="border-b border-border">
@@ -404,7 +404,7 @@ export default function Pricing() {
       {/* ── Bottom CTA ────────────────────────────────────────────────────── */}
       <section className="py-20 px-6 border-t border-border">
         <div className="mx-auto max-w-5xl">
-          <div className="relative overflow-hidden rounded-[2.5rem] bg-foreground text-background p-12 md:p-20 text-center">
+          <div className="relative overflow-hidden rounded-[2.5rem] border-[3px] border-signal bg-foreground text-background p-12 md:p-20 text-center shadow-[8px_8px_0_0_hsl(var(--signal))]">
             <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/25 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-forest/40 blur-3xl pointer-events-none" />
 
@@ -419,7 +419,7 @@ export default function Pricing() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
                   to="/start/trip"
-                  className="inline-flex items-center gap-2 bg-primary text-ink px-7 py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:opacity-90 transition-opacity shadow-glow rounded-sm"
+                  className="inline-flex items-center gap-2 bg-signal text-ink border-[3px] border-background px-7 py-3.5 font-jost font-bold text-sm tracking-[0.06em] shadow-[4px_4px_0_0_rgba(255,255,255,0.25)] hover:-translate-y-0.5 transition-transform rounded-full"
                 >
                   Plan a trip free
                   <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -428,7 +428,7 @@ export default function Pricing() {
                 </Link>
                 <Link
                   to="/pro"
-                  className="inline-flex items-center gap-2 border border-white/20 text-background/70 px-7 py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:text-background hover:border-white/40 transition-colors rounded-sm"
+                  className="inline-flex items-center gap-2 border-[3px] border-white/30 text-background/80 px-7 py-3.5 font-jost font-bold text-sm tracking-[0.06em] hover:text-background hover:border-white/60 transition-colors rounded-full"
                 >
                   Explore Pro →
                 </Link>
