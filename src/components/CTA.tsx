@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { KarijeLogo } from "@/components/Nav";
+import { TRIP_CATEGORIES } from "@/lib/categories";
 
 export const CTA = () => (
   <section id="cta" className="py-28 md:py-36">
@@ -37,13 +38,30 @@ export const CTA = () => (
 
 export const Footer = () => (
   <footer className="border-t border-border py-12">
-    <div className="mx-auto max-w-6xl px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-      <KarijeLogo size="sm" />
-      <p className="text-xs text-muted-foreground">© 2026 Karije. Made for West African squads. 🇳🇬 🇬🇭 🇸🇳 🇨🇮</p>
-      <div className="flex gap-5 text-xs text-muted-foreground">
-        <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-        <Link to="/terms"   className="hover:text-foreground transition-colors">Terms</Link>
-        <a href="mailto:hello@karije.com" className="hover:text-foreground transition-colors">Contact</a>
+    <div className="mx-auto max-w-6xl px-6 flex flex-col gap-8">
+      {/* Category links — query-param deep links into Explore, since there's
+         no per-city route yet. Lagos-only for now: it's the one city with a
+         full curated catalog. */}
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        {TRIP_CATEGORIES.filter((c) => c.value !== "all").map((c) => (
+          <Link
+            key={c.value}
+            to={`/start/explore?category=${c.value}`}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {c.label} in Lagos
+          </Link>
+        ))}
+      </div>
+
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <KarijeLogo size="sm" />
+        <p className="text-xs text-muted-foreground">© 2026 Karije. Made for West African squads. 🇳🇬 🇬🇭 🇸🇳 🇨🇮</p>
+        <div className="flex gap-5 text-xs text-muted-foreground">
+          <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+          <Link to="/terms"   className="hover:text-foreground transition-colors">Terms</Link>
+          <a href="mailto:hello@karije.com" className="hover:text-foreground transition-colors">Contact</a>
+        </div>
       </div>
     </div>
   </footer>

@@ -1,21 +1,27 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { KarijeWordmark } from "@/components/Nav";
+import { HeroSearch } from "@/components/HeroSearch";
 
-// Verified Unsplash CDN photo IDs (full internal IDs)
-// 1577900190299-7316c32fe85f : Aerial Enugu, Nigeria
-// 1773146916270-e811bff4e923 : Friends on a beach
-// 1761986758241-77549539536a : Four women with teal van
-const CDN = {
-  enugu:    "1577900190299-7316c32fe85f",
-  beach:    "1773146916270-e811bff4e923",
-  roadtrip: "1761986758241-77549539536a",
+// ── Headline locale switcher ───────────────────────────────────────────────
+// Pidgin is the confirmed line. Igbo and Yoruba are draft translations of
+// "where are we going next?" — UNVERIFIED by a native speaker. Confirm both
+// before treating this copy as final.
+type Locale = "pidgin" | "igbo" | "yoruba";
+const HEADLINES: Record<Locale, { tab: string; text: string }> = {
+  pidgin: { tab: "Pidgin",  text: "Abeg, where we dey go next?" },
+  igbo:   { tab: "Igbo",    text: "Ebee ka anyị na-aga?" },   // UNVERIFIED
+  yoruba: { tab: "Yoruba",  text: "Nibo la n lo?" },           // UNVERIFIED
 };
 
 function img(id: string, w: number, h: number) {
   return `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
 }
 
-export const Hero = () => (
+export const Hero = () => {
+  const [locale, setLocale] = useState<Locale>("pidgin");
+
+  return (
   <section className="relative pt-24 pb-16 md:pt-36 md:pb-24 bg-hero-mesh overflow-hidden">
     {/* Beachfront sunset overlay — visible backdrop */}
     <img
@@ -34,22 +40,42 @@ export const Hero = () => (
         </span>
       </div>
 
-      {/* ── Main grid ───────────────────────────────────────────────── */}
-      <div className="grid md:grid-cols-[1.1fr,1fr] gap-10 lg:gap-16 items-start">
+      {/* ── Main column — no photo collage, search replaces it ───────── */}
+      <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
 
-        {/* Left — copy ─────────────────────────────────────────────── */}
         <div>
           {/* Wordmark — the headline reads as its subtitle */}
-          <KarijeWordmark className="animate-rise h-28 md:h-40 lg:h-48 w-auto text-logo mb-7" />
+          <span className="animate-rise inline-block mb-7">
+            <KarijeWordmark className="h-28 md:h-40 lg:h-48 w-auto text-logo" offset />
+          </span>
+
+          {/* Headline locale tabs */}
+          <div
+            className="animate-rise flex justify-center gap-2 mb-4"
+            style={{ animationDelay: "0.03s" }}
+          >
+            {(Object.keys(HEADLINES) as Locale[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setLocale(key)}
+                className={`text-[11px] font-jost font-semibold tracking-[0.08em] uppercase rounded-full px-3.5 py-1.5 transition-colors ${
+                  locale === key
+                    ? "bg-ink text-paper"
+                    : "border border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {HEADLINES[key].tab}
+              </button>
+            ))}
+          </div>
 
           {/* Headline */}
           <h1
             className="animate-rise font-marcellus text-4xl sm:text-5xl md:text-5xl lg:text-6xl leading-[1.08] text-foreground"
             style={{ animationDelay: "0.05s" }}
           >
-            Group trips,
-            <br />
-            <span className="text-foreground">planned in minutes.</span>
+            {HEADLINES[locale].text}
           </h1>
 
           {/* Tagline rule */}
@@ -66,7 +92,7 @@ export const Hero = () => (
 
           {/* Subtitle */}
           <p
-            className="animate-rise font-jost font-light text-base md:text-lg text-muted-foreground leading-relaxed max-w-md"
+            className="animate-rise font-jost font-light text-base md:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto"
             style={{ animationDelay: "0.12s" }}
           >
             From the first idea to the last contribution paid —
@@ -76,126 +102,24 @@ export const Hero = () => (
               Your squad just shows up.
             </span>
           </p>
-
-          {/* CTAs */}
-          <div
-            className="animate-rise mt-8 flex flex-col sm:flex-row gap-3"
-            style={{ animationDelay: "0.18s" }}
-          >
-            <Link
-              to="/start"
-              className="inline-flex items-center justify-center gap-2.5 bg-signal text-ink px-7 py-3.5 text-sm font-jost font-medium tracking-[0.08em] shadow-glow hover:bg-ink hover:text-signal transition-colors"
-            >
-              Plan a trip
-              <svg
-                viewBox="0 0 24 24"
-                className="w-4 h-4 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14M13 5l7 7-7 7" />
-              </svg>
-            </Link>
-            <Link
-              to="/pro/login"
-              className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-7 py-3.5 text-sm font-jost font-light tracking-[0.06em] hover:border-primary hover:text-foreground/60 transition-colors"
-            >
-              For agencies
-            </Link>
-          </div>
-
-          {/* Social proof */}
-          <p
-            className="animate-rise mt-6 text-[11px] font-jost font-light tracking-[0.06em] text-muted-foreground"
-            style={{ animationDelay: "0.24s" }}
-          >
-            47 squads in beta · ₦12M+ collected · No app download
-          </p>
         </div>
 
-        {/* Right — photo collage (desktop only) ───────────────────── */}
-        <div
-          className="hidden md:grid grid-cols-2 gap-2"
-          style={{ height: "420px" }}
+        {/* Search — replaces the old CTA buttons + photo collage */}
+        <div className="mt-8 w-full flex justify-center">
+          <HeroSearch />
+        </div>
+
+        <p
+          className="animate-rise mt-5 text-xs font-jost font-light text-muted-foreground"
+          style={{ animationDelay: "0.24s" }}
         >
-          {/* Tall left — Enugu aerial */}
-          <div
-            className="overflow-hidden relative group"
-            style={{ gridRow: "span 2" }}
-          >
-            <img
-              src={img(CDN.enugu, 500, 840)}
-              alt="Aerial view of Enugu, Nigeria"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-              loading="eager"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-forest/60 via-transparent to-transparent" />
-            <div className="absolute bottom-4 left-4 text-parchment">
-              <div className="text-[9px] font-jost font-light tracking-label uppercase opacity-80 mb-0.5">
-                Nigeria
-              </div>
-              <div className="font-marcellus text-sm">Enugu, Coal City</div>
-            </div>
-          </div>
-
-          {/* Top right — beach */}
-          <div className="overflow-hidden relative group">
-            <img
-              src={img(CDN.beach, 400, 270)}
-              alt="Friends on a beach trip"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-              loading="eager"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-forest/50 via-transparent to-transparent" />
-            <div className="absolute bottom-3 left-3 text-parchment font-marcellus text-xs">
-              Beach Weekend
-            </div>
-          </div>
-
-          {/* Bottom right — road trip */}
-          <div className="overflow-hidden relative group">
-            <img
-              src={img(CDN.roadtrip, 400, 270)}
-              alt="Friends on a road trip"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-              loading="eager"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-forest/50 via-transparent to-transparent" />
-            <div className="absolute bottom-3 left-3 text-parchment font-marcellus text-xs">
-              Road Trip
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile — horizontal photo strip ────────────────────────── */}
-        <div className="md:hidden -mx-6 overflow-x-auto flex gap-2.5 px-6 pb-2 snap-x snap-mandatory scrollbar-none">
-          {[
-            { id: CDN.enugu,    label: "Enugu, Nigeria" },
-            { id: CDN.beach,    label: "Beach Weekend"  },
-            { id: CDN.roadtrip, label: "Road Trip"      },
-          ].map((p) => (
-            <div
-              key={p.id}
-              className="flex-none w-52 h-36 overflow-hidden relative snap-start"
-            >
-              <img
-                src={img(p.id, 350, 250)}
-                alt={p.label}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-forest/55 via-transparent to-transparent" />
-              <div className="absolute bottom-2.5 left-3 text-parchment font-marcellus text-xs">
-                {p.label}
-              </div>
-            </div>
-          ))}
-        </div>
+          <Link to="/pro/login" className="hover:text-foreground transition-colors">For agencies</Link>
+          <span className="mx-2">·</span>
+          47 squads in beta · ₦12M+ collected · No app download
+        </p>
 
       </div>
     </div>
   </section>
-);
+  );
+};

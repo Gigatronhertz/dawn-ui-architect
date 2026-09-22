@@ -30,7 +30,11 @@ export default function Login() {
   const verified  = searchParams.get("verified")   === "1";
   const authError = searchParams.get("auth_error");
 
-  const [authMode,     setAuthMode]     = useState<AuthMode>("signin");
+  // Landing-page "sign up" CTAs link here with ?mode=signup to open straight
+  // into account creation instead of the sign-in tab.
+  const [authMode, setAuthMode] = useState<AuthMode>(
+    searchParams.get("mode") === "signup" ? "signup" : "signin"
+  );
   const [email,        setEmail]        = useState("");
   const [password,     setPassword]     = useState("");
   const [confirm,      setConfirm]      = useState("");

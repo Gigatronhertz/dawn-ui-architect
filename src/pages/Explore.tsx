@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { KarijeLogo } from "@/components/Nav";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
 import type { AgencyListing } from "@/lib/api";
@@ -8,20 +8,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { tripImageUrl } from "@/lib/tripImage";
 import { toVenue, VENUE_VIBES, VIBE_EMOJI, type VenueItem } from "@/lib/attractions";
 import type { NightlifeVenue, EventItem } from "@/lib/experienceTypes";
+import { TRIP_CATEGORIES } from "@/lib/categories";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ExploreStep = "browse" | "detail" | "share";
 
 /** Vibe chips — `value` matches the `category` column on a curated trip. */
-const VIBE_FILTERS: { value: string; emoji: string; label: string }[] = [
-  { value: "all",       emoji: "🌍", label: "Everything" },
-  { value: "adventure", emoji: "⛵", label: "Adventure" },
-  { value: "culture",   emoji: "🎭", label: "Culture" },
-  { value: "nature",    emoji: "🌿", label: "Nature" },
-  { value: "leisure",   emoji: "🌊", label: "Chill" },
-  { value: "food",      emoji: "🍽️", label: "Food" },
-  { value: "nightlife", emoji: "🎉", label: "Nightlife" },
-];
+const VIBE_FILTERS = TRIP_CATEGORIES;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatNGN(amount: number): string {
@@ -112,7 +105,7 @@ function AgencyTripCard({ trip }: { trip: AgencyListing }) {
   return (
     <Link
       to={trip.href}
-      className="group relative aspect-square overflow-hidden text-left flex flex-col justify-end p-4 border border-border hover:border-foreground transition-colors"
+      className="group relative aspect-square overflow-hidden text-left flex flex-col justify-end p-4 rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
     >
       <span className="absolute top-3 left-3 text-[9px] font-jost font-medium tracking-[0.14em] uppercase bg-signal text-ink px-2 py-0.5">
         {trip.agency}
@@ -139,7 +132,7 @@ function CuratedNightlifeCard({ v, onSelect }: { v: NightlifeVenue; onSelect: ()
   return (
     <button
       onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left"
+      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
       style={{ backgroundColor: v.colorFallback }}
     >
       {v.imageId && (
@@ -184,7 +177,7 @@ function FallbackNightlifeCard({ v, index, onSelect }: { v: VenueItem; index: nu
   return (
     <button
       onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left"
+      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
     >
       <img
         src={image}
@@ -263,7 +256,7 @@ function EventCard({ ev, onSelect }: { ev: EventItem; onSelect: () => void }) {
   return (
     <button
       onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left"
+      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
       style={{ backgroundColor: ev.colorFallback }}
     >
       {ev.imageId && (
@@ -620,7 +613,7 @@ function ExperienceCard({ exp, onSelect }: { exp: Experience; onSelect: () => vo
   return (
     <button
       onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left"
+      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
       style={{ backgroundColor: exp.colorFallback }}
     >
       {/* Full-bleed photo */}
@@ -1435,6 +1428,7 @@ const ALL_EXPLORE_CITIES = [
 
 export default function Explore() {
   const navigate            = useNavigate();
+  const [searchParams]      = useSearchParams();
   const [step, setStep]     = useState<ExploreStep>("browse");
   const [selected, setSelected] = useState<Experience | null>(null);
   const [days, setDays]     = useState(1);
@@ -1448,10 +1442,19 @@ export default function Explore() {
   // Karije's own, but say who is running them.
   const [agencyTrips, setAgencyTrips] = useState<AgencyListing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [vibe, setVibe] = useState("all");
+  // Pre-select a category chip when arriving from a landing-page link like
+  // /start/explore?category=food — falls back to "all" for anything unknown.
+  const [vibe, setVibe] = useState(() => {
+    const fromUrl = searchParams.get("category");
+    return TRIP_CATEGORIES.some(c => c.value === fromUrl) ? fromUrl! : "all";
+  });
   // "ours" = trips Karije picked and runs. "nightlife"/"events" = curated
   // after-dark content for the city. "own" = build your own day out.
-  const [tab, setTab] = useState<"ours" | "nightlife" | "events" | "own">("ours");
+  // Pre-selected via ?tab= from a landing-page link (e.g. the Hero search).
+  const [tab, setTab] = useState<"ours" | "nightlife" | "events" | "own">(() => {
+    const fromUrl = searchParams.get("tab");
+    return fromUrl === "nightlife" || fromUrl === "events" || fromUrl === "own" ? fromUrl : "ours";
+  });
 
   // Real venues for this city, from the same 272-venue table the "Build your
   // own" planner uses — powers the Nightlife section regardless of which tab
@@ -1663,20 +1666,20 @@ export default function Explore() {
             </div>
 
             {/* Four ways into this city: our trips, nightlife, events, or build your own */}
-            <div className="flex gap-0 mb-6 flex-wrap">
+            <div className="flex gap-2 mb-6 flex-wrap">
               {([
                 { id: "ours",      label: "Trips we run" },
                 { id: "nightlife", label: "🌙 Nightlife" },
                 { id: "events",    label: "🎟️ Events" },
                 { id: "own",       label: "Build your own" },
-              ] as const).map(({ id, label }, i) => (
+              ] as const).map(({ id, label }) => (
                 <button
                   key={id}
                   onClick={() => setTab(id)}
-                  className={`px-5 py-2.5 text-sm font-jost border transition-colors ${i > 0 ? "-ml-px" : ""} ${
+                  className={`px-5 py-2.5 rounded-full text-sm font-jost border-2 transition-all ${
                     tab === id
-                      ? "border-forest bg-forest text-parchment font-medium"
-                      : "border-border text-muted-foreground hover:border-forest hover:text-forest"
+                      ? "border-foreground bg-signal text-ink font-bold shadow-[3px_3px_0_0_hsl(var(--foreground))]"
+                      : "border-foreground/40 text-muted-foreground hover:border-foreground hover:text-foreground"
                   }`}
                 >
                   {label}
@@ -1704,10 +1707,10 @@ export default function Explore() {
                   <button
                     key={value}
                     onClick={() => setVibe(value)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 border text-sm font-jost transition-colors ${
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border-2 text-sm font-jost transition-all ${
                       vibe === value
-                        ? "border-forest bg-forest/5 text-forest font-medium"
-                        : "border-border text-muted-foreground font-light hover:border-forest hover:text-forest"
+                        ? "border-foreground bg-signal text-ink font-bold shadow-[3px_3px_0_0_hsl(var(--foreground))]"
+                        : "border-foreground/40 text-muted-foreground font-light hover:border-foreground hover:text-foreground"
                     }`}
                   >
                     <span>{emoji}</span>

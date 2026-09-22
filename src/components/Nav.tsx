@@ -37,22 +37,46 @@ export const KarijeMark = ({
 );
 
 /** The wordmark on its own — no link, for hero and editorial use.
- *  Size it with a height class, e.g. "h-20 md:h-28 w-auto". */
+ *  Size it with a height class, e.g. "h-20 md:h-28 w-auto".
+ *  `offset`: the bold hard-shadow "sticker" treatment used on the Hero
+ *  search bar and the trust-section phone — a signal-yellow duplicate of
+ *  the mark offset behind the real one. SVGs don't take a box-shadow, so
+ *  this is a second copy, not a filter. */
 export const KarijeWordmark = ({
   className = "h-20 w-auto text-logo",
+  offset = false,
 }: {
   className?: string;
-}) => (
-  <svg
-    viewBox={WORDMARK_VIEWBOX}
-    className={className}
-    fill="currentColor"
-    role="img"
-    aria-label="Karije"
-  >
-    <path fillRule="evenodd" d={WORDMARK_PATH} />
-  </svg>
-);
+  offset?: boolean;
+}) => {
+  const mark = (
+    <svg
+      viewBox={WORDMARK_VIEWBOX}
+      className={className}
+      fill="currentColor"
+      role="img"
+      aria-label="Karije"
+    >
+      <path fillRule="evenodd" d={WORDMARK_PATH} />
+    </svg>
+  );
+
+  if (!offset) return mark;
+
+  return (
+    <span className="relative inline-block">
+      <svg
+        viewBox={WORDMARK_VIEWBOX}
+        className={`${className} absolute top-1.5 left-1.5 text-signal dark:text-ink -z-10`}
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path fillRule="evenodd" d={WORDMARK_PATH} />
+      </svg>
+      {mark}
+    </span>
+  );
+};
 
 export const KarijeLogo = ({
   size = "md",
@@ -65,24 +89,39 @@ export const KarijeLogo = ({
   className?: string;
 }) => {
   const height = size === "sm" ? 32 : size === "lg" ? 72 : 44;
+  // Same hard-shadow "sticker" trick as KarijeWordmark's `offset`, scaled
+  // down for nav-bar sizes — every KarijeLogo instance site-wide gets it,
+  // not opt-in, since this is the one mark that appears everywhere.
+  const shadowOffset = Math.max(2, Math.round(height * 0.045));
 
   return (
-    <Link
-      to="/"
-      onClick={onClick}
-      className={`inline-block hover:opacity-80 transition-opacity ${className}`}
-      style={{ textDecoration: "none" }}
-      aria-label="Karije — home"
-    >
+    <span className="relative inline-block">
       <svg
         viewBox={WORDMARK_VIEWBOX}
-        style={{ height, width: "auto", display: "block" }}
+        style={{ height, width: "auto", display: "block", position: "absolute", top: shadowOffset, left: shadowOffset }}
+        className="text-signal dark:text-ink -z-10"
         fill="currentColor"
         aria-hidden="true"
       >
         <path fillRule="evenodd" d={WORDMARK_PATH} />
       </svg>
-    </Link>
+      <Link
+        to="/"
+        onClick={onClick}
+        className={`inline-block hover:opacity-80 transition-opacity ${className}`}
+        style={{ textDecoration: "none" }}
+        aria-label="Karije — home"
+      >
+        <svg
+          viewBox={WORDMARK_VIEWBOX}
+          style={{ height, width: "auto", display: "block" }}
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path fillRule="evenodd" d={WORDMARK_PATH} />
+        </svg>
+      </Link>
+    </span>
   );
 };
 

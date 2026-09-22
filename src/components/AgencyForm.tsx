@@ -56,7 +56,7 @@ export const AgencyForm = ({ className = "" }: { className?: string }) => {
             placeholder="Chidi Okafor"
             required
             disabled={status === "loading"}
-            className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+            className="w-full rounded-xl bg-background border-2 border-foreground/70 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-foreground disabled:opacity-50"
           />
         </div>
         <div>
@@ -69,7 +69,7 @@ export const AgencyForm = ({ className = "" }: { className?: string }) => {
             onChange={set("agencyName")}
             placeholder="TripWise Travels"
             disabled={status === "loading"}
-            className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+            className="w-full rounded-xl bg-background border-2 border-foreground/70 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-foreground disabled:opacity-50"
           />
         </div>
       </div>
@@ -85,7 +85,7 @@ export const AgencyForm = ({ className = "" }: { className?: string }) => {
             placeholder="+234 800 000 0000"
             required
             disabled={status === "loading"}
-            className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+            className="w-full rounded-xl bg-background border-2 border-foreground/70 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-foreground disabled:opacity-50"
           />
         </div>
         <div>
@@ -99,7 +99,7 @@ export const AgencyForm = ({ className = "" }: { className?: string }) => {
             placeholder="you@example.com"
             required
             disabled={status === "loading"}
-            className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+            className="w-full rounded-xl bg-background border-2 border-foreground/70 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-foreground disabled:opacity-50"
           />
         </div>
       </div>
@@ -111,7 +111,7 @@ export const AgencyForm = ({ className = "" }: { className?: string }) => {
       <button
         type="submit"
         disabled={status === "loading" || !form.name || !form.phone || !form.email}
-        className="w-full rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3 text-sm font-medium shadow-glow hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-50 disabled:hover:scale-100"
+        className="w-full rounded-full bg-signal text-ink border-[3px] border-foreground px-6 py-3 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] active:translate-y-0 active:shadow-[2px_2px_0_0_hsl(var(--foreground))] transition-transform disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_0_hsl(var(--foreground))]"
       >
         {status === "loading" ? "Sending…" : "Get early access →"}
       </button>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, session } from "@/lib/api";
 
@@ -27,8 +27,13 @@ const ProMark = () => (
 export default function ProLogin() {
   const { user, loading, getIdToken } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [mode, setMode]         = useState<Mode>("password");
+  // Landing-page "Sign up" CTAs link here with ?mode=signup to open straight
+  // into account creation instead of the sign-in form.
+  const [mode, setMode] = useState<Mode>(
+    searchParams.get("mode") === "signup" ? "signup" : "password"
+  );
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);

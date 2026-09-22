@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { api, session, imageUrl, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { KarijeLogo } from "@/components/Nav";
+import { GIGM_CITIES, FLIGHT_CITIES } from "@/lib/cities";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
@@ -18,18 +19,6 @@ const VIBE_FILTERS = [
 ];
 const ACCOMMODATION_TYPES = ["Hotel", "Shortlet", "Budget guesthouse", "Surprise me"];
 const DATE_OPTIONS = ["Flexible", "I have specific dates"];
-
-const GIGM_CITIES = [
-  'Abeokuta','Abuja','Akure','Asaba','Benin City','Calabar','Enugu',
-  'Ibadan','Ilorin','Jos','Kaduna','Kano','Lagos','Maiduguri','Onitsha',
-  'Owerri','Port Harcourt','Warri',
-];
-
-const FLIGHT_CITIES = [
-  'Abuja','Akure','Asaba','Benin City','Calabar','Enugu','Ibadan',
-  'Ilorin','Jos','Kaduna','Kano','Lagos','Maiduguri','Owerri',
-  'Port Harcourt','Sokoto','Uyo','Warri','Yola',
-];
 
 /**
  * GIGM has no per-trip photo of its own (it's one operator, not a catalog of
@@ -106,7 +95,7 @@ function attractionCategory(name: string): string {
 
 /* ─── shared UI ─────────────────────────────────────────────────────────────── */
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-3xl bg-card ring-hairline shadow-card p-6 md:p-8 animate-rise ${className}`}>{children}</div>
+  <div className={`rounded-3xl bg-card border-[3px] border-foreground shadow-[6px_6px_0_0_hsl(var(--foreground))] p-6 md:p-8 animate-rise ${className}`}>{children}</div>
 );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -114,19 +103,27 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 );
 
 const chipCls = (active: boolean) =>
-  `px-3 py-1.5 rounded-full text-xs font-medium ring-hairline transition-all ${
-    active ? "bg-foreground text-background" : "bg-card text-foreground hover:bg-secondary"
+  `px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-foreground transition-all ${
+    active ? "bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--foreground))]" : "bg-card text-foreground hover:bg-secondary"
   }`;
 
 /* ─── step 1: intake ────────────────────────────────────────────────────────── */
-function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, email: string) => void }) {
+function IntakeStep({
+  onSubmit,
+  initialOrigin,
+  initialDestination,
+}: {
+  onSubmit: (data: IntakeData, email: string) => void;
+  initialOrigin?: string;
+  initialDestination?: string;
+}) {
   const [email, setEmail] = useState("");
   const [transportMode, setTransportMode] = useState<'bus' | 'flight'>('bus');
   const cities = transportMode === 'bus' ? GIGM_CITIES : FLIGHT_CITIES;
 
   const [form, setForm] = useState<IntakeData>({
-    origin: "Lagos",
-    destination: "Abuja",
+    origin: initialOrigin ?? "Lagos",
+    destination: initialDestination ?? "Abuja",
     hotelBudgetPerNight: 35000,
     days: 2,
     squadSize: 8,
@@ -187,11 +184,11 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, email: string) 
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">How are you getting there?</div>
         <div className="flex gap-3">
           <button type="button" onClick={() => switchMode('bus')}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold ring-hairline transition ${transportMode === 'bus' ? 'bg-foreground text-background' : 'bg-card text-foreground hover:bg-secondary'}`}>
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border-2 border-foreground transition ${transportMode === 'bus' ? 'bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--foreground))]' : 'bg-card text-foreground hover:bg-secondary'}`}>
             🚌 Bus
           </button>
           <button type="button" onClick={() => switchMode('flight')}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold ring-hairline transition ${transportMode === 'flight' ? 'bg-foreground text-background' : 'bg-card text-foreground hover:bg-secondary'}`}>
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border-2 border-foreground transition ${transportMode === 'flight' ? 'bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--foreground))]' : 'bg-card text-foreground hover:bg-secondary'}`}>
             ✈️ Flight
           </button>
         </div>
@@ -350,7 +347,7 @@ function IntakeStep({ onSubmit }: { onSubmit: (data: IntakeData, email: string) 
         <button
           onClick={() => onSubmit(form, email)}
           disabled={!email.includes("@")}
-          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform w-full sm:w-auto justify-center disabled:opacity-40 disabled:hover:scale-100"
+          className="group inline-flex items-center gap-2 rounded-full bg-signal text-ink border-[3px] border-foreground px-6 py-3 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] active:translate-y-0 active:shadow-[2px_2px_0_0_hsl(var(--foreground))] transition-transform w-full sm:w-auto justify-center disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_0_hsl(var(--foreground))]"
         >
           Generate my squad plan
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1655,6 +1652,8 @@ type Step = "intake" | "generating" | "plan" | "confirm";
 
 export default function Start() {
   const { user, signOut } = useAuth();
+  const location = useLocation();
+  const navState = location.state as { origin?: string; destination?: string } | null;
   const [step, setStep] = useState<Step>("intake");
   const [intake, setIntake] = useState<IntakeData | null>(null);
   const [email, setEmail] = useState<string>("");
@@ -1944,7 +1943,13 @@ export default function Start() {
           </div>
         )}
 
-        {step === "intake" && <IntakeStep onSubmit={handleIntakeSubmit} />}
+        {step === "intake" && (
+          <IntakeStep
+            onSubmit={handleIntakeSubmit}
+            initialOrigin={navState?.origin}
+            initialDestination={navState?.destination}
+          />
+        )}
         {step === "generating" && (
           <GeneratingStep tripId={tripId} userEmail={user?.email ?? null} />
         )}

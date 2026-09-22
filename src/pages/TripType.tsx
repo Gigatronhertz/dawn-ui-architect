@@ -40,76 +40,15 @@ export default function TripType() {
           Karije handles both. Pick the type and we'll take it from there.
         </p>
 
-        {/* Options */}
+        {/* Options — within-state first, interstate second (that's the lead pitch site-wide) */}
         <div className="grid md:grid-cols-2 gap-4">
-          {/* ── Interstate ── */}
-          <Link
-            to="/start/trip"
-            className="group border border-border p-8 flex flex-col gap-6 hover:border-forest transition-all hover:shadow-card"
-          >
-            {/* Icon */}
-            <div className="w-12 h-12 bg-forest text-parchment grid place-items-center shrink-0">
-              <svg
-                viewBox="0 0 24 24"
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 12h18M3 6h18M3 18h13" />
-                <path d="M19 15l3 3-3 3" />
-              </svg>
-            </div>
-
-            {/* Copy */}
-            <div className="flex-1">
-              <h2 className="font-marcellus text-xl text-foreground mb-2">
-                Travelling between cities
-              </h2>
-              <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed">
-                Lagos to Calabar. Abuja to Enugu. Karije plans the transport,
-                hotels, day activities, and squad payments — end to end.
-              </p>
-            </div>
-
-            {/* Example routes */}
-            <div className="flex flex-wrap gap-2">
-              {["Lagos → Calabar", "Abuja → Enugu", "Ibadan → Port Harcourt"].map((eg) => (
-                <span
-                  key={eg}
-                  className="text-[10px] font-jost font-light tracking-wide border border-border px-2 py-1 text-muted-foreground"
-                >
-                  {eg}
-                </span>
-              ))}
-            </div>
-
-            {/* CTA hint */}
-            <div className="flex items-center gap-2 text-sm font-jost font-medium text-forest group-hover:gap-3 transition-all">
-              Plan interstate trip
-              <svg
-                viewBox="0 0 24 24"
-                className="w-4 h-4 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14M13 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-
           {/* ── Intrastate ── */}
           <Link
             to="/start/explore"
-            className="group border border-border p-8 flex flex-col gap-6 hover:border-primary transition-all hover:shadow-card"
+            className="group bg-background border-[3px] border-foreground rounded-2xl p-8 flex flex-col gap-6 shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
           >
             {/* Icon */}
-            <div className="w-12 h-12 bg-primary text-ink grid place-items-center shrink-0">
+            <div className="w-12 h-12 rounded-lg bg-signal text-ink border-2 border-foreground grid place-items-center shrink-0">
               <svg
                 viewBox="0 0 24 24"
                 className="w-5 h-5"
@@ -142,7 +81,7 @@ export default function TripType() {
               {["Beach camping", "Water park", "Canopy walk", "Street art tour"].map((eg) => (
                 <span
                   key={eg}
-                  className="text-[10px] font-jost font-light tracking-wide border border-border px-2 py-1 text-muted-foreground"
+                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-foreground rounded-full px-2.5 py-1 text-foreground"
                 >
                   {eg}
                 </span>
@@ -152,6 +91,67 @@ export default function TripType() {
             {/* CTA hint */}
             <div className="flex items-center gap-2 text-sm font-jost font-medium text-foreground group-hover:gap-3 transition-all">
               Explore local experiences
+              <svg
+                viewBox="0 0 24 24"
+                className="w-4 h-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 12h14M13 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
+
+          {/* ── Interstate ── */}
+          <Link
+            to="/start/trip"
+            className="group bg-background border-[3px] border-foreground rounded-2xl p-8 flex flex-col gap-6 shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
+          >
+            {/* Icon */}
+            <div className="w-12 h-12 rounded-lg bg-forest text-parchment border-2 border-foreground grid place-items-center shrink-0">
+              <svg
+                viewBox="0 0 24 24"
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 12h18M3 6h18M3 18h13" />
+                <path d="M19 15l3 3-3 3" />
+              </svg>
+            </div>
+
+            {/* Copy */}
+            <div className="flex-1">
+              <h2 className="font-marcellus text-xl text-foreground mb-2">
+                Travelling between cities
+              </h2>
+              <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed">
+                Lagos to Calabar. Abuja to Enugu. Karije plans the transport,
+                hotels, day activities, and squad payments — end to end.
+              </p>
+            </div>
+
+            {/* Example routes */}
+            <div className="flex flex-wrap gap-2">
+              {["Lagos → Calabar", "Abuja → Enugu", "Ibadan → Port Harcourt"].map((eg) => (
+                <span
+                  key={eg}
+                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-foreground rounded-full px-2.5 py-1 text-foreground"
+                >
+                  {eg}
+                </span>
+              ))}
+            </div>
+
+            {/* CTA hint */}
+            <div className="flex items-center gap-2 text-sm font-jost font-medium text-foreground group-hover:gap-3 transition-all">
+              Plan interstate trip
               <svg
                 viewBox="0 0 24 24"
                 className="w-4 h-4 shrink-0"

@@ -2,9 +2,11 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Nav } from "@/components/Nav";
 import { HowItWorks } from "@/components/HowItWorks";
-import { AgencyForm } from "@/components/AgencyForm";
 import { Footer } from "@/components/CTA";
 import { Hero } from "@/components/Hero";
+import { TripCategories } from "@/components/TripCategories";
+import { ExploreCityTeaser } from "@/components/ExploreCityTeaser";
+import { TrustProof } from "@/components/TrustProof";
 
 // ── Services ─────────────────────────────────────────────────────────────────
 const services = [
@@ -63,15 +65,15 @@ const Services = () => (
       </div>
 
       {/* Cards */}
-      <div className="grid md:grid-cols-3 gap-px bg-border">
+      <div className="grid md:grid-cols-3 gap-4">
         {services.map((s) => (
           <div
             key={s.title}
-            className="bg-card p-8 md:p-10 flex flex-col gap-5 hover:bg-secondary/60 transition-colors group"
+            className="bg-card border-[3px] border-foreground rounded-2xl p-8 md:p-10 flex flex-col gap-5 shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform group"
           >
             {/* Number + icon */}
             <div className="flex items-start justify-between">
-              <div className={`w-10 h-10 ${s.color} ${s.fg} grid place-items-center shrink-0`}>
+              <div className={`w-10 h-10 rounded-lg border-2 border-foreground ${s.color} ${s.fg} grid place-items-center shrink-0`}>
                 {s.icon}
               </div>
               <span className="font-marcellus text-3xl text-border group-hover:text-foreground/30 transition-colors">
@@ -89,7 +91,7 @@ const Services = () => (
       <div className="mt-10 flex items-center gap-5">
         <Link
           to="/start"
-          className="inline-flex items-center gap-2 bg-forest text-parchment px-7 py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
+          className="inline-flex items-center gap-2 bg-signal text-ink border-[3px] border-foreground rounded-full px-7 py-3.5 text-sm font-jost font-bold tracking-[0.06em] shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform"
         >
           Try Karije free
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -140,11 +142,11 @@ const DestinationsGrid = () => (
       </div>
 
       {/* Desktop grid — masonry-style */}
-      <div className="hidden md:grid grid-cols-3 gap-2" style={{ gridAutoRows: "210px" }}>
+      <div className="hidden md:grid grid-cols-3 gap-4" style={{ gridAutoRows: "210px" }}>
         {destinations.map((d) => (
           <div
             key={d.id}
-            className={`relative overflow-hidden group cursor-default ${d.tall ? "row-span-2" : ""}`}
+            className={`relative overflow-hidden group cursor-default rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] ${d.tall ? "row-span-2" : ""}`}
           >
             <img
               src={imgUrl(d.id, d.tall ? 600 : 600, d.tall ? 900 : 440)}
@@ -162,11 +164,11 @@ const DestinationsGrid = () => (
       </div>
 
       {/* Mobile — horizontal scroll */}
-      <div className="md:hidden -mx-6 overflow-x-auto flex gap-2 px-6 pb-2 snap-x snap-mandatory">
+      <div className="md:hidden -mx-6 overflow-x-auto flex gap-3 px-6 pb-2 snap-x snap-mandatory">
         {destinations.map((d) => (
           <div
             key={d.id}
-            className="flex-none w-56 h-48 overflow-hidden relative snap-start"
+            className="flex-none w-56 h-48 overflow-hidden relative snap-start rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))]"
           >
             <img
               src={imgUrl(d.id, 400, 320)}
@@ -191,7 +193,7 @@ const DestinationsGrid = () => (
       <div className="mt-8">
         <Link
           to="/start"
-          className="inline-flex items-center gap-2 border border-foreground text-foreground px-7 py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-forest hover:border-forest hover:text-parchment transition-colors"
+          className="inline-flex items-center gap-2 border-[3px] border-foreground text-foreground rounded-full px-7 py-3.5 text-sm font-jost font-bold tracking-[0.06em] shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform"
         >
           Plan your trip now
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -243,24 +245,34 @@ const AgenciesSection = () => (
             ))}
           </ul>
 
-          <div className="mt-8 border border-parchment/20 px-5 py-4">
-            <span className="font-marcellus text-parchment">Free during beta.</span>{" "}
+          <div className="mt-8 border-[3px] border-signal rounded-2xl px-5 py-4">
+            <span className="font-marcellus text-parchment">Set up in minutes.</span>{" "}
             <span className="font-jost font-light text-sm text-parchment/70">
-              We're onboarding a small cohort of agencies. Leave your details and
-              we'll set everything up with you.
+              No waitlist, no cohort — create your account and start listing trips today.
             </span>
           </div>
         </div>
 
-        {/* Right — form */}
-        <div className="bg-card text-foreground p-8">
-          <div className="mb-6">
-            <h3 className="font-marcellus text-xl text-foreground">Get early access</h3>
+        {/* Right — direct signup, no lead-capture form */}
+        <div className="bg-card text-foreground border-[3px] border-foreground rounded-2xl p-8 shadow-[6px_6px_0_0_hsl(var(--signal))] flex flex-col items-center text-center gap-5">
+          <div>
+            <h3 className="font-marcellus text-xl text-foreground">Create your agency account</h3>
             <p className="font-jost font-light text-sm text-muted-foreground mt-1.5">
-              We'll reach out on WhatsApp to set up your account.
+              Name, logo, phone number, service fee — set once, live in minutes.
             </p>
           </div>
-          <AgencyForm />
+          <Link
+            to="/pro/login?mode=signup"
+            className="w-full inline-flex items-center justify-center gap-2 bg-signal text-ink border-[3px] border-foreground rounded-full px-7 py-3.5 text-sm font-jost font-bold tracking-[0.06em] shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform"
+          >
+            Create account
+            <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
+          </Link>
+          <Link to="/pro" className="text-xs font-jost text-muted-foreground hover:text-foreground transition-colors">
+            See what Pro does &amp; costs →
+          </Link>
         </div>
       </div>
     </div>
@@ -283,6 +295,9 @@ const Index = () => {
     <main className="min-h-screen bg-background">
       <Nav />
       <Hero />
+      <TripCategories />
+      <ExploreCityTeaser />
+      <TrustProof />
       <Services />
       <DestinationsGrid />
       <HowItWorks />
