@@ -95,9 +95,8 @@ export const Hero = () => {
             className="animate-rise font-jost font-light text-base md:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto"
             style={{ animationDelay: "0.12s" }}
           >
-            From the first idea to the last contribution paid —
-            Karije handles the itinerary, hotels, email follow-ups,
-            and squad money.{" "}
+            We handle the boring part — itinerary, hotels, chasing
+            everyone for their share.{" "}
             <span className="text-foreground font-medium">
               Your squad just shows up.
             </span>

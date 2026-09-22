@@ -20,7 +20,7 @@ const services = [
       </svg>
     ),
     title: "AI Trip Planning",
-    desc: "Answer 9 quick questions. Karije builds a complete itinerary — hotels, transport, day-by-day activities, and a per-person cost — in under 20 seconds.",
+    desc: "Answer 9 quick questions and boom — full itinerary, hotels, transport, day-by-day, cost per person. Under 20 seconds.",
   },
   {
     n: "02",
@@ -32,7 +32,7 @@ const services = [
       </svg>
     ),
     title: "Automatic Follow-ups",
-    desc: "Karije emails everyone their share and keeps chasing the ones who have not paid. Reminders go out on a schedule, so you never have to ask twice.",
+    desc: "We email everyone their share and keep chasing the ones ghosting the group chat. You never have to ask twice.",
   },
   {
     n: "03",
@@ -44,7 +44,7 @@ const services = [
       </svg>
     ),
     title: "Squad Payments",
-    desc: "Each member gets a personal Paystack link for their share. See who's paid in real time. No spreadsheets, no chasing people on DM.",
+    desc: "Everyone gets their own Paystack link. Watch who's paid in real time. No spreadsheet, no chasing anybody on DM.",
   },
 ];
 

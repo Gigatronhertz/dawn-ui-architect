@@ -27,7 +27,7 @@ export const ExploreCityTeaser = () => {
           Explore Lagos first.
         </h2>
         <p className="font-jost font-light text-base text-muted-foreground max-w-xl mb-8">
-          Curated trips, nightlife and events in your own city. Interstate is there when you're ready to go further.
+          Trips, nightlife and events, right where you already are. Interstate's there too, whenever you're ready.
         </p>
 
         <div className="flex flex-wrap gap-2 mb-10">
