@@ -107,16 +107,20 @@ const Services = () => (
 );
 
 // ── Destinations ──────────────────────────────────────────────────────────────
+// Mixed sourcing — Unsplash and Pexels, both free for commercial use with no
+// attribution required. imgUrl() below detects a full URL vs a bare Unsplash
+// ID, so a Pexels entry just carries its complete image URL as `id`.
 const destinations = [
-  { id: "1577900190299-7316c32fe85f", label: "Enugu",          sub: "Coal City, Nigeria",   tall: true  },
-  { id: "1560118386-f35cf6a0791d",    label: "Eastern Nigeria", sub: "Imo State Road Trip",  tall: false },
-  { id: "1773146916270-e811bff4e923", label: "Beach Weekend",   sub: "Lagos Shoreline",      tall: false },
-  { id: "1761986756798-a13b39989361", label: "Road Trip",       sub: "Calabar Adventure",    tall: false },
-  { id: "1509099896299-af46ad97ff57", label: "West Africa",     sub: "Crew Goals",           tall: false },
-  { id: "1761986758241-77549539536a", label: "Road Trip Crew",  sub: "Adventure Van Life",   tall: true  },
+  { id: "1577900190299-7316c32fe85f", label: "Enugu",            sub: "Coal City, Nigeria",     tall: true  },
+  { id: "https://images.pexels.com/photos/33687458/pexels-photo-33687458.jpeg", label: "Culture & Heritage", sub: "Traditional Gathering", tall: false },
+  { id: "1773146916270-e811bff4e923", label: "Beach Weekend",     sub: "Lagos Shoreline",        tall: false },
+  { id: "1761986756798-a13b39989361", label: "Road Trip",         sub: "Calabar Adventure",      tall: false },
+  { id: "https://images.pexels.com/photos/33033191/pexels-photo-33033191.jpeg", label: "Abuja",   sub: "Friends in the Park",   tall: false },
+  { id: "1761986758241-77549539536a", label: "Road Trip Crew",    sub: "Adventure Van Life",     tall: true  },
 ];
 
 function imgUrl(id: string, w = 600, h = 450) {
+  if (/^https?:\/\//i.test(id)) return `${id}?auto=compress&cs=tinysrgb&w=${w}&h=${h}&fit=crop`;
   return `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
 }
 
