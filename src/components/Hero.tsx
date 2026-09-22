@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { KarijeWordmark } from "@/components/Nav";
 import { HeroSearch } from "@/components/HeroSearch";
@@ -13,6 +13,8 @@ const HEADLINES: Record<Locale, { tab: string; text: string }> = {
   igbo:   { tab: "Igbo",    text: "Ebee ka anyị na-aga?" },   // UNVERIFIED
   yoruba: { tab: "Yoruba",  text: "Nibo la n lo?" },           // UNVERIFIED
 };
+const LOCALE_ORDER: Locale[] = ["pidgin", "igbo", "yoruba"];
+const AUTO_ROTATE_MS = 3500;
 
 function img(id: string, w: number, h: number) {
   return `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
@@ -20,6 +22,22 @@ function img(id: string, w: number, h: number) {
 
 export const Hero = () => {
   const [locale, setLocale] = useState<Locale>("pidgin");
+  // Cycles on its own; a manual tab click takes over and stops the timer, so
+  // it never fights someone who picked a language on purpose.
+  const [autoRotate, setAutoRotate] = useState(true);
+
+  useEffect(() => {
+    if (!autoRotate) return;
+    const id = setInterval(() => {
+      setLocale((prev) => LOCALE_ORDER[(LOCALE_ORDER.indexOf(prev) + 1) % LOCALE_ORDER.length]);
+    }, AUTO_ROTATE_MS);
+    return () => clearInterval(id);
+  }, [autoRotate]);
+
+  function selectLocale(key: Locale) {
+    setAutoRotate(false);
+    setLocale(key);
+  }
 
   return (
   <section className="relative pt-24 pb-16 md:pt-36 md:pb-24 bg-hero-mesh overflow-hidden">
@@ -58,7 +76,7 @@ export const Hero = () => {
               <button
                 key={key}
                 type="button"
-                onClick={() => setLocale(key)}
+                onClick={() => selectLocale(key)}
                 className={`text-[11px] font-jost font-semibold tracking-[0.08em] uppercase rounded-full px-3.5 py-1.5 transition-colors ${
                   locale === key
                     ? "bg-ink text-paper"
