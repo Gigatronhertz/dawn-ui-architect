@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { KarijeLogo } from "@/components/Nav";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
 import type { AgencyListing } from "@/lib/api";
@@ -721,6 +721,7 @@ export function BuildYourOwn({
   requireSignIn = true,
   allowCustomPlaces = false,
   seed = null,
+  presetVenueName,
 }: {
   city: string;
   /** Take over saving. Receives the built days and headcount. */
@@ -743,9 +744,16 @@ export function BuildYourOwn({
    * template twice still reloads it.
    */
   seed?: { days: { activities: { time: string; title: string; cost_per_person: number }[] }[]; squadSize?: number } | null;
+  /**
+   * A place picked from the Hero search bar (see HeroSearch.tsx) — added to
+   * Day 1 as soon as this city's venue library has loaded. Matched by name
+   * since that's what the search box carries across the navigate() call.
+   */
+  presetVenueName?: string;
 }) {
   const { user, getIdToken } = useAuth();
   const navigate = useNavigate();
+  const presetAddedRef = useRef(false);
 
   const [venues, setVenues]   = useState<VenueItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -844,6 +852,20 @@ export function BuildYourOwn({
       [day]: [...(prev[day] ?? []), { id: `${v.id}-${Date.now()}`, time: "", title: v.name, cost: costOverride ?? v.cost, emoji: v.emoji }],
     }));
   }
+
+  // A place picked from the Hero search — add it to Day 1 once this city's
+  // venues have loaded. Guarded by a ref, not state, so it fires exactly
+  // once even though `venues` changes reference on every city load.
+  useEffect(() => {
+    if (!presetVenueName || presetAddedRef.current || venues.length === 0) return;
+    const needle = presetVenueName.toLowerCase();
+    const match = venues.find(v => v.name.toLowerCase() === needle)
+      || venues.find(v => v.name.toLowerCase().includes(needle));
+    if (match) {
+      addStop(0, match);
+      presetAddedRef.current = true;
+    }
+  }, [venues, presetVenueName]);
 
   /** Whether a venue's fee is a real range worth a slider — a fixed price or
    *  a free entry both collapse feeMin/feeMax to the same number (or 0), and
@@ -1428,6 +1450,8 @@ const ALL_EXPLORE_CITIES = [
 
 export default function Explore() {
   const navigate            = useNavigate();
+  const location             = useLocation();
+  const presetVenueName      = (location.state as { presetPlaceName?: string } | null)?.presetPlaceName;
   const [searchParams]      = useSearchParams();
   const [step, setStep]     = useState<ExploreStep>("browse");
   const [selected, setSelected] = useState<Experience | null>(null);
@@ -1721,7 +1745,7 @@ export default function Explore() {
             )}
           </div>
 
-          {tab === "own" && <BuildYourOwn city={city} />}
+          {tab === "own" && <BuildYourOwn city={city} presetVenueName={presetVenueName} />}
 
           {tab === "nightlife" && (
             <NightlifeSection

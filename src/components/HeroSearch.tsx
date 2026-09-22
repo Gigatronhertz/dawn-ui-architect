@@ -102,7 +102,7 @@ export const HeroSearch = () => {
           </div>
 
           {open && matches.length > 0 && (
-            <div className="absolute left-0 right-0 mt-2 bg-background border-[3px] border-foreground rounded-2xl shadow-[5px_5px_0_0_hsl(var(--foreground))] overflow-hidden z-10">
+            <div className="absolute left-0 right-0 mt-2 bg-background border-[3px] border-foreground rounded-2xl shadow-[5px_5px_0_0_hsl(var(--foreground))] overflow-hidden z-20 max-h-[min(20rem,60vh)] overflow-y-auto overscroll-contain">
               {matches.map((p) => (
                 <button
                   key={p.id}
