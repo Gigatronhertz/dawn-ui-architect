@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, type UserPlan, type SquadMember } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
@@ -30,6 +31,7 @@ export default function MyPlans() {
   const [plans, setPlans]     = useState<UserPlan[]>([]);
   const [fetching, setFetching] = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  const cardsReveal = useScrollReveal<HTMLOListElement>();
 
   // ── Auth form state ───────────────────────────────────────────────────────
   const [authMode, setAuthMode]       = useState<AuthMode>("signin");
@@ -415,9 +417,12 @@ export default function MyPlans() {
       <div className="mx-auto max-w-3xl lg:max-w-5xl px-6 pb-24 space-y-6">
         {/* Header */}
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground mb-1">Your account</div>
-          <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight">My Plans</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <div className="flex items-center gap-4 mb-3">
+            <span className="h-px w-8 bg-primary" />
+            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Your account</span>
+          </div>
+          <h1 className="font-marcellus font-bold text-4xl md:text-5xl text-foreground leading-none">My Plans</h1>
+          <p className="text-muted-foreground mt-3 text-sm font-jost">
             {user.name ? `Welcome back, ${user.name.split(" ")[0]}.` : "Welcome back."} All your saved squad plans are here.
           </p>
         </div>
@@ -425,7 +430,7 @@ export default function MyPlans() {
         {/* Plan a new trip CTA */}
         <Link
           to="/start"
-          className="group flex items-center justify-between border border-border p-6 hover:border-forest hover:shadow-card transition-all"
+          className="group flex items-center justify-between rounded-2xl border-[3px] border-foreground p-6 shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
         >
           <div>
             <div className="font-marcellus text-xl text-foreground">Plan a new trip</div>
@@ -433,7 +438,7 @@ export default function MyPlans() {
               Interstate or local experience — you pick the type first
             </div>
           </div>
-          <div className="w-10 h-10 bg-forest text-parchment grid place-items-center shrink-0 group-hover:bg-primary transition-colors">
+          <div className="w-10 h-10 rounded-lg bg-signal text-ink border-2 border-foreground grid place-items-center shrink-0">
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M13 5l7 7-7 7" />
             </svg>
@@ -454,32 +459,35 @@ export default function MyPlans() {
         )}
 
         {!fetching && plans.length === 0 && !error && (
-          <div className="rounded-3xl bg-card ring-hairline shadow-card p-10 text-center">
+          <div className="rounded-3xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] p-10 text-center">
             <div className="text-4xl mb-3">🗺️</div>
-            <div className="font-display font-semibold">No saved plans yet</div>
-            <p className="text-sm text-muted-foreground mt-1">Generate a plan and lock it in to save it here.</p>
+            <div className="font-marcellus text-lg">No saved plans yet</div>
+            <p className="text-sm font-jost text-muted-foreground mt-1">Generate a plan and lock it in to save it here.</p>
           </div>
         )}
 
         {!fetching && plans.length > 0 && (
-          <ol className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {plans.map((p) => {
+          <ol ref={cardsReveal.ref} className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {plans.map((p, i) => {
               const s = STATUS_LABEL[p.status] ?? { label: p.status, color: "text-muted-foreground bg-secondary" };
               const perPerson = p.plan?.cost_breakdown?.per_person;
               const date = new Date(p.createdAt * 1000).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
               // Awaiting-group plans have more content (participants + payment bar) — they go full-width
               const isActive = p.status === 'awaiting_group';
+              const revealCls = cardsReveal.visible ? "animate-rise" : "opacity-0";
+              const revealStyle = { animationDelay: `${i * 0.06}s` };
               return (
                 <li key={p.tripId} className={isActive ? "col-span-2 lg:col-span-3" : ""}>
                   {p.status === 'plan_review' ? (
                     <Link
                       to={`/start/trip?job=${p.tripId}`}
-                      className="group flex flex-col aspect-[4/5] bg-card ring-hairline shadow-card p-4 hover:border-primary hover:shadow-md transition-all overflow-hidden"
+                      style={revealStyle}
+                      className={`${revealCls} group flex flex-col aspect-[4/5] rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform overflow-hidden`}
                     >
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </Link>
                   ) : p.status === 'awaiting_group' ? (
-                    <div className="bg-card ring-hairline shadow-card p-5 space-y-4">
+                    <div style={revealStyle} className={`${revealCls} rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] p-5 space-y-4`}>
                       {/* Compact trip header */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -487,14 +495,14 @@ export default function MyPlans() {
                             <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${s.color}`}>{s.label}</span>
                             <span className="text-[11px] text-muted-foreground">{date}</span>
                           </div>
-                          <div className="font-display font-semibold truncate">{p.origin || "—"} → {p.destination || "—"}</div>
+                          <div className="font-marcellus truncate">{p.origin || "—"} → {p.destination || "—"}</div>
                           <div className="text-xs text-muted-foreground mt-0.5">
                             {p.days ? `${p.days}d` : "—"}{p.squadSize ? ` · ${p.squadSize} people` : ""}
                           </div>
                         </div>
                         {perPerson && (
                           <div className="text-right shrink-0">
-                            <div className="font-display font-semibold text-foreground">{fmtNGN(perPerson)}</div>
+                            <div className="font-marcellus text-foreground">{fmtNGN(perPerson)}</div>
                             <div className="text-[10px] text-muted-foreground">/person</div>
                           </div>
                         )}
@@ -511,7 +519,7 @@ export default function MyPlans() {
                           </div>
                           <Link
                             to={`/plan/${p.tripId}`}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-foreground px-4 py-2 text-xs font-semibold hover:bg-primary/15 transition"
+                            className="inline-flex items-center gap-1.5 rounded-full border-2 border-foreground bg-signal text-ink px-4 py-2 text-xs font-jost font-bold hover:-translate-y-0.5 transition-transform"
                           >
                             View squad page →
                           </Link>
@@ -524,7 +532,7 @@ export default function MyPlans() {
                             </div>
                             <div className="h-1.5 rounded-full bg-secondary/60 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-gradient-primary transition-all"
+                                className="h-full rounded-full bg-signal transition-all"
                                 style={{ width: `${p.squadSize && p.paidCount ? Math.min(100, (p.paidCount / p.squadSize) * 100) : 0}%` }}
                               />
                             </div>
@@ -539,12 +547,13 @@ export default function MyPlans() {
                     // squad sees, which is where the shareable link lives.
                     <Link
                       to={`/plan/${p.tripId}`}
-                      className="group flex flex-col aspect-[4/5] bg-card ring-hairline shadow-card p-4 hover:border-primary hover:shadow-md transition-all overflow-hidden"
+                      style={revealStyle}
+                      className={`${revealCls} group flex flex-col aspect-[4/5] rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform overflow-hidden`}
                     >
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </Link>
                   ) : (
-                    <div className="flex flex-col aspect-[4/5] bg-card ring-hairline shadow-card p-4 overflow-hidden">
+                    <div style={revealStyle} className={`${revealCls} flex flex-col aspect-[4/5] rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] p-4 overflow-hidden`}>
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </div>
                   )}
@@ -684,7 +693,7 @@ function PlanCardSquare({ p, s, date, perPerson }: {
     <div className="flex flex-col h-full">
       {/* Status + date */}
       <div className="flex items-center gap-1.5 flex-wrap mb-2">
-        <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${s.color}`}>
+        <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${s.color} ${p.status === 'generating' ? 'animate-pulse' : ''}`}>
           {s.label}
         </span>
         <span className="text-[10px] text-muted-foreground">{date}</span>

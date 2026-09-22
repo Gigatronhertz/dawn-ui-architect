@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/CTA";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 // Status/paid-state colors stay functional (green/amber) rather than brand
 // tokens — this dashboard mock needs "paid vs pending" to read at a glance,
@@ -78,6 +79,7 @@ const ProDemo = () => {
   const [expandedTrip, setExpandedTrip] = useState<string | null>(null);
 
   const agencyInitials = agencyName.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "CT";
+  const dashReveal = useScrollReveal<HTMLDivElement>();
 
   return (
     <main className="min-h-screen bg-background">
@@ -148,8 +150,17 @@ const ProDemo = () => {
       </section>
 
       {/* Dashboard mock */}
-      <Section id="dashboard" eyebrow="Multi-trip dashboard" title="Every trip, every payment, one screen." sub="Click any trip to see who's paid and what to do next.">
-        <div className="rounded-3xl bg-ink text-paper border-[3px] border-foreground shadow-[6px_6px_0_0_hsl(var(--signal))] p-2 overflow-hidden">
+      <Section
+        id="dashboard"
+        eyebrow="Multi-trip dashboard"
+        title={<>Every trip, every payment.<br /><span className="text-signal text-5xl md:text-6xl">ONE SCREEN.</span></>}
+        sub="Click any trip to see who's paid and what to do next."
+      >
+        {/* Outer owns the continuous float loop; inner owns the one-shot
+           entrance — animate-rise and animate-float both set the CSS
+           `animation` property, so they can't stack on the same element. */}
+        <div ref={dashReveal.ref} className={dashReveal.visible ? "animate-float" : ""}>
+        <div className={`${dashReveal.visible ? "animate-rise" : "opacity-0"} rounded-3xl bg-ink text-paper border-[3px] border-foreground shadow-[6px_6px_0_0_hsl(var(--signal))] p-2 overflow-hidden`}>
           {/* fake browser */}
           <div className="flex items-center gap-1.5 px-3 py-2">
             <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
@@ -182,9 +193,12 @@ const ProDemo = () => {
                 { k: "Service fees", v: "₦480k", s: "kept 100%" },
                 { k: "Pending payments", v: "3", s: "follow up" },
               ].map((m) => (
-                <div key={m.k} className="rounded-xl border-2 border-border p-3">
+                <div key={m.k} className={`rounded-xl border-2 p-3 ${m.k === "Pending payments" ? "border-signal" : "border-border"}`}>
                   <div className="text-[10px] font-jost uppercase tracking-wider text-muted-foreground">{m.k}</div>
-                  <div className="font-marcellus text-xl mt-1 tabular-nums">{m.v}</div>
+                  <div className={`font-marcellus text-xl mt-1 tabular-nums flex items-center gap-1.5 ${m.k === "Pending payments" ? "text-foreground" : ""}`}>
+                    {m.v}
+                    {m.k === "Pending payments" && <span className="w-2 h-2 rounded-full bg-signal animate-pulse" />}
+                  </div>
                   <div className="text-[10px] font-jost text-muted-foreground">{m.s}</div>
                 </div>
               ))}
@@ -252,6 +266,7 @@ const ProDemo = () => {
 
             <div className="mt-3 text-[10px] font-jost text-muted-foreground">↑ Your dashboard. One plan, unlimited active trips.</div>
           </div>
+        </div>
         </div>
       </Section>
 
