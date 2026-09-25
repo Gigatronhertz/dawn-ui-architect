@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Wallet, Clock, Eye, Users, CreditCard, Trophy, RefreshCw, Plus, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, type DashboardData, type TripRow, type TripTemplate } from "@/lib/api";
 import ProShell, { IconOverview, IconTrips, IconCompleted, IconTemplates, type ProNav } from "@/components/ProShell";
@@ -89,16 +90,24 @@ const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?
     brand:   "bg-primary",
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border border-foreground/70 px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${dots[tone]}`} />
       {children}
     </span>
   );
 };
 
-const KPI = ({ icon, label, value, sub, accent }: { icon: React.ReactNode; label: string; value: string; sub?: string; accent: string }) => (
-  <div className="rounded-2xl bg-card ring-hairline p-5 flex items-start gap-4">
-    <div className="w-10 h-10 rounded-xl grid place-items-center shrink-0" style={{ backgroundColor: `${accent}1a`, color: accent }}>
+/** `solid` fills the icon well with the accent instead of a 10% tint — used
+ *  only for the signal-yellow headline tile, since signal reads as a fill,
+ *  never as type or a stroke (see tailwind.config.ts's brand-color comment;
+ *  a yellow glyph on a pale-yellow tint fails contrast the same way a
+ *  yellow KPI value once did). */
+const KPI = ({ icon, label, value, sub, accent, solid }: { icon: React.ReactNode; label: string; value: string; sub?: string; accent: string; solid?: boolean }) => (
+  <div className="rounded-2xl border-[3px] border-foreground shadow-[3px_3px_0_0_hsl(var(--foreground))] bg-card p-5 flex items-start gap-4">
+    <div
+      className="w-10 h-10 rounded-xl grid place-items-center shrink-0"
+      style={solid ? { backgroundColor: accent, color: "#0B0B0B" } : { backgroundColor: `${accent}1a`, color: accent }}
+    >
       {icon}
     </div>
     <div className="min-w-0">
@@ -144,9 +153,7 @@ const CompleteToggle = ({ done, busy, onClick }: { done: boolean; busy: boolean;
     {busy ? (
       <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
     ) : (
-      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m5 13 4 4 10-10" />
-      </svg>
+      <Check className="w-3.5 h-3.5" strokeWidth={3} />
     )}
   </button>
 );
@@ -402,7 +409,7 @@ const ProDashboard = () => {
 
   const agencyName  = agent?.agency_name || "";
   const agencyLogo  = imageUrl(agent?.logo_image_id ? `/api/trip-image/${agent.logo_image_id}` : null);
-  const agentColor  = agent?.color || "#6366f1";
+  const agentColor  = agent?.color || "#0B0B0B";
   const initials    = agencyName.trim().split(/\s+/).filter(Boolean).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() || "??";
 
   return (
@@ -423,18 +430,14 @@ const ProDashboard = () => {
               className="w-8 h-8 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40"
               title="Refresh"
             >
-              <svg viewBox="0 0 24 24" className={`w-4 h-4 ${fetching ? "animate-spin" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
-              </svg>
+              <RefreshCw className={`w-4 h-4 ${fetching ? "animate-spin" : ""}`} />
             </button>
           )}
           <Link
             to="/pro/trips/new"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm rounded-lg bg-foreground text-background px-3 sm:px-4 py-2 hover:opacity-90 transition-opacity font-medium"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm rounded-full bg-signal text-ink border-2 border-foreground px-3 sm:px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform font-bold"
           >
-            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             <span className="hidden sm:inline">New trip</span>
           </Link>
         </>
@@ -457,7 +460,8 @@ const ProDashboard = () => {
               label="Active trips"
               value={String(summary.active_trips)}
               sub="unlimited on Pro"
-              accent="#6366f1"
+              accent="#F5C518"
+              solid
             />
             <KPI
               icon={<IconCompleted className="w-5 h-5" />}
@@ -467,22 +471,14 @@ const ProDashboard = () => {
               accent="#10b981"
             />
             <KPI
-              icon={
-                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                </svg>
-              }
+              icon={<Wallet className="w-5 h-5" />}
               label="Total collected"
               value={summary.total_collected > 0 ? fmtNGN(summary.total_collected) : "₦0"}
               sub={summary.revenue_mtd > 0 ? `${fmtNGN(summary.revenue_mtd)} this month` : "via Paystack"}
-              accent="#f59e0b"
+              accent="#0B0B0B"
             />
             <KPI
-              icon={
-                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" /><path d="M12 7v5l3 3" />
-                </svg>
-              }
+              icon={<Clock className="w-5 h-5" />}
               label="Pending payments"
               value={String(summary.pending_payments)}
               sub={summary.pending_payments > 0 ? "needs a follow-up" : "all clear"}
@@ -496,44 +492,28 @@ const ProDashboard = () => {
           <div className="text-[11px] font-medium text-muted-foreground mb-2 mt-6">Insights</div>
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
             <KPI
-              icon={
-                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" />
-                </svg>
-              }
+              icon={<Eye className="w-5 h-5" />}
               label="Link views"
               value={String(summary.total_views)}
               sub="every open of a share link"
               accent="#06b6d4"
             />
             <KPI
-              icon={
-                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              }
+              icon={<Users className="w-5 h-5" />}
               label="View → join rate"
               value={summary.join_rate_pct !== null ? `${summary.join_rate_pct}%` : "—"}
               sub={summary.join_rate_pct !== null ? "of link opens join" : "no traffic yet"}
               accent="#8b5cf6"
             />
             <KPI
-              icon={
-                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" />
-                </svg>
-              }
+              icon={<CreditCard className="w-5 h-5" />}
               label="Join → paid rate"
               value={summary.payment_rate_pct !== null ? `${summary.payment_rate_pct}%` : "—"}
               sub={summary.payment_rate_pct !== null ? "of joiners pay" : "no joins yet"}
               accent="#f59e0b"
             />
             <KPI
-              icon={
-                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2 9.2 8.6 2 9.2l5.5 4.7L5.8 21 12 17.3 18.2 21l-1.7-7.1L22 9.2l-7.2-.6L12 2z" />
-                </svg>
-              }
+              icon={<Trophy className="w-5 h-5" />}
               label="Top performer"
               value={summary.top_trip ? summary.top_trip.title : "—"}
               sub={summary.top_trip ? `${fmtNGN(summary.top_trip.collected)} collected` : "no trips collecting yet"}
@@ -542,7 +522,7 @@ const ProDashboard = () => {
           </div>
 
           {/* Recent activity — a taste of what's moving, not the full list. */}
-          <div className="rounded-3xl bg-card ring-hairline overflow-hidden">
+          <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="font-display font-semibold text-sm">Recent trips</h2>
               <Link to="/pro/dashboard?tab=trips" className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
@@ -554,7 +534,7 @@ const ProDashboard = () => {
                 <p className="text-sm text-muted-foreground mb-4">Nothing built yet.</p>
                 <Link
                   to="/pro/trips/new"
-                  className="inline-flex items-center gap-2 rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90"
+                  className="inline-flex items-center gap-2 rounded-full bg-signal text-ink border-2 border-foreground px-4 py-2 text-xs font-bold shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
                 >
                   Build your first trip →
                 </Link>
@@ -636,14 +616,14 @@ const ProDashboard = () => {
             </div>
           )}
 
-          <div className="rounded-3xl bg-card ring-hairline overflow-hidden">
+          <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
             {fetching ? (
               <div className="px-6 py-12 text-center">
                 <div className="w-6 h-6 rounded-full border-2 border-foreground border-t-transparent animate-spin mx-auto" />
               </div>
             ) : openTrips.length === 0 ? (
               <div className="px-6 py-16 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-secondary grid place-items-center mx-auto mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-foreground grid place-items-center mx-auto mb-4">
                   <IconTrips className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <h3 className="font-display font-semibold text-lg mb-1">No trips yet</h3>
@@ -652,7 +632,7 @@ const ProDashboard = () => {
                 </p>
                 <Link
                   to="/pro/trips/new"
-                  className="inline-flex items-center gap-2 rounded-lg bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:opacity-90"
+                  className="inline-flex items-center gap-2 rounded-full bg-signal text-ink border-2 border-foreground px-5 py-2.5 text-sm font-bold shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
                 >
                   Build your first trip →
                 </Link>
@@ -697,10 +677,10 @@ const ProDashboard = () => {
 
       {/* ── Completed tab ─────────────────────────────────────────────────── */}
       {activeTab === "completed" && (
-        <div className="rounded-3xl bg-card ring-hairline overflow-hidden">
+        <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
           {completedTrips.length === 0 ? (
             <div className="px-6 py-16 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-secondary grid place-items-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-foreground grid place-items-center mx-auto mb-4">
                 <IconCompleted className="w-5 h-5 text-muted-foreground" />
               </div>
               <h3 className="font-display font-semibold text-lg mb-1">Nothing marked done yet</h3>
@@ -737,10 +717,10 @@ const ProDashboard = () => {
 
       {/* Templates tab */}
       {activeTab === "templates" && (
-        <div className="rounded-3xl bg-card ring-hairline overflow-hidden">
+        <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
           {templates.length === 0 ? (
             <div className="px-6 py-16 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-secondary grid place-items-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-foreground grid place-items-center mx-auto mb-4">
                 <IconTemplates className="w-5 h-5 text-muted-foreground" />
               </div>
               <h3 className="font-display font-semibold text-lg mb-1">No templates yet</h3>
@@ -780,7 +760,7 @@ const ProDashboard = () => {
                       starts here rather than three clicks into the builder. */}
                   <Link
                     to={`/pro/trips/new?template=${t.id}`}
-                    className="text-[11px] rounded-lg bg-foreground text-background px-3 py-1.5 font-medium hover:opacity-90 transition"
+                    className="text-[11px] rounded-full bg-signal text-ink border-2 border-foreground px-3 py-1.5 font-bold shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
                   >
                     Start a trip from this →
                   </Link>
@@ -801,10 +781,10 @@ const ProDashboard = () => {
       {/* Settings tab */}
       {activeTab === "settings" && agent && (
         <div className="max-w-xl">
-          <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4 text-sm">
+          <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4 text-sm">
             <div className="flex items-center gap-3 pb-4 border-b border-border">
               <div
-                className="w-12 h-12 rounded-xl grid place-items-center text-white font-display font-bold text-base shrink-0 overflow-hidden"
+                className="w-12 h-12 rounded-xl border-2 border-foreground grid place-items-center text-white font-display font-bold text-base shrink-0 overflow-hidden"
                 style={agencyLogo ? undefined : { backgroundColor: agentColor }}
               >
                 {agencyLogo
@@ -831,7 +811,7 @@ const ProDashboard = () => {
             <div className="pt-4">
               <Link
                 to="/pro/setup"
-                className="inline-flex rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90"
+                className="inline-flex rounded-full bg-foreground text-background border-2 border-foreground px-4 py-2 text-xs font-bold shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
               >
                 Edit settings →
               </Link>

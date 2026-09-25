@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { MapPin, Check } from "lucide-react";
 import { KarijeLogo } from "@/components/Nav";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
 import type { AgencyListing } from "@/lib/api";
@@ -152,7 +153,7 @@ function CuratedNightlifeCard({ v, onSelect }: { v: NightlifeVenue; onSelect: ()
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-4">
         <h3 className="font-marcellus text-base leading-snug text-white">{v.name}</h3>
-        <p className="text-[11px] font-jost font-light text-white/60 mt-0.5 truncate">📍 {v.location}</p>
+        <p className="flex items-center gap-1 text-[11px] font-jost font-light text-white/60 mt-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" /> {v.location}</p>
         <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/15">
           <span className="font-marcellus text-sm text-white">
             {v.feeNote || (v.feeMax > 0 ? `₦${v.feeMin.toLocaleString()}–₦${v.feeMax.toLocaleString()}` : "Free entry")}
@@ -279,7 +280,7 @@ function EventCard({ ev, onSelect }: { ev: EventItem; onSelect: () => void }) {
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-4">
         <h3 className="font-marcellus text-base leading-snug text-white">{ev.name}</h3>
-        <p className="text-[11px] font-jost font-light text-white/60 mt-0.5 truncate">📍 {ev.location}</p>
+        <p className="flex items-center gap-1 text-[11px] font-jost font-light text-white/60 mt-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" /> {ev.location}</p>
         <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/15">
           <span className="font-marcellus text-sm text-white">
             {ev.priceNote || (ev.priceMax > 0 ? `₦${ev.priceMin.toLocaleString()}–₦${ev.priceMax.toLocaleString()}` : "Free")}
@@ -358,13 +359,13 @@ function MapsActions({ location }: { location: string }) {
             .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); })
             .catch(() => {});
         }}
-        className={`border px-3 py-1.5 text-[11px] font-jost font-medium tracking-[0.04em] transition-colors ${
+        className={`inline-flex items-center gap-1 border px-3 py-1.5 text-[11px] font-jost font-medium tracking-[0.04em] transition-colors ${
           copied
-            ? "border-signal text-signal"
+            ? "border-foreground text-foreground"
             : "border-border text-foreground hover:border-signal hover:text-signal"
         }`}
       >
-        {copied ? "✓ Copied" : "Copy location"}
+        {copied ? (<><Check className="w-3 h-3" /> Copied</>) : "Copy location"}
       </button>
     </div>
   );
@@ -425,7 +426,7 @@ function NightlifeVenueDetail({ venue, onClose }: { venue: NightlifeVenue; onClo
         <div className="flex items-start justify-between gap-4 border-y border-border py-4">
           <div>
             <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Location</div>
-            <div className="font-jost text-sm text-foreground">📍 {venue.location}</div>
+            <div className="flex items-center gap-1.5 font-jost text-sm text-foreground"><MapPin className="w-4 h-4 shrink-0" /> {venue.location}</div>
             <MapsActions location={venue.location} />
           </div>
           <div className="text-right shrink-0">
@@ -506,7 +507,7 @@ function FallbackVenueDetail({ venue, onClose }: { venue: VenueItem; onClose: ()
         <div>
           <p className="text-xs font-jost font-light text-muted-foreground">{venue.vibe}</p>
           {venue.address && (
-            <p className="text-sm font-jost font-light text-foreground mt-2">📍 {venue.address}</p>
+            <p className="flex items-center gap-1.5 text-sm font-jost font-light text-foreground mt-2"><MapPin className="w-3.5 h-3.5 shrink-0" /> {venue.address}</p>
           )}
           {venue.phone && (
             <a
@@ -577,7 +578,7 @@ function EventDetail({ event, onClose }: { event: EventItem; onClose: () => void
           </div>
           <div>
             <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Location</div>
-            <div className="font-jost text-sm text-foreground">📍 {event.location}</div>
+            <div className="flex items-center gap-1.5 font-jost text-sm text-foreground"><MapPin className="w-4 h-4 shrink-0" /> {event.location}</div>
           </div>
         </div>
 
@@ -641,7 +642,7 @@ function ExperienceCard({ exp, onSelect }: { exp: Experience; onSelect: () => vo
       {/* Bottom: name, location, price */}
       <div className="absolute bottom-0 left-0 right-0 p-4">
         <h3 className="font-marcellus text-base leading-snug text-white">{exp.name}</h3>
-        <p className="text-[11px] font-jost font-light text-white/60 mt-0.5 truncate">📍 {exp.location}</p>
+        <p className="flex items-center gap-1 text-[11px] font-jost font-light text-white/60 mt-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" /> {exp.location}</p>
         <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/15">
           <span className="font-marcellus text-sm text-white">
             {formatNGN(exp.pricePerPersonPerDay)}
@@ -1374,7 +1375,7 @@ export function BuildYourOwn({
                               onClick={e => e.stopPropagation()}
                               className="text-[10px] font-jost font-medium text-signal hover:underline shrink-0"
                             >
-                              📍 Maps
+                              <MapPin className="w-3 h-3 inline -mt-0.5 mr-0.5" /> Maps
                             </a>
                           )}
                           {v.phone && (
@@ -1873,8 +1874,8 @@ export default function Explore() {
               <h2 className="font-marcellus text-3xl md:text-4xl leading-snug">
                 {selected.name}
               </h2>
-              <p className="font-jost font-light text-sm opacity-75 mt-1">
-                📍 {selected.location}
+              <p className="flex items-center gap-1.5 font-jost font-light text-sm opacity-75 mt-1">
+                <MapPin className="w-3.5 h-3.5 shrink-0" /> {selected.location}
               </p>
             </div>
           </div>
@@ -2059,7 +2060,7 @@ export default function Explore() {
                     to="/my-plans"
                     className="w-full flex items-center justify-center gap-2 border border-forest text-forest py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-forest/5 transition-colors"
                   >
-                    ✓ Saved — view in My Plans
+                    <Check className="w-4 h-4" /> Saved — view in My Plans
                   </Link>
                 ) : user ? (
                   <button
@@ -2221,7 +2222,7 @@ export default function Explore() {
                 to="/my-plans"
                 className="w-full flex items-center justify-center gap-2 border border-forest text-forest py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-forest/5 transition-colors"
               >
-                ✓ Saved — view in My Plans
+                <Check className="w-4 h-4" /> Saved — view in My Plans
               </Link>
             ) : user ? (
               <button

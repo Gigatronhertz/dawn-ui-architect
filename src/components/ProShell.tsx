@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { LayoutGrid, Compass, CheckCircle2, LayoutTemplate, Settings, Menu, LogOut, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, session, type AgentProfile } from "@/lib/api";
 
@@ -14,58 +15,17 @@ import { api, imageUrl, session, type AgentProfile } from "@/lib/api";
  */
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
-// Small stroke icons, matching the "+" glyph style already used across this
-// codebase — no icon library, just inline paths.
-
-export const IconOverview = (p: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="7" height="9" rx="1.5" />
-    <rect x="14" y="3" width="7" height="5" rx="1.5" />
-    <rect x="14" y="12" width="7" height="9" rx="1.5" />
-    <rect x="3" y="16" width="7" height="5" rx="1.5" />
-  </svg>
-);
-export const IconTrips = (p: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
-    <circle cx="12" cy="9.8" r="2.4" />
-  </svg>
-);
-export const IconCompleted = (p: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="9" />
-    <path d="m8.5 12.5 2.4 2.4 4.6-5.4" />
-  </svg>
-);
-export const IconTemplates = (p: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
-    <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
-    <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
-    <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
-  </svg>
-);
-export const IconSettings = (p: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 5 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.36.38.68.7.92.3.24.68.38 1.08.38H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-  </svg>
-);
-const IconMenu = (p: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 6h16M4 12h16M4 18h16" />
-  </svg>
-);
-const IconLogout = (p: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-  </svg>
-);
-const IconBack = (p: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 12H5M12 19l-7-7 7-7" />
-  </svg>
-);
+// One icon language sitewide — lucide-react, same package shadcn's own
+// primitives already pull in. Re-exported under these names so every
+// existing call site (ProDashboard's KPI icons, empty states) stays put.
+export const IconOverview = LayoutGrid;
+export const IconTrips = Compass;
+export const IconCompleted = CheckCircle2;
+export const IconTemplates = LayoutTemplate;
+export const IconSettings = Settings;
+const IconMenu = Menu;
+const IconLogout = LogOut;
+const IconBack = ArrowLeft;
 
 export type ProNav = "overview" | "trips" | "completed" | "templates" | "settings";
 
@@ -77,7 +37,7 @@ export type ProAgent = AgentProfile & {
   wa_number?: string;
 };
 
-const NAV: { id: ProNav; label: string; icon: (p: { className?: string }) => JSX.Element }[] = [
+const NAV: { id: ProNav; label: string; icon: ComponentType<{ className?: string }> }[] = [
   { id: "overview",  label: "Overview",  icon: IconOverview  },
   { id: "trips",     label: "Trips",     icon: IconTrips     },
   { id: "completed", label: "Completed", icon: IconCompleted },
@@ -99,7 +59,7 @@ function SidebarContent({
 }) {
   const agencyName = agent?.agency_name || "";
   const agencyLogo = imageUrl(agent?.logo_image_id ? `/api/trip-image/${agent.logo_image_id}` : null);
-  const agentColor = agent?.color || "#6366f1";
+  const agentColor = agent?.color || "#0B0B0B";
   const planType   = agent?.plan_type || "starter";
   const initials   = agencyName.trim().split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "??";
 
@@ -107,7 +67,7 @@ function SidebarContent({
     <div className="flex flex-col h-full">
       <div className="px-5 h-16 flex items-center gap-3 border-b border-border shrink-0">
         <div
-          className="w-9 h-9 rounded-xl grid place-items-center text-white font-display font-bold text-xs shrink-0 overflow-hidden"
+          className="w-9 h-9 rounded-xl border-2 border-foreground grid place-items-center text-white font-display font-bold text-xs shrink-0 overflow-hidden"
           style={agencyLogo ? undefined : { backgroundColor: agentColor }}
         >
           {agencyLogo

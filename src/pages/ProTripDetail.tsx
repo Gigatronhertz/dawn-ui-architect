@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, session, type AgencySquadMember, type AgencyTripDetail } from "@/lib/api";
 import ProShell from "@/components/ProShell";
@@ -56,7 +57,7 @@ function Contact({ label, value, href, action }: {
         aria-label={`Copy ${label.toLowerCase()}`}
         className="text-[10px] font-jost text-muted-foreground hover:text-foreground transition-colors shrink-0"
       >
-        {copied ? "✓" : "copy"}
+        {copied ? <Check className="w-3 h-3 inline" /> : "copy"}
       </button>
       {action && (
         <a
@@ -334,7 +335,7 @@ export default function ProTripDetail() {
                 : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
             }`}
           >
-            {completedBusy ? "Saving…" : trip.completedAt ? "✓ Completed" : "Mark completed"}
+            {completedBusy ? "Saving…" : trip.completedAt ? (<span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Completed</span>) : "Mark completed"}
           </button>
           <button
             onClick={toggleListed}
@@ -388,7 +389,7 @@ export default function ProTripDetail() {
             }}
             className="rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity shrink-0"
           >
-            {copied ? "✓ Copied" : "Copy link"}
+            {copied ? (<span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Copied</span>) : "Copy link"}
           </button>
         </div>
 

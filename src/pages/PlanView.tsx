@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
+import { CheckCircle2, Check } from "lucide-react";
 import { api, imageUrl, type PublicPlanResponse, type PlanDay } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -203,7 +204,7 @@ function PaymentSection({
   if (payState === "paid") {
     return (
       <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 p-5 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-google-green/15 grid place-items-center text-xl shrink-0">✅</div>
+        <div className="w-10 h-10 rounded-2xl bg-google-green/15 grid place-items-center shrink-0"><CheckCircle2 className="w-5 h-5 text-google-green" /></div>
         <div>
           <div className="font-display font-semibold text-google-green">Payment confirmed!</div>
           <p className="text-sm text-muted-foreground mt-0.5">You're all set. See you on the trip! 🎉</p>
@@ -474,7 +475,7 @@ function JoinSection({
           <div className="mt-3">
             {count >= groupMin ? (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-google-green bg-google-green/10 ring-1 ring-google-green/20 rounded-full px-3 py-1">
-                ✓ Minimum reached — this trip is running
+                <Check className="w-3.5 h-3.5" /> Minimum reached — this trip is running
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-secondary/60 ring-hairline rounded-full px-3 py-1">
@@ -489,7 +490,7 @@ function JoinSection({
       {(joinState === "joined" || participantId) ? (
         <div className="space-y-3">
           <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 px-4 py-3 text-center">
-            <div className="text-google-green font-semibold text-sm">✓ You're in the squad!</div>
+            <div className="flex items-center justify-center gap-1.5 text-google-green font-semibold text-sm"><Check className="w-4 h-4" /> You're in the squad!</div>
           </div>
           <PaymentSection
             tripId={tripId} participantId={participantId!}
@@ -585,7 +586,7 @@ function ShareSection({ tripId, destination }: { tripId: string; destination: st
           copied ? "bg-google-green/10 text-google-green ring-google-green/20" : "bg-card text-foreground hover:bg-secondary"
         }`}
       >
-        {copied ? "✓ Link copied" : "Copy link"}
+        {copied ? (<span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Link copied</span>) : "Copy link"}
       </button>
       <a
         href={`https://wa.me/?text=${waText}`}

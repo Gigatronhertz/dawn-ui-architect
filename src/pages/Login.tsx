@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, session } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
@@ -174,7 +175,7 @@ export default function Login() {
         {/* Verified banner */}
         {verified && (
           <div className="mb-6 border border-primary/30 bg-primary/5 px-4 py-3 flex items-center gap-3">
-            <span className="text-lg">✅</span>
+            <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
             <p className="font-jost font-light text-sm text-foreground">Email verified! Sign in below to access your plans.</p>
           </div>
         )}

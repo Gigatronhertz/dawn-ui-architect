@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { MapPin, Check } from "lucide-react";
 import { api, session, imageUrl, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { KarijeLogo } from "@/components/Nav";
@@ -483,7 +484,7 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
             <div className="flex items-center gap-2">
               <span className="text-base shrink-0 w-5 text-center">📧</span>
               {emailState === 'sent' ? (
-                <span className="text-xs text-google-green font-medium">✓ We'll email you</span>
+                <span className="inline-flex items-center gap-1 text-xs text-google-green font-medium"><Check className="w-3.5 h-3.5" /> We'll email you</span>
               ) : (
                 <>
                   <input
@@ -510,7 +511,7 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
               <div className="flex items-center gap-2">
                 <span className="text-base shrink-0 w-5 text-center">🔔</span>
                 {pushState === 'granted' ? (
-                  <span className="text-xs text-google-green font-medium">✓ Browser notification set</span>
+                  <span className="inline-flex items-center gap-1 text-xs text-google-green font-medium"><Check className="w-3.5 h-3.5" /> Browser notification set</span>
                 ) : pushState === 'unavailable' ? (
                   <span className="text-xs text-muted-foreground">Notifications not available</span>
                 ) : pushState === 'blocked' ? (
@@ -928,7 +929,7 @@ function PlanStep({
                   className={`relative text-left rounded-lg overflow-hidden ring-hairline transition flex flex-col h-full ${selectedBusIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                   {/* Selected checkmark */}
                   {selectedBusIdx === i && (
-                    <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center text-[9px]">✓</span>
+                    <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center"><Check className="w-2.5 h-2.5" strokeWidth={3} /></span>
                   )}
                   <img
                     src={BUS_IMAGES[i % BUS_IMAGES.length]}
@@ -954,7 +955,7 @@ function PlanStep({
                 className={`col-span-full text-left rounded-lg px-3 py-2 ring-hairline transition text-xs ${selectedBusIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                 <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator} · {initialPlan.transport.type}</span>
-                {selectedBusIdx === null && <span className="ml-2 text-[11px] text-foreground font-medium">✓ Active</span>}
+                {selectedBusIdx === null && <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-foreground font-medium"><Check className="w-3 h-3" /> Active</span>}
               </button>
             </div>
           )}
@@ -967,7 +968,7 @@ function PlanStep({
                     onClick={() => { setSelectedFlightIdx(i === selectedFlightIdx ? null : i); setSelectedBusIdx(null); }}
                     className={`relative text-left rounded-lg overflow-hidden ring-hairline transition flex flex-col h-full ${selectedFlightIdx === i ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                     {selectedFlightIdx === i && (
-                      <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center text-[9px]">✓</span>
+                      <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center"><Check className="w-2.5 h-2.5" strokeWidth={3} /></span>
                     )}
                     <img
                       src={FLIGHT_IMAGES[i % FLIGHT_IMAGES.length]}
@@ -995,7 +996,7 @@ function PlanStep({
                 className={`col-span-full text-left rounded-lg px-3 py-2 ring-hairline transition text-xs ${selectedFlightIdx === null ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
                 <span className="font-medium">🤖 Use AI pick</span>
                 <span className="text-muted-foreground ml-2 text-[11px]">{initialPlan.transport.operator}</span>
-                {selectedFlightIdx === null && <span className="ml-2 text-[11px] text-foreground font-medium">✓ Active</span>}
+                {selectedFlightIdx === null && <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-foreground font-medium"><Check className="w-3 h-3" /> Active</span>}
               </button>
             </div>
           )}
@@ -1102,8 +1103,8 @@ function PlanStep({
             </button>
           </div>
 
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            📍 Places in {intake.destination}
+          <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <MapPin className="w-3 h-3 shrink-0" /> Places in {intake.destination}
             {placesItems.length > 0 && <span className="text-foreground"> · {placesItems.length}</span>}
           </div>
 
@@ -1257,7 +1258,7 @@ function PlanStep({
               className={`relative text-left rounded-lg overflow-hidden ring-hairline transition flex flex-col h-full ${selectedHotelKey === opt.key ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/40 hover:bg-secondary'}`}>
               {/* Selected checkmark */}
               {selectedHotelKey === opt.key && (
-                <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center text-[9px]">✓</span>
+                <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center"><Check className="w-2.5 h-2.5" strokeWidth={3} /></span>
               )}
               {opt.badge && (
                 <span className="absolute top-1.5 left-1.5 z-10 text-[9px] font-semibold px-1 py-0.5 rounded-full bg-primary text-primary-foreground">{opt.badge}</span>
@@ -1459,7 +1460,7 @@ function ConfirmStep({ destination, tripId, squadSize, finalPlan, selectedDate, 
               linkCopied ? "bg-google-green/10 text-google-green ring-google-green/20" : "bg-card text-foreground hover:bg-secondary"
             }`}
           >
-            {linkCopied ? "✓ Copied!" : "Copy link"}
+            {linkCopied ? (<span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Copied!</span>) : "Copy link"}
           </button>
           <a
             href={`https://wa.me/?text=${waShareText}`}

@@ -1,24 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Check as CheckIcon, Minus } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/CTA";
 
-// ── Check / X icons ────────────────────────────────────────────────────────
-const Check = () => (
-  <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 text-foreground mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 8 6.5 11.5 13 5" />
-  </svg>
-);
-const CheckWhite = () => (
-  <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 text-parchment/60 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 8 6.5 11.5 13 5" />
-  </svg>
-);
-const Dash = () => (
-  <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 text-muted-foreground/30 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <line x1="4" y1="8" x2="12" y2="8" />
-  </svg>
-);
+// ── Check / X icons — one shared shape (lucide), just recolored per surface ──
+const Check = () => <CheckIcon className="w-4 h-4 shrink-0 text-foreground mt-0.5" strokeWidth={2.5} />;
+const CheckWhite = () => <CheckIcon className="w-4 h-4 shrink-0 text-parchment/60 mt-0.5" strokeWidth={2.5} />;
+const Dash = () => <Minus className="w-4 h-4 shrink-0 text-muted-foreground/30 mt-0.5" />;
 
 // ── Eyebrow / section label ────────────────────────────────────────────────
 const SectionEyebrow = ({ label, light = false }: { label: string; light?: boolean }) => (
@@ -341,16 +330,16 @@ export default function Pricing() {
                   <tr key={feature} className="hover:bg-secondary/30 transition-colors">
                     <td className="py-3.5 pr-4 text-foreground">{feature}</td>
                     <td className="py-3.5 text-center text-muted-foreground">
-                      {free === "✓" ? <span className="text-foreground font-medium">✓</span> : free === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{free}</span>}
+                      {free === "✓" ? <CheckIcon className="w-4 h-4 text-foreground mx-auto" /> : free === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{free}</span>}
                     </td>
                     <td className="py-3.5 text-center">
-                      {ai === "✓" ? <span className="text-foreground font-medium">✓</span> : ai === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{ai}</span>}
+                      {ai === "✓" ? <CheckIcon className="w-4 h-4 text-foreground mx-auto" /> : ai === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{ai}</span>}
                     </td>
                     <td className="py-3.5 text-center text-muted-foreground">
-                      {ready === "✓" ? <span className="text-foreground font-medium">✓</span> : ready === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{ready}</span>}
+                      {ready === "✓" ? <CheckIcon className="w-4 h-4 text-foreground mx-auto" /> : ready === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{ready}</span>}
                     </td>
                     <td className="py-3.5 text-center text-muted-foreground">
-                      {pro === "✓" ? <span className="text-foreground font-medium">✓</span> : pro === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{pro}</span>}
+                      {pro === "✓" ? <CheckIcon className="w-4 h-4 text-foreground mx-auto" /> : pro === "—" ? <span className="opacity-25">—</span> : <span className="text-[11px] font-medium text-muted-foreground">{pro}</span>}
                     </td>
                   </tr>
                 ))}

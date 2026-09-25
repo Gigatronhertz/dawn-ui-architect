@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { MapPin } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/CTA";
 import { WaitlistForm } from "@/components/WaitlistForm";
@@ -97,7 +98,7 @@ export default function EventPage() {
 
           <div className="flex flex-wrap gap-3 mb-8">
             <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-foreground rounded-full px-3.5 py-1.5">
-              📍 {hasLocation ? event.location : "Location to be disclosed"}
+              <MapPin className="w-3.5 h-3.5" /> {hasLocation ? event.location : "Location to be disclosed"}
             </span>
             {!free && (
               <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-foreground rounded-full px-3.5 py-1.5">

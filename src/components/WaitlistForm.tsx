@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -34,7 +35,7 @@ export const WaitlistForm = ({
   if (status === "success") {
     return (
       <div className={`flex items-center gap-3 rounded-2xl px-5 py-4 text-sm font-medium ${dark ? "bg-white/10 text-white" : "bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20"} ${className}`}>
-        <span className="text-xl shrink-0">✅</span>
+        <CheckCircle2 className="w-5 h-5 shrink-0" />
         {successMessage}
       </div>
     );

@@ -220,6 +220,14 @@
     0%, 100% { transform: translateY(0); }
     50%       { transform: translateY(-8px); }
   }
+
+  /* ── Mobile bottom nav clearance ──
+     Reserves space so MobileBottomNav (fixed, md:hidden) never covers page
+     content or footer CTAs — toggled on <body> by the component itself,
+     not per-page, since not every page renders through one shared layout. */
+  @media (max-width: 767px) {
+    body.has-bottom-nav { padding-bottom: 4.5rem; }
+  }
 }
 
 @layer utilities {
