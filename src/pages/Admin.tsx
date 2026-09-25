@@ -871,6 +871,29 @@ function EventsSection({ adminKey }: { adminKey: string }) {
   const [formBusy, setFormBusy] = useState(false);
   const [formErr, setFormErr] = useState("");
 
+  // Registrations panel — WhatsApp numbers captured on the standalone event
+  // page, stored in the waitlist table under source `event:<id>`.
+  const [regEvent, setRegEvent] = useState<EventItem | null>(null);
+  const [registrations, setRegistrations] = useState<{ phone: string; created_at: number }[]>([]);
+  const [regLoading, setRegLoading] = useState(false);
+  const [regErr, setRegErr] = useState("");
+
+  async function viewRegistrations(ev: EventItem) {
+    setRegEvent(ev);
+    setRegLoading(true);
+    setRegErr("");
+    try {
+      const d = await apiFetch<{ registrations: { phone: string; created_at: number }[] }>(
+        `/admin/events/${ev.id}/registrations`, adminKey
+      );
+      setRegistrations(d.registrations);
+    } catch (err) {
+      setRegErr(err instanceof Error ? err.message : "Could not load registrations.");
+    } finally {
+      setRegLoading(false);
+    }
+  }
+
   useEffect(() => {
     setLoading(true);
     setListErr("");
@@ -1022,12 +1045,44 @@ function EventsSection({ adminKey }: { adminKey: string }) {
 
               <div className="flex gap-2 mt-4">
                 <button onClick={() => setEditing(ev)} className="flex-1 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">Edit</button>
+                <button onClick={() => viewRegistrations(ev)} className="flex-1 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">Registrations</button>
                 <button onClick={() => handleDelete(ev.id, ev.name)} className="flex-1 text-center border border-red-100 rounded-lg py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition">Delete</button>
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Registrations panel */}
+      {regEvent && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6" onClick={() => setRegEvent(null)}>
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold text-gray-900">{regEvent.name}</h3>
+              <button onClick={() => setRegEvent(null)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">Who registered interest via WhatsApp</p>
+
+            {regLoading && <p className="text-sm text-gray-500">Loading…</p>}
+            {regErr && <p className="text-sm text-red-500">{regErr}</p>}
+            {!regLoading && !regErr && registrations.length === 0 && (
+              <p className="text-sm text-gray-400">No registrations yet.</p>
+            )}
+            {!regLoading && registrations.length > 0 && (
+              <ul className="divide-y divide-gray-100">
+                {registrations.map((r, i) => (
+                  <li key={i} className="py-2.5 flex items-center justify-between text-sm">
+                    <a href={`https://wa.me/${r.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="font-mono text-gray-900 hover:text-green-700 hover:underline">
+                      {r.phone}
+                    </a>
+                    <span className="text-[10px] text-gray-400">{new Date(r.created_at * 1000).toLocaleDateString()}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

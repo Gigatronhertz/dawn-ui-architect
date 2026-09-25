@@ -367,6 +367,19 @@ router.delete('/events/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// ── GET /admin/events/:id/registrations ──────────────────────────────────────────────
+// WhatsApp numbers captured on the standalone event page's "notify me" form —
+// stored in the generic waitlist table under source `event:<id>`.
+router.get('/events/:id/registrations', requireAdmin, async (req, res) => {
+  try {
+    const registrations = await db.waitlist.list({ source: `event:${req.params.id}` });
+    res.json({ registrations });
+  } catch (err) {
+    console.error('[admin] GET event registrations failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Ready-made trips ───────────────────────────────────────────────────────────
 
 /** Slugify a trip name into a stable, URL-safe id. */

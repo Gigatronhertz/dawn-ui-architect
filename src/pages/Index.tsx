@@ -7,6 +7,7 @@ import { Hero } from "@/components/Hero";
 import { TripCategories } from "@/components/TripCategories";
 import { ExploreCityTeaser } from "@/components/ExploreCityTeaser";
 import { TrustProof } from "@/components/TrustProof";
+import { UpcomingEvents } from "@/components/UpcomingEvents";
 
 // ── Services ─────────────────────────────────────────────────────────────────
 const services = [
@@ -301,6 +302,7 @@ const Index = () => {
       <Hero />
       <TripCategories />
       <ExploreCityTeaser />
+      <UpcomingEvents />
       <TrustProof />
       <Services />
       <DestinationsGrid />

@@ -1558,6 +1558,22 @@ router.get('/events', async (req, res) => {
   }
 });
 
+// ── GET /api/events/:id ──────────────────────────────────────────────────────────
+// Public single-event fetch, for the standalone event page — a share link
+// doesn't carry the city, only the id.
+router.get('/events/:id', async (req, res) => {
+  try {
+    const event = await db.events.get(req.params.id);
+    if (!event || !event.published) {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+    res.json({ event });
+  } catch (err) {
+    console.error('[api/events/:id]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/plan/:tripId/draft-days ───────────────────────────────────────
 // "Give me a starting point." Fills the day schedule from the AI, leaving the
 // squad's transport and hotel choices untouched — they only asked for ideas

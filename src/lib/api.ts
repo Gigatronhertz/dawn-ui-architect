@@ -525,6 +525,10 @@ export const api = {
   getEvents: (city: string) =>
     get<{ events: import('./experienceTypes').EventItem[] }>(`/api/events?city=${encodeURIComponent(city)}`),
 
+  /** One event by id, any city — for the standalone event page. */
+  getEvent: (id: string) =>
+    get<{ event: import('./experienceTypes').EventItem }>(`/api/events/${encodeURIComponent(id)}`),
+
   /** Create or update the agency profile tied to the authenticated user. */
   setupPro: (
     payload: { agencyName: string; tagline?: string; phone: string; waNumber?: string; serviceFee?: number; color?: string; planType?: string },

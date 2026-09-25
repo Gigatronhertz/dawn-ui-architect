@@ -593,7 +593,20 @@ async function insertWaitlist({ phone, source }) {
   });
 }
 
-async function listWaitlist() {
+/**
+ * `source` is a free-text tag set by whoever calls POST /api/waitlist — the
+ * event registration page passes `event:<eventId>`, so filtering by exact
+ * source doubles as "who registered interest for this one event" with no
+ * extra table.
+ */
+async function listWaitlist({ source } = {}) {
+  if (source) {
+    const res = await client.execute({
+      sql: 'SELECT * FROM waitlist WHERE source = ? ORDER BY created_at DESC',
+      args: [source],
+    });
+    return res.rows;
+  }
   const res = await client.execute('SELECT * FROM waitlist ORDER BY created_at DESC');
   return res.rows;
 }
@@ -1070,6 +1083,13 @@ async function getEvents({ state = 'Lagos', all = false } = {}) {
   return rows.map(parseEventRow);
 }
 
+/** Single event by id, any state — the standalone event page doesn't know
+ *  the state up front, only the id from the URL. */
+async function getEventById(id) {
+  const row = await raw('SELECT * FROM events WHERE id = ?', [id]);
+  return row ? parseEventRow(row) : null;
+}
+
 async function upsertEvent(e) {
   const existing = await raw('SELECT id FROM events WHERE id = ?', [e.id]);
   if (existing) {
@@ -1225,7 +1245,7 @@ module.exports = {
   },
   experiences:  { list: getExperiences, upsert: upsertExperience },
   nightlifeVenues: { list: getNightlifeVenues, upsert: upsertNightlifeVenue, remove: deleteNightlifeVenue },
-  events:          { list: getEvents,          upsert: upsertEvent,          remove: deleteEvent },
+  events:          { list: getEvents, get: getEventById, upsert: upsertEvent, remove: deleteEvent },
   tripImages:   { insert: insertTripImage, get: getTripImage, remove: deleteTripImage },
   users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },
   participants: {

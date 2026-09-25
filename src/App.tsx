@@ -21,6 +21,7 @@ import Admin from "./pages/Admin.tsx";
 import ProLogin from "./pages/ProLogin.tsx";
 import Login from "./pages/Login.tsx";
 import Pricing from "./pages/Pricing.tsx";
+import EventPage from "./pages/EventPage.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Terms from "./pages/Terms.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/pro/trips/new" element={<ProTripBuilder />} />
             <Route path="/pro/trips/:tripId" element={<ProTripDetail />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/events/:eventId" element={<EventPage />} />
             <Route path="/login"   element={<Login />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms"   element={<Terms />} />
