@@ -12,6 +12,20 @@
  */
 const db = require('../db/client');
 const { sendPaymentReminderEmail, available: emailAvailable } = require('./email');
+const whisper360 = require('./whisper360');
+
+/**
+ * One Whisper360 template per tone — WhatsApp templates can't branch on
+ * content, so "nudge"/"chase"/"final" are three separate approved templates
+ * rather than one with an if/else. Names match what reminders.js creates as
+ * drafts (see scripts/createReminderTemplates.js); approve each once in the
+ * Whisper360 console before enabling the whatsapp channel below.
+ */
+const WHISPER360_TEMPLATES = {
+  nudge: process.env.WHISPER360_TEMPLATE_NUDGE || 'karije_reminder_nudge',
+  chase: process.env.WHISPER360_TEMPLATE_CHASE || 'karije_reminder_chase',
+  final: process.env.WHISPER360_TEMPLATE_FINAL || 'karije_reminder_final',
+};
 
 const HOUR = 3600;
 const DAY  = 24 * HOUR;
@@ -30,9 +44,11 @@ const STEPS = [
 /**
  * Which channels to try, in order, stopping at the first that lands.
  *
- * Email-only for now — WhatsApp is parked while the interstate flow settles
- * on one consistent channel story. Re-add 'whatsapp' here (and restore its
- * attempt below) when that changes.
+ * Email-only by default. Set REMINDER_CHANNELS=whatsapp,email once the three
+ * templates in WHISPER360_TEMPLATES are approved in the Whisper360 console —
+ * sending against an unapproved template just returns a blocked outcome
+ * every time, so there's no harm in enabling it early, but nothing will
+ * actually go out until approval lands.
  */
 const CHANNEL_ORDER = (process.env.REMINDER_CHANNELS || 'email')
   .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -99,7 +115,6 @@ async function remindOne(row, { payBase }) {
     if (diff >= 0) daysLeft = diff;
   }
 
-  // Email-only for now — see CHANNEL_ORDER above.
   const attempts = {
     async email() {
       if (!row.email || !emailAvailable()) return false;
@@ -112,6 +127,25 @@ async function remindOne(row, { payBase }) {
         console.warn(`[reminders] email failed for ${row.id}: ${err.message}`);
         return false;
       }
+    },
+    async whatsapp() {
+      if (!row.wa_number || !whisper360.available()) return false;
+      const templateName = WHISPER360_TEMPLATES[step.tone];
+      const variables = {
+        name: row.name || 'there',
+        trip_name: tripName,
+        amount: fmtNGN(perPerson),
+        link,
+        // Only the "final" template body uses this placeholder — sent for
+        // all three tones anyway since a template only rejects a *missing*
+        // declared variable, not an extra one it doesn't reference.
+        days_phrase: daysLeft != null ? `, and the trip is ${daysLeft} day${daysLeft === 1 ? '' : 's'} away` : '',
+      };
+      const result = await whisper360.sendTemplate(row.wa_number, templateName, variables);
+      if (!result.ok) {
+        console.warn(`[reminders] whatsapp failed for ${row.id}: ${result.reason}`);
+      }
+      return result.ok;
     },
   };
 
