@@ -60,7 +60,7 @@ app.use('/auth', emailRouter);
 // Admin routes — key-protected CRUD for curated experiences
 app.use('/admin', adminRouter);
 
-// WhatsApp webhook + payment routes
+// Payment routes (Paystack webhook/confirm, the /pay redirect)
 app.use('/', webhookRouter);
 
 // Unhandled errors don't crash the process
@@ -70,8 +70,6 @@ process.on('unhandledRejection', (err) => console.error('[unhandled]', err?.mess
 db.ready.then(() => {
   app.listen(PORT, () => {
     console.log(`\n🚀 Karije backend running on port ${PORT}`);
-    console.log(`   Webhook URL: http://localhost:${PORT}/webhook`);
-    console.log(`   (expose with: ngrok http ${PORT})\n`);
 
     // Chase unpaid squad members. Set REMINDERS=off to silence it in a shell
     // where you don't want real messages going out.

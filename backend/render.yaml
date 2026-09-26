@@ -52,28 +52,23 @@ services:
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
 
-      # ── WhatsApp outbound (Zavu) ───────────────────────────────────────────
-      - key: ZAVU_API_KEY
+      # ── WhatsApp (Whisper360) — used only by the reminder chase-up ─────────
+      - key: WHISPER360_API_KEY
         sync: false
-      - key: ZAVU_SENDER_ID
+      - key: WHISPER360_TEMPLATE_NUDGE
         sync: false
-      - key: ZAVU_REMINDER_TEMPLATE
+      - key: WHISPER360_TEMPLATE_CHASE
         sync: false
-
-      # ── WhatsApp inbound (Zavu webhook signature) ──────────────────────────
-      # Without this the webhook fails closed and rejects every message.
-      - key: ZAVU_WEBHOOK_SECRET
+      - key: WHISPER360_TEMPLATE_FINAL
         sync: false
 
-      # Still shown to users when the bot asks to be added to a squad group
       - key: WA_DISPLAY_NUMBER
         sync: false
 
       # ── Reminders ─────────────────────────────────────────────
-      # Channel order, first that lands wins. Email leads while WhatsApp is
-      # parked; swap to whatsapp,email once the Zavu account has a sender.
+      # Channel order, first that lands wins.
       - key: REMINDER_CHANNELS
-        value: email,whatsapp
+        value: whatsapp,email
 
       # ── Payments (Paystack) ────────────────────────────────────────────────
       - key: PAYSTACK_SECRET_KEY

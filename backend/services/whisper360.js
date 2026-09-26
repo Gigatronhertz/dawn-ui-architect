@@ -1,8 +1,8 @@
 /**
- * WhatsApp delivery via Whisper360 (https://whisper360.io) — used only by the
- * payment-reminder chase-up (services/reminders.js). The rest of the app
- * (bot flows, webhook.js) still goes through services/whatsapp.js (Zavu);
- * this file does not touch that.
+ * WhatsApp delivery via Whisper360 (https://whisper360.io) — the only
+ * WhatsApp integration in the app, used by the payment-reminder chase-up
+ * (services/reminders.js). The previous provider (Zavu) and the bot/
+ * conversation flows it drove have been removed.
  *
  * Two things about Whisper360 that shape everything below:
  *
