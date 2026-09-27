@@ -337,6 +337,20 @@ export type AgencySquadMember = {
   reference: string | null;
 };
 
+/** One trip's money position — returned by both /api/pro/money and the admin equivalent. */
+export type ProMoneyTrip = {
+  tripId: string; name: string; destination: string | null; tripDate: string | null;
+  paidCount: number; squadSize: number; collected: number; serviceFee: number;
+  dueToOrganiser: number; paidOut: number; outstanding: number;
+  readyToDisburse: boolean;
+  payoutAccountName: string | null;
+  payoutAccount?: { bankCode: string | null; accountNo: string; accountName: string } | null;
+};
+export type ProPayout = {
+  id: string; amount: number; note: string | null; status: string;
+  reference: string | null; created_at: number; paid_at: number | null;
+};
+
 export type AgencyTripDetail = {
   /** The agency that owns the trip — its own branding, for the header. */
   agency: { name: string; color: string | null; logoUrl: string | null };
@@ -579,6 +593,14 @@ export const api = {
   /** Drop the logo. The stored image stays, so live plans keep rendering. */
   removeAgencyLogo: (token: string) =>
     del<{ ok: boolean }>('/api/pro/logo', bearer(token)),
+
+  /** This agency's own trips holding money — the same ledger the admin panel sees, scoped to them. */
+  getProMoney: (token: string) =>
+    get<{ trips: ProMoneyTrip[]; totals: { collected: number; paidOut: number; outstanding: number } }>('/api/pro/money', bearer(token)),
+
+  /** One of this agency's trips: full money position + payout history. */
+  getProMoneyTrip: (tripId: string, token: string) =>
+    get<ProMoneyTrip & { payouts: ProPayout[] }>(`/api/pro/money/${tripId}`, bearer(token)),
 
   /** The agency's own saved payout account — copied onto each new trip at creation time. */
   updatePayout: (payload: { bankCode?: string; accountNo: string; accountName: string }, token: string) =>

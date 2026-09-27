@@ -1034,6 +1034,45 @@ router.post(
   }
 );
 
+// ── Pro: money (read-only — the agency's own view of the same ledger the
+// admin panel sees, scoped to their own trips). Only the admin route
+// actually records a payout; this is "where's my money", not a control panel.
+
+// GET /api/pro/money — every one of this agency's trips holding money.
+router.get('/pro/money', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const trips = await ledger.outstandingTrips({ agentId: req.agent.id });
+    const totals = trips.reduce((t, x) => ({
+      collected:   t.collected   + x.collected,
+      paidOut:     t.paidOut     + x.paidOut,
+      outstanding: t.outstanding + x.outstanding,
+    }), { collected: 0, paidOut: 0, outstanding: 0 });
+    res.json({ trips, totals });
+  } catch (err) {
+    console.error('[api/pro/money]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/pro/money/:tripId — one trip's position + payout history, but
+// only if it's actually this agency's trip.
+router.get('/pro/money/:tripId', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const trip = await agentTripOr403(req, res);
+    if (!trip) return;
+    const position = await ledger.forTrip(trip.id);
+    const payouts = await db.rawAll(
+      `SELECT id, amount, note, status, reference, created_at, paid_at
+         FROM payouts WHERE trip_id = ? ORDER BY created_at DESC`,
+      [trip.id]
+    );
+    res.json({ ...position, payouts });
+  } catch (err) {
+    console.error('[api/pro/money/:tripId]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PATCH /api/pro/payout — the agency's own saved bank account. Copied onto
 // each new trip at creation time (see createAgencyTrip above); changing it
 // here only affects trips created after the change, not ones already

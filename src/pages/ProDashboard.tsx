@@ -2,8 +2,8 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Wallet, Clock, Eye, Users, CreditCard, Trophy, RefreshCw, Plus, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, imageUrl, type DashboardData, type TripRow, type TripTemplate } from "@/lib/api";
-import ProShell, { IconOverview, IconTrips, IconCompleted, IconTemplates, type ProNav } from "@/components/ProShell";
+import { api, imageUrl, type DashboardData, type TripRow, type TripTemplate, type ProMoneyTrip, type ProPayout } from "@/lib/api";
+import ProShell, { IconOverview, IconTrips, IconCompleted, IconTemplates, IconMoney, type ProNav } from "@/components/ProShell";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
@@ -102,21 +102,29 @@ const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?
  *  never as type or a stroke (see tailwind.config.ts's brand-color comment;
  *  a yellow glyph on a pale-yellow tint fails contrast the same way a
  *  yellow KPI value once did). */
-const KPI = ({ icon, label, value, sub, accent, solid }: { icon: React.ReactNode; label: string; value: string; sub?: string; accent: string; solid?: boolean }) => (
-  <div className="rounded-2xl border-[3px] border-foreground shadow-[3px_3px_0_0_hsl(var(--foreground))] bg-card p-5 flex items-start gap-4">
-    <div
-      className="w-10 h-10 rounded-xl grid place-items-center shrink-0"
-      style={solid ? { backgroundColor: accent, color: "#0B0B0B" } : { backgroundColor: `${accent}1a`, color: accent }}
-    >
-      {icon}
-    </div>
-    <div className="min-w-0">
-      <div className="text-[11px] font-medium text-muted-foreground">{label}</div>
-      <div className="font-display text-2xl font-semibold mt-0.5 tabular-nums truncate">{value}</div>
-      {sub && <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{sub}</div>}
-    </div>
-  </div>
-);
+/** `to` makes the whole tile a link — every KPI that has an obvious detail
+ *  view to drill into gets one, rather than sitting there as a dead end. */
+const KPI = ({ icon, label, value, sub, accent, solid, to }: { icon: React.ReactNode; label: string; value: string; sub?: string; accent: string; solid?: boolean; to?: string }) => {
+  const body = (
+    <>
+      <div
+        className="w-10 h-10 rounded-xl grid place-items-center shrink-0"
+        style={solid ? { backgroundColor: accent, color: "#0B0B0B" } : { backgroundColor: `${accent}1a`, color: accent }}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <div className="text-[11px] font-medium text-muted-foreground">{label}</div>
+        <div className="font-display text-2xl font-semibold mt-0.5 tabular-nums truncate">{value}</div>
+        {sub && <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{sub}</div>}
+      </div>
+    </>
+  );
+  const cls = "rounded-2xl border-[3px] border-foreground shadow-[3px_3px_0_0_hsl(var(--foreground))] bg-card p-5 flex items-start gap-4";
+  return to
+    ? <Link to={to} className={`${cls} hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_hsl(var(--foreground))] transition-transform`}>{body}</Link>
+    : <div className={cls}>{body}</div>;
+};
 
 /** A stable colour + initial for a trip's identity badge, derived from its id
  *  so the same trip always gets the same colour rather than one that shifts
@@ -254,16 +262,163 @@ const TripRowItem = ({ trip, variant, pending, onToggleComplete }: {
   );
 };
 
+/**
+ * "Where's my money" — read-only. Recording a payout is deliberately an
+ * admin-only action (backend enforces it too); this tab is the agency's
+ * transparency window onto the same ledger, not a control panel.
+ */
+const MoneyTab = () => {
+  const { getIdToken } = useAuth();
+  const [trips, setTrips] = useState<ProMoneyTrip[]>([]);
+  const [totals, setTotals] = useState({ collected: 0, paidOut: 0, outstanding: 0 });
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = getIdToken();
+    if (!token) return;
+    api.getProMoney(token)
+      .then(d => { setTrips(d.trips); setTotals(d.totals); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [getIdToken]);
+
+  if (loading) {
+    return <div className="px-6 py-12 text-center"><div className="w-6 h-6 rounded-full border-2 border-foreground border-t-transparent animate-spin mx-auto" /></div>;
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+        {[
+          { label: "Collected",        value: totals.collected },
+          { label: "Paid out to you",  value: totals.paidOut },
+          { label: "Held — not out yet", value: totals.outstanding, accent: totals.outstanding > 0 },
+        ].map(s => (
+          <div key={s.label} className="rounded-2xl border-[3px] border-foreground shadow-[3px_3px_0_0_hsl(var(--foreground))] bg-card p-5">
+            <div className="text-[11px] font-medium text-muted-foreground">{s.label}</div>
+            <div className={`font-display text-xl font-semibold mt-0.5 tabular-nums ${s.accent ? "text-amber-600 dark:text-amber-400" : ""}`}>{fmtNGN(s.value)}</div>
+          </div>
+        ))}
+      </div>
+
+      {trips.length === 0 ? (
+        <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card px-6 py-16 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-foreground grid place-items-center mx-auto mb-4">
+            <IconMoney className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <h3 className="font-display font-semibold text-lg mb-1">Nothing collected yet</h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            Once a traveller pays into one of your trips, it shows up here.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {trips.map(t => (
+            <div key={t.tripId} className="rounded-2xl border-[3px] border-foreground shadow-[3px_3px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
+              <button
+                onClick={() => setOpen(open === t.tripId ? null : t.tripId)}
+                className="w-full flex items-center gap-4 p-4 text-left hover:bg-secondary/40 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium truncate">{t.name}</span>
+                    {t.outstanding > 0 && (
+                      <span className={`shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                        t.readyToDisburse
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300"
+                          : "bg-secondary text-muted-foreground border-border"
+                      }`}>
+                        {t.readyToDisburse ? "Ready — awaiting payout" : `Collecting — ${t.paidCount}/${t.squadSize || "?"} paid`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {t.paidCount} paid · {fmtNGN(t.collected)} in{t.tripDate ? ` · ${t.tripDate}` : ""}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className={`font-semibold tabular-nums text-sm ${t.outstanding > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                    {fmtNGN(t.outstanding > 0 ? t.outstanding : t.paidOut)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{t.outstanding > 0 ? "still held" : "paid to you"}</div>
+                </div>
+                <span className="text-muted-foreground text-xs">{open === t.tripId ? "▲" : "▼"}</span>
+              </button>
+              {open === t.tripId && <MoneyTripDetail tripId={t.tripId} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
+const MoneyTripDetail = ({ tripId }: { tripId: string }) => {
+  const { getIdToken } = useAuth();
+  const [data, setData] = useState<(ProMoneyTrip & { payouts: ProPayout[] }) | null>(null);
+
+  useEffect(() => {
+    const token = getIdToken();
+    if (!token) return;
+    api.getProMoneyTrip(tripId, token).then(setData).catch(() => {});
+  }, [tripId, getIdToken]);
+
+  if (!data) return <div className="px-4 pb-4 text-xs text-muted-foreground border-t border-border pt-3">Loading…</div>;
+
+  return (
+    <div className="border-t border-border p-4 space-y-3 bg-secondary/20">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        {[
+          ["Collected", data.collected],
+          ["Due to you", data.dueToOrganiser],
+          ["Paid out", data.paidOut],
+          ["Still held", data.outstanding],
+        ].map(([label, value]) => (
+          <div key={String(label)}>
+            <div className="text-muted-foreground">{label}</div>
+            <div className="tabular-nums font-medium">{fmtNGN(Number(value))}</div>
+          </div>
+        ))}
+      </div>
+      {data.payoutAccount ? (
+        <div className="text-[11px] text-muted-foreground">
+          Pays out to: <span className="font-medium text-foreground">{data.payoutAccount.accountName}</span> · {data.payoutAccount.accountNo}
+        </div>
+      ) : (
+        <div className="text-[11px] text-amber-600 dark:text-amber-400">
+          No payout account on file for this trip — add one under Settings before it's ready to release.
+        </div>
+      )}
+      {data.payouts.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Payout history</div>
+          <ul className="space-y-1">
+            {data.payouts.map(p => (
+              <li key={p.id} className="flex items-center gap-3 text-xs bg-card border border-border rounded-lg px-3 py-2">
+                <span className="tabular-nums font-medium">{fmtNGN(p.amount)}</span>
+                <span className="flex-1 text-muted-foreground truncate">{p.note || "—"}</span>
+                <span className="text-muted-foreground">{p.paid_at ? new Date(p.paid_at * 1000).toLocaleDateString() : "pending"}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const TAB_META: Record<ProNav, { title: string; subtitle: string }> = {
   overview:  { title: "Overview",  subtitle: "How the business is doing, at a glance." },
   trips:     { title: "Trips",     subtitle: "Every trip still in motion, and who still needs chasing." },
   completed: { title: "Completed", subtitle: "Trips you've marked done. Reopen any of them if that changes." },
+  money:     { title: "Money",     subtitle: "What's collected, what's held, and what's already been paid out to you." },
   templates: { title: "Templates", subtitle: "A shape you run again — the same stops, only the dates move." },
   settings:  { title: "Settings",  subtitle: "How your agency shows up to the squads you send this to." },
 };
 
 const isTab = (v: string | null): v is ProNav =>
-  v === "overview" || v === "trips" || v === "completed" || v === "templates" || v === "settings";
+  v === "overview" || v === "trips" || v === "completed" || v === "money" || v === "templates" || v === "settings";
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -462,6 +617,7 @@ const ProDashboard = () => {
               sub="unlimited on Pro"
               accent="#F5C518"
               solid
+              to="/pro/dashboard?tab=trips"
             />
             <KPI
               icon={<IconCompleted className="w-5 h-5" />}
@@ -469,6 +625,7 @@ const ProDashboard = () => {
               value={String(summary.trips_completed)}
               sub="all time"
               accent="#10b981"
+              to="/pro/dashboard?tab=completed"
             />
             <KPI
               icon={<Wallet className="w-5 h-5" />}
@@ -476,6 +633,7 @@ const ProDashboard = () => {
               value={summary.total_collected > 0 ? fmtNGN(summary.total_collected) : "₦0"}
               sub={summary.revenue_mtd > 0 ? `${fmtNGN(summary.revenue_mtd)} this month` : "via Paystack"}
               accent="#0B0B0B"
+              to="/pro/dashboard?tab=money"
             />
             <KPI
               icon={<Clock className="w-5 h-5" />}
@@ -483,6 +641,7 @@ const ProDashboard = () => {
               value={String(summary.pending_payments)}
               sub={summary.pending_payments > 0 ? "needs a follow-up" : "all clear"}
               accent={summary.pending_payments > 0 ? "#ef4444" : "#10b981"}
+              to="/pro/dashboard?tab=money"
             />
           </div>
 
@@ -714,6 +873,8 @@ const ProDashboard = () => {
           )}
         </div>
       )}
+
+      {activeTab === "money" && <MoneyTab />}
 
       {/* Templates tab */}
       {activeTab === "templates" && (

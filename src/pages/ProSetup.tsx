@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl } from "@/lib/api";
+import { KarijeLogo } from "@/components/Nav";
 
 
 // ── Colour swatches ───────────────────────────────────────────────────────────
@@ -200,28 +201,28 @@ const ProSetup = () => {
   // ── Setup form ─────────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 glass border-b border-border/50">
-        <div className="mx-auto max-w-3xl px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 font-display font-semibold">
-            <span className="grid place-items-center w-7 h-7 rounded-lg bg-gradient-primary text-primary-foreground">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2l3 7 7 .8-5.3 4.7L18.5 22 12 18l-6.5 4 1.8-7.5L2 9.8 9 9z" />
-              </svg>
-            </span>
-            Karije
-            <span className="ml-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground text-background">Pro</span>
-          </Link>
+      <header className="sticky top-0 z-50 glass border-b-[3px] border-foreground">
+        <div className="mx-auto max-w-5xl px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <KarijeLogo size="sm" />
+            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground text-background">Pro</span>
+          </div>
           <div className="flex items-center gap-3">
             <span className="hidden sm:block text-xs text-muted-foreground truncate max-w-[200px]">{user.email}</span>
-            <Link to="/pro/dashboard" className="text-xs text-muted-foreground hover:text-foreground">Dashboard →</Link>
+            <Link
+              to="/pro/dashboard"
+              className="text-xs font-bold rounded-full bg-signal text-ink border-2 border-foreground px-3.5 py-1.5 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
+            >
+              Dashboard →
+            </Link>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-xl px-6 py-16">
+      <div className="mx-auto max-w-3xl px-6 py-16">
         <div className="text-center mb-12">
           <div
-            className="w-16 h-16 rounded-2xl grid place-items-center text-white font-display font-bold text-xl mx-auto mb-4 transition-all"
+            className="w-16 h-16 rounded-2xl border-2 border-foreground grid place-items-center text-white font-display font-bold text-xl mx-auto mb-4 transition-all"
             style={{ backgroundColor: form.color }}
           >
             {initials}
@@ -232,8 +233,9 @@ const ProSetup = () => {
 
         <form onSubmit={submit} className="space-y-5">
 
-          {/* Agency */}
-          <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+          {/* Agency + Contact — paired on desktop, stacked on mobile */}
+          <div className="grid sm:grid-cols-2 gap-5">
+          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
             <div className="font-semibold text-sm">Your agency</div>
             <div>
               <label className="text-xs text-muted-foreground block mb-1.5">Agency name *</label>
@@ -260,7 +262,7 @@ const ProSetup = () => {
           </div>
 
           {/* WhatsApp contact */}
-          <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
             <div className="font-semibold text-sm">Contact number</div>
             <p className="text-xs text-muted-foreground -mt-1">
               How we reach you about your agency, and the number that identifies it. <strong>Not used for sign-in</strong> — you sign in with {user.email}.
@@ -289,11 +291,12 @@ const ProSetup = () => {
               />
             </div>
           </div>
+          </div>
 
           {/* Verification (KYC) — only shows once the agency record exists,
               which it does immediately for an admin-created account. */}
           {hasAgent && (
-            <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+            <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="font-semibold text-sm">Verification</div>
                 <span className={`text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full ${
@@ -336,7 +339,7 @@ const ProSetup = () => {
                 type="button"
                 onClick={saveVerificationInfo}
                 disabled={verifyBusy}
-                className="text-xs font-medium rounded-lg bg-secondary px-4 py-2 hover:bg-secondary/70 transition disabled:opacity-40"
+                className="text-xs font-bold rounded-full bg-signal text-ink border-2 border-foreground px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
               >
                 Save NIN & Instagram
               </button>
@@ -381,7 +384,7 @@ const ProSetup = () => {
 
           {/* Payout account — where collected money is actually sent */}
           {hasAgent && (
-            <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+            <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
               <div className="font-semibold text-sm">Payout account</div>
               <p className="text-xs text-muted-foreground -mt-1">
                 Karije holds what travellers pay until a trip's seats are all filled, then pays it out here in one go —
@@ -420,7 +423,7 @@ const ProSetup = () => {
                 type="button"
                 onClick={savePayoutAccount}
                 disabled={payoutBusy}
-                className="text-xs font-medium rounded-lg bg-secondary px-4 py-2 hover:bg-secondary/70 transition disabled:opacity-40"
+                className="text-xs font-bold rounded-full bg-signal text-ink border-2 border-foreground px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
               >
                 {payoutBusy ? "Saving…" : "Save payout account"}
               </button>
@@ -430,7 +433,7 @@ const ProSetup = () => {
           )}
 
           {/* Service fee */}
-          <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
             <div className="font-semibold text-sm">Your service fee</div>
             <p className="text-xs text-muted-foreground">Your own margin per trip. Karije takes no cut of what you collect — the ₦10,000/month covers the platform. You keep 100%.</p>
             <div className="flex items-center gap-3">
@@ -453,7 +456,7 @@ const ProSetup = () => {
           </div>
 
           {/* Logo */}
-          <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
             <div className="font-semibold text-sm">Your logo</div>
             <p className="text-xs text-muted-foreground -mt-1">
               Shown on your dashboard, on every trip you build, and on the plan page
@@ -512,7 +515,7 @@ const ProSetup = () => {
           </div>
 
           {/* Brand color */}
-          <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
             <div className="font-semibold text-sm">Brand color</div>
             <div className="flex flex-wrap gap-3">
               {COLORS.map((c) => (
@@ -543,7 +546,7 @@ const ProSetup = () => {
           </div>
 
           {/* Plan — one plan, so there is nothing to choose */}
-          <div className="rounded-3xl bg-card ring-hairline p-6">
+          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6">
             <div className="flex items-baseline justify-between gap-4 flex-wrap">
               <div>
                 <div className="font-semibold text-sm">Karije Pro</div>
@@ -560,7 +563,7 @@ const ProSetup = () => {
           <button
             type="submit"
             disabled={status === "loading" || !form.phone.trim() || !form.agencyName.trim()}
-            className="w-full rounded-lg bg-foreground text-background py-4 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+            className="w-full rounded-full bg-signal text-ink border-2 border-foreground py-4 text-sm font-bold shadow-[3px_3px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_hsl(var(--foreground))] transition-transform disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
             {status === "loading" ? "Saving…" : "Launch my agency →"}
           </button>

@@ -81,17 +81,24 @@ async function forTrip(tripId) {
   };
 }
 
-/** Every trip holding money, worst-first by what's still owed. */
-async function outstandingTrips() {
+/**
+ * Every trip holding money, worst-first by what's still owed.
+ * @param {{ agentId?: string }} opts — pass agentId to scope this to one
+ *   agency's own trips (the Pro dashboard's Money tab); omit for the admin
+ *   panel's platform-wide view.
+ */
+async function outstandingTrips({ agentId } = {}) {
   const rows = await db.rawAll(
-    `SELECT t.id, t.destination, t.status, t.selected_date, t.plan, t.squad_size,
+    `SELECT t.id, t.title, t.destination, t.status, t.selected_date, t.plan, t.squad_size,
             t.service_fee_per_person, t.payout_account_name,
             (SELECT COUNT(*)                  FROM participants p WHERE p.trip_id = t.id AND p.paid = 1) AS paid_count,
             (SELECT COALESCE(SUM(p.amount),0) FROM participants p WHERE p.trip_id = t.id AND p.paid = 1) AS collected,
             (SELECT COALESCE(SUM(o.amount),0) FROM payouts o      WHERE o.trip_id = t.id AND o.status = 'paid') AS paid_out
        FROM trips t
       WHERE t.status IN ('curated', 'custom', 'awaiting_group', 'active')
-      ORDER BY t.created_at DESC`
+        AND (? IS NULL OR t.agent_id = ?)
+      ORDER BY t.created_at DESC`,
+    [agentId || null, agentId || null]
   );
 
   return rows
@@ -107,7 +114,7 @@ async function outstandingTrips() {
       const paidOut    = Number(r.paid_out ?? 0);
       return {
         tripId:      r.id,
-        name:        plan?.curated?.name || r.destination || 'Trip',
+        name:        r.title || plan?.curated?.name || r.destination || 'Trip',
         destination: r.destination,
         tripDate:    r.selected_date || null,
         paidCount,

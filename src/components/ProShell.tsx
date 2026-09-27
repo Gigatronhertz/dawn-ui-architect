@@ -1,6 +1,6 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LayoutGrid, Compass, CheckCircle2, LayoutTemplate, Settings, Menu, LogOut, ArrowLeft } from "lucide-react";
+import { LayoutGrid, Compass, CheckCircle2, LayoutTemplate, Settings, Menu, LogOut, ArrowLeft, Wallet } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, session, type AgentProfile } from "@/lib/api";
 
@@ -23,11 +23,12 @@ export const IconTrips = Compass;
 export const IconCompleted = CheckCircle2;
 export const IconTemplates = LayoutTemplate;
 export const IconSettings = Settings;
+export const IconMoney = Wallet;
 const IconMenu = Menu;
 const IconLogout = LogOut;
 const IconBack = ArrowLeft;
 
-export type ProNav = "overview" | "trips" | "completed" | "templates" | "settings";
+export type ProNav = "overview" | "trips" | "completed" | "money" | "templates" | "settings";
 
 /** The agent shape both /api/pro/me and /api/pro/dashboard return. */
 export type ProAgent = AgentProfile & {
@@ -41,6 +42,7 @@ const NAV: { id: ProNav; label: string; icon: ComponentType<{ className?: string
   { id: "overview",  label: "Overview",  icon: IconOverview  },
   { id: "trips",     label: "Trips",     icon: IconTrips     },
   { id: "completed", label: "Completed", icon: IconCompleted },
+  { id: "money",     label: "Money",     icon: IconMoney     },
   { id: "templates", label: "Templates", icon: IconTemplates },
   { id: "settings",  label: "Settings",  icon: IconSettings  },
 ];
