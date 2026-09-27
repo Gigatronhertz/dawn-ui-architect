@@ -229,6 +229,18 @@ export default function ProShell({
           </div>
         </header>
 
+        {agent?.verification_status && agent.verification_status !== 'verified' && (
+          <div className={`px-5 sm:px-8 py-2.5 text-xs font-medium border-b ${
+            agent.verification_status === 'rejected'
+              ? 'bg-destructive/10 text-destructive border-destructive/20'
+              : 'bg-signal/15 text-foreground border-signal/30'
+          }`}>
+            {agent.verification_status === 'rejected'
+              ? 'Verification was not approved — reach out to Karije to sort out what’s missing.'
+              : 'Verification pending — your trips are buildable and shareable by link, but won’t show in the public Karije catalog until an admin verifies your agency.'}
+          </div>
+        )}
+
         <div className={contentClassName ?? "px-5 sm:px-8 py-6 sm:py-8 max-w-6xl"}>
           {children}
         </div>

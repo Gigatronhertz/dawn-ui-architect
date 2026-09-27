@@ -551,15 +551,16 @@ router.get('/public/plan/:tripId', async (req, res) => {
   let agency = null;
   if (trip.agent_id) {
     const a = await db.raw(
-      'SELECT agency_name, tagline, color, logo_image_id FROM agents WHERE id = ?',
+      'SELECT agency_name, tagline, color, logo_image_id, wa_number FROM agents WHERE id = ?',
       [trip.agent_id]
     );
     if (a) {
       agency = {
-        name:    a.agency_name,
-        tagline: a.tagline || null,
-        color:   a.color || null,
-        logoUrl: a.logo_image_id ? `/api/trip-image/${a.logo_image_id}` : null,
+        name:     a.agency_name,
+        tagline:  a.tagline || null,
+        color:    a.color || null,
+        logoUrl:  a.logo_image_id ? `/api/trip-image/${a.logo_image_id}` : null,
+        waNumber: a.wa_number || null,
       };
     }
   }
@@ -968,6 +969,40 @@ router.delete('/pro/logo', requireAuth, requireAgent, async (req, res) => {
   }
 });
 
+// ── Trip cover photo ─────────────────────────────────────────────────────────
+// The one field the public catalog already expects (/api/listings reads
+// cover_image_id) but nothing ever wrote — same upload shape as the agency
+// logo above, just written onto a trip the agency owns instead of the agent.
+router.post(
+  '/pro/trips/:tripId/cover',
+  requireAuth,
+  requireAgent,
+  raw({ type: LOGO_MIME, limit: LOGO_LIMIT }),
+  async (req, res) => {
+    try {
+      const trip = await agentTripOr403(req, res);
+      if (!trip) return;
+
+      const mime = (req.headers['content-type'] || '').split(';')[0].trim();
+      if (!LOGO_MIME.includes(mime)) {
+        return res.status(415).json({ error: 'Upload a JPEG, PNG or WebP image.' });
+      }
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: 'No image data received.' });
+      }
+
+      const id = `cover_${uuid().replace(/-/g, '')}`;
+      await db.tripImages.insert({ id, mime, bytes: req.body });
+      await db.raw('UPDATE trips SET cover_image_id = ? WHERE id = ?', [id, trip.id]);
+
+      return res.json({ ok: true, coverImageId: id, url: `/api/trip-image/${id}` });
+    } catch (err) {
+      console.error('[api/pro/trips/cover]', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
 
 // ── Pro: trip templates ───────────────────────────────────────────────────────
 // Scoped to the agency that made them. Nothing here is shared between agencies.
@@ -1075,7 +1110,8 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
     await db.raw(
       `UPDATE trips SET user_id=?, agent_id=?, origin=?, destination=?, days=?,
          squad_size=?, status=?, plan=?, intake_json=?, service_fee_per_person=?,
-         title=?, summary=?, listed=?, selected_date=? WHERE id=?`,
+         title=?, summary=?, listed=?, selected_date=?,
+         payout_bank_code=?, payout_account_no=?, payout_account_name=? WHERE id=?`,
       [
         req.user.uid,
         req.agent.id,
@@ -1093,6 +1129,13 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
         typeof summary === 'string' ? summary.trim().slice(0, 240) : null,
         listed ? 1 : 0,
         typeof selectedDate === 'string' ? selectedDate.slice(0, 40) : null,
+        // Snapshotted from the agency's saved default at the moment of
+        // creation — same reasoning as service_fee_per_person above: a bank
+        // detail changed later should never retroactively move where an
+        // in-flight trip's money goes.
+        req.agent.payout_bank_code    || null,
+        req.agent.payout_account_no   || null,
+        req.agent.payout_account_name || null,
         tripId,
       ]
     );
@@ -1177,6 +1220,8 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
         completedAt:  trip.completed_at ? Number(trip.completed_at) : null,
         viewCount:    Number(trip.view_count || 0),
         perPerson,
+        coverImageId: trip.cover_image_id || null,
+        coverUrl:     trip.cover_image_id ? `/api/trip-image/${trip.cover_image_id}` : null,
       },
       plan,
       squad,
@@ -1247,7 +1292,7 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     const trip = await agentTripOr403(req, res);
     if (!trip) return;
 
-    const { title, summary, listed, squadSize, days, selectedDate, completed } = req.body || {};
+    const { title, summary, listed, squadSize, days, selectedDate, completed, coverImageId } = req.body || {};
     const sets = [];
     const args = [];
 
@@ -1255,6 +1300,7 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     if (typeof summary === 'string')               { sets.push('summary=?');       args.push(summary.trim().slice(0, 240)); }
     if (listed !== undefined)                      { sets.push('listed=?');        args.push(listed ? 1 : 0); }
     if (typeof selectedDate === 'string')          { sets.push('selected_date=?'); args.push(selectedDate.slice(0, 40)); }
+    if (typeof coverImageId === 'string')          { sets.push('cover_image_id=?'); args.push(coverImageId || null); }
     // Purely organisational — moves the trip out of the working list on the
     // dashboard. Does not touch `status`, so a trip already paid into stays
     // viewable and its receipts stay valid after it's marked done.

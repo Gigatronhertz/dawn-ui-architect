@@ -184,6 +184,10 @@ export type AgentProfile = {
   tagline?: string;
   /** Points into the image store; run it through imageUrl() before rendering. */
   logo_image_id?: string | null;
+  /** 'pending' until an admin reviews the agency's KYC documents — trips stay
+   *  buildable and shareable throughout, they just don't show up in the
+   *  public catalog (/api/listings) until this is 'verified'. */
+  verification_status?: 'pending' | 'verified' | 'rejected';
 };
 
 export type TripRow = {
@@ -333,6 +337,7 @@ export type AgencyTripDetail = {
     days: number; squadSize: number; listed: boolean; status: string;
     selectedDate: string | null; createdAt: number; perPerson: number;
     completedAt: number | null; viewCount: number;
+    coverImageId: string | null; coverUrl: string | null;
   };
   plan: TripPlan | null;
   squad: AgencySquadMember[];
@@ -361,6 +366,7 @@ export type PlanAgency = {
   tagline: string | null;
   color: string | null;
   logoUrl: string | null;
+  waNumber: string | null;
 };
 
 export const api = {
@@ -565,6 +571,17 @@ export const api = {
   /** Drop the logo. The stored image stays, so live plans keep rendering. */
   removeAgencyLogo: (token: string) =>
     del<{ ok: boolean }>('/api/pro/logo', bearer(token)),
+
+  uploadTripCover: async (tripId: string, file: File, token: string) => {
+    const res = await fetch(`${API_URL}/api/pro/trips/${tripId}/cover`, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type, Authorization: `Bearer ${token}` },
+      body: file,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not upload the cover photo.');
+    return data as { ok: boolean; coverImageId: string; url: string };
+  },
 
   // ── Agency-owned trips ───────────────────────────────────────────────────
   /** Create a trip the agency owns. Costs are re-derived server-side. */

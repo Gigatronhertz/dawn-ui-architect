@@ -164,8 +164,26 @@ export default function ProTripDetail() {
   const [tab, setTab]         = useState<Tab>("all");
   const [exporting, setExporting] = useState(false);
   const [completedBusy, setCompletedBusy] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverErr, setCoverErr]   = useState("");
 
   const shareUrl = `${window.location.origin}/plan/${tripId}`;
+
+  async function uploadCover(file: File | undefined) {
+    if (!file || !tripId) return;
+    setCoverBusy(true);
+    setCoverErr("");
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("Please sign in again.");
+      await api.uploadTripCover(tripId, file, token);
+      await load();
+    } catch (e) {
+      setCoverErr(e instanceof Error ? e.message : "Could not upload the cover photo.");
+    } finally {
+      setCoverBusy(false);
+    }
+  }
 
   const load = useCallback(async () => {
     const token = session.get();
@@ -372,6 +390,38 @@ export default function ProTripDetail() {
             </span>
           </div>
         )}
+
+        {/* ── Cover photo ───────────────────────────────────────────────── */}
+        {/* /api/listings already reads cover_image_id — a trip card with no
+            photo is close to unsellable, so this is the highest-leverage
+            single field this page was missing. */}
+        <div className="rounded-2xl bg-card ring-hairline p-5 mb-6 flex flex-wrap items-center gap-4">
+          <div
+            className="w-28 h-20 rounded-xl overflow-hidden shrink-0 bg-secondary/60 grid place-items-center"
+            style={{ backgroundColor: trip.coverUrl ? undefined : (agency?.color || "#6B7280") + "22" }}
+          >
+            {trip.coverUrl
+              ? <img src={imageUrl(trip.coverUrl)!} alt="" className="w-full h-full object-cover" />
+              : <span className="text-[10px] text-muted-foreground">No photo</span>}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] font-medium text-muted-foreground mb-1">Cover photo</div>
+            <p className="text-xs text-muted-foreground mb-2">
+              Shown on this trip's card in the Karije catalog.
+            </p>
+            <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer rounded-lg bg-foreground text-background px-3 py-2 hover:opacity-90 transition-opacity">
+              {coverBusy ? "Uploading…" : trip.coverUrl ? "Replace photo" : "Add a photo"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={coverBusy}
+                className="hidden"
+                onChange={(e) => { uploadCover(e.target.files?.[0]); e.target.value = ""; }}
+              />
+            </label>
+            {coverErr && <p className="text-xs text-destructive mt-1.5">{coverErr}</p>}
+          </div>
+        </div>
 
         {/* ── Share link ────────────────────────────────────────────────── */}
         <div className="rounded-2xl bg-card ring-hairline p-5 mb-6 flex flex-wrap items-center gap-3 justify-between">
