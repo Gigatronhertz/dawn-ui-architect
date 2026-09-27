@@ -25,7 +25,7 @@ const GOOGLE_INFO_URL  = 'https://www.googleapis.com/oauth2/v3/userinfo';
 function clientId()     { return process.env.GOOGLE_CLIENT_ID; }
 function clientSecret() { return process.env.GOOGLE_CLIENT_SECRET; }
 function backendUrl()   { return (process.env.BACKEND_URL  || 'https://dawn-ui-architect.onrender.com').replace(/\/$/, ''); }
-function frontendUrl()  { return (process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app').replace(/\/$/, ''); }
+function frontendUrl()  { return (process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, ''); }
 function callbackUrl()  { return `${backendUrl()}/auth/google/callback`; }
 
 function available() { return !!(clientId() && clientSecret()); }

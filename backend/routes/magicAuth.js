@@ -19,7 +19,7 @@ const jwt        = require('../services/jwt');
 const router = Router();
 
 const BACKEND  = () => (process.env.BACKEND_URL  || 'https://dawn-ui-architect.onrender.com').replace(/\/$/, '');
-const FRONTEND = () => (process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app').replace(/\/$/, '');
+const FRONTEND = () => (process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '');
 const FROM     = () =>  process.env.EMAIL_FROM   || 'Karije <hello@karije.com>';
 const TTL_MS   = 15 * 60 * 1000; // 15 minutes
 

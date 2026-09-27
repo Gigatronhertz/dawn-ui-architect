@@ -16,7 +16,7 @@ function getResend() {
   return _resend;
 }
 
-const FRONTEND = process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app';
+const FRONTEND = process.env.FRONTEND_URL || 'https://karije.com';
 const FROM     = process.env.EMAIL_FROM    || 'Karije <hello@karije.com>';
 
 /**
@@ -232,11 +232,82 @@ async function sendPayoutReleasedEmail({ to, name, tripName, agencyName }) {
   });
 }
 
+/**
+ * Monthly nudge for someone paying a trip off in installments — same tone
+ * escalation as sendPaymentReminderEmail, but with a running balance instead
+ * of a single flat share, since they've likely already paid something.
+ */
+async function sendInstallmentReminderEmail({
+  to, name, tripName, monthNumber, totalMonths, amountDue, paidSoFar, targetAmount, remaining, monthsUntilTrip, link, tone,
+}) {
+  const resend = getResend();
+  if (!resend || !to) return;
+
+  const who = name ? `${name}, ` : '';
+  const heading = tone === 'overdue'
+    ? `A payment on ${tripName} is overdue`
+    : `Month ${monthNumber} of ${totalMonths} — ${tripName}`;
+
+  const untilTrip = monthsUntilTrip != null
+    ? ` ${monthsUntilTrip <= 0 ? 'The trip is coming up.' : `${monthsUntilTrip} month${monthsUntilTrip === 1 ? '' : 's'} left until the trip.`}`
+    : '';
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: tone === 'overdue' ? `Overdue — ${tripName}` : `This month's payment — ${tripName}`,
+    html: shell({
+      heading,
+      body: `<p style="margin:0 0 12px;">${who}this month's payment is <strong style="color:#22321f;">${fmtNGN(amountDue)}</strong>.</p>
+             <p style="margin:0 0 12px;">You've paid <strong style="color:#22321f;">${fmtNGN(paidSoFar)}</strong> of
+             <strong style="color:#22321f;">${fmtNGN(targetAmount)}</strong> so far — <strong style="color:#22321f;">${fmtNGN(remaining)}</strong> left to go.${untilTrip}</p>`,
+      ctaLabel: 'Pay this month',
+      ctaUrl: link,
+      footnote: `Karije holds every payment until your trip is fully paid up, then releases it to the agency — same protection as paying in full.`,
+    }),
+  });
+}
+
+/**
+ * One periodic email to an agency summarizing every installment subscriber
+ * across their trips — a digest, not a per-subscriber stream, so it doesn't
+ * turn into a message an agency dreads opening.
+ */
+async function sendInstallmentDigestEmail({ to, agencyName, link, trips }) {
+  const resend = getResend();
+  if (!resend || !to || !trips?.length) return;
+
+  const tripRows = trips.map((t) => `
+    <div style="margin:0 0 16px;">
+      <div style="font-weight:600;color:#22321f;margin-bottom:6px;">${t.name}</div>
+      ${t.subscribers.map((s) => `
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#5c6b5c;padding:4px 0;border-top:1px solid #eee;">
+          <span>${s.name || 'Traveller'}</span>
+          <span>${fmtNGN(s.paidAmount)} / ${fmtNGN(s.targetAmount)}</span>
+        </div>`).join('')}
+    </div>`).join('');
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Installment subscribers update — ${agencyName}`,
+    html: shell({
+      heading: `How your installment subscribers are tracking`,
+      body: `<div style="margin:0 0 16px;">${tripRows}</div>`,
+      ctaLabel: 'See the full breakdown',
+      ctaUrl: link,
+      footnote: `Sent roughly monthly — one summary rather than one email per subscriber.`,
+    }),
+  });
+}
+
 module.exports = {
   sendPlanReadyEmail,
   sendPlanConfirmedEmail,
   sendPaymentReminderEmail,
   sendPaymentReceiptEmail,
   sendPayoutReleasedEmail,
+  sendInstallmentReminderEmail,
+  sendInstallmentDigestEmail,
   available,
 };

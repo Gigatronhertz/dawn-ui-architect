@@ -32,6 +32,13 @@ export default function ProTripBuilder() {
   const [listed, setListed]     = useState(true);
   const [err, setErr]           = useState("");
 
+  // Monthly-payment settings — off by default; an agency opts a specific
+  // trip in rather than every trip supporting it automatically.
+  const [installmentsEnabled, setInstallmentsEnabled]   = useState(false);
+  const [installmentMinMonths, setInstallmentMinMonths] = useState("2");
+  const [installmentMaxMonths, setInstallmentMaxMonths] = useState("12");
+  const [installmentMinAmount, setInstallmentMinAmount] = useState("");
+
   // Templates this agency has saved, and the one currently loaded.
   const [templates, setTemplates] = useState<TripTemplate[]>([]);
   const [seed, setSeed]           = useState<{ days: TripTemplate["days"]; squadSize?: number } | null>(null);
@@ -88,6 +95,9 @@ export default function ProTripBuilder() {
     const token = await getIdToken();
     if (!token) throw new Error("Please sign in again.");
 
+    const minMonths = Math.max(2, Math.round(Number(installmentMinMonths)) || 2);
+    const maxMonths = Math.max(minMonths, Math.round(Number(installmentMaxMonths)) || 12);
+
     const res = await api.createAgencyTrip({
       title: title.trim(),
       summary: summary.trim() || undefined,
@@ -98,6 +108,10 @@ export default function ProTripBuilder() {
       selectedDate: date || null,
       saveAsTemplate,
       templateName: saveAsTemplate ? (templateName.trim() || title.trim()) : undefined,
+      installmentsEnabled,
+      installmentMinMonths: minMonths,
+      installmentMaxMonths: maxMonths,
+      installmentMinAmount: installmentMinAmount.trim() ? Math.round(Number(installmentMinAmount)) : null,
     }, token);
 
     navigate(`/pro/trips/${res.tripId}`);
@@ -301,6 +315,64 @@ export default function ProTripBuilder() {
                 </span>
               </span>
             </label>
+
+            <label className="flex items-start gap-3 pb-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={installmentsEnabled}
+                onChange={(e) => setInstallmentsEnabled(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-primary shrink-0"
+              />
+              <span className="text-xs font-jost font-light leading-relaxed">
+                <span className="text-foreground font-medium">Allow monthly payments</span>
+                <span className="text-muted-foreground">
+                  {" "}— travellers can subscribe and pay their share off over several months
+                  instead of all at once. Karije still holds every payment until the trip is
+                  fully paid up.
+                </span>
+              </span>
+            </label>
+            {installmentsEnabled && (
+              <div className="grid grid-cols-3 gap-3 pl-7 -mt-1 pb-1">
+                <div>
+                  <label htmlFor="inst-min-months" className="text-[11px] text-muted-foreground block mb-1">
+                    Min. months
+                  </label>
+                  <input
+                    id="inst-min-months" type="number" min={2} max={24}
+                    value={installmentMinMonths}
+                    onChange={(e) => setInstallmentMinMonths(e.target.value)}
+                    className="w-full border border-border bg-background px-3 py-2 text-xs font-jost focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="inst-max-months" className="text-[11px] text-muted-foreground block mb-1">
+                    Max. months
+                  </label>
+                  <input
+                    id="inst-max-months" type="number" min={2} max={24}
+                    value={installmentMaxMonths}
+                    onChange={(e) => setInstallmentMaxMonths(e.target.value)}
+                    className="w-full border border-border bg-background px-3 py-2 text-xs font-jost focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="inst-min-amount" className="text-[11px] text-muted-foreground block mb-1">
+                    Min. ₦/month
+                  </label>
+                  <input
+                    id="inst-min-amount" type="number" min={0} placeholder="No minimum"
+                    value={installmentMinAmount}
+                    onChange={(e) => setInstallmentMinAmount(e.target.value)}
+                    className="w-full border border-border bg-background px-3 py-2 text-xs font-jost focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/50"
+                  />
+                </div>
+                <p className="col-span-3 text-[10px] text-muted-foreground -mt-1">
+                  One month can't be split monthly, so the minimum is always at least 2 — and
+                  a plan is never offered for longer than the time left before the trip.
+                </p>
+              </div>
+            )}
             </>
           }
         />

@@ -143,12 +143,16 @@ function DayAccordion({ day }: { day: PlanDay }) {
  * been paid. "verifying" is the wait after coming back while we ask the server
  * what actually happened. Only "paid" is a confirmed payment.
  */
-type PayState = "idle" | "form" | "loading" | "redirecting" | "verifying" | "paid" | "unconfirmed";
+type PayState = "idle" | "form" | "loading" | "redirecting" | "verifying" | "paid" | "installment_paid" | "unconfirmed";
 
 function PaymentSection({
-  tripId, participantId, perPerson, justPaid, paymentsEnabled,
+  tripId, participantId, perPerson, justPaid, paymentsEnabled, selectedDate,
+  installmentsEnabled, installmentMinMonths, installmentMaxMonths, installmentMinAmount,
 }: {
   tripId: string; participantId: string; perPerson: number; justPaid: boolean; paymentsEnabled: boolean;
+  selectedDate: string | null;
+  installmentsEnabled: boolean; installmentMinMonths: number; installmentMaxMonths: number;
+  installmentMinAmount: number | null;
 }) {
   const [payState, setPayState] = useState<PayState>(justPaid ? "verifying" : "idle");
   const [email, setEmail]       = useState("");
@@ -161,6 +165,28 @@ function PaymentSection({
    */
   const [hasEmail, setHasEmail] = useState(false);
 
+  // Installment plan state — null paymentPlan means "not asked yet".
+  const [paymentPlan, setPaymentPlan]   = useState<"full" | "installment">("full");
+  const [paidAmount, setPaidAmount]     = useState<number | null>(null);
+  const [remaining, setRemaining]       = useState<number | null>(null);
+  const [installmentMonths, setInstallmentMonths] = useState<number | null>(null);
+  const [showChooser, setShowChooser]   = useState(false);
+  const [chooseMonths, setChooseMonths] = useState(installmentMinMonths);
+  const [subscribeErr, setSubscribeErr] = useState("");
+  const [subscribing, setSubscribing]   = useState(false);
+  const [payInFull, setPayInFull]       = useState(false); // which charge the next redirect/form submit sends
+
+  const monthsUntilTrip = selectedDate
+    ? Math.max(1, Math.ceil((parseLocalDate(selectedDate).getTime() - Date.now()) / (30 * 24 * 60 * 60 * 1000)))
+    : null;
+  // The agency's own min/max, further capped by how far out the trip is —
+  // mirrors the server's own clamp in POST .../subscribe exactly, so the
+  // picker never offers a number the server would then reject.
+  const chooserMax = monthsUntilTrip !== null
+    ? Math.min(installmentMaxMonths, monthsUntilTrip)
+    : installmentMaxMonths;
+  const installmentEligible = installmentsEnabled && chooserMax >= installmentMinMonths;
+
   // Ask once on mount who this is. Doubles as recovery: if a payment landed
   // while the page was closed, this is where it gets picked up.
   useEffect(() => {
@@ -169,6 +195,10 @@ function PaymentSection({
       .then((s) => {
         if (!live) return;
         setHasEmail(s.hasEmail);
+        setPaymentPlan(s.paymentPlan);
+        setPaidAmount(s.paidAmount);
+        setRemaining(s.remaining);
+        setInstallmentMonths(s.installmentMonths);
         if (s.paid) setPayState("paid");
       })
       .catch(() => { /* leave it to the pay flow to surface problems */ });
@@ -187,9 +217,19 @@ function PaymentSection({
 
     const check = async () => {
       try {
-        const { paid } = await api.getMyPaymentStatus(tripId, participantId);
+        const s = await api.getMyPaymentStatus(tripId, participantId);
         if (!live) return;
-        if (paid) { setPayState("paid"); return; }
+        if (s.paid) { setPayState("paid"); return; }
+        // An installment payer never flips `paid` mid-plan — recordPayment
+        // pushes nextDueAt ~30 days out the moment a charge lands, so seeing
+        // it that far ahead is the signal this specific payment landed.
+        if (s.paymentPlan === "installment" && s.nextDueAt && s.nextDueAt > Date.now() / 1000 + 25 * 24 * 60 * 60) {
+          setPaidAmount(s.paidAmount);
+          setRemaining(s.remaining);
+          setInstallmentMonths(s.installmentMonths);
+          setPayState("installment_paid");
+          return;
+        }
       } catch { /* keep trying — a blip shouldn't read as a failed payment */ }
       if (!live) return;
       // ~20s of grace for the webhook, then say so honestly.
@@ -209,6 +249,29 @@ function PaymentSection({
           <div className="font-display font-semibold text-google-green">Payment confirmed!</div>
           <p className="text-sm text-muted-foreground mt-0.5">You're all set. See you on the trip! 🎉</p>
         </div>
+      </div>
+    );
+  }
+
+  if (payState === "installment_paid") {
+    return (
+      <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-2xl bg-google-green/15 grid place-items-center shrink-0"><CheckCircle2 className="w-5 h-5 text-google-green" /></div>
+          <div>
+            <div className="font-display font-semibold text-google-green">This month's payment is in!</div>
+            <p className="text-sm text-muted-foreground mt-0.5">We'll remind you again next month.</p>
+          </div>
+        </div>
+        {paidAmount !== null && (
+          <div className="rounded-xl bg-background/60 px-4 py-3 text-sm">
+            <span className="font-medium">{fmtNGN(paidAmount)}</span>
+            <span className="text-muted-foreground"> of {fmtNGN(perPerson)} paid</span>
+            {remaining !== null && remaining > 0 && (
+              <span className="text-muted-foreground"> · {fmtNGN(remaining)} left</span>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -275,12 +338,14 @@ function PaymentSection({
 
   /**
    * We already have their email from joining, so go straight to paying. Only
-   * someone who skipped the email field on join still sees a form.
+   * someone who skipped the email field on join still sees a form. `full`
+   * only ever matters for an installment payer settling the rest in one go.
    */
-  function handlePayNow() {
+  function handlePayNow(full = false) {
+    setPayInFull(full);
     if (hasEmail) {
       setPayState("redirecting");
-      window.location.href = api.payLink(participantId);
+      window.location.href = api.payLink(participantId, { full });
       return;
     }
     setPayState("form");
@@ -292,7 +357,7 @@ function PaymentSection({
     setPayState("loading");
     setError("");
     try {
-      const { authorization_url } = await api.initPayment(tripId, { participantId, email: email.trim() });
+      const { authorization_url } = await api.initPayment(tripId, { participantId, email: email.trim(), payInFull });
       setPayState("redirecting");
       window.location.href = authorization_url;
     } catch (err) {
@@ -301,26 +366,133 @@ function PaymentSection({
     }
   }
 
+  async function handleSubscribe() {
+    setSubscribing(true);
+    setSubscribeErr("");
+    try {
+      await api.subscribeInstallment(tripId, { participantId, months: chooseMonths });
+      setPaymentPlan("installment");
+      setInstallmentMonths(chooseMonths);
+      setPaidAmount(0);
+      setRemaining(perPerson);
+      setShowChooser(false);
+    } catch (err) {
+      setSubscribeErr(err instanceof Error ? err.message : "Could not start the plan. Please try again.");
+    } finally {
+      setSubscribing(false);
+    }
+  }
+
+  const installmentAmountPreview = Math.ceil(perPerson / chooseMonths);
+  const belowMinAmount = installmentMinAmount != null && installmentAmountPreview < installmentMinAmount;
+  const nextInstallmentAmount = remaining != null && installmentMonths
+    ? Math.min(Math.ceil(perPerson / installmentMonths), remaining)
+    : null;
+
   return (
     <div className="rounded-2xl bg-primary/10 ring-1 ring-primary/20 p-5">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <div className="font-display font-semibold">Pay your share</div>
+          <div className="font-display font-semibold">
+            {paymentPlan === "installment" ? "Your monthly plan" : "Pay your share"}
+          </div>
           <div className="text-sm text-muted-foreground">Secure payment via Paystack</div>
         </div>
         <div className="text-right shrink-0">
-          <div className="font-display text-2xl font-semibold text-foreground">{fmtNGN(perPerson)}</div>
-          <div className="text-[10px] text-muted-foreground">per person</div>
+          <div className="font-display text-2xl font-semibold text-foreground">
+            {fmtNGN(paymentPlan === "installment" && nextInstallmentAmount != null ? nextInstallmentAmount : perPerson)}
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            {paymentPlan === "installment" ? "next payment" : "per person"}
+          </div>
         </div>
       </div>
 
-      {payState === "idle" && (
-        <button
-          onClick={handlePayNow}
-          className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
-        >
-          Pay now →
-        </button>
+      {/* Already on a plan — progress + next-payment actions */}
+      {payState === "idle" && paymentPlan === "installment" && (
+        <div className="space-y-3">
+          <div className="rounded-xl bg-background/60 px-4 py-3 text-sm">
+            <span className="font-medium">{fmtNGN(paidAmount ?? 0)}</span>
+            <span className="text-muted-foreground"> of {fmtNGN(perPerson)} paid</span>
+            {installmentMonths && (
+              <span className="text-muted-foreground"> · {installmentMonths} month plan</span>
+            )}
+          </div>
+          <button
+            onClick={() => handlePayNow(false)}
+            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+          >
+            Pay this month — {fmtNGN(nextInstallmentAmount ?? 0)} →
+          </button>
+          <button
+            onClick={() => handlePayNow(true)}
+            className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition"
+          >
+            Pay the rest in full instead — {fmtNGN(remaining ?? 0)}
+          </button>
+        </div>
+      )}
+
+      {/* Chooser — pick a plan instead of paying in full */}
+      {payState === "idle" && paymentPlan === "full" && showChooser && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setChooseMonths(m => Math.max(installmentMinMonths, m - 1))}
+              className="w-9 h-9 rounded-lg bg-secondary text-foreground grid place-items-center hover:bg-secondary/70 transition shrink-0"
+            >−</button>
+            <div className="text-center">
+              <div className="font-display text-xl font-semibold tabular-nums">{chooseMonths} {chooseMonths === 1 ? "month" : "months"}</div>
+              <div className="text-xs text-muted-foreground tabular-nums">{fmtNGN(installmentAmountPreview)}/month</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setChooseMonths(m => Math.min(chooserMax, m + 1))}
+              className="w-9 h-9 rounded-lg bg-secondary text-foreground grid place-items-center hover:bg-secondary/70 transition shrink-0"
+            >+</button>
+          </div>
+          {belowMinAmount && (
+            <p className="text-xs text-destructive text-center">
+              That's below the {fmtNGN(installmentMinAmount!)}/month minimum for this trip — choose fewer months.
+            </p>
+          )}
+          {subscribeErr && <p className="text-xs text-destructive text-center">{subscribeErr}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSubscribe}
+              disabled={subscribing || belowMinAmount}
+              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition disabled:opacity-40"
+            >
+              {subscribing ? "Starting…" : "Start this plan →"}
+            </button>
+            <button type="button" onClick={() => setShowChooser(false)}
+              className="rounded-lg bg-secondary text-foreground px-4 py-3 text-sm font-medium hover:bg-secondary/60 transition"
+            >
+              Back
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Plain idle — pay in full, or offer the monthly option */}
+      {payState === "idle" && paymentPlan === "full" && !showChooser && (
+        <div className="space-y-2">
+          <button
+            onClick={() => handlePayNow(false)}
+            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+          >
+            Pay in full — {fmtNGN(perPerson)} →
+          </button>
+          {installmentEligible && (
+            <button
+              onClick={() => setShowChooser(true)}
+              className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition py-1"
+            >
+              Or pay monthly instead
+            </button>
+          )}
+        </div>
       )}
 
       {payState === "form" && (
@@ -336,7 +508,7 @@ function PaymentSection({
             <button type="submit"
               className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
             >
-              Pay {fmtNGN(perPerson)} →
+              Pay {fmtNGN(payInFull ? (remaining ?? perPerson) : (nextInstallmentAmount ?? perPerson))} →
             </button>
             <button type="button" onClick={() => { setPayState("idle"); setError(""); }}
               className="rounded-lg bg-secondary text-foreground px-4 py-3 text-sm font-medium hover:bg-secondary/60 transition"
@@ -363,11 +535,15 @@ type JoinState = "idle" | "name-input" | "loading" | "joined" | "reminding" | "e
 
 function JoinSection({
   tripId, initialCount, initialPaidCount, initialTotalCollected, initialNames,
-  perPerson, squadSize, groupMin, paymentsEnabled, justPaid,
+  perPerson, squadSize, groupMin, paymentsEnabled, justPaid, selectedDate,
+  installmentsEnabled, installmentMinMonths, installmentMaxMonths, installmentMinAmount,
 }: {
   tripId: string; initialCount: number; initialPaidCount: number; initialTotalCollected: number;
   initialNames: (string | null)[]; perPerson: number; squadSize: number | null;
   groupMin: number | null; paymentsEnabled: boolean; justPaid: boolean;
+  selectedDate: string | null;
+  installmentsEnabled: boolean; installmentMinMonths: number; installmentMaxMonths: number;
+  installmentMinAmount: number | null;
 }) {
   const storageKey = `msgo_pid_${tripId}`;
   const [count, setCount]             = useState(initialCount);
@@ -495,6 +671,11 @@ function JoinSection({
           <PaymentSection
             tripId={tripId} participantId={participantId!}
             perPerson={perPerson} justPaid={justPaid} paymentsEnabled={paymentsEnabled}
+            selectedDate={selectedDate}
+            installmentsEnabled={installmentsEnabled}
+            installmentMinMonths={installmentMinMonths}
+            installmentMaxMonths={installmentMaxMonths}
+            installmentMinAmount={installmentMinAmount}
           />
         </div>
       ) : joinState === "reminding" ? (
@@ -924,6 +1105,11 @@ export default function PlanView() {
                 groupMin={data.groupMin}
                 paymentsEnabled={data.paymentsEnabled}
                 justPaid={justPaid}
+                selectedDate={data.selectedDate}
+                installmentsEnabled={data.installmentsEnabled}
+                installmentMinMonths={data.installmentMinMonths}
+                installmentMaxMonths={data.installmentMaxMonths}
+                installmentMinAmount={data.installmentMinAmount}
               />
             )}
 

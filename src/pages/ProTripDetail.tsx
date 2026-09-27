@@ -91,6 +91,11 @@ function TravellerRow({ m, perPerson, onRemind, sending }: {
             <span className={`w-1.5 h-1.5 rounded-full ${m.paid ? "bg-primary" : "bg-muted-foreground/50"}`} />
             {m.paid ? "Paid" : "Pending"}
           </span>
+          {m.paymentPlan === "installment" && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-jost font-medium rounded-full border border-primary/30 bg-primary/10 text-foreground px-2 py-0.5">
+              Installment{m.installmentMonths ? ` · ${m.installmentMonths}mo` : ""}
+            </span>
+          )}
         </div>
 
         {/* Email and phone both, always — never one or the other. */}
@@ -124,7 +129,13 @@ function TravellerRow({ m, perPerson, onRemind, sending }: {
           </>
         ) : (
           <>
-            <div className="text-muted-foreground">Joined {fmtDate(m.joinedAt)}</div>
+            {m.paymentPlan === "installment" ? (
+              <div className="text-sm font-medium tabular-nums">
+                {fmtNGN(m.paidAmount ?? 0)} <span className="text-muted-foreground font-normal">/ {fmtNGN(m.amount ?? perPerson)}</span>
+              </div>
+            ) : (
+              <div className="text-muted-foreground">Joined {fmtDate(m.joinedAt)}</div>
+            )}
             <div className="text-muted-foreground">
               {m.remindersSent > 0
                 ? `Chased ${m.remindersSent}× · last ${fmtDate(m.lastRemindedAt)}`
@@ -166,6 +177,11 @@ export default function ProTripDetail() {
   const [completedBusy, setCompletedBusy] = useState(false);
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverErr, setCoverErr]   = useState("");
+
+  const [instBusy, setInstBusy]         = useState(false);
+  const [instMinMonths, setInstMinMonths] = useState("2");
+  const [instMaxMonths, setInstMaxMonths] = useState("12");
+  const [instMinAmount, setInstMinAmount] = useState("");
 
   const shareUrl = `${window.location.origin}/plan/${tripId}`;
 
@@ -209,6 +225,55 @@ export default function ProTripDetail() {
     const name = data?.trip.title || data?.trip.city;
     document.title = name ? `${name} · Karije Pro` : "Trip · Karije Pro";
   }, [data]);
+
+  // Re-seed the editable installment fields whenever fresh data lands —
+  // including right after this same form saves, so it reflects what's
+  // actually stored rather than whatever's still sitting in the inputs.
+  useEffect(() => {
+    if (!data) return;
+    setInstMinMonths(String(data.trip.installmentMinMonths));
+    setInstMaxMonths(String(data.trip.installmentMaxMonths));
+    setInstMinAmount(data.trip.installmentMinAmount ? String(data.trip.installmentMinAmount) : "");
+  }, [data]);
+
+  async function toggleInstallments() {
+    if (!data) return;
+    const next = !data.trip.installmentsEnabled;
+    setInstBusy(true);
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("Please sign in again.");
+      await api.updateAgencyTrip(tripId!, { installmentsEnabled: next }, token);
+      setNote(next ? "Monthly payments turned on for this trip." : "Monthly payments turned off.");
+      await load();
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "Could not update the trip.");
+    } finally {
+      setInstBusy(false);
+    }
+  }
+
+  async function saveInstallmentSettings() {
+    if (!data) return;
+    setInstBusy(true);
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("Please sign in again.");
+      const minMonths = Math.max(2, Math.round(Number(instMinMonths)) || 2);
+      const maxMonths = Math.max(minMonths, Math.round(Number(instMaxMonths)) || 12);
+      await api.updateAgencyTrip(tripId!, {
+        installmentMinMonths: minMonths,
+        installmentMaxMonths: maxMonths,
+        installmentMinAmount: instMinAmount.trim() ? Math.round(Number(instMinAmount)) : null,
+      }, token);
+      setNote("Monthly payment settings saved.");
+      await load();
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "Could not save those settings.");
+    } finally {
+      setInstBusy(false);
+    }
+  }
 
   const squad   = data?.squad ?? [];
   const paid    = useMemo(() => squad.filter(s => s.paid),  [squad]);
@@ -421,6 +486,64 @@ export default function ProTripDetail() {
             </label>
             {coverErr && <p className="text-xs text-destructive mt-1.5">{coverErr}</p>}
           </div>
+        </div>
+
+        {/* ── Monthly payments ──────────────────────────────────────────── */}
+        <div className="rounded-2xl bg-card ring-hairline p-5 mb-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-medium text-muted-foreground mb-1">Monthly payments</div>
+              <p className="text-xs text-muted-foreground">
+                Let travellers subscribe and pay their share off over several months instead of all at once.
+              </p>
+            </div>
+            <button
+              onClick={toggleInstallments}
+              disabled={instBusy}
+              className={`shrink-0 text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap disabled:opacity-40 ${
+                trip.installmentsEnabled
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+              }`}
+            >
+              {trip.installmentsEnabled ? "On" : "Off"}
+            </button>
+          </div>
+          {trip.installmentsEnabled && (
+            <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-3 items-end">
+              <div>
+                <label htmlFor="edit-inst-min" className="text-[11px] text-muted-foreground block mb-1">Min. months</label>
+                <input
+                  id="edit-inst-min" type="number" min={2} max={24}
+                  value={instMinMonths} onChange={(e) => setInstMinMonths(e.target.value)}
+                  className="w-full rounded-lg bg-secondary/60 ring-hairline px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-inst-max" className="text-[11px] text-muted-foreground block mb-1">Max. months</label>
+                <input
+                  id="edit-inst-max" type="number" min={2} max={24}
+                  value={instMaxMonths} onChange={(e) => setInstMaxMonths(e.target.value)}
+                  className="w-full rounded-lg bg-secondary/60 ring-hairline px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-inst-amount" className="text-[11px] text-muted-foreground block mb-1">Min. ₦/month</label>
+                <input
+                  id="edit-inst-amount" type="number" min={0} placeholder="No minimum"
+                  value={instMinAmount} onChange={(e) => setInstMinAmount(e.target.value)}
+                  className="w-full rounded-lg bg-secondary/60 ring-hairline px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground/50"
+                />
+              </div>
+              <button
+                onClick={saveInstallmentSettings}
+                disabled={instBusy}
+                className="col-span-3 rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              >
+                {instBusy ? "Saving…" : "Save monthly-payment settings"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Share link ────────────────────────────────────────────────── */}

@@ -38,13 +38,20 @@ async function forTrip(tripId) {
   const trip = await db.trips.get(tripId);
   if (!trip) return null;
 
-  const paidRows = await db.rawAll(
-    `SELECT COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
-       FROM participants WHERE trip_id = ? AND paid = 1`,
+  const paidCountRows = await db.rawAll(
+    `SELECT COUNT(*) AS n FROM participants WHERE trip_id = ? AND paid = 1`,
     [tripId]
   );
-  const paidCount = Number(paidRows[0]?.n     ?? 0);
-  const collected = Number(paidRows[0]?.total ?? 0);
+  const paidCount = Number(paidCountRows[0]?.n ?? 0);
+
+  // Actual cash received — every charge, not just from participants who've
+  // finished paying off their plan. An installment subscriber's first
+  // payment is just as real and just as held as anyone else's full payment.
+  const collectedRows = await db.rawAll(
+    `SELECT COALESCE(SUM(amount), 0) AS total FROM participant_payments WHERE trip_id = ?`,
+    [tripId]
+  );
+  const collected = Number(collectedRows[0]?.total ?? 0);
 
   const payoutRows = await db.rawAll(
     `SELECT COALESCE(SUM(amount), 0) AS total
@@ -91,8 +98,8 @@ async function outstandingTrips({ agentId } = {}) {
   const rows = await db.rawAll(
     `SELECT t.id, t.title, t.destination, t.status, t.selected_date, t.plan, t.squad_size,
             t.service_fee_per_person, t.payout_account_name,
-            (SELECT COUNT(*)                  FROM participants p WHERE p.trip_id = t.id AND p.paid = 1) AS paid_count,
-            (SELECT COALESCE(SUM(p.amount),0) FROM participants p WHERE p.trip_id = t.id AND p.paid = 1) AS collected,
+            (SELECT COUNT(*)                  FROM participants p       WHERE p.trip_id = t.id AND p.paid = 1) AS paid_count,
+            (SELECT COALESCE(SUM(pp.amount),0) FROM participant_payments pp WHERE pp.trip_id = t.id)            AS collected,
             (SELECT COALESCE(SUM(o.amount),0) FROM payouts o      WHERE o.trip_id = t.id AND o.status = 'paid') AS paid_out
        FROM trips t
       WHERE t.status IN ('curated', 'custom', 'awaiting_group', 'active')

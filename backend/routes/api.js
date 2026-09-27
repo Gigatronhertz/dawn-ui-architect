@@ -147,7 +147,7 @@ router.post('/plan', async (req, res) => {
       // WhatsApp — a first-contact message, so it must be an approved
       // template (see services/whisper360.js's docblock on the 24h window).
       if (trip?.notify_wa) {
-        const planUrl = `${(process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app').replace(/\/$/, '')}/start?job=${tripId}`;
+        const planUrl = `${(process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '')}/start?job=${tripId}`;
         whisper360.sendTemplate(trip.notify_wa, WHISPER360_TEMPLATE_PLAN_READY, {
           destination: destination || 'your trip',
           link: planUrl,
@@ -587,6 +587,12 @@ router.get('/public/plan/:tripId', async (req, res) => {
     // and a minimum headcount the squad has to clear for the trip to run.
     curated:          plan.curated || null,
     groupMin:         plan.curated?.groupMin ?? null,
+    // Whether — and how — this specific trip can be paid off monthly. Only
+    // ever true on an agency trip; the trip's own creator opts in.
+    installmentsEnabled:  !!trip.installments_enabled,
+    installmentMinMonths: Number(trip.installment_min_months) || 2,
+    installmentMaxMonths: Number(trip.installment_max_months) || 12,
+    installmentMinAmount: trip.installment_min_amount ? Number(trip.installment_min_amount) : null,
   });
 });
 
@@ -625,6 +631,75 @@ router.post('/public/plan/:tripId/join', async (req, res) => {
   return res.json({ ok: true, count: participants.length, participantId });
 });
 
+// POST /api/public/plan/:tripId/subscribe
+// Puts a participant on a monthly installment plan instead of paying their
+// full share in one go. Pro-agency trips only — the legacy squad-trip flow
+// isn't part of this. First installment is due immediately; the pay routes
+// (below, and GET /pay/:id in webhook.js) already know to charge the next
+// slice instead of the full amount once a participant is on this plan.
+router.post('/public/plan/:tripId/subscribe', async (req, res) => {
+  const trip = await db.trips.get(req.params.tripId);
+  if (!trip) return res.status(404).json({ error: 'Plan not found.' });
+  if (!trip.agent_id || !trip.installments_enabled) {
+    return res.status(400).json({ error: 'Monthly payments are not available on this trip.' });
+  }
+  if (!SHAREABLE.includes(trip.status)) {
+    return res.status(403).json({ error: 'Plan is not yet confirmed.' });
+  }
+
+  const { participantId, months } = req.body || {};
+  const participant = await db.participants.getById(participantId);
+  if (!participant || participant.trip_id !== trip.id) {
+    return res.status(404).json({ error: 'Participant not found.' });
+  }
+  if (participant.paid) {
+    return res.status(400).json({ error: 'This person has already paid in full.' });
+  }
+
+  const plan = trip.plan ? JSON.parse(trip.plan) : null;
+  const amount = plan?.cost_breakdown?.per_person;
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ error: 'Could not determine the trip price.' });
+  }
+
+  // How many months can be spread across — the agency's own min/max, further
+  // capped by how far out the trip actually is, so nobody signs up for a
+  // plan that outlives the trip. One month can never be split, regardless of
+  // what the agency configured.
+  const tripDate = trip.selected_date ? new Date(trip.selected_date) : null;
+  const monthsUntilTrip = tripDate && !isNaN(tripDate)
+    ? Math.max(1, Math.ceil((tripDate.getTime() - Date.now()) / (30 * 24 * 60 * 60 * 1000)))
+    : null;
+
+  const minMonths = Math.max(2, Number(trip.installment_min_months) || 2);
+  const rawMaxMonths = Number(trip.installment_max_months) || 12;
+  const maxMonths = monthsUntilTrip !== null ? Math.min(rawMaxMonths, monthsUntilTrip) : rawMaxMonths;
+
+  if (maxMonths < minMonths) {
+    return res.status(400).json({ error: 'This trip is too close now for a monthly plan.' });
+  }
+
+  const requestedMonths = Math.round(Number(months));
+  if (!Number.isFinite(requestedMonths) || requestedMonths < minMonths || requestedMonths > maxMonths) {
+    return res.status(400).json({ error: `Choose between ${minMonths} and ${maxMonths} months.` });
+  }
+
+  const installmentAmount = Math.ceil(amount / requestedMonths);
+  const minAmount = Number(trip.installment_min_amount) || 0;
+  if (minAmount > 0 && installmentAmount < minAmount) {
+    // Tell them the longest plan that still clears the agency's minimum,
+    // rather than just rejecting the number they picked.
+    const maxMonthsAtMinAmount = Math.max(minMonths, Math.floor(amount / minAmount));
+    return res.status(400).json({
+      error: `That works out to less than ${paystack.fmtNGN(minAmount)}/month, the minimum for this trip. Try ${Math.min(maxMonthsAtMinAmount, maxMonths)} months or fewer.`,
+    });
+  }
+
+  await db.participants.subscribeInstallment({ id: participant.id, amount, months: requestedMonths });
+
+  res.json({ ok: true, amount, months: requestedMonths, installmentAmount });
+});
+
 // GET /api/public/plan/:tripId/participant/:participantId
 // Has this specific person actually paid? The browser can't answer this — it
 // comes back from Paystack with ?paid=1 whether the payment went through, was
@@ -633,7 +708,8 @@ router.post('/public/plan/:tripId/join', async (req, res) => {
 router.get('/public/plan/:tripId/participant/:participantId', async (req, res) => {
   try {
     const rows = await db.rawAll(
-      `SELECT id, paid, amount, paid_at, paystack_ref, email FROM participants WHERE id = ? AND trip_id = ?`,
+      `SELECT id, paid, amount, paid_at, paystack_ref, email, payment_plan, installment_months, next_due_at
+         FROM participants WHERE id = ? AND trip_id = ?`,
       [req.params.participantId, req.params.tripId]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Not found.' });
@@ -662,6 +738,8 @@ router.get('/public/plan/:tripId/participant/:participantId', async (req, res) =
       }
     }
 
+    const paidTotal = row.payment_plan === 'installment' ? await db.participants.paidTotal(row.id) : null;
+
     res.json({
       paid:   !!row.paid,
       amount: row.amount ? Number(row.amount) : null,
@@ -671,6 +749,11 @@ router.get('/public/plan/:tripId/participant/:participantId', async (req, res) =
       // same thing. The address itself stays server-side — the pay route reads
       // it there, so it never needs to travel to the browser and back.
       hasEmail: !!row.email,
+      paymentPlan:       row.payment_plan || 'full',
+      installmentMonths: row.installment_months ? Number(row.installment_months) : null,
+      paidAmount:        paidTotal,
+      remaining:         paidTotal !== null && row.amount ? Math.max(0, Number(row.amount) - paidTotal) : null,
+      nextDueAt:         row.next_due_at ? Number(row.next_due_at) : null,
     });
   } catch (err) {
     console.error('[api/participant-status]', err.message);
@@ -718,13 +801,20 @@ router.post('/public/plan/:tripId/pay', async (req, res) => {
     return res.status(400).json({ error: 'participantId is required.' });
   }
 
+  const participant = await db.participants.getById(participantId);
+  if (!participant || participant.trip_id !== trip.id) {
+    return res.status(404).json({ error: 'Participant not found.' });
+  }
+
   const plan = trip.plan ? JSON.parse(trip.plan) : null;
-  const amount = plan?.cost_breakdown?.per_person;
-  if (!amount || amount <= 0) {
+  const { targetAmount, chargeAmount } = await db.participants.computeCharge(
+    participant, plan?.cost_breakdown?.per_person, { payInFull: !!req.body.payInFull }
+  );
+  if (!chargeAmount || chargeAmount <= 0) {
     return res.status(400).json({ error: 'Could not determine payment amount from this plan.' });
   }
 
-  const frontendUrl = process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app';
+  const frontendUrl = process.env.FRONTEND_URL || 'https://karije.com';
   const callbackUrl = `${frontendUrl}/plan/${trip.id}?paid=1`;
 
   try {
@@ -733,14 +823,14 @@ router.post('/public/plan/:tripId/pay', async (req, res) => {
       participantId,
       email:         email.trim().toLowerCase(),
       name:          name?.trim() || null,
-      amountNGN:     amount,
+      amountNGN:     chargeAmount,
       callbackUrl,
     });
 
     await db.participants.updatePayment({
       id:            participantId,
       email:         email.trim().toLowerCase(),
-      amount,
+      amount:        targetAmount,
       paystack_ref:  reference,
       paystack_url:  authorization_url,
     });
@@ -1221,7 +1311,8 @@ router.delete('/pro/templates/:templateId', requireAuth, requireAgent, async (re
 router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
   try {
     const { title, summary, city, squadSize, days, listed, selectedDate,
-            saveAsTemplate, templateName } = req.body || {};
+            saveAsTemplate, templateName,
+            installmentsEnabled, installmentMinMonths, installmentMaxMonths, installmentMinAmount } = req.body || {};
 
     if (!title || !String(title).trim()) return res.status(400).json({ error: 'Give the trip a name.' });
     if (!city  || !String(city).trim())  return res.status(400).json({ error: 'Pick a city first.' });
@@ -1233,12 +1324,20 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
     const built = buildAgencyPlan(days, squad);
     const tripId = uuid();
 
+    // One month can't be split into monthly payments, so the floor is 2
+    // regardless of what's posted.
+    const minMonths = Math.max(2, Math.round(Number(installmentMinMonths)) || 2);
+    const maxMonths = Math.max(minMonths, Math.round(Number(installmentMaxMonths)) || 12);
+    const minAmount = Number(installmentMinAmount) > 0 ? Math.round(Number(installmentMinAmount)) : null;
+
     await db.trips.insert({ id: tripId, organiser_phone: `agency_${tripId}` });
     await db.raw(
       `UPDATE trips SET user_id=?, agent_id=?, origin=?, destination=?, days=?,
          squad_size=?, status=?, plan=?, intake_json=?, service_fee_per_person=?,
          title=?, summary=?, listed=?, selected_date=?,
-         payout_bank_code=?, payout_account_no=?, payout_account_name=? WHERE id=?`,
+         payout_bank_code=?, payout_account_no=?, payout_account_name=?,
+         installments_enabled=?, installment_min_months=?, installment_max_months=?, installment_min_amount=?
+       WHERE id=?`,
       [
         req.user.uid,
         req.agent.id,
@@ -1263,6 +1362,8 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
         req.agent.payout_bank_code    || null,
         req.agent.payout_account_no   || null,
         req.agent.payout_account_name || null,
+        installmentsEnabled ? 1 : 0,
+        minMonths, maxMonths, minAmount,
         tripId,
       ]
     );
@@ -1300,14 +1401,15 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
 
     const rows = await db.rawAll(
       `SELECT id, name, email, wa_number, paid, amount, paid_at, wants_reminders,
-              created_at, reminders_sent, last_reminded_at, paystack_ref
+              created_at, reminders_sent, last_reminded_at, paystack_ref,
+              payment_plan, installment_months, next_due_at
          FROM participants WHERE trip_id = ? ORDER BY paid ASC, created_at ASC`,
       [trip.id]
     );
 
     const plan      = trip.plan ? JSON.parse(trip.plan) : null;
     const perPerson = plan?.cost_breakdown?.per_person || 0;
-    const squad     = rows.map(r => ({
+    const squad     = await Promise.all(rows.map(async (r) => ({
       id:             r.id,
       name:           r.name,
       email:          r.email,
@@ -1320,7 +1422,11 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
       remindersSent:  Number(r.reminders_sent || 0),
       lastRemindedAt: r.last_reminded_at ? Number(r.last_reminded_at) : null,
       reference:      r.paystack_ref || null,
-    }));
+      paymentPlan:       r.payment_plan || 'full',
+      installmentMonths: r.installment_months ? Number(r.installment_months) : null,
+      paidAmount:        r.payment_plan === 'installment' ? await db.participants.paidTotal(r.id) : null,
+      nextDueAt:         r.next_due_at ? Number(r.next_due_at) : null,
+    })));
 
     // The trip's money position. For an agency trip the per-head fee is 0, so
     // dueToOrganiser equals collected — which is exactly the thing worth
@@ -1349,6 +1455,10 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
         perPerson,
         coverImageId: trip.cover_image_id || null,
         coverUrl:     trip.cover_image_id ? `/api/trip-image/${trip.cover_image_id}` : null,
+        installmentsEnabled:   !!trip.installments_enabled,
+        installmentMinMonths:  Number(trip.installment_min_months) || 2,
+        installmentMaxMonths:  Number(trip.installment_max_months) || 12,
+        installmentMinAmount:  trip.installment_min_amount ? Number(trip.installment_min_amount) : null,
       },
       plan,
       squad,
@@ -1419,7 +1529,10 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     const trip = await agentTripOr403(req, res);
     if (!trip) return;
 
-    const { title, summary, listed, squadSize, days, selectedDate, completed, coverImageId } = req.body || {};
+    const {
+      title, summary, listed, squadSize, days, selectedDate, completed, coverImageId,
+      installmentsEnabled, installmentMinMonths, installmentMaxMonths, installmentMinAmount,
+    } = req.body || {};
     const sets = [];
     const args = [];
 
@@ -1428,6 +1541,20 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     if (listed !== undefined)                      { sets.push('listed=?');        args.push(listed ? 1 : 0); }
     if (typeof selectedDate === 'string')          { sets.push('selected_date=?'); args.push(selectedDate.slice(0, 40)); }
     if (typeof coverImageId === 'string')          { sets.push('cover_image_id=?'); args.push(coverImageId || null); }
+
+    if (installmentsEnabled !== undefined) { sets.push('installments_enabled=?'); args.push(installmentsEnabled ? 1 : 0); }
+    if (installmentMinMonths !== undefined || installmentMaxMonths !== undefined) {
+      // Both move together so min never ends up above max — one can't be
+      // posted without the other implicitly carrying the current value.
+      const minMonths = Math.max(2, Math.round(Number(installmentMinMonths)) || Number(trip.installment_min_months) || 2);
+      const maxMonths = Math.max(minMonths, Math.round(Number(installmentMaxMonths)) || Number(trip.installment_max_months) || 12);
+      sets.push('installment_min_months=?', 'installment_max_months=?');
+      args.push(minMonths, maxMonths);
+    }
+    if (installmentMinAmount !== undefined) {
+      sets.push('installment_min_amount=?');
+      args.push(Number(installmentMinAmount) > 0 ? Math.round(Number(installmentMinAmount)) : null);
+    }
     // Purely organisational — moves the trip out of the working list on the
     // dashboard. Does not touch `status`, so a trip already paid into stays
     // viewable and its receipts stay valid after it's marked done.

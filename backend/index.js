@@ -75,6 +75,7 @@ db.ready.then(() => {
     // where you don't want real messages going out.
     if (process.env.REMINDERS !== 'off') {
       require('./services/reminders').start();
+      require('./services/installmentReminders').start();
     }
   });
 });

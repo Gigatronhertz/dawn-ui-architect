@@ -45,6 +45,18 @@ const TEMPLATES = [
     name: process.env.WHISPER360_TEMPLATE_EVENT_REGISTERED || 'karije_event_registered',
     body: 'You\'re registered for *{{event_name}}*! 🎉\n\nWe\'ll message you here closer to the date.\n\n— Karije',
   },
+  {
+    name: process.env.WHISPER360_TEMPLATE_INSTALLMENT_NUDGE || 'karije_installment_reminder',
+    body: 'Hi {{name}} — month {{month_number}} of {{total_months}} for *{{trip_name}}*.\n\nThis month: {{amount_due}}. {{remaining}} left to go, {{months_until_trip}} month(s) until the trip.\n\nPay here: {{link}}\n\n— Karije',
+  },
+  {
+    name: process.env.WHISPER360_TEMPLATE_INSTALLMENT_OVERDUE || 'karije_installment_overdue',
+    body: 'Hi {{name}} — a payment on *{{trip_name}}* is overdue.\n\nThis month: {{amount_due}}. {{remaining}} left to go, {{months_until_trip}} month(s) until the trip.\n\nCatch up here: {{link}}\n\n— Karije',
+  },
+  {
+    name: process.env.WHISPER360_TEMPLATE_INSTALLMENT_DIGEST || 'karije_installment_digest',
+    body: 'Hi {{agency_name}} — {{subscriber_count}} traveller(s) across {{trip_count}} trip(s) are paying in installments.\n\nSee the full breakdown:\n{{link}}\n\n— Karije',
+  },
 ];
 
 async function run() {

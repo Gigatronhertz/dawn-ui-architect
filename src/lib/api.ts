@@ -115,6 +115,12 @@ export type PublicPlanResponse = {
   } | null;
   /** Headcount the squad must reach for the trip to run. Null when not applicable. */
   groupMin: number | null;
+  /** Whether — and how — this trip can be paid off monthly. Only ever true
+   *  when `agency` is set; the trip's own creator opts in per trip. */
+  installmentsEnabled:  boolean;
+  installmentMinMonths: number;
+  installmentMaxMonths: number;
+  installmentMinAmount: number | null;
 };
 
 export type SquadMember = {
@@ -335,6 +341,11 @@ export type AgencySquadMember = {
   lastRemindedAt: number | null;
   /** Paystack reference, so a payment can be matched against a statement. */
   reference: string | null;
+  paymentPlan: "full" | "installment";
+  installmentMonths: number | null;
+  /** Running total actually received — only populated for installment payers. */
+  paidAmount: number | null;
+  nextDueAt: number | null;
 };
 
 /** One trip's money position — returned by both /api/pro/money and the admin equivalent. */
@@ -360,6 +371,10 @@ export type AgencyTripDetail = {
     selectedDate: string | null; createdAt: number; perPerson: number;
     completedAt: number | null; viewCount: number;
     coverImageId: string | null; coverUrl: string | null;
+    installmentsEnabled: boolean;
+    installmentMinMonths: number;
+    installmentMaxMonths: number;
+    installmentMinAmount: number | null;
   };
   plan: TripPlan | null;
   squad: AgencySquadMember[];
@@ -510,7 +525,11 @@ export const api = {
    * Paystack" — it says nothing about whether money moved.
    */
   getMyPaymentStatus: (tripId: string, participantId: string) =>
-    get<{ paid: boolean; amount: number | null; paidAt: number | null; hasEmail: boolean }>(
+    get<{
+      paid: boolean; amount: number | null; paidAt: number | null; hasEmail: boolean;
+      paymentPlan: "full" | "installment"; installmentMonths: number | null;
+      paidAmount: number | null; remaining: number | null; nextDueAt: number | null;
+    }>(
       `/api/public/plan/${tripId}/participant/${participantId}`
     ),
 
@@ -519,16 +538,30 @@ export const api = {
    *
    * The backend resolves this to a live Paystack checkout, reading the email
    * captured when they joined — so nobody is asked for it a second time. Not a
-   * fetch: it's a link the browser follows, ending on Paystack.
+   * fetch: it's a link the browser follows, ending on Paystack. Also where an
+   * installment subscriber's next monthly payment link goes — the backend
+   * already knows to charge the next slice instead of the full amount.
    */
-  payLink: (participantId: string) => `${API_URL}/pay/${participantId}`,
+  payLink: (participantId: string, opts: { full?: boolean } = {}) =>
+    `${API_URL}/pay/${participantId}${opts.full ? "?full=1" : ""}`,
 
   /** Poll for live participant count and payment stats. */
   getParticipants: (tripId: string) =>
     get<ParticipantsResponse>(`/api/public/plan/${tripId}/participants`),
-  /** Initiate Paystack payment for a squad member's share. Returns authorization_url. */
-  initPayment: (tripId: string, opts: { participantId: string; email: string; name?: string }) =>
+  /** Initiate Paystack payment for a squad member's share — or, for someone
+   *  on an installment plan, their next monthly slice (or the full remaining
+   *  balance, with `payInFull`). Returns authorization_url. */
+  initPayment: (tripId: string, opts: { participantId: string; email: string; name?: string; payInFull?: boolean }) =>
     post<{ authorization_url: string; reference: string }>(`/api/public/plan/${tripId}/pay`, opts),
+
+  /** Puts a participant on a monthly installment plan instead of paying in
+   *  full — pro-agency trips only. First installment is due immediately;
+   *  payLink()/initPayment() already know to charge the next slice once this
+   *  has been called. */
+  subscribeInstallment: (tripId: string, opts: { participantId: string; months: number }) =>
+    post<{ ok: boolean; amount: number; months: number; installmentAmount: number }>(
+      `/api/public/plan/${tripId}/subscribe`, opts
+    ),
 
   /** Send a magic sign-in link to the given email. Returns preview URL if Resend not configured. */
   sendMagicLink: (opts: { email: string; tripId?: string; redirect?: string }) =>
@@ -642,6 +675,11 @@ export const api = {
       /** Also keep this trip's shape as a reusable template. */
       saveAsTemplate?: boolean;
       templateName?: string;
+      /** Monthly-payment settings — omit to leave installments off. */
+      installmentsEnabled?: boolean;
+      installmentMinMonths?: number;
+      installmentMaxMonths?: number;
+      installmentMinAmount?: number | null;
     },
     token: string,
   ) => post<{ ok: boolean; tripId: string; perPerson: number; total: number; templateId: string | null }>(
@@ -673,6 +711,10 @@ export const api = {
     payload: {
       title?: string; summary?: string; listed?: boolean; squadSize?: number;
       selectedDate?: string; days?: { activities: AgencyStop[] }[]; completed?: boolean;
+      installmentsEnabled?: boolean;
+      installmentMinMonths?: number;
+      installmentMaxMonths?: number;
+      installmentMinAmount?: number | null;
     },
     token: string,
   ) => patch<{ ok: boolean; trip: { id: string; title: string; listed: boolean; completedAt: number | null } }>(

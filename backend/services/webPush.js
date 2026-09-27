@@ -23,7 +23,7 @@ function configure() {
   return true;
 }
 
-const FRONTEND = process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app';
+const FRONTEND = process.env.FRONTEND_URL || 'https://karije.com';
 
 /**
  * Send a push notification to a stored subscription object.

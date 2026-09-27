@@ -15,7 +15,7 @@ const router = Router();
 // It also means the email carries no frontend URL at all, which is what put a
 // localhost link in front of people in the first place.
 router.get('/pay/:participantId', async (req, res) => {
-  const frontendUrl = (process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app').replace(/\/$/, '');
+  const frontendUrl = (process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '');
 
   try {
     const participant = await db.participants.getById(req.params.participantId);
@@ -27,26 +27,29 @@ router.get('/pay/:participantId', async (req, res) => {
     if (participant.paid) return res.redirect(`${planUrl}?paid=1`);
 
     // Paystack can't raise a transaction without an email address, and the
-    // amount comes off the plan. Missing either, the plan page handles it —
-    // that's the form that asks.
-    const trip   = await db.trips.get(participant.trip_id);
-    const plan   = trip?.plan ? JSON.parse(trip.plan) : null;
-    const amount = plan?.cost_breakdown?.per_person;
-    if (!participant.email || !amount || amount <= 0) return res.redirect(planUrl);
+    // amount comes off the plan (or, for an installment payer, off their own
+    // next-due slice). Missing either, the plan page handles it — that's the
+    // form that asks.
+    const trip = await db.trips.get(participant.trip_id);
+    const plan = trip?.plan ? JSON.parse(trip.plan) : null;
+    const { targetAmount, chargeAmount } = await db.participants.computeCharge(
+      participant, plan?.cost_breakdown?.per_person, { payInFull: req.query.full === '1' }
+    );
+    if (!participant.email || !chargeAmount || chargeAmount <= 0) return res.redirect(planUrl);
 
     const { reference, authorization_url } = await initializeWebPayment({
       tripId:        participant.trip_id,
       participantId: participant.id,
       email:         participant.email,
       name:          participant.name,
-      amountNGN:     amount,
+      amountNGN:     chargeAmount,
       callbackUrl:   `${planUrl}?paid=1`,
     });
 
     await db.participants.updatePayment({
       id:           participant.id,
       email:        participant.email,
-      amount,
+      amount:       targetAmount,
       paystack_ref: reference,
       paystack_url: authorization_url,
     });
@@ -76,9 +79,18 @@ async function processPayment(reference) {
       (await db.participants.getByRef(reference)) ||
       (result.participantId ? await db.participants.getById(result.participantId) : null);
     if (!participant) { console.warn('[processPayment] participant not found for ref', reference); return false; }
-    if (participant.paid) return false; // idempotent
-    await db.participants.markPaidById(participant.id);
-    console.log(`[processPayment] web participant ${participant.id} paid for trip ${participant.trip_id}`);
+
+    // Idempotency lives on the reference now, not a boolean — a participant
+    // on an installment plan legitimately pays more than once, each under a
+    // fresh reference, so "already paid" can no longer be the only guard.
+    const { credited, paid } = await db.participants.recordPayment({
+      id:       participant.id,
+      tripId:   participant.trip_id,
+      amount:   result.amountNGN,
+      reference,
+    });
+    if (!credited) return false; // this reference was already recorded
+    console.log(`[processPayment] web participant ${participant.id} paid ${result.amountNGN} for trip ${participant.trip_id}${paid ? ' — fully paid' : ' — installment recorded'}`);
 
     // Receipt. Non-blocking — a mail failure must never make a paid person
     // look unpaid, and the payment is already recorded either way.
@@ -90,10 +102,13 @@ async function processPayment(reference) {
           to:        participant.email,
           name:      participant.name,
           tripName:  plan?.curated?.name || trip?.destination || 'your trip',
-          amount:    plan?.cost_breakdown?.per_person || 0,
+          // The amount actually charged this time, not the full target — for
+          // an installment payer these differ, and the receipt should say
+          // what just happened, not the whole plan's price.
+          amount:    result.amountNGN || 0,
           // Falling back to '' produced "/plan/abc" — a relative link, which is
           // meaningless in an email client.
-          link:      `${(process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app').replace(/\/$/, '')}/plan/${participant.trip_id}`,
+          link:      `${(process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '')}/plan/${participant.trip_id}`,
           reference,
         });
       } catch (err) {

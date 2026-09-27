@@ -1,4 +1,5 @@
 const { createClient } = require('@libsql/client');
+const { randomUUID } = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const { SEED_DATA } = require('../services/attractions');
@@ -178,6 +179,20 @@ const SCHEMA = [
     created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
     paid_at     INTEGER
   )`,
+  // Every successful charge against a participant — the full share in one
+  // shot, or a single monthly installment. Append-only and keyed unique on
+  // Paystack's reference so a replayed webhook event is a no-op. "How much
+  // has this person actually paid" is always SUM(amount) over this table,
+  // never a separately-maintained counter that could drift — same philosophy
+  // as ledger.js's own derived-not-stored balances.
+  `CREATE TABLE IF NOT EXISTS participant_payments (
+    id             TEXT PRIMARY KEY,
+    participant_id TEXT NOT NULL,
+    trip_id        TEXT NOT NULL,
+    amount         INTEGER NOT NULL,
+    reference      TEXT NOT NULL UNIQUE,
+    created_at     INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
   // Uploaded trip photos. Deliberately its own table: the Explore page does
   // SELECT * FROM experiences on every load, and image bytes must never ride
   // along with it. Trips reference a row here by URL path, not by join.
@@ -353,12 +368,58 @@ const MIGRATIONS = [
   `ALTER TABLE agents ADD COLUMN payout_bank_code    TEXT`,
   `ALTER TABLE agents ADD COLUMN payout_account_no   TEXT`,
   `ALTER TABLE agents ADD COLUMN payout_account_name TEXT`,
+  // Phase 20 — monthly installment payments on pro trips. A participant can
+  // commit to paying their share over several months instead of one lump
+  // sum; next_due_at is when their next installment/reminder is due, reset
+  // forward ~30 days each time recordParticipantPayment credits one.
+  // "Money paid so far" is deliberately not a column here — it's always
+  // SUM(participant_payments.amount), which can't drift out of sync.
+  `ALTER TABLE participants ADD COLUMN payment_plan       TEXT NOT NULL DEFAULT 'full'`,
+  `ALTER TABLE participants ADD COLUMN installment_months INTEGER`,
+  `ALTER TABLE participants ADD COLUMN next_due_at        INTEGER`,
+  // An agency's installment subscribers get one periodic digest rather than
+  // a message per trip per subscriber — this is when that last went out.
+  `ALTER TABLE agents ADD COLUMN last_installment_digest_at INTEGER`,
+  // Phase 21 — not every agency trip supports installments; the trip's own
+  // creator opts in and sets the guardrails. min_months is floored at 2 by
+  // every route that reads it (one month can't be split monthly), and
+  // min_amount protects an agency from a plan so long-dated the monthly
+  // charge becomes too small to be worth collecting.
+  `ALTER TABLE trips ADD COLUMN installments_enabled    INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE trips ADD COLUMN installment_min_months  INTEGER NOT NULL DEFAULT 2`,
+  `ALTER TABLE trips ADD COLUMN installment_max_months  INTEGER NOT NULL DEFAULT 12`,
+  `ALTER TABLE trips ADD COLUMN installment_min_amount  INTEGER`,
 ];
 
 const ready = (async () => {
   for (const sql of SCHEMA) await client.execute(sql);
   for (const sql of MIGRATIONS) {
     try { await client.execute(sql); } catch (_) { /* column already exists — safe to ignore */ }
+  }
+  // Backfill participant_payments for anyone who paid before this table
+  // existed — ledger.js's `collected` now reads from here exclusively, so
+  // without this, every already-paid trip would suddenly show ₦0 collected.
+  // Synthetic, deterministic reference per participant, so this is safe to
+  // run on every boot — INSERT OR IGNORE just no-ops once backfilled.
+  {
+    const unbacked = await client.execute(
+      `SELECT id, trip_id, amount, paid_at, created_at FROM participants
+        WHERE paid = 1 AND amount IS NOT NULL AND amount > 0
+          AND id NOT IN (SELECT DISTINCT participant_id FROM participant_payments)`
+    );
+    for (const p of unbacked.rows) {
+      await client.execute({
+        sql: `INSERT OR IGNORE INTO participant_payments (id, participant_id, trip_id, amount, reference, created_at)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [
+          randomUUID(), p.id, p.trip_id, p.amount, `BACKFILL-${p.id}`,
+          p.paid_at || p.created_at || Math.floor(Date.now() / 1000),
+        ],
+      });
+    }
+    if (unbacked.rows.length) {
+      console.log(`[db] Backfilled ${unbacked.rows.length} participant_payments row(s) from already-paid participants`);
+    }
   }
   // Seed attractions once — INSERT OR IGNORE is idempotent
   const existing = await client.execute('SELECT COUNT(*) as n FROM attractions');
@@ -1014,6 +1075,168 @@ async function getParticipantStats(tripId) {
   return { paidCount: Number(row?.paid_count ?? 0), totalCollected: Number(row?.total_collected ?? 0) };
 }
 
+// ── Installment payments ───────────────────────────────────────────────────
+
+const INSTALLMENT_INTERVAL_SECONDS = 30 * 24 * 60 * 60;
+
+/** Puts a participant on a monthly installment plan instead of a one-shot
+ *  payment. `amount` is the full target (their share, read live off the
+ *  trip's plan at subscribe time); the per-month figure is computed by the
+ *  caller and charged by whatever route mints the next Paystack link — it is
+ *  not stored separately. First installment is due immediately. */
+async function subscribeParticipantInstallment({ id, amount, months }) {
+  await client.execute({
+    sql: `UPDATE participants SET
+            payment_plan       = 'installment',
+            amount              = ?,
+            installment_months  = ?,
+            next_due_at         = unixepoch(),
+            reminders_sent      = 0,
+            last_reminded_at    = NULL
+          WHERE id = ?`,
+    args: [amount, months, id],
+  });
+}
+
+/** Total actually received from a participant, across every charge —
+ *  one lump sum, or however many installments have landed so far. */
+async function getParticipantPaidTotal(id) {
+  const res = await client.execute({
+    sql: 'SELECT COALESCE(SUM(amount), 0) AS total FROM participant_payments WHERE participant_id = ?',
+    args: [id],
+  });
+  return Number(res.rows[0]?.total ?? 0);
+}
+
+/** Every charge on record for a participant, most recent first — the
+ *  "breakdown" a subscriber or their agency actually wants to see. */
+async function getParticipantPayments(id) {
+  const res = await client.execute({
+    sql: 'SELECT amount, reference, created_at FROM participant_payments WHERE participant_id = ? ORDER BY created_at DESC',
+    args: [id],
+  });
+  return res.rows;
+}
+
+/**
+ * Records one successful charge — the full share in one go, or a single
+ * monthly installment; the two are indistinguishable to this function. Keyed
+ * unique on Paystack's reference, so a replayed webhook event is a no-op
+ * (returns `credited: false`). Flips `paid=1` the moment the running total
+ * reaches the participant's target, whichever plan got them there; otherwise,
+ * for an installment participant, pushes their next due date forward ~30
+ * days and resets the reminder-escalation counters for the new cycle.
+ */
+async function recordParticipantPayment({ id, tripId, amount, reference }) {
+  const insert = await client.execute({
+    sql: `INSERT OR IGNORE INTO participant_payments (id, participant_id, trip_id, amount, reference, created_at)
+          VALUES (?, ?, ?, ?, ?, unixepoch())`,
+    args: [randomUUID(), id, tripId, amount, reference],
+  });
+  if (!insert.rowsAffected) return { credited: false, paid: false, paidTotal: null };
+
+  const participant = await getParticipantById(id);
+  const paidTotal    = await getParticipantPaidTotal(id);
+  const target       = Number(participant?.amount ?? 0);
+  const fullyPaid     = target > 0 && paidTotal >= target;
+
+  if (fullyPaid) {
+    await client.execute({
+      sql: 'UPDATE participants SET paid=1, paid_at=unixepoch() WHERE id=?',
+      args: [id],
+    });
+  } else if (participant?.payment_plan === 'installment') {
+    await client.execute({
+      sql: `UPDATE participants SET
+              next_due_at      = unixepoch() + ${INSTALLMENT_INTERVAL_SECONDS},
+              reminders_sent   = 0,
+              last_reminded_at = NULL
+            WHERE id = ?`,
+      args: [id],
+    });
+  }
+
+  return { credited: true, paid: fullyPaid, paidTotal };
+}
+
+/** What a freshly-minted Paystack transaction should charge this participant
+ *  right now — the full share for a one-shot payer, or the next installment
+ *  (or whatever's left, if that's smaller) for someone on a monthly plan.
+ *  Also returns the target `amount` that belongs on the participant row —
+ *  for a one-shot payer that isn't known until now either, since `amount`
+ *  is otherwise only ever set at payment-mint time. Shared by both places
+ *  that mint a checkout link (`GET /pay/:id` and `POST .../pay`) so the two
+ *  never drift apart on how a charge is sized. */
+async function computeParticipantCharge(participant, fallbackFullAmount, { payInFull = false } = {}) {
+  if (participant.payment_plan === 'installment') {
+    const target     = Number(participant.amount) || 0;
+    const months     = Number(participant.installment_months) || 1;
+    const paidSoFar  = await getParticipantPaidTotal(participant.id);
+    const remaining  = Math.max(0, target - paidSoFar);
+    // Someone on a plan can always choose to settle the rest in one go
+    // instead of waiting out the remaining months.
+    if (payInFull) return { targetAmount: target, chargeAmount: remaining };
+    const installment = Math.ceil(target / months);
+    return { targetAmount: target, chargeAmount: Math.min(installment, remaining) };
+  }
+  const target = Number(fallbackFullAmount) || 0;
+  return { targetAmount: target, chargeAmount: target };
+}
+
+/** Installment participants whose next payment/reminder is due — joined with
+ *  enough trip info to compose the reminder copy. Mirrors the status filter
+ *  reminders.js already uses for one-time payments. */
+async function findDueInstallments() {
+  const res = await client.execute(
+    `SELECT p.*, t.title, t.destination, t.selected_date, t.agent_id, t.status AS trip_status, t.plan
+       FROM participants p
+       JOIN trips t ON t.id = p.trip_id
+      WHERE p.payment_plan = 'installment'
+        AND p.paid = 0
+        AND p.next_due_at IS NOT NULL
+        AND p.next_due_at <= unixepoch()
+        AND t.status IN ('curated', 'custom', 'awaiting_group', 'active')`
+  );
+  return res.rows;
+}
+
+/** Agencies with at least one installment subscriber whose digest is due —
+ *  more than ~30 days since the last one, or never sent. */
+async function listAgentsDueInstallmentDigest() {
+  const res = await client.execute(
+    `SELECT DISTINCT a.*
+       FROM agents a
+       JOIN trips t ON t.agent_id = a.id
+       JOIN participants p ON p.trip_id = t.id
+      WHERE p.payment_plan = 'installment'
+        AND (a.last_installment_digest_at IS NULL
+             OR a.last_installment_digest_at <= unixepoch() - ${INSTALLMENT_INTERVAL_SECONDS})`
+  );
+  return res.rows;
+}
+
+/** Every installment subscriber on a given agency's trips, with trip context
+ *  — what sendInstallmentDigests() groups per trip for the agency email. */
+async function getAgentInstallmentSubscribers(agentId) {
+  const res = await client.execute({
+    sql: `SELECT p.id, p.name, p.amount, p.installment_months, p.next_due_at,
+                 t.id AS trip_id, t.title, t.destination
+            FROM participants p
+            JOIN trips t ON t.id = p.trip_id
+           WHERE t.agent_id = ? AND p.payment_plan = 'installment'
+        ORDER BY t.id, p.created_at ASC`,
+    args: [agentId],
+  });
+  return res.rows;
+}
+
+async function markInstallmentDigestSent(agentId) {
+  await client.execute({
+    sql: 'UPDATE agents SET last_installment_digest_at = unixepoch() WHERE id = ?',
+    args: [agentId],
+  });
+}
+
 // ── Experience helpers ─────────────────────────────────────────────────────
 
 /** Parse a raw DB row into a camelCase experience object. */
@@ -1342,5 +1565,16 @@ module.exports = {
     markPaid: markParticipantPaid,
     markPaidById: markParticipantPaidById,
     stats: getParticipantStats,
+    subscribeInstallment: subscribeParticipantInstallment,
+    recordPayment: recordParticipantPayment,
+    paidTotal: getParticipantPaidTotal,
+    payments: getParticipantPayments,
+    dueInstallments: findDueInstallments,
+    computeCharge: computeParticipantCharge,
+  },
+  installmentDigests: {
+    dueAgents:   listAgentsDueInstallmentDigest,
+    subscribers: getAgentInstallmentSubscribers,
+    markSent:    markInstallmentDigestSent,
   },
 };

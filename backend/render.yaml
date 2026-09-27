@@ -42,7 +42,7 @@ services:
       - key: EMAIL_FROM
         value: "Karije <hello@karije.com>"
       - key: FRONTEND_URL
-        value: https://mysquadgo.vercel.app
+        value: https://karije.com
       # Public URL of this service. Reminder emails build their Pay now link
       # from it — a wrong value mails out a button nobody can click.
       - key: BACKEND_URL
@@ -92,4 +92,4 @@ services:
 
       # ── CORS ───────────────────────────────────────────────────────────────
       - key: FRONTEND_ORIGIN
-        value: "https://mysquadgo.vercel.app"
+        value: "https://karije.com"
