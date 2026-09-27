@@ -328,6 +328,10 @@ const MIGRATIONS = [
   // people have even looked at this" stops being a guess.
   `ALTER TABLE trips ADD COLUMN completed_at INTEGER`,
   `ALTER TABLE trips ADD COLUMN view_count   INTEGER NOT NULL DEFAULT 0`,
+  // Phase 17 — same "notify me when it's ready" opt-in as notify_email, for
+  // WhatsApp. Separate column rather than reusing notify_email's slot since
+  // someone may give one, the other, or both.
+  `ALTER TABLE trips ADD COLUMN notify_wa TEXT`,
 ];
 
 const ready = (async () => {

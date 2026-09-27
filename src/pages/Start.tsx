@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { MapPin, Check } from "lucide-react";
+import { MapPin, Check, Mail, Bell, MessageCircle } from "lucide-react";
 import { api, session, imageUrl, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { KarijeLogo } from "@/components/Nav";
@@ -388,6 +388,10 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
   // Push state
   const [pushState, setPushState]   = useState<'idle' | 'subscribing' | 'granted' | 'blocked' | 'unavailable'>('idle');
 
+  // WhatsApp state
+  const [waInput, setWaInput] = useState('');
+  const [waState, setWaState] = useState<'idle' | 'sending' | 'sent'>('idle');
+
   useEffect(() => {
     const t = setInterval(() => setIdx(i => (i + 1) % PHASES.length), 3000);
     return () => clearInterval(t);
@@ -412,6 +416,17 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
       setEmailState('sent');
     } catch {
       setEmailState('idle');
+    }
+  }
+
+  async function handleWaNotify() {
+    if (!tripId || waInput.replace(/\D/g, '').length < 10) return;
+    setWaState('sending');
+    try {
+      await api.subscribeNotify(tripId, { waNumber: waInput });
+      setWaState('sent');
+    } catch {
+      setWaState('idle');
     }
   }
 
@@ -482,7 +497,7 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
 
             {/* Email row */}
             <div className="flex items-center gap-2">
-              <span className="text-base shrink-0 w-5 text-center">📧</span>
+              <Mail className="w-4 h-4 shrink-0 text-muted-foreground" />
               {emailState === 'sent' ? (
                 <span className="inline-flex items-center gap-1 text-xs text-google-green font-medium"><Check className="w-3.5 h-3.5" /> We'll email you</span>
               ) : (
@@ -506,10 +521,36 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
               )}
             </div>
 
+            {/* WhatsApp row */}
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 shrink-0 text-muted-foreground" />
+              {waState === 'sent' ? (
+                <span className="inline-flex items-center gap-1 text-xs text-google-green font-medium"><Check className="w-3.5 h-3.5" /> We'll WhatsApp you</span>
+              ) : (
+                <>
+                  <input
+                    type="tel"
+                    value={waInput}
+                    onChange={e => setWaInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleWaNotify()}
+                    placeholder="080…"
+                    className="flex-1 min-w-0 text-xs bg-secondary/60 rounded-lg px-3 py-1.5 ring-hairline outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                  <button
+                    onClick={handleWaNotify}
+                    disabled={waState === 'sending' || waInput.replace(/\D/g, '').length < 10}
+                    className="shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-foreground text-background hover:opacity-80 transition disabled:opacity-40"
+                  >
+                    {waState === 'sending' ? '…' : 'Notify'}
+                  </button>
+                </>
+              )}
+            </div>
+
             {/* Push row */}
             {supportsNotifications && (
               <div className="flex items-center gap-2">
-                <span className="text-base shrink-0 w-5 text-center">🔔</span>
+                <Bell className="w-4 h-4 shrink-0 text-muted-foreground" />
                 {pushState === 'granted' ? (
                   <span className="inline-flex items-center gap-1 text-xs text-google-green font-medium"><Check className="w-3.5 h-3.5" /> Browser notification set</span>
                 ) : pushState === 'unavailable' ? (

@@ -10,6 +10,7 @@ const { getLines } = require('../utils/logger');
 const { requireAuth }        = require('../middleware/auth');
 const { sendPlanReadyEmail, sendPlanConfirmedEmail } = require('../services/email');
 const { sendPlanReadyPush  } = require('../services/webPush');
+const whisper360              = require('../services/whisper360');
 const paystack               = require('../services/paystack');
 // Crediting a payment lives with the webhook that normally does it; the
 // payment-status endpoint reuses it so a payer is never stranded waiting.
@@ -20,6 +21,10 @@ const reminders              = require('../services/reminders');
 
 let _groq;
 const getGroq = () => { if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); return _groq; };
+
+// Created as a draft by scripts/createReminderTemplates.js; approve it once
+// in the Whisper360 console alongside the three reminder templates.
+const WHISPER360_TEMPLATE_PLAN_READY = process.env.WHISPER360_TEMPLATE_PLAN_READY || 'karije_plan_ready';
 
 const router = Router();
 
@@ -127,6 +132,18 @@ router.post('/plan', async (req, res) => {
           destination,
           tripId,
         }).catch(() => {});
+      }
+
+      // WhatsApp — a first-contact message, so it must be an approved
+      // template (see services/whisper360.js's docblock on the 24h window).
+      if (trip?.notify_wa) {
+        const planUrl = `${(process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app').replace(/\/$/, '')}/start?job=${tripId}`;
+        whisper360.sendTemplate(trip.notify_wa, WHISPER360_TEMPLATE_PLAN_READY, {
+          destination: destination || 'your trip',
+          link: planUrl,
+        }).then((result) => {
+          if (!result.ok) console.warn(`[api/plan] whatsapp notify failed for ${tripId}: ${result.reason}`);
+        }).catch((err) => console.warn(`[api/plan] whatsapp notify error for ${tripId}:`, err.message));
       }
     } catch (err) {
       console.error('[api/plan/bg]', err.message);
@@ -714,7 +731,7 @@ router.post('/public/plan/:tripId/pay', async (req, res) => {
 // Stores a push subscription and/or email address for a trip.
 // Called from the generating screen — unauthenticated (tripId is the secret).
 router.post('/notify/subscribe', async (req, res) => {
-  const { tripId, subscription, email } = req.body;
+  const { tripId, subscription, email, waNumber } = req.body;
   if (!tripId) return res.status(400).json({ error: 'tripId required.' });
 
   // Store push subscription
@@ -730,6 +747,14 @@ router.post('/notify/subscribe', async (req, res) => {
     await db.raw(
       `UPDATE trips SET notify_email = ? WHERE id = ?`,
       [email.trim().toLowerCase(), tripId]
+    );
+  }
+
+  // Store notify WhatsApp number
+  if (waNumber && typeof waNumber === 'string' && waNumber.replace(/\D/g, '').length >= 10) {
+    await db.raw(
+      `UPDATE trips SET notify_wa = ? WHERE id = ?`,
+      [waNumber.trim(), tripId]
     );
   }
 

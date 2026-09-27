@@ -52,7 +52,7 @@ services:
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
 
-      # ── WhatsApp (Whisper360) — used only by the reminder chase-up ─────────
+      # ── WhatsApp (Whisper360) — reminders + plan-ready notification ────────
       - key: WHISPER360_API_KEY
         sync: false
       - key: WHISPER360_TEMPLATE_NUDGE
@@ -60,6 +60,8 @@ services:
       - key: WHISPER360_TEMPLATE_CHASE
         sync: false
       - key: WHISPER360_TEMPLATE_FINAL
+        sync: false
+      - key: WHISPER360_TEMPLATE_PLAN_READY
         sync: false
 
       - key: WA_DISPLAY_NUMBER

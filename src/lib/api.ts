@@ -376,8 +376,8 @@ export const api = {
     ),
   confirmPlan: (tripId: string, plan: TripPlan, email?: string, selectedDate?: string) =>
     post<ConfirmResponse>('/api/confirm', { tripId, plan, email, selectedDate: selectedDate || null }),
-  /** Save a push subscription and/or email address to notify when the plan is ready. */
-  subscribeNotify: (tripId: string, opts: { subscription?: object; email?: string }) =>
+  /** Save a push subscription, email and/or WhatsApp number to notify when the plan is ready. */
+  subscribeNotify: (tripId: string, opts: { subscription?: object; email?: string; waNumber?: string }) =>
     post<{ ok: boolean }>('/api/notify/subscribe', { tripId, ...opts }),
 
   /** Link a completed trip to the signed-in user's account. */
