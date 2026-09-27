@@ -365,7 +365,8 @@ export type PlanAgency = {
 
 export const api = {
   /** Fire-and-forget: creates the job, returns tripId immediately. */
-  createPlan:   (intake: IntakeData) => post<CreatePlanResponse>('/api/plan', intake),
+  createPlan:   (intake: IntakeData, email?: string, waNumber?: string) =>
+    post<CreatePlanResponse>('/api/plan', { ...intake, ...(email ? { email } : {}), ...(waNumber ? { waNumber } : {}) }),
   /** Poll until status is 'plan_review' or 'error'. */
   pollPlan:     (tripId: string)     => get<PollPlanResponse>(`/api/plan/${tripId}`),
   /** @deprecated Use createPlan + pollPlan instead. Kept for any legacy callers. */

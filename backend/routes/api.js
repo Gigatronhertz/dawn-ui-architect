@@ -22,9 +22,10 @@ const reminders              = require('../services/reminders');
 let _groq;
 const getGroq = () => { if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); return _groq; };
 
-// Created as a draft by scripts/createReminderTemplates.js; approve it once
+// Created as drafts by scripts/createReminderTemplates.js; approve them once
 // in the Whisper360 console alongside the three reminder templates.
 const WHISPER360_TEMPLATE_PLAN_READY = process.env.WHISPER360_TEMPLATE_PLAN_READY || 'karije_plan_ready';
+const WHISPER360_TEMPLATE_EVENT_REGISTERED = process.env.WHISPER360_TEMPLATE_EVENT_REGISTERED || 'karije_event_registered';
 
 const router = Router();
 
@@ -32,7 +33,7 @@ const router = Router();
 // Creates a trip job and returns tripId immediately.
 // Actual AI + scraping runs in the background — client polls GET /api/plan/:tripId.
 router.post('/plan', async (req, res) => {
-  const { origin, destination, budget, hotelBudgetPerNight, days, squadSize, accommodationType, dateFlexibility, dealbreakers, transport, vibe, specificDates } = req.body;
+  const { origin, destination, budget, hotelBudgetPerNight, days, squadSize, accommodationType, dateFlexibility, dealbreakers, transport, vibe, specificDates, email, waNumber } = req.body;
 
   // The web intake sends hotelBudgetPerNight; the WhatsApp bot sends budget.
   // Either satisfies the requirement — planGenerator handles both.
@@ -41,6 +42,15 @@ router.post('/plan', async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields.' });
   }
 
+  // Collected at intake (Step 1), not as a separate "notify me" opt-in — so
+  // the plan-ready email/WhatsApp just go out, the same way a reminder does,
+  // rather than depending on someone also clicking "Notify"/"Allow" on the
+  // generating screen. Both are optional; only email gates the submit button.
+  const cleanNotifyEmail = typeof email === 'string' && /\S+@\S+\.\S+/.test(email.trim())
+    ? email.trim().toLowerCase() : null;
+  const cleanNotifyWa = typeof waNumber === 'string' && waNumber.replace(/\D/g, '').length >= 10
+    ? waNumber.trim() : null;
+
   const tripId = uuid();
 
   await db.trips.insert({ id: tripId, organiser_phone: `web_${tripId}` });
@@ -48,14 +58,14 @@ router.post('/plan', async (req, res) => {
     `UPDATE trips SET
        origin=?, destination=?, budget=?, hotel_budget_per_night=?, days=?, squad_size=?,
        accommodation=?, date_flexibility=?, specific_dates=?, dealbreakers=?,
-       status=?, intake_json=?
+       status=?, intake_json=?, notify_email=?, notify_wa=?
      WHERE id=?`,
     [
       origin, destination, budget ? Number(budget) : null, hotelNightly,
       Number(days), Number(squadSize),
       accommodationType || 'Hotel', dateFlexibility || 'Flexible',
       specificDates || null, dealbreakers || null,
-      'generating', JSON.stringify(req.body),
+      'generating', JSON.stringify(req.body), cleanNotifyEmail, cleanNotifyWa,
       tripId,
     ]
   );
@@ -465,6 +475,22 @@ router.post('/waitlist', async (req, res) => {
   const sanitised = phone.trim().replace(/\s+/g, '');
   const src = (typeof source === 'string' && source.trim()) ? source.trim() : 'unknown';
   await db.waitlist.insert({ phone: sanitised, source: src });
+
+  // Event registrations get an immediate WhatsApp confirmation. Everything
+  // else through this generic endpoint (the marketing waitlist, etc.) has no
+  // event to confirm, so it stays silent.
+  if (src.startsWith('event:')) {
+    const eventId = src.slice('event:'.length);
+    db.events.get(eventId)
+      .then((event) => event
+        ? whisper360.sendTemplate(sanitised, WHISPER360_TEMPLATE_EVENT_REGISTERED, { event_name: event.name })
+        : null)
+      .then((result) => {
+        if (result && !result.ok) console.warn(`[api/waitlist] whatsapp confirm failed for ${eventId}: ${result.reason}`);
+      })
+      .catch((err) => console.warn('[api/waitlist] whatsapp confirm error:', err.message));
+  }
+
   return res.json({ ok: true });
 });
 

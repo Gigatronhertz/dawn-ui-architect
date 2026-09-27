@@ -114,11 +114,12 @@ function IntakeStep({
   initialOrigin,
   initialDestination,
 }: {
-  onSubmit: (data: IntakeData, email: string) => void;
+  onSubmit: (data: IntakeData, email: string, waNumber: string) => void;
   initialOrigin?: string;
   initialDestination?: string;
 }) {
   const [email, setEmail] = useState("");
+  const [waNumber, setWaNumber] = useState("");
   const [transportMode, setTransportMode] = useState<'bus' | 'flight'>('bus');
   const cities = transportMode === 'bus' ? GIGM_CITIES : FLIGHT_CITIES;
 
@@ -323,20 +324,35 @@ function IntakeStep({
         </div>
 
         <div className="md:col-span-2">
-          <div className="rounded-2xl bg-primary/8 ring-1 ring-primary/20 p-4">
-            <Field n={10} label="Your email">
-              <input
-                type="email"
-                className={inputCls}
-                placeholder="you@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </Field>
-            <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-              We'll email you the plan and your share link the moment you confirm.
-              No spam — just the one message.
-            </p>
+          <div className="rounded-2xl bg-primary/8 ring-1 ring-primary/20 p-4 grid sm:grid-cols-2 gap-4">
+            <div>
+              <Field n={10} label="Your email">
+                <input
+                  type="email"
+                  className={inputCls}
+                  placeholder="you@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </Field>
+              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                We'll email you the plan and your share link the moment you confirm.
+              </p>
+            </div>
+            <div>
+              <Field n={11} label="WhatsApp number (optional)">
+                <input
+                  type="tel"
+                  className={inputCls}
+                  placeholder="080…"
+                  value={waNumber}
+                  onChange={(e) => setWaNumber(e.target.value)}
+                />
+              </Field>
+              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                Get the plan link on WhatsApp too. No spam — just the one message.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -346,7 +362,7 @@ function IntakeStep({
           Takes ~20 seconds. AI builds your plan with live prices from GIGM and Google Travel.
         </p>
         <button
-          onClick={() => onSubmit(form, email)}
+          onClick={() => onSubmit(form, email, waNumber)}
           disabled={!email.includes("@")}
           className="group inline-flex items-center gap-2 rounded-full bg-signal text-ink border-[3px] border-foreground px-6 py-3 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] active:translate-y-0 active:shadow-[2px_2px_0_0_hsl(var(--foreground))] transition-transform w-full sm:w-auto justify-center disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_0_hsl(var(--foreground))]"
         >
@@ -1699,6 +1715,7 @@ export default function Start() {
   const [step, setStep] = useState<Step>("intake");
   const [intake, setIntake] = useState<IntakeData | null>(null);
   const [email, setEmail] = useState<string>("");
+  const [waNumber, setWaNumber] = useState<string>("");
   const [tripId, setTripId] = useState<string | null>(null);
   const [plan, setPlan] = useState<TripPlan | null>(null);
   const [scraped, setScraped] = useState<ScrapedData | null>(null);
@@ -1819,16 +1836,17 @@ export default function Start() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Plan creation ─────────────────────────────────────────────────────────────
-  async function handleIntakeSubmit(data: IntakeData, organisersEmail: string) {
+  async function handleIntakeSubmit(data: IntakeData, organisersEmail: string, organisersWaNumber: string) {
     setIntake(data);
     setEmail(organisersEmail);
+    setWaNumber(organisersWaNumber);
     setScraped(null);
     setError(null);
     setStep("generating"); // show spinner immediately
 
     try {
       // POST /api/plan now returns in ~100 ms with just a tripId
-      const { tripId: newTripId } = await api.createPlan(data);
+      const { tripId: newTripId } = await api.createPlan(data, organisersEmail, organisersWaNumber);
       setTripId(newTripId);
 
       // Persist the job in the URL so refresh / close → reopen still works
@@ -1975,7 +1993,7 @@ export default function Start() {
                   const url = new URL(window.location.href);
                   url.searchParams.delete("job");
                   window.history.replaceState({}, "", url.toString());
-                  handleIntakeSubmit(intake, email);
+                  handleIntakeSubmit(intake, email, waNumber);
                 }}
                 className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-destructive text-white hover:opacity-80 active:scale-95 transition whitespace-nowrap"
               >

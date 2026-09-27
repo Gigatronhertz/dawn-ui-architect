@@ -41,6 +41,10 @@ const TEMPLATES = [
     name: process.env.WHISPER360_TEMPLATE_PLAN_READY || 'karije_plan_ready',
     body: 'Your trip to *{{destination}}* is ready! 🎉\n\nFull itinerary, hotels and cost per person:\n{{link}}\n\n— Karije',
   },
+  {
+    name: process.env.WHISPER360_TEMPLATE_EVENT_REGISTERED || 'karije_event_registered',
+    body: 'You\'re registered for *{{event_name}}*! 🎉\n\nWe\'ll message you here closer to the date.\n\n— Karije',
+  },
 ];
 
 async function run() {
