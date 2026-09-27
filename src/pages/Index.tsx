@@ -108,21 +108,26 @@ const Services = () => (
 );
 
 // ── Destinations ──────────────────────────────────────────────────────────────
-// Mixed sourcing — Unsplash and Pexels, both free for commercial use with no
-// attribution required. imgUrl() below detects a full URL vs a bare Unsplash
-// ID, so a Pexels entry just carries its complete image URL as `id`.
+// Authentic photos of each named place, from Wikimedia Commons (CC BY / CC BY-SA
+// / public domain), hosted on the project CDN. Credits shown on each card.
+import enuguImg from "@/assets/places/enugu.jpg.asset.json";
+import durbarImg from "@/assets/places/durbar.jpg.asset.json";
+import elegushiImg from "@/assets/places/elegushi.jpg.asset.json";
+import calabarImg from "@/assets/places/calabar.jpg.asset.json";
+import abujaImg from "@/assets/places/abuja.jpg.asset.json";
+import obuduImg from "@/assets/places/obudu.jpg.asset.json";
+
 const destinations = [
-  { id: "1577900190299-7316c32fe85f", label: "Enugu",            sub: "Coal City, Nigeria",     tall: true  },
-  { id: "https://images.pexels.com/photos/33687458/pexels-photo-33687458.jpeg", label: "Culture & Heritage", sub: "Traditional Gathering", tall: false },
-  { id: "1773146916270-e811bff4e923", label: "Beach Weekend",     sub: "Lagos Shoreline",        tall: false },
-  { id: "1761986756798-a13b39989361", label: "Road Trip",         sub: "Calabar Adventure",      tall: false },
-  { id: "https://images.pexels.com/photos/33033191/pexels-photo-33033191.jpeg", label: "Abuja",   sub: "Friends in the Park",   tall: false },
-  { id: "1761986758241-77549539536a", label: "Road Trip Crew",    sub: "Adventure Van Life",     tall: true  },
+  { id: "enugu",    src: enuguImg.url,    label: "Enugu",              sub: "Coal City, Nigeria",          credit: "Wikimedia Commons, public domain", tall: true  },
+  { id: "durbar",   src: durbarImg.url,   label: "Culture & Heritage", sub: "Bida Durbar, Niger State",    credit: "Wikimedia Commons, CC BY-SA 4.0",  tall: false },
+  { id: "elegushi", src: elegushiImg.url, label: "Beach Weekend",      sub: "Elegushi Beach, Lagos",       credit: "Wikimedia Commons, CC BY-SA 4.0",  tall: false },
+  { id: "calabar",  src: calabarImg.url,  label: "Road Trip",          sub: "Marina Resort, Calabar",      credit: "Wikimedia Commons, CC BY-SA 4.0",  tall: false },
+  { id: "abuja",    src: abujaImg.url,    label: "Abuja",              sub: "Millennium Park",             credit: "Wikimedia Commons, public domain", tall: false },
+  { id: "obudu",    src: obuduImg.url,    label: "Mountain Escape",    sub: "Obudu Mountain Resort",       credit: "Wikimedia Commons, CC BY-SA 4.0",  tall: true  },
 ];
 
-function imgUrl(id: string, w = 600, h = 450) {
-  if (/^https?:\/\//i.test(id)) return `${id}?auto=compress&cs=tinysrgb&w=${w}&h=${h}&fit=crop`;
-  return `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
+function imgUrl(id: string, _w = 600, _h = 450) {
+  return destinations.find((d) => d.id === id)?.src ?? "";
 }
 
 const DestinationsGrid = () => (
@@ -300,9 +305,9 @@ const Index = () => {
     <main className="min-h-screen bg-background">
       <Nav />
       <Hero />
+      <UpcomingEvents />
       <TripCategories />
       <ExploreCityTeaser />
-      <UpcomingEvents />
       <TrustProof />
       <Services />
       <DestinationsGrid />
