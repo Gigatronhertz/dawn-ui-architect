@@ -188,6 +188,14 @@ export type AgentProfile = {
    *  buildable and shareable throughout, they just don't show up in the
    *  public catalog (/api/listings) until this is 'verified'. */
   verification_status?: 'pending' | 'verified' | 'rejected';
+  nin?: string | null;
+  id_document_image_id?: string | null;
+  business_doc_image_id?: string | null;
+  /** JSON string, e.g. '{"instagram":"https://instagram.com/..."}'. */
+  social_links?: string | null;
+  payout_bank_code?: string | null;
+  payout_account_no?: string | null;
+  payout_account_name?: string | null;
 };
 
 export type TripRow = {
@@ -571,6 +579,25 @@ export const api = {
   /** Drop the logo. The stored image stays, so live plans keep rendering. */
   removeAgencyLogo: (token: string) =>
     del<{ ok: boolean }>('/api/pro/logo', bearer(token)),
+
+  /** The agency's own saved payout account — copied onto each new trip at creation time. */
+  updatePayout: (payload: { bankCode?: string; accountNo: string; accountName: string }, token: string) =>
+    patch<{ ok: boolean; agent: AgentProfile }>('/api/pro/payout', payload, bearer(token)),
+
+  /** NIN + social links — never verification_status; only the admin panel sets that. */
+  updateVerification: (payload: { nin?: string; socialLinks?: Record<string, string> }, token: string) =>
+    patch<{ ok: boolean; agent: AgentProfile }>('/api/pro/verification', payload, bearer(token)),
+
+  uploadVerificationDocument: async (kind: 'id' | 'business', file: File, token: string) => {
+    const res = await fetch(`${API_URL}/api/pro/verification/documents/${kind}`, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type, Authorization: `Bearer ${token}` },
+      body: file,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not upload that document.');
+    return data as { ok: boolean; imageId: string };
+  },
 
   uploadTripCover: async (tripId: string, file: File, token: string) => {
     const res = await fetch(`${API_URL}/api/pro/trips/${tripId}/cover`, {

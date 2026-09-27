@@ -969,6 +969,94 @@ router.delete('/pro/logo', requireAuth, requireAgent, async (req, res) => {
   }
 });
 
+// ── Agency self-service verification ────────────────────────────────────────
+// The admin panel creates the login and makes the verify/reject call, but the
+// agency is the one who actually has their own NIN, ID and business docs —
+// so they submit those themselves, from their own dashboard, once logged in.
+// Never lets an agency set its own verification_status to 'verified'; only
+// the admin route (PUT /admin/agents/:id/verification) can do that.
+
+// PATCH /api/pro/verification — NIN + social links.
+router.patch('/pro/verification', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const { nin, socialLinks } = req.body || {};
+    await db.agents.updateSelfVerification({
+      id: req.agent.id,
+      nin: typeof nin === 'string' ? nin.trim() : null,
+      socialLinks: socialLinks && typeof socialLinks === 'object' ? JSON.stringify(socialLinks) : null,
+    });
+    res.json({ ok: true, agent: await db.agents.getById(req.agent.id) });
+  } catch (err) {
+    console.error('[api/pro/verification]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/pro/verification/documents/:kind — kind is 'id' or 'business'.
+// Same storage as the admin upload (trip_images, doc_ prefix, served only
+// through the admin-gated route) — just reachable with the agency's own
+// token instead of the admin key.
+router.post(
+  '/pro/verification/documents/:kind',
+  requireAuth,
+  requireAgent,
+  raw({ type: LOGO_MIME, limit: LOGO_LIMIT }),
+  async (req, res) => {
+    try {
+      const { kind } = req.params;
+      if (!['id', 'business'].includes(kind)) {
+        return res.status(400).json({ error: "kind must be 'id' or 'business'." });
+      }
+      const mime = (req.headers['content-type'] || '').split(';')[0].trim();
+      if (!LOGO_MIME.includes(mime)) {
+        return res.status(415).json({ error: 'Upload a JPEG, PNG or WebP image.' });
+      }
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: 'No image data received.' });
+      }
+
+      const imageId = `doc_${uuid().replace(/-/g, '')}`;
+      await db.tripImages.insert({ id: imageId, mime, bytes: req.body });
+      await db.agents.updateSelfVerification({
+        id: req.agent.id,
+        idDocumentImageId:  kind === 'id'       ? imageId : null,
+        businessDocImageId: kind === 'business' ? imageId : null,
+        // Re-submitting after a rejection puts the agency back in the queue
+        // rather than leaving it stuck on 'rejected' forever.
+        resetIfRejected: true,
+      });
+
+      res.json({ ok: true, imageId });
+    } catch (err) {
+      console.error('[api/pro/verification/documents]', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// PATCH /api/pro/payout — the agency's own saved bank account. Copied onto
+// each new trip at creation time (see createAgencyTrip above); changing it
+// here only affects trips created after the change, not ones already
+// collecting — see the comment there for why.
+router.patch('/pro/payout', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const { bankCode, accountNo, accountName } = req.body || {};
+    if (!accountNo || !accountName) {
+      return res.status(400).json({ error: 'Account number and account name are required.' });
+    }
+    await db.agents.updatePayout({
+      id: req.agent.id,
+      bankCode:    typeof bankCode === 'string' ? bankCode.trim() : null,
+      accountNo:   String(accountNo).trim(),
+      accountName: String(accountName).trim(),
+    });
+    res.json({ ok: true, agent: await db.agents.getById(req.agent.id) });
+  } catch (err) {
+    console.error('[api/pro/payout]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Trip cover photo ─────────────────────────────────────────────────────────
 // The one field the public catalog already expects (/api/listings reads
 // cover_image_id) but nothing ever wrote — same upload shape as the agency

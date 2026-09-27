@@ -822,6 +822,24 @@ async function updateAgentVerification({ id, status, nin, idDocumentImageId, bus
   });
 }
 
+/** An agency submitting or updating its own KYC info — NIN, social links,
+ *  and (separately, per document) the uploaded images. Deliberately never
+ *  touches verification_status except the one case where a rejected agency
+ *  re-submits a document, which reopens it to 'pending' — an agency can
+ *  never set itself to 'verified'; only the admin route does that. */
+async function updateAgentSelfVerification({ id, nin, idDocumentImageId, businessDocImageId, socialLinks, resetIfRejected }) {
+  await client.execute({
+    sql: `UPDATE agents SET
+            nin                   = COALESCE(?, nin),
+            id_document_image_id  = COALESCE(?, id_document_image_id),
+            business_doc_image_id = COALESCE(?, business_doc_image_id),
+            social_links          = COALESCE(?, social_links),
+            verification_status   = CASE WHEN ? = 1 AND verification_status = 'rejected' THEN 'pending' ELSE verification_status END
+          WHERE id = ?`,
+    args: [nin ?? null, idDocumentImageId ?? null, businessDocImageId ?? null, socialLinks ?? null, resetIfRejected ? 1 : 0, id],
+  });
+}
+
 /** An agency's own saved payout account — the default copied onto each new
  *  trip at creation time (see routes/api.js createAgencyTrip). */
 async function updateAgentPayout({ id, bankCode, accountNo, accountName }) {
@@ -1299,6 +1317,7 @@ module.exports = {
     getByEmail:    getAgentByEmail,
     dashboardByUser: getAgentDashboardByUser,
     updateVerification: updateAgentVerification,
+    updateSelfVerification: updateAgentSelfVerification,
     updatePayout:       updateAgentPayout,
   },
   attractions:  {

@@ -26,6 +26,7 @@ const db         = require('../db/client');
 const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
 const ledger = require('../services/ledger');
 const { hashPassword } = require('./emailAuth');
+const { sendPayoutReleasedEmail } = require('../services/email');
 
 const router = Router();
 
@@ -169,7 +170,28 @@ router.post('/money/:tripId/payout', requireAdmin, async (req, res) => {
       [id, req.params.tripId, amount, req.body?.note || null, req.body?.reference || null]
     );
 
-    res.json({ ok: true, payoutId: id, position: await ledger.forTrip(req.params.tripId) });
+    const newPosition = await ledger.forTrip(req.params.tripId);
+
+    // Tell every paid traveller once the balance actually clears to zero —
+    // not on a partial/staged release (e.g. a bus deposit before the trip
+    // is even full), only when the agency has been paid in full.
+    if (newPosition && newPosition.outstanding === 0) {
+      const trip = await db.trips.get(req.params.tripId);
+      const agent = trip?.agent_id ? await db.agents.getById(trip.agent_id) : null;
+      const tripName = trip?.title || trip?.destination || 'your trip';
+      const paidTravellers = await db.rawAll(
+        `SELECT name, email FROM participants WHERE trip_id = ? AND paid = 1 AND email IS NOT NULL`,
+        [req.params.tripId]
+      );
+      for (const t of paidTravellers) {
+        sendPayoutReleasedEmail({
+          to: t.email, name: t.name, tripName,
+          agencyName: agent?.agency_name || 'the organiser',
+        }).catch((err) => console.warn('[admin] payout-released email failed:', err.message));
+      }
+    }
+
+    res.json({ ok: true, payoutId: id, position: newPosition });
   } catch (err) {
     console.error('[admin] POST payout failed:', err.message);
     res.status(500).json({ error: err.message });

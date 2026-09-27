@@ -208,10 +208,35 @@ async function sendPaymentReceiptEmail({ to, name, tripName, amount, link, refer
   });
 }
 
+/**
+ * The trust signal the whole held-and-released model runs on: Karije held
+ * the money until the trip filled, and now it's actually gone out to the
+ * agency — every paid traveller on the trip gets this, not just whoever
+ * organised it.
+ */
+async function sendPayoutReleasedEmail({ to, name, tripName, agencyName }) {
+  const resend = getResend();
+  if (!resend || !to) return;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Funds released for ${tripName}`,
+    html: shell({
+      heading: `You're confirmed — funds are out 💸`,
+      body: `<p style="margin:0;">${name ? name + ', y' : 'Y'}our squad's full amount for
+             <strong style="color:#22321f;">${tripName}</strong> has been released to
+             <strong style="color:#22321f;">${agencyName}</strong>. The trip is officially running.</p>`,
+      footnote: `Karije held everyone's payment until the trip was fully paid up, then paid it out — that's why this arrives now rather than the moment you paid.`,
+    }),
+  });
+}
+
 module.exports = {
   sendPlanReadyEmail,
   sendPlanConfirmedEmail,
   sendPaymentReminderEmail,
   sendPaymentReceiptEmail,
+  sendPayoutReleasedEmail,
   available,
 };

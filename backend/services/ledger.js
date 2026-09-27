@@ -56,16 +56,23 @@ async function forTrip(tripId) {
   const fee            = feeForTrip(trip);
   const serviceFee     = fee * paidCount;
   const dueToOrganiser = Math.max(0, collected - serviceFee);
+  const squadSize      = Number(trip.squad_size) || 0;
 
   return {
     tripId,
     paidCount,
+    squadSize,
     collected,
     feePerPerson: fee,
     serviceFee,
     dueToOrganiser,
     paidOut,
     outstanding: Math.max(0, dueToOrganiser - paidOut),
+    // The actual protection this whole system exists for: money only moves
+    // to the agency once every seat is both filled AND paid — never before,
+    // so a trip that doesn't fill still has Karije holding the funds to
+    // refund from, instead of an agency that may not still have it.
+    readyToDisburse: squadSize > 0 && paidCount >= squadSize,
     payoutAccount: trip.payout_account_no ? {
       bankCode:    trip.payout_bank_code,
       accountNo:   trip.payout_account_no,
@@ -77,7 +84,7 @@ async function forTrip(tripId) {
 /** Every trip holding money, worst-first by what's still owed. */
 async function outstandingTrips() {
   const rows = await db.rawAll(
-    `SELECT t.id, t.destination, t.status, t.selected_date, t.plan,
+    `SELECT t.id, t.destination, t.status, t.selected_date, t.plan, t.squad_size,
             t.service_fee_per_person, t.payout_account_name,
             (SELECT COUNT(*)                  FROM participants p WHERE p.trip_id = t.id AND p.paid = 1) AS paid_count,
             (SELECT COALESCE(SUM(p.amount),0) FROM participants p WHERE p.trip_id = t.id AND p.paid = 1) AS collected,
@@ -93,6 +100,7 @@ async function outstandingTrips() {
       const fee        = Number.isFinite(Number(r.service_fee_per_person))
         ? Number(r.service_fee_per_person) : DEFAULT_SERVICE_FEE;
       const paidCount  = Number(r.paid_count ?? 0);
+      const squadSize  = Number(r.squad_size) || 0;
       const collected  = Number(r.collected ?? 0);
       const serviceFee = fee * paidCount;
       const due        = Math.max(0, collected - serviceFee);
@@ -103,11 +111,13 @@ async function outstandingTrips() {
         destination: r.destination,
         tripDate:    r.selected_date || null,
         paidCount,
+        squadSize,
         collected,
         serviceFee,
         dueToOrganiser: due,
         paidOut,
         outstanding: Math.max(0, due - paidOut),
+        readyToDisburse: squadSize > 0 && paidCount >= squadSize,
         payoutAccountName: r.payout_account_name || null,
       };
     })

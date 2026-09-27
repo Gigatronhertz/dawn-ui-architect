@@ -29,9 +29,13 @@ type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "a
 
 type MoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
-  paidCount: number; collected: number; serviceFee: number;
+  paidCount: number; squadSize: number; collected: number; serviceFee: number;
   dueToOrganiser: number; paidOut: number; outstanding: number;
+  /** All seats filled and paid — the signal for "safe to release the full balance now". */
+  readyToDisburse: boolean;
   payoutAccountName: string | null;
+  /** Only present on the single-trip detail fetch (GET /admin/money/:tripId), not the list. */
+  payoutAccount?: { bankCode: string | null; accountNo: string; accountName: string } | null;
 };
 type Payout = {
   id: string; amount: number; note: string | null; status: string;
@@ -1150,7 +1154,18 @@ function MoneySection({ adminKey }: { adminKey: string }) {
               className="w-full flex items-center gap-4 p-4 text-left hover:bg-gray-50 transition"
             >
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 truncate">{t.name}</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-medium text-gray-900 truncate">{t.name}</div>
+                  {t.outstanding > 0 && (
+                    <span className={`shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      t.readyToDisburse
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-gray-50 text-gray-500 border-gray-200"
+                    }`}>
+                      {t.readyToDisburse ? "✓ Ready to pay out" : `Collecting — ${t.paidCount}/${t.squadSize || "?"} paid`}
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-gray-500 mt-0.5">
                   {t.paidCount} paid · {naira(t.collected)} in
                   {t.tripDate ? ` · ${t.tripDate}` : ""}
@@ -1227,7 +1242,24 @@ function TripMoneyDetail({ tripId, adminKey, onChange }: {
 
       {/* Record a release */}
       {data.outstanding > 0 && (
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
+        <div className={`bg-white border rounded-lg p-3 ${data.readyToDisburse ? "border-green-300" : "border-gray-200"}`}>
+          <div className={`text-xs font-medium mb-1 ${data.readyToDisburse ? "text-green-700" : "text-gray-700"}`}>
+            {data.readyToDisburse
+              ? `✓ All ${data.squadSize} seats paid — ready to release ${naira(data.outstanding)}`
+              : `Still collecting — ${data.paidCount}/${data.squadSize || "?"} paid`}
+          </div>
+          {data.payoutAccount && (
+            <div className="text-[11px] text-gray-500 mb-2">
+              Pay to: <span className="font-medium text-gray-700">{data.payoutAccount.accountName}</span>
+              {" "}· {data.payoutAccount.accountNo}
+              {data.payoutAccount.bankCode ? ` (${data.payoutAccount.bankCode})` : ""}
+            </div>
+          )}
+          {!data.payoutAccount && (
+            <div className="text-[11px] text-amber-600 mb-2">
+              No payout account on file yet — the agency needs to add one under Pro → Settings.
+            </div>
+          )}
           <div className="text-xs font-medium text-gray-700 mb-2">
             Record a payout — {naira(data.outstanding)} outstanding
           </div>

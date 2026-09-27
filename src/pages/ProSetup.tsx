@@ -36,6 +36,26 @@ const ProSetup = () => {
   const [logoFile, setLogoFile]       = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
+  // ── Verification (KYC) — only meaningful once the agency record exists,
+  // so it only shows once getProMe below actually finds one.
+  const [hasAgent, setHasAgent] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<"pending" | "verified" | "rejected">("pending");
+  const [nin, setNin]           = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [hasIdDoc, setHasIdDoc]         = useState(false);
+  const [hasBusinessDoc, setHasBusinessDoc] = useState(false);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyErr, setVerifyErr]   = useState("");
+  const [verifyNote, setVerifyNote] = useState("");
+
+  // ── Payout account — where Karije sends collected money once a trip fills.
+  const [bankCode, setBankCode]       = useState("");
+  const [accountNo, setAccountNo]     = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [payoutBusy, setPayoutBusy]   = useState(false);
+  const [payoutErr, setPayoutErr]     = useState("");
+  const [payoutNote, setPayoutNote]   = useState("");
+
   // Pre-fill plan from URL (?plan=growth) and any existing saved form
   useEffect(() => {
     const urlPlan = searchParams.get("plan") === "growth" ? "growth" : null;
@@ -59,6 +79,15 @@ const ProSetup = () => {
         if (agent.logo_image_id) {
           setLogoPreview(imageUrl(`/api/trip-image/${agent.logo_image_id}`));
         }
+        setHasAgent(true);
+        setVerificationStatus(agent.verification_status || "pending");
+        setNin(agent.nin || "");
+        setHasIdDoc(!!agent.id_document_image_id);
+        setHasBusinessDoc(!!agent.business_doc_image_id);
+        try { setInstagram(JSON.parse(agent.social_links || "{}").instagram || ""); } catch { /* no links saved yet */ }
+        setBankCode(agent.payout_bank_code || "");
+        setAccountNo(agent.payout_account_no || "");
+        setAccountName(agent.payout_account_name || "");
       })
       .catch(() => { /* first time — no profile yet */ });
   }, [user, getIdToken, searchParams]);
@@ -67,6 +96,49 @@ const ProSetup = () => {
     .trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
+
+  async function saveVerificationInfo() {
+    const token = getIdToken();
+    if (!token) return;
+    setVerifyBusy(true); setVerifyErr(""); setVerifyNote("");
+    try {
+      await api.updateVerification({ nin: nin.trim(), socialLinks: instagram.trim() ? { instagram: instagram.trim() } : undefined }, token);
+      setVerifyNote("Saved.");
+    } catch (e) {
+      setVerifyErr(e instanceof Error ? e.message : "Could not save that.");
+    } finally { setVerifyBusy(false); }
+  }
+
+  async function uploadVerificationDoc(kind: "id" | "business", file: File | undefined) {
+    if (!file) return;
+    const token = getIdToken();
+    if (!token) return;
+    setVerifyBusy(true); setVerifyErr(""); setVerifyNote("");
+    try {
+      await api.uploadVerificationDocument(kind, file, token);
+      if (kind === "id") setHasIdDoc(true); else setHasBusinessDoc(true);
+      if (verificationStatus === "rejected") setVerificationStatus("pending");
+      setVerifyNote(`${kind === "id" ? "ID photo" : "Business document"} uploaded.`);
+    } catch (e) {
+      setVerifyErr(e instanceof Error ? e.message : "Upload failed.");
+    } finally { setVerifyBusy(false); }
+  }
+
+  async function savePayoutAccount() {
+    const token = getIdToken();
+    if (!token) return;
+    if (!accountNo.trim() || !accountName.trim()) {
+      setPayoutErr("Account number and account name are required.");
+      return;
+    }
+    setPayoutBusy(true); setPayoutErr(""); setPayoutNote("");
+    try {
+      await api.updatePayout({ bankCode: bankCode.trim(), accountNo: accountNo.trim(), accountName: accountName.trim() }, token);
+      setPayoutNote("Saved — this is where new trips will send your money.");
+    } catch (e) {
+      setPayoutErr(e instanceof Error ? e.message : "Could not save that.");
+    } finally { setPayoutBusy(false); }
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,6 +289,145 @@ const ProSetup = () => {
               />
             </div>
           </div>
+
+          {/* Verification (KYC) — only shows once the agency record exists,
+              which it does immediately for an admin-created account. */}
+          {hasAgent && (
+            <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="font-semibold text-sm">Verification</div>
+                <span className={`text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full ${
+                  verificationStatus === "verified" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                  : verificationStatus === "rejected" ? "bg-destructive/10 text-destructive"
+                  : "bg-signal/20 text-foreground"
+                }`}>
+                  {verificationStatus}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Your trips only show up in the Karije catalog once this is verified. Submit these once — a person
+                reviews them, not an algorithm, so it isn't instant.
+              </p>
+
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1.5">NIN (National Identification Number)</label>
+                <input
+                  value={nin}
+                  onChange={(e) => setNin(e.target.value)}
+                  placeholder="11-digit NIN"
+                  maxLength={11}
+                  className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1.5">
+                  Instagram <span className="opacity-50">(optional — shown on your public agency page)</span>
+                </label>
+                <input
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="https://instagram.com/youragency"
+                  className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={saveVerificationInfo}
+                disabled={verifyBusy}
+                className="text-xs font-medium rounded-lg bg-secondary px-4 py-2 hover:bg-secondary/70 transition disabled:opacity-40"
+              >
+                Save NIN & Instagram
+              </button>
+
+              <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-border">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1.5">ID or passport photo</label>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer rounded-lg bg-secondary/60 ring-hairline px-3 py-2 hover:bg-secondary transition">
+                      {hasIdDoc ? "Replace" : "Upload"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => { uploadVerificationDoc("id", e.target.files?.[0]); e.target.value = ""; }}
+                      />
+                    </label>
+                    {hasIdDoc && <span className="text-xs text-emerald-700 dark:text-emerald-400">✓ on file</span>}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1.5">Business registration doc</label>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer rounded-lg bg-secondary/60 ring-hairline px-3 py-2 hover:bg-secondary transition">
+                      {hasBusinessDoc ? "Replace" : "Upload"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => { uploadVerificationDoc("business", e.target.files?.[0]); e.target.value = ""; }}
+                      />
+                    </label>
+                    {hasBusinessDoc && <span className="text-xs text-emerald-700 dark:text-emerald-400">✓ on file</span>}
+                  </div>
+                </div>
+              </div>
+
+              {verifyNote && <p className="text-xs text-emerald-700 dark:text-emerald-400">{verifyNote}</p>}
+              {verifyErr && <p className="text-xs text-destructive">{verifyErr}</p>}
+            </div>
+          )}
+
+          {/* Payout account — where collected money is actually sent */}
+          {hasAgent && (
+            <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
+              <div className="font-semibold text-sm">Payout account</div>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Karije holds what travellers pay until a trip's seats are all filled, then pays it out here in one go —
+                new trips you create use whatever's saved here at the time.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1.5">Bank</label>
+                  <input
+                    value={bankCode}
+                    onChange={(e) => setBankCode(e.target.value)}
+                    placeholder="e.g. GTBank, Access, Kuda…"
+                    className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1.5">Account number</label>
+                  <input
+                    value={accountNo}
+                    onChange={(e) => setAccountNo(e.target.value)}
+                    placeholder="10-digit account number"
+                    className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-muted-foreground block mb-1.5">Account name</label>
+                  <input
+                    value={accountName}
+                    onChange={(e) => setAccountName(e.target.value)}
+                    placeholder="Exactly as it reads on the account"
+                    className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={savePayoutAccount}
+                disabled={payoutBusy}
+                className="text-xs font-medium rounded-lg bg-secondary px-4 py-2 hover:bg-secondary/70 transition disabled:opacity-40"
+              >
+                {payoutBusy ? "Saving…" : "Save payout account"}
+              </button>
+              {payoutNote && <p className="text-xs text-emerald-700 dark:text-emerald-400">{payoutNote}</p>}
+              {payoutErr && <p className="text-xs text-destructive">{payoutErr}</p>}
+            </div>
+          )}
 
           {/* Service fee */}
           <div className="rounded-3xl bg-card ring-hairline p-6 space-y-4">
