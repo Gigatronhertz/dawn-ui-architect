@@ -37,7 +37,7 @@ export const LAGOS_EXPERIENCES: Experience[] = [
     maxDays: 3,
     category: "adventure",
     location: "Tarkwa Bay, Lagos Harbour",
-    imageId: "1773146916270-e811bff4e923",
+    imageId: "/__l5e/assets-v1/c684c6d1-d0bf-433b-825f-3ace5a793984/tarkwa.jpg",
     colorFallback: "#2F4A33",
     included: [
       "Return speedboat ride from CMS Marina",
@@ -92,7 +92,7 @@ export const LAGOS_EXPERIENCES: Experience[] = [
     maxDays: 1,
     category: "leisure",
     location: "Lekki, Lagos",
-    imageId: "1560118386-f35cf6a0791d",
+    imageId: "/__l5e/assets-v1/b875a890-360a-40c7-85f4-45ac0740c7a3/lekki.jpg",
     colorFallback: "#1E5F8E",
     included: [
       "All-day entry + full slide access",
@@ -130,7 +130,7 @@ export const LAGOS_EXPERIENCES: Experience[] = [
     maxDays: 1,
     category: "culture",
     location: "Victoria Island, Lagos",
-    imageId: "1761986758241-77549539536a",
+    imageId: "/__l5e/assets-v1/ff1a25aa-2bef-4984-b31b-0edf756b4c26/vi.jpg",
     colorFallback: "#8B4513",
     included: [
       "Entry & full room access",
@@ -165,7 +165,7 @@ export const LAGOS_EXPERIENCES: Experience[] = [
     maxDays: 1,
     category: "culture",
     location: "Yaba & Lagos Island",
-    imageId: "1509099896299-af46ad97ff57",
+    imageId: "/__l5e/assets-v1/48baab68-a41a-42b9-829e-d6ebbc396bc4/yaba.jpg",
     colorFallback: "#4A2F45",
     included: [
       "Sneaker gallery entry (Yaba)",
@@ -201,7 +201,7 @@ export const LAGOS_EXPERIENCES: Experience[] = [
     maxDays: 1,
     category: "nature",
     location: "Lekki Phase 2, Lagos",
-    imageId: "1577900190299-7316c32fe85f",
+    imageId: "/__l5e/assets-v1/a4d3ef8d-6700-4247-8b5b-3df249251f0d/lcc.jpg",
     colorFallback: "#2A5C2A",
     included: [
       "Centre entry ticket",
@@ -239,7 +239,7 @@ export const LAGOS_EXPERIENCES: Experience[] = [
     maxDays: 2,
     category: "food",
     location: "Lagos Island (CMS, Marina, Balogun)",
-    imageId: "1761986756798-a13b39989361",
+    imageId: "/__l5e/assets-v1/f5f03d55-0622-41b1-a538-73152b882f71/balogun.jpg",
     colorFallback: "#B0682F",
     included: [
       "Guided food tour (5 stops, all food covered)",

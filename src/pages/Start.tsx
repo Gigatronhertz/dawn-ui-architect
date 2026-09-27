@@ -447,7 +447,7 @@ function GeneratingStep({ tripId, userEmail }: { tripId: string | null; userEmai
 
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
       });
 
       await api.subscribeNotify(tripId, { subscription: subscription.toJSON() as object });
