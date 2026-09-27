@@ -300,9 +300,9 @@ const Index = () => {
     <main className="min-h-screen bg-background">
       <Nav />
       <Hero />
+      <UpcomingEvents />
       <TripCategories />
       <ExploreCityTeaser />
-      <UpcomingEvents />
       <TrustProof />
       <Services />
       <DestinationsGrid />
