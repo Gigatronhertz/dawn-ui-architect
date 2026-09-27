@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { CalendarClock, ShieldCheck, Lock } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Footer } from "@/components/CTA";
@@ -8,6 +9,51 @@ import { TripCategories } from "@/components/TripCategories";
 import { ExploreCityTeaser } from "@/components/ExploreCityTeaser";
 import { TrustProof } from "@/components/TrustProof";
 import { UpcomingEvents } from "@/components/UpcomingEvents";
+
+// ── Feature strip ───────────────────────────────────────────────────────────
+// Sits between the two most photo-heavy sections on the page (category cards,
+// then the Explore Lagos photo grid) so there's real substance about how
+// Karije actually works in between — not just pictures back to back.
+const featureHighlights = [
+  {
+    icon: CalendarClock,
+    title: "Pay monthly",
+    desc: "On trips that support it, split your share into monthly payments instead of one lump sum.",
+  },
+  {
+    icon: Lock,
+    title: "Your money, held safe",
+    desc: "Karije holds every payment and only releases it to the agency once the whole trip is paid up.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Verified agencies only",
+    desc: "Every agency running trips on Karije is ID- and business-checked before they go live.",
+  },
+];
+
+const FeatureStrip = () => (
+  <section className="py-16 md:py-20 border-t border-border bg-card">
+    <div className="mx-auto max-w-6xl px-6">
+      <div className="grid md:grid-cols-3 gap-4">
+        {featureHighlights.map((f) => (
+          <div
+            key={f.title}
+            className="flex items-start gap-4 rounded-2xl border-[3px] border-foreground bg-background p-5 shadow-[4px_4px_0_0_hsl(var(--foreground))]"
+          >
+            <div className="w-10 h-10 rounded-lg border-2 border-foreground bg-signal text-ink grid place-items-center shrink-0">
+              <f.icon className="w-5 h-5" strokeWidth={2} />
+            </div>
+            <div>
+              <div className="font-marcellus text-base text-foreground mb-1">{f.title}</div>
+              <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
 
 // ── Services ─────────────────────────────────────────────────────────────────
 const services = [
@@ -304,6 +350,7 @@ const Index = () => {
       <Hero />
       <UpcomingEvents />
       <TripCategories />
+      <FeatureStrip />
       <ExploreCityTeaser />
       <TrustProof />
       <Services />
