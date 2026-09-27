@@ -237,4 +237,4 @@ function verifyEmailTemplate(url) {
 </html>`;
 }
 
-module.exports = { router };
+module.exports = { router, hashPassword };

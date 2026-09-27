@@ -332,6 +332,27 @@ const MIGRATIONS = [
   // WhatsApp. Separate column rather than reusing notify_email's slot since
   // someone may give one, the other, or both.
   `ALTER TABLE trips ADD COLUMN notify_wa TEXT`,
+  // Phase 18 — agency verification. An agency's trips only surface publicly
+  // once verification_status is 'verified' (checked in /api/listings) — the
+  // actual document review happens off-platform, this just records the
+  // outcome. id_document_image_id / business_doc_image_id point into
+  // trip_images (the existing blob store) but are served through a separate,
+  // admin-key-gated route rather than the public /api/trip-image/:id one —
+  // unlike a logo or trip photo, an ID/passport scan is not meant to be public.
+  `ALTER TABLE agents ADD COLUMN verification_status  TEXT NOT NULL DEFAULT 'pending'`,
+  `ALTER TABLE agents ADD COLUMN nin                  TEXT`,
+  `ALTER TABLE agents ADD COLUMN id_document_image_id TEXT`,
+  `ALTER TABLE agents ADD COLUMN business_doc_image_id TEXT`,
+  `ALTER TABLE agents ADD COLUMN social_links         TEXT`,
+  `ALTER TABLE agents ADD COLUMN verified_at          INTEGER`,
+  // Phase 19 — held-and-released payments. An agency's own saved bank
+  // details, copied onto each new trip at creation time (see trips.payout_*
+  // below) so a later bank-detail change never retroactively moves where an
+  // in-flight trip's money goes — same snapshot pattern as
+  // service_fee_per_person.
+  `ALTER TABLE agents ADD COLUMN payout_bank_code    TEXT`,
+  `ALTER TABLE agents ADD COLUMN payout_account_no   TEXT`,
+  `ALTER TABLE agents ADD COLUMN payout_account_name TEXT`,
 ];
 
 const ready = (async () => {
@@ -770,6 +791,43 @@ async function linkAgentToUser({ phone, user_id, email }) {
   await client.execute({
     sql: `UPDATE agents SET user_id = ?, email = ? WHERE phone = ?`,
     args: [user_id, email ? email.toLowerCase() : null, phone],
+  });
+}
+
+/** Look up an agent by its own id (agent_<phone>). */
+async function getAgentById(id) {
+  const res = await client.execute({ sql: 'SELECT * FROM agents WHERE id = ?', args: [id] });
+  return res.rows[0] ?? null;
+}
+
+/** Every agency, newest first — the admin "Agencies" panel's list. */
+async function listAgents() {
+  const res = await client.execute('SELECT * FROM agents ORDER BY created_at DESC');
+  return res.rows;
+}
+
+/** Sets an agency's verification outcome and the documents it was checked
+ *  against. Called from the admin panel only — see adminRoutes.js. */
+async function updateAgentVerification({ id, status, nin, idDocumentImageId, businessDocImageId, socialLinks }) {
+  await client.execute({
+    sql: `UPDATE agents SET
+            verification_status   = ?,
+            nin                   = COALESCE(?, nin),
+            id_document_image_id  = COALESCE(?, id_document_image_id),
+            business_doc_image_id = COALESCE(?, business_doc_image_id),
+            social_links          = COALESCE(?, social_links),
+            verified_at           = CASE WHEN ? = 'verified' THEN unixepoch() ELSE verified_at END
+          WHERE id = ?`,
+    args: [status, nin ?? null, idDocumentImageId ?? null, businessDocImageId ?? null, socialLinks ?? null, status, id],
+  });
+}
+
+/** An agency's own saved payout account — the default copied onto each new
+ *  trip at creation time (see routes/api.js createAgencyTrip). */
+async function updateAgentPayout({ id, bankCode, accountNo, accountName }) {
+  await client.execute({
+    sql: `UPDATE agents SET payout_bank_code = ?, payout_account_no = ?, payout_account_name = ? WHERE id = ?`,
+    args: [bankCode || null, accountNo || null, accountName || null, id],
   });
 }
 
@@ -1233,11 +1291,15 @@ module.exports = {
   agents:      {
     upsert:        upsertAgent,
     get:           getAgent,
+    getById:       getAgentById,
+    list:          listAgents,
     dashboard:     getAgentDashboard,
     linkToUser:    linkAgentToUser,
     getByUser:     getAgentByUser,
     getByEmail:    getAgentByEmail,
     dashboardByUser: getAgentDashboardByUser,
+    updateVerification: updateAgentVerification,
+    updatePayout:       updateAgentPayout,
   },
   attractions:  {
     byState:     getAttractionsByState,

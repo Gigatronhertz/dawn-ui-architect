@@ -25,7 +25,7 @@ import {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money";
+type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "agents";
 
 type MoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
@@ -1284,6 +1284,294 @@ function TripMoneyDetail({ tripId, adminKey, onChange }: {
   );
 }
 
+// ── Agencies section (verified onboarding) ──────────────────────────────────────
+
+type Agent = {
+  id: string;
+  agency_name: string;
+  email: string | null;
+  phone: string;
+  wa_number: string | null;
+  tagline: string | null;
+  service_fee: number;
+  verification_status: "pending" | "verified" | "rejected";
+  nin: string | null;
+  id_document_image_id: string | null;
+  business_doc_image_id: string | null;
+  social_links: string | null;
+  verified_at: number | null;
+  created_at: number;
+};
+
+const STATUS_STYLE: Record<Agent["verification_status"], string> = {
+  pending:  "bg-amber-50 text-amber-700 border-amber-200",
+  verified: "bg-green-50 text-green-700 border-green-200",
+  rejected: "bg-red-50 text-red-700 border-red-200",
+};
+
+function AgentsSection({ adminKey }: { adminKey: string }) {
+  const [agents, setAgents]   = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState("");
+  const [open, setOpen]       = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    apiFetch<{ agents: Agent[] }>("/admin/agents", adminKey)
+      .then(d => setAgents(d.agents))
+      .catch(e => setErr(e.message))
+      .finally(() => setLoading(false));
+  }, [adminKey]);
+
+  useEffect(load, [load]);
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Agencies</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Create the login yourself and hand it over — no email-verification step needed.
+            An agency's trips only show up publicly once it's verified.
+          </p>
+        </div>
+        <button
+          onClick={() => setCreating(v => !v)}
+          className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700"
+        >
+          {creating ? "Cancel" : "+ New agency"}
+        </button>
+      </div>
+
+      {creating && (
+        <NewAgentForm
+          adminKey={adminKey}
+          onCreated={() => { setCreating(false); load(); }}
+        />
+      )}
+
+      {err && <p className="text-sm text-red-600 mb-4">{err}</p>}
+      {loading && <p className="text-sm text-gray-400">Loading…</p>}
+
+      {!loading && agents.length === 0 && !creating && (
+        <div className="text-center py-16 text-gray-400">
+          <div className="text-4xl mb-3">🧳</div>
+          <p className="text-sm">No agencies yet. Create the first one above.</p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {agents.map(a => (
+          <div key={a.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setOpen(open === a.id ? null : a.id)}
+              className="w-full flex items-center gap-4 p-4 text-left hover:bg-gray-50 transition"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-gray-900 truncate">{a.agency_name}</div>
+                <div className="text-xs text-gray-500 mt-0.5 truncate">
+                  {a.email || "no login yet"} · {a.phone}
+                </div>
+              </div>
+              <span className={`shrink-0 text-[11px] font-medium px-2 py-1 rounded-full border ${STATUS_STYLE[a.verification_status]}`}>
+                {a.verification_status}
+              </span>
+              <span className="text-gray-400 text-xs">{open === a.id ? "▲" : "▼"}</span>
+            </button>
+
+            {open === a.id && (
+              <AgentDetail agent={a} adminKey={adminKey} onChange={load} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NewAgentForm({ adminKey, onCreated }: { adminKey: string; onCreated: () => void }) {
+  const [form, setForm] = useState({ agencyName: "", email: "", phone: "", password: "", tagline: "" });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr]   = useState("");
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  function genPassword() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    let out = "";
+    for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
+    set("password", out);
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try {
+      const res = await apiFetch<{ ok: boolean; credentials: { email: string; password: string } }>(
+        "/admin/agents", adminKey,
+        { method: "POST", body: JSON.stringify(form) },
+      );
+      setCredentials(res.credentials);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not create that agency.");
+    } finally { setBusy(false); }
+  }
+
+  if (credentials) {
+    const text = `Email: ${credentials.email}\nPassword: ${credentials.password}\nSign in at: /pro/login`;
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-6">
+        <div className="font-medium text-green-900 mb-1">Account created — this password is shown once</div>
+        <p className="text-xs text-green-800 mb-3">Copy this now and send it to the agency. It can't be retrieved again after you leave this page.</p>
+        <pre className="bg-white border border-green-200 rounded-lg p-3 text-xs text-gray-900 whitespace-pre-wrap mb-3">{text}</pre>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+            className="px-3 py-1.5 bg-gray-900 text-white rounded text-xs font-medium hover:bg-gray-700"
+          >
+            {copied ? "Copied ✓" : "Copy"}
+          </button>
+          <button onClick={onCreated} className="px-3 py-1.5 border border-gray-300 rounded text-xs text-gray-600 hover:border-gray-500">
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-white border border-gray-200 rounded-xl p-5 mb-6 space-y-3">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <input required value={form.agencyName} onChange={e => set("agencyName", e.target.value)}
+          placeholder="Agency name" className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30" />
+        <input required type="tel" value={form.phone} onChange={e => set("phone", e.target.value)}
+          placeholder="Phone (+234...)" className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30" />
+        <input required type="email" value={form.email} onChange={e => set("email", e.target.value)}
+          placeholder="Login email" className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30" />
+        <div className="flex gap-2">
+          <input required minLength={8} value={form.password} onChange={e => set("password", e.target.value)}
+            placeholder="Password (8+ chars)" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30" />
+          <button type="button" onClick={genPassword} className="px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 hover:border-gray-400 whitespace-nowrap">
+            Generate
+          </button>
+        </div>
+        <input value={form.tagline} onChange={e => set("tagline", e.target.value)}
+          placeholder="Tagline (optional)" className="sm:col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30" />
+      </div>
+      {err && <p className="text-xs text-red-600">{err}</p>}
+      <button type="submit" disabled={busy} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-40">
+        {busy ? "Creating…" : "Create agency"}
+      </button>
+    </form>
+  );
+}
+
+function AgentDetail({ agent, adminKey, onChange }: { agent: Agent; adminKey: string; onChange: () => void }) {
+  const [nin, setNin]           = useState(agent.nin || "");
+  const [instagram, setInstagram] = useState(() => {
+    try { return JSON.parse(agent.social_links || "{}").instagram || ""; } catch { return ""; }
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr]   = useState("");
+  const [note, setNote] = useState("");
+
+  async function setStatus(status: Agent["verification_status"]) {
+    setBusy(true); setErr("");
+    try {
+      await apiFetch(`/admin/agents/${agent.id}/verification`, adminKey, {
+        method: "PUT",
+        body: JSON.stringify({ status, nin, socialLinks: instagram ? { instagram } : undefined }),
+      });
+      onChange();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not update verification.");
+    } finally { setBusy(false); }
+  }
+
+  async function uploadDoc(kind: "id" | "business", file: File | undefined) {
+    if (!file) return;
+    setBusy(true); setErr(""); setNote("");
+    try {
+      const blob = await shrinkImage(file);
+      const res = await fetch(`${API}/admin/agents/${agent.id}/documents/${kind}`, {
+        method: "POST",
+        headers: { "Content-Type": "image/jpeg", "X-Admin-Key": adminKey },
+        body: blob,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || `Upload failed (${res.status})`);
+      setNote(`${kind === "id" ? "ID photo" : "Business document"} uploaded.`);
+      onChange();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Upload failed.");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="border-t border-gray-100 p-4 space-y-4 bg-gray-50/60">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>NIN</label>
+          <input value={nin} onChange={e => setNin(e.target.value)} placeholder="11-digit NIN"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30" />
+        </div>
+        <div>
+          <label className={labelCls}>Instagram URL</label>
+          <input value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="https://instagram.com/..."
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/30" />
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>ID or passport photo</label>
+          <div className="flex items-center gap-2">
+            <label className="px-3 py-1.5 bg-gray-800 text-white rounded text-xs font-medium cursor-pointer hover:bg-gray-700">
+              {agent.id_document_image_id ? "Replace" : "Upload"}
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                onChange={e => { uploadDoc("id", e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+            {agent.id_document_image_id && <span className="text-xs text-green-700">✓ on file</span>}
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>Business registration doc</label>
+          <div className="flex items-center gap-2">
+            <label className="px-3 py-1.5 bg-gray-800 text-white rounded text-xs font-medium cursor-pointer hover:bg-gray-700">
+              {agent.business_doc_image_id ? "Replace" : "Upload"}
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                onChange={e => { uploadDoc("business", e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+            {agent.business_doc_image_id && <span className="text-xs text-green-700">✓ on file</span>}
+          </div>
+        </div>
+      </div>
+
+      {note && <p className="text-xs text-green-700">{note}</p>}
+      {err && <p className="text-xs text-red-600">{err}</p>}
+
+      <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+        <span className="text-xs text-gray-500 mr-1">Verification:</span>
+        {(["pending", "verified", "rejected"] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setStatus(s)}
+            disabled={busy}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition disabled:opacity-40 ${
+              agent.verification_status === s ? STATUS_STYLE[s] : "border-gray-200 text-gray-500 hover:border-gray-400"
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Attractions section ────────────────────────────────────────────────────────
 
 type AttractionRow = {
@@ -1694,6 +1982,7 @@ export default function Admin() {
     { id: "events",      label: "Events",      hint: "Events on Explore's What's on section" },
     { id: "money",       label: "Money",       hint: "Collected, owed, and paid out" },
     { id: "attractions", label: "Attractions", hint: "Prices the planner quotes" },
+    { id: "agents",      label: "Agencies",    hint: "Create logins, verify KYC documents" },
   ];
 
   return (
@@ -1729,6 +2018,7 @@ export default function Admin() {
       {tab === "events"      && <EventsSection      adminKey={adminKey} />}
       {tab === "money"       && <MoneySection       adminKey={adminKey} />}
       {tab === "attractions" && <AttractionsSection adminKey={adminKey} />}
+      {tab === "agents"      && <AgentsSection      adminKey={adminKey} />}
     </main>
   );
 }

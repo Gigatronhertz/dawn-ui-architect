@@ -108,22 +108,19 @@ const Services = () => (
 );
 
 // ── Destinations ──────────────────────────────────────────────────────────────
-// Authentic photos of each named place, from Wikimedia Commons (CC BY / CC BY-SA
-// / public domain), hosted on the project CDN. Credits shown on each card.
-import enuguImg from "@/assets/places/enugu.jpg.asset.json";
-import durbarImg from "@/assets/places/durbar.jpg.asset.json";
-import elegushiImg from "@/assets/places/elegushi.jpg.asset.json";
-import calabarImg from "@/assets/places/calabar.jpg.asset.json";
-import abujaImg from "@/assets/places/abuja.jpg.asset.json";
-import obuduImg from "@/assets/places/obudu.jpg.asset.json";
-
+// Full Unsplash URLs, same hotlink pattern as everywhere else in the app
+// (see src/lib/tripImage.ts). These replace a previous set of imports from
+// src/assets/places/*.jpg.asset.json — platform-specific relative asset
+// references (`/__l5e/assets-v1/...`) that only resolved inside whatever
+// app-builder tool generated them, so every one of these images was a
+// broken link on the actual deployed site.
 const destinations = [
-  { id: "enugu",    src: enuguImg.url,    label: "Enugu",              sub: "Coal City, Nigeria",          credit: "Wikimedia Commons, public domain", tall: true  },
-  { id: "durbar",   src: durbarImg.url,   label: "Culture & Heritage", sub: "Bida Durbar, Niger State",    credit: "Wikimedia Commons, CC BY-SA 4.0",  tall: false },
-  { id: "elegushi", src: elegushiImg.url, label: "Beach Weekend",      sub: "Elegushi Beach, Lagos",       credit: "Wikimedia Commons, CC BY-SA 4.0",  tall: false },
-  { id: "calabar",  src: calabarImg.url,  label: "Road Trip",          sub: "Marina Resort, Calabar",      credit: "Wikimedia Commons, CC BY-SA 4.0",  tall: false },
-  { id: "abuja",    src: abujaImg.url,    label: "Abuja",              sub: "Millennium Park",             credit: "Wikimedia Commons, public domain", tall: false },
-  { id: "obudu",    src: obuduImg.url,    label: "Mountain Escape",    sub: "Obudu Mountain Resort",       credit: "Wikimedia Commons, CC BY-SA 4.0",  tall: true  },
+  { id: "enugu",    src: "https://images.unsplash.com/photo-1577900190299-7316c32fe85f?auto=format&fit=crop&w=600&h=900&q=80", label: "Enugu",              sub: "Coal City, Nigeria",          credit: "Unsplash License", tall: true  },
+  { id: "durbar",   src: "https://images.unsplash.com/photo-1778338943061-49a276779511?auto=format&fit=crop&w=600&h=440&q=80", label: "Culture & Heritage", sub: "Bida Durbar, Niger State",    credit: "Unsplash License", tall: false },
+  { id: "elegushi", src: "https://images.unsplash.com/photo-1608846376283-4e219eb75191?auto=format&fit=crop&w=600&h=440&q=80", label: "Beach Weekend",      sub: "Elegushi Beach, Lagos",       credit: "Unsplash License", tall: false },
+  { id: "calabar",  src: "https://images.unsplash.com/photo-1686626466981-31a2a4814bff?auto=format&fit=crop&w=600&h=440&q=80", label: "Road Trip",          sub: "Marina Resort, Calabar",      credit: "Unsplash License", tall: false },
+  { id: "abuja",    src: "https://images.unsplash.com/photo-1554457606-ed16c39db884?auto=format&fit=crop&w=600&h=440&q=80", label: "Abuja",              sub: "Millennium Park",             credit: "Unsplash License", tall: false },
+  { id: "obudu",    src: "https://images.unsplash.com/photo-1593285942976-70dbd769a590?auto=format&fit=crop&w=600&h=900&q=80", label: "Mountain Escape",    sub: "Obudu Mountain Resort",       credit: "Unsplash License", tall: true  },
 ];
 
 function imgUrl(id: string, _w = 600, _h = 450) {

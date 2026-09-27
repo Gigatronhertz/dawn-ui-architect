@@ -1522,13 +1522,16 @@ router.get('/listings', async (req, res) => {
     const city = typeof req.query.city === 'string' ? req.query.city.trim() : '';
     const experiences = await db.experiences.list();
 
+    // verification_status = 'verified' is the actual protection promised to
+    // travellers — an agency mid-KYC (or rejected) can still build and share
+    // trips by link, they just don't show up here yet.
     const agencyRows = await db.rawAll(
       `SELECT t.id, t.title, t.summary, t.destination, t.days, t.squad_size,
               t.selected_date, t.plan, t.created_at, t.cover_image_id,
               a.agency_name, a.color, a.logo_image_id
          FROM trips t
          JOIN agents a ON a.id = t.agent_id
-        WHERE t.listed = 1 AND t.status = 'custom'
+        WHERE t.listed = 1 AND t.status = 'custom' AND a.verification_status = 'verified'
           AND (? = '' OR t.destination = ?)
         ORDER BY t.created_at DESC`,
       [city, city]
@@ -1818,6 +1821,12 @@ router.post('/custom-trip', requireAuth, async (req, res) => {
 // at any CDN in front, and each visitor pays for the fetch exactly once.
 router.get('/trip-image/:id', async (req, res) => {
   try {
+    // KYC documents (agent verification) live in this same blob store under a
+    // doc_ id, but are not meant to be publicly fetchable — they're served
+    // only through the admin-key-gated GET /admin/agent-document/:id. Refuse
+    // by prefix here rather than trusting every caller to use the other route.
+    if (req.params.id.startsWith('doc_')) return res.status(404).json({ error: 'Image not found.' });
+
     const img = await db.tripImages.get(req.params.id);
     if (!img) return res.status(404).json({ error: 'Image not found.' });
 

@@ -108,6 +108,26 @@ const chipCls = (active: boolean) =>
     active ? "bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--foreground))]" : "bg-card text-foreground hover:bg-secondary"
   }`;
 
+/**
+ * Module-scope on purpose, not defined inside IntakeStep: a component
+ * declared inside another component's body gets a new identity every
+ * render, so React tears down and remounts it (and every input inside it,
+ * losing focus and dropping keystrokes) on every single re-render — which
+ * for IntakeStep means every keystroke in any field. This is the fix for
+ * that report.
+ */
+const Field = ({ n, label, children }: { n: number; label: string; children: React.ReactNode }) => (
+  <label className="block">
+    <div className="flex items-baseline gap-2 mb-2">
+      <span className="font-display text-xs font-semibold tabular-nums text-muted-foreground">
+        {String(n).padStart(2, "0")}
+      </span>
+      <span className="text-sm font-medium">{label}</span>
+    </div>
+    {children}
+  </label>
+);
+
 /* ─── step 1: intake ────────────────────────────────────────────────────────── */
 function IntakeStep({
   onSubmit,
@@ -156,18 +176,6 @@ function IntakeStep({
 
   const inputCls = "w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition";
   const selectCls = `${inputCls} cursor-pointer appearance-none`;
-
-  const Field = ({ n, label, children }: { n: number; label: string; children: React.ReactNode }) => (
-    <label className="block">
-      <div className="flex items-baseline gap-2 mb-2">
-        <span className="font-display text-xs font-semibold tabular-nums text-muted-foreground">
-          {String(n).padStart(2, "0")}
-        </span>
-        <span className="text-sm font-medium">{label}</span>
-      </div>
-      {children}
-    </label>
-  );
 
   return (
     <Card>

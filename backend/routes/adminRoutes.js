@@ -25,6 +25,7 @@ const crypto     = require('crypto');
 const db         = require('../db/client');
 const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
 const ledger = require('../services/ledger');
+const { hashPassword } = require('./emailAuth');
 
 const router = Router();
 
@@ -187,6 +188,185 @@ router.put('/money/:tripId/account', requireAdmin, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[admin] PUT payout account failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Agencies (verified onboarding) ──────────────────────────────────────────────
+//
+// Self-signup exists (/pro/login?mode=signup) but requires the agency's own
+// email to click a verification link before it can log in at all — no good
+// when the plan is "I create the account and hand over the login." These
+// routes create a working, pre-verified login directly, and record the KYC
+// outcome (NIN + a photo of their ID or passport, plus business registration
+// documentation) that gates whether their trips can show up publicly.
+//
+// An agency's trips only surface in /api/listings once verification_status
+// is 'verified' — see that route. Nothing here disables their dashboard;
+// they can still build trips and share the link while pending, it just
+// won't appear in the public catalog yet.
+
+// GET /admin/agents — every agency, newest first.
+router.get('/agents', requireAdmin, async (req, res) => {
+  try {
+    const rows = await db.agents.list();
+    res.json({ agents: rows });
+  } catch (err) {
+    console.error('[admin] GET agents failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/agents/:id — one agency's full record.
+router.get('/agents/:id', requireAdmin, async (req, res) => {
+  try {
+    const agent = await db.agents.getById(req.params.id);
+    if (!agent) return res.status(404).json({ error: 'Agency not found.' });
+    res.json({ agent });
+  } catch (err) {
+    console.error('[admin] GET agents/:id failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/agents — create the login and the agency profile together.
+// Returns the password once, in the response, so it can be handed to the
+// agency directly — it is never retrievable again after this (only its hash
+// is stored), same as any other account.
+router.post('/agents', requireAdmin, async (req, res) => {
+  try {
+    const { email, password, agencyName, phone, waNumber, tagline, serviceFee, color } = req.body || {};
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'A valid email address is required.' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
+    if (!agencyName || !agencyName.trim()) {
+      return res.status(400).json({ error: 'Agency name is required.' });
+    }
+    if (!phone || phone.trim().length < 5) {
+      return res.status(400).json({ error: 'A valid phone number is required.' });
+    }
+
+    const emailNorm = email.trim().toLowerCase();
+    const existing  = await db.raw('SELECT id FROM users WHERE email = ?', [emailNorm]);
+    if (existing) {
+      return res.status(409).json({ error: 'An account already exists for this email.' });
+    }
+
+    const cleanPhone = phone.trim().replace(/\s+/g, '');
+    const uid        = `ep_${crypto.randomBytes(12).toString('hex')}`;
+    const passwordHash = await hashPassword(password);
+
+    // Pre-verified — no email click needed, this login works immediately.
+    await db.raw(
+      `INSERT INTO users (id, email, name, photo_url, password_hash, email_verified)
+       VALUES (?, ?, NULL, NULL, ?, 1)`,
+      [uid, emailNorm, passwordHash]
+    );
+
+    const agentId = `agent_${cleanPhone}`;
+    await db.agents.upsert({
+      id:          agentId,
+      phone:       cleanPhone,
+      agency_name: agencyName.trim(),
+      wa_number:   waNumber?.trim()?.replace(/\s+/g, '') || cleanPhone,
+      service_fee: Math.max(0, Number(serviceFee) || 10000),
+      color:       typeof color === 'string' && color ? color : '#0B0B0B',
+      plan_type:   'starter',
+      tagline:     typeof tagline === 'string' ? tagline.trim() : '',
+    });
+    await db.agents.linkToUser({ phone: cleanPhone, user_id: uid, email: emailNorm });
+
+    const agent = await db.agents.getById(agentId);
+    res.json({ ok: true, agent, credentials: { email: emailNorm, password } });
+  } catch (err) {
+    console.error('[admin] POST agents failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /admin/agents/:id/verification — record the KYC outcome. Documents are
+// uploaded separately (POST .../documents/:kind) since they're binary;
+// this route only ever carries JSON.
+router.put('/agents/:id/verification', requireAdmin, async (req, res) => {
+  try {
+    const { status, nin, socialLinks } = req.body || {};
+    if (!['pending', 'verified', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: "status must be 'pending', 'verified' or 'rejected'." });
+    }
+    const agent = await db.agents.getById(req.params.id);
+    if (!agent) return res.status(404).json({ error: 'Agency not found.' });
+
+    await db.agents.updateVerification({
+      id: req.params.id,
+      status,
+      nin: typeof nin === 'string' ? nin.trim() : null,
+      socialLinks: socialLinks && typeof socialLinks === 'object' ? JSON.stringify(socialLinks) : null,
+    });
+    res.json({ ok: true, agent: await db.agents.getById(req.params.id) });
+  } catch (err) {
+    console.error('[admin] PUT agents verification failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/agents/:id/documents/:kind — kind is 'id' or 'business'.
+// Same raw-upload shape as /admin/trip-images, but stored under a field that
+// is never exposed through the public /api/trip-image/:id route — see
+// GET /admin/agent-document/:id below.
+router.post(
+  '/agents/:id/documents/:kind',
+  requireAdmin,
+  express.raw({ type: ALLOWED_MIME, limit: MAX_IMAGE_BYTES }),
+  async (req, res) => {
+    try {
+      const { id, kind } = req.params;
+      if (!['id', 'business'].includes(kind)) {
+        return res.status(400).json({ error: "kind must be 'id' or 'business'." });
+      }
+      const agent = await db.agents.getById(id);
+      if (!agent) return res.status(404).json({ error: 'Agency not found.' });
+
+      const mime = (req.headers['content-type'] || '').split(';')[0].trim();
+      if (!ALLOWED_MIME.includes(mime)) {
+        return res.status(415).json({ error: 'Upload a JPEG, PNG or WebP image.' });
+      }
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: 'No image data received.' });
+      }
+
+      const imageId = `doc_${crypto.randomBytes(12).toString('hex')}`;
+      await db.tripImages.insert({ id: imageId, mime, bytes: req.body });
+      await db.agents.updateVerification({
+        id,
+        status: agent.verification_status || 'pending',
+        idDocumentImageId:  kind === 'id'       ? imageId : null,
+        businessDocImageId: kind === 'business' ? imageId : null,
+      });
+
+      res.json({ ok: true, imageId });
+    } catch (err) {
+      console.error('[admin] POST agent document failed:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// GET /admin/agent-document/:id — serves a stored KYC image. Admin-key-gated,
+// deliberately separate from the public, unauthenticated /api/trip-image/:id
+// route: an ID or passport photo is not meant to be fetchable by anyone who
+// guesses the id.
+router.get('/agent-document/:id', requireAdmin, async (req, res) => {
+  try {
+    const img = await db.tripImages.get(req.params.id);
+    if (!img) return res.status(404).json({ error: 'Not found.' });
+    res.set({ 'Content-Type': img.mime, 'Cache-Control': 'private, no-store' });
+    res.send(Buffer.isBuffer(img.bytes) ? img.bytes : Buffer.from(img.bytes));
+  } catch (err) {
+    console.error('[admin] GET agent-document failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
