@@ -17,7 +17,7 @@ function getResend() {
 }
 
 const FRONTEND = process.env.FRONTEND_URL || 'https://mysquadgo.vercel.app';
-const FROM     = process.env.EMAIL_FROM    || 'MySquadGo <onboarding@resend.dev>';
+const FROM     = process.env.EMAIL_FROM    || 'Karije <hello@karije.com>';
 
 /**
  * Sends a "plan is ready" email.

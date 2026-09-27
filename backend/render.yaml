@@ -40,7 +40,7 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: "MySquadGo <onboarding@resend.dev>"
+        value: "Karije <hello@karije.com>"
       - key: FRONTEND_URL
         value: https://mysquadgo.vercel.app
       # Public URL of this service. Reminder emails build their Pay now link
