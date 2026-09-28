@@ -25,6 +25,7 @@ const crypto     = require('crypto');
 const db         = require('../db/client');
 const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
 const ledger = require('../services/ledger');
+const revenue = require('../services/revenue');
 const { hashPassword } = require('./emailAuth');
 const { sendPayoutReleasedEmail } = require('../services/email');
 
@@ -107,6 +108,17 @@ router.post(
     }
   }
 );
+
+// ── GET /admin/revenue ─────────────────────────────────────────────────────────
+// Karije's own income: Pro subscriptions, 10% of curated trips, AI plan packs.
+router.get('/revenue', requireAdmin, async (req, res) => {
+  try {
+    res.json(await revenue.report());
+  } catch (err) {
+    console.error('[admin] GET revenue failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── GET /admin/money ───────────────────────────────────────────────────────────
 // Every trip holding money: what came in, Karije's fee, what's owed to whoever

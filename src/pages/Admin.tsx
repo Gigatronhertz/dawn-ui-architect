@@ -25,7 +25,7 @@ import {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "agents";
+type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "agents" | "revenue";
 
 type MoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
@@ -1190,6 +1190,264 @@ function MoneySection({ adminKey }: { adminKey: string }) {
   );
 }
 
+/* ─── Revenue ──────────────────────────────────────────────────────────────── */
+
+type SubStatus = "exempt" | "active" | "past_due" | "suspended";
+type RevenueReport = {
+  thisMonth: { subscriptions: number; curated: number; aiPlans: number; total: number };
+  allTime:   { subscriptions: number; curated: number; aiPlans: number; total: number };
+  curatedPending: number;
+  subscriptions: {
+    counts: Record<SubStatus, number>;
+    agencies: {
+      id: string; agency_name: string; email: string | null; status: SubStatus;
+      next_charge_at: number | null; failed_attempts: number; total_paid: number; last_paid_at: number | null;
+    }[];
+    charges: { id: string; agency_name: string | null; amount: number; reference: string; status: string; created_at: number }[];
+  };
+  curated: {
+    trips: { tripId: string; name: string; pct: number; squadSize: number; paidCount: number;
+             expected: number; collected: number; earned: number; pending: number }[];
+  };
+  aiPlans: {
+    packs: number; revenue: number; creditsSold: number;
+    plansGenerated: { free: number; credit: number; pro: number };
+    purchases: { id: string; email: string | null; amount: number; credits: number; reference: string; created_at: number }[];
+  };
+  monthly: { month: string; subscriptions: number; curated: number; aiPlans: number; total: number }[];
+};
+
+const SUB_BADGE: Record<SubStatus, string> = {
+  active:    "bg-green-50 text-green-700 border-green-200",
+  past_due:  "bg-amber-50 text-amber-700 border-amber-200",
+  suspended: "bg-red-50 text-red-700 border-red-200",
+  exempt:    "bg-gray-50 text-gray-500 border-gray-200",
+};
+const SUB_LABEL: Record<SubStatus, string> = {
+  active: "Active", past_due: "Past due", suspended: "Suspended", exempt: "Exempt",
+};
+const fmtDay = (ts: number | null) => ts ? new Date(ts * 1000).toLocaleDateString() : "—";
+const fmtMonth = (m: string) => new Date(`${m}-01T00:00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+
+function RevenueCard({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) {
+  return (
+    <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-gray-100">
+        <h2 className="font-semibold text-gray-900">{title}</h2>
+        {right}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function RevenueSection({ adminKey }: { adminKey: string }) {
+  const [data, setData]    = useState<RevenueReport | null>(null);
+  const [err, setErr]      = useState("");
+  const [loading, setLoad] = useState(true);
+  const [subFilter, setSubFilter] = useState<SubStatus | "all">("all");
+  const [showCharges, setShowCharges] = useState(false);
+
+  const load = useCallback(() => {
+    setLoad(true);
+    apiFetch<RevenueReport>("/admin/revenue", adminKey)
+      .then(setData)
+      .catch(e => setErr(e.message))
+      .finally(() => setLoad(false));
+  }, [adminKey]);
+
+  useEffect(load, [load]);
+
+  if (loading && !data) return <div className="mx-auto max-w-6xl px-6 py-8 text-sm text-gray-400">Loading…</div>;
+  if (err) return <div className="mx-auto max-w-6xl px-6 py-8 text-sm text-red-600">{err}</div>;
+  if (!data) return null;
+
+  const agencies = data.subscriptions.agencies.filter(a => subFilter === "all" || a.status === subFilter);
+  const th = "text-left text-[11px] uppercase tracking-wide text-gray-500 font-medium px-4 py-2";
+  const td = "px-4 py-2.5 text-sm text-gray-800";
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-8 space-y-6">
+      {/* This month, by stream */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: "This month",        value: data.thisMonth.total,         hint: `${naira(data.allTime.total)} all time`, accent: true },
+          { label: "Pro subscriptions", value: data.thisMonth.subscriptions, hint: `${naira(data.allTime.subscriptions)} all time` },
+          { label: "Curated trips (10%)", value: data.thisMonth.curated,     hint: `${naira(data.allTime.curated)} all time · ${naira(data.curatedPending)} still to come` },
+          { label: "AI plan packs",     value: data.thisMonth.aiPlans,       hint: `${naira(data.allTime.aiPlans)} all time` },
+        ].map(s => (
+          <div key={s.label} className={`rounded-xl border p-4 ${s.accent ? "border-green-300 bg-green-50" : "border-gray-200 bg-white"}`}>
+            <div className="text-[11px] uppercase tracking-wide text-gray-500">{s.label}</div>
+            <div className="text-xl font-semibold text-gray-900 mt-1 tabular-nums">{naira(s.value)}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">{s.hint}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Month by month */}
+      <RevenueCard title="Month by month" right={<button onClick={load} className="text-xs text-gray-500 hover:text-gray-800">Refresh</button>}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px]">
+            <thead className="bg-gray-50/60">
+              <tr><th className={th}>Month</th><th className={th}>Subscriptions</th><th className={th}>Curated 10%</th><th className={th}>AI packs</th><th className={th}>Total</th></tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {[...data.monthly].reverse().map(m => (
+                <tr key={m.month}>
+                  <td className={td}>{fmtMonth(m.month)}</td>
+                  <td className={`${td} tabular-nums`}>{naira(m.subscriptions)}</td>
+                  <td className={`${td} tabular-nums`}>{naira(m.curated)}</td>
+                  <td className={`${td} tabular-nums`}>{naira(m.aiPlans)}</td>
+                  <td className={`${td} tabular-nums font-semibold`}>{naira(m.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </RevenueCard>
+
+      {/* Subscriptions */}
+      <RevenueCard
+        title="Pro subscriptions"
+        right={
+          <div className="flex flex-wrap gap-1.5">
+            {(["all", "active", "past_due", "suspended", "exempt"] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setSubFilter(f)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition ${subFilter === f ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}
+              >
+                {f === "all" ? `All (${data.subscriptions.agencies.length})` : `${SUB_LABEL[f]} (${data.subscriptions.counts[f] ?? 0})`}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        {agencies.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-gray-400">No agencies here.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px]">
+              <thead className="bg-gray-50/60">
+                <tr><th className={th}>Agency</th><th className={th}>Status</th><th className={th}>Total paid</th><th className={th}>Last paid</th><th className={th}>Next charge</th><th className={th}>Failed tries</th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {agencies.map(a => (
+                  <tr key={a.id}>
+                    <td className={td}>
+                      <div className="font-medium text-gray-900">{a.agency_name}</div>
+                      {a.email && <div className="text-xs text-gray-400">{a.email}</div>}
+                    </td>
+                    <td className={td}>
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${SUB_BADGE[a.status] || SUB_BADGE.exempt}`}>{SUB_LABEL[a.status] || a.status}</span>
+                    </td>
+                    <td className={`${td} tabular-nums`}>{naira(a.total_paid)}</td>
+                    <td className={td}>{fmtDay(a.last_paid_at)}</td>
+                    <td className={td}>{a.status === "exempt" ? "—" : fmtDay(a.next_charge_at)}</td>
+                    <td className={`${td} tabular-nums ${a.failed_attempts > 0 ? "text-amber-700 font-medium" : ""}`}>{a.failed_attempts}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="border-t border-gray-100">
+          <button onClick={() => setShowCharges(v => !v)} className="w-full px-4 py-2.5 text-left text-xs text-gray-500 hover:text-gray-800">
+            {showCharges ? "▲ Hide" : "▼ Show"} charge history ({data.subscriptions.charges.length})
+          </button>
+          {showCharges && (
+            data.subscriptions.charges.length === 0 ? (
+              <p className="px-4 pb-4 text-sm text-gray-400">No charges yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px]">
+                  <thead className="bg-gray-50/60">
+                    <tr><th className={th}>Date</th><th className={th}>Agency</th><th className={th}>Amount</th><th className={th}>Result</th><th className={th}>Reference</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {data.subscriptions.charges.map(c => (
+                      <tr key={c.id}>
+                        <td className={td}>{fmtDay(c.created_at)}</td>
+                        <td className={td}>{c.agency_name || "—"}</td>
+                        <td className={`${td} tabular-nums`}>{naira(c.amount)}</td>
+                        <td className={`${td} ${c.status === "success" ? "text-green-700" : "text-red-600"}`}>{c.status === "success" ? "Paid" : "Failed"}</td>
+                        <td className={`${td} text-xs text-gray-400 font-mono`}>{c.reference}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+        </div>
+      </RevenueCard>
+
+      {/* Curated trips */}
+      <RevenueCard title="Curated trips — Karije's 10%" right={<span className="text-xs text-gray-500">{naira(data.curatedPending)} still to come</span>}>
+        {data.curated.trips.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-gray-400">No curated trips booked yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px]">
+              <thead className="bg-gray-50/60">
+                <tr><th className={th}>Trip</th><th className={th}>Paid</th><th className={th}>Collected</th><th className={th}>Trip total</th><th className={th}>Our share</th><th className={th}>Still to come</th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {data.curated.trips.map(t => (
+                  <tr key={t.tripId}>
+                    <td className={td}><div className="font-medium text-gray-900">{t.name}</div><div className="text-xs text-gray-400">{t.pct}%</div></td>
+                    <td className={`${td} tabular-nums`}>{t.paidCount}/{t.squadSize || "?"}</td>
+                    <td className={`${td} tabular-nums`}>{naira(t.collected)}</td>
+                    <td className={`${td} tabular-nums`}>{naira(t.expected)}</td>
+                    <td className={`${td} tabular-nums font-semibold text-green-700`}>{naira(t.earned)}</td>
+                    <td className={`${td} tabular-nums text-gray-500`}>{naira(t.pending)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </RevenueCard>
+
+      {/* AI plans */}
+      <RevenueCard title="AI plan packs — ₦500 for 3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
+          {[
+            { label: "Packs sold",     value: String(data.aiPlans.packs) },
+            { label: "Revenue",        value: naira(data.aiPlans.revenue) },
+            { label: "Paid plans used", value: `${data.aiPlans.plansGenerated.credit} of ${data.aiPlans.creditsSold}` },
+            { label: "Free / Pro plans", value: `${data.aiPlans.plansGenerated.free} / ${data.aiPlans.plansGenerated.pro}` },
+          ].map(s => (
+            <div key={s.label} className="rounded-lg border border-gray-200 p-3">
+              <div className="text-[11px] uppercase tracking-wide text-gray-500">{s.label}</div>
+              <div className="text-lg font-semibold text-gray-900 mt-0.5 tabular-nums">{s.value}</div>
+            </div>
+          ))}
+        </div>
+        {data.aiPlans.purchases.length > 0 && (
+          <div className="overflow-x-auto border-t border-gray-100">
+            <table className="w-full min-w-[520px]">
+              <thead className="bg-gray-50/60">
+                <tr><th className={th}>Date</th><th className={th}>Buyer</th><th className={th}>Amount</th><th className={th}>Plans</th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {data.aiPlans.purchases.map(p => (
+                  <tr key={p.id}>
+                    <td className={td}>{fmtDay(p.created_at)}</td>
+                    <td className={td}>{p.email || "—"}</td>
+                    <td className={`${td} tabular-nums`}>{naira(p.amount)}</td>
+                    <td className={`${td} tabular-nums`}>{p.credits}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </RevenueCard>
+    </div>
+  );
+}
+
 function TripMoneyDetail({ tripId, adminKey, onChange }: {
   tripId: string; adminKey: string; onChange: () => void;
 }) {
@@ -2063,6 +2321,7 @@ export default function Admin() {
     { id: "experiences", label: "Trips",       hint: "Curated trips on /start/explore" },
     { id: "nightlife",   label: "Nightlife",   hint: "Venues on Explore's Nightlife section" },
     { id: "events",      label: "Events",      hint: "Events on Explore's What's on section" },
+    { id: "revenue",     label: "Revenue",     hint: "Subscriptions, curated 10%, AI plan packs" },
     { id: "money",       label: "Money",       hint: "Collected, owed, and paid out" },
     { id: "attractions", label: "Attractions", hint: "Prices the planner quotes" },
     { id: "agents",      label: "Agencies",    hint: "Create logins, verify KYC documents" },
@@ -2099,6 +2358,7 @@ export default function Admin() {
       {tab === "experiences" && <ExperiencesSection adminKey={adminKey} />}
       {tab === "nightlife"   && <NightlifeSection   adminKey={adminKey} />}
       {tab === "events"      && <EventsSection      adminKey={adminKey} />}
+      {tab === "revenue"     && <RevenueSection     adminKey={adminKey} />}
       {tab === "money"       && <MoneySection       adminKey={adminKey} />}
       {tab === "attractions" && <AttractionsSection adminKey={adminKey} />}
       {tab === "agents"      && <AgentsSection      adminKey={adminKey} />}
