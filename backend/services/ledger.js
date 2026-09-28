@@ -2,9 +2,12 @@
  * What Karije holds, what it keeps, and what it owes.
  *
  * Karije is the payment rail for every trip planned on the platform: it
- * collects each person's share, keeps a service fee for processing and
- * chasing, and disburses the rest to whoever is running the trip. Money spent
- * at the venue on the day is not Karije's — the ledger stops at the payout.
+ * collects each person's share and disburses it to whoever is running the
+ * trip. Karije takes no per-person service fee — agencies pay a monthly
+ * subscription instead. The one exception is Karije's own curated trips,
+ * where 10% of what's collected is Karije's margin and the rest is the trip's
+ * budget. Money spent at the venue on the day is not Karije's — the ledger
+ * stops at the payout.
  *
  * Every figure here is derived from rows in the database rather than stored as
  * a running total, so a balance can't silently drift out of step with the
@@ -12,24 +15,22 @@
  */
 const db = require('../db/client');
 
-/**
- * Karije's cut, per person, per trip. Flat rather than a percentage: Paystack
- * already takes a percentage, and stacking two makes a big squad's fee feel
- * punitive for work that costs us the same either way.
- */
-const DEFAULT_SERVICE_FEE = Number(process.env.SERVICE_FEE_PER_PERSON || 500);
+/** Karije's margin on its own curated trips, as a percentage of what's collected. */
+const CURATED_FEE_PCT = 10;
 
-/** The fee a trip was created under. Snapshotted, so rate changes aren't retroactive. */
-function feeForTrip(trip) {
-  const stored = Number(trip?.service_fee_per_person);
-  return Number.isFinite(stored) && stored >= 0 ? stored : DEFAULT_SERVICE_FEE;
+/** The percentage a trip was created under. Snapshotted, so rate changes aren't retroactive. */
+function feePctForTrip(trip) {
+  const stored = Number(trip?.platform_fee_pct);
+  return Number.isFinite(stored) && stored > 0 ? stored : 0;
 }
+
+const shareOf = (collected, pct) => Math.round(collected * pct / 100);
 
 /**
  * Full money position for one trip.
  *
  * collected      — actually received from squad members
- * serviceFee     — Karije's share of that
+ * karijeShare    — Karije's share of that (10% on curated trips, else 0)
  * dueToOrganiser — collected minus fee
  * paidOut        — released so far (staged payouts included)
  * outstanding    — still to release
@@ -60,9 +61,9 @@ async function forTrip(tripId) {
   );
   const paidOut = Number(payoutRows[0]?.total ?? 0);
 
-  const fee            = feeForTrip(trip);
-  const serviceFee     = fee * paidCount;
-  const dueToOrganiser = Math.max(0, collected - serviceFee);
+  const feePct         = feePctForTrip(trip);
+  const karijeShare    = shareOf(collected, feePct);
+  const dueToOrganiser = Math.max(0, collected - karijeShare);
   const squadSize      = Number(trip.squad_size) || 0;
 
   return {
@@ -70,8 +71,8 @@ async function forTrip(tripId) {
     paidCount,
     squadSize,
     collected,
-    feePerPerson: fee,
-    serviceFee,
+    feePct,
+    karijeShare,
     dueToOrganiser,
     paidOut,
     outstanding: Math.max(0, dueToOrganiser - paidOut),
@@ -97,7 +98,7 @@ async function forTrip(tripId) {
 async function outstandingTrips({ agentId } = {}) {
   const rows = await db.rawAll(
     `SELECT t.id, t.title, t.destination, t.status, t.selected_date, t.plan, t.squad_size,
-            t.service_fee_per_person, t.payout_account_name,
+            t.platform_fee_pct, t.payout_account_name,
             (SELECT COUNT(*)                  FROM participants p       WHERE p.trip_id = t.id AND p.paid = 1) AS paid_count,
             (SELECT COALESCE(SUM(pp.amount),0) FROM participant_payments pp WHERE pp.trip_id = t.id)            AS collected,
             (SELECT COALESCE(SUM(o.amount),0) FROM payouts o      WHERE o.trip_id = t.id AND o.status = 'paid') AS paid_out
@@ -111,13 +112,12 @@ async function outstandingTrips({ agentId } = {}) {
   return rows
     .map((r) => {
       const plan       = r.plan ? JSON.parse(r.plan) : null;
-      const fee        = Number.isFinite(Number(r.service_fee_per_person))
-        ? Number(r.service_fee_per_person) : DEFAULT_SERVICE_FEE;
-      const paidCount  = Number(r.paid_count ?? 0);
-      const squadSize  = Number(r.squad_size) || 0;
-      const collected  = Number(r.collected ?? 0);
-      const serviceFee = fee * paidCount;
-      const due        = Math.max(0, collected - serviceFee);
+      const feePct      = feePctForTrip(r);
+      const paidCount   = Number(r.paid_count ?? 0);
+      const squadSize   = Number(r.squad_size) || 0;
+      const collected   = Number(r.collected ?? 0);
+      const karijeShare = shareOf(collected, feePct);
+      const due         = Math.max(0, collected - karijeShare);
       const paidOut    = Number(r.paid_out ?? 0);
       return {
         tripId:      r.id,
@@ -127,7 +127,8 @@ async function outstandingTrips({ agentId } = {}) {
         paidCount,
         squadSize,
         collected,
-        serviceFee,
+        feePct,
+        karijeShare,
         dueToOrganiser: due,
         paidOut,
         outstanding: Math.max(0, due - paidOut),
@@ -139,4 +140,4 @@ async function outstandingTrips({ agentId } = {}) {
     .sort((a, b) => b.outstanding - a.outstanding);
 }
 
-module.exports = { forTrip, outstandingTrips, feeForTrip, DEFAULT_SERVICE_FEE };
+module.exports = { forTrip, outstandingTrips, feePctForTrip, CURATED_FEE_PCT };

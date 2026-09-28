@@ -241,7 +241,7 @@ router.get('/plan/:tripId', async (req, res) => {
 // POST /api/agents
 // Upsert a Pro agent profile. Phone is the unique identifier.
 router.post('/agents', async (req, res) => {
-  const { phone, agencyName, waNumber, serviceFee, color, planType, tagline } = req.body;
+  const { phone, agencyName, waNumber, color, planType, tagline } = req.body;
   if (!phone || typeof phone !== 'string' || phone.trim().length < 5)
     return res.status(400).json({ error: 'A valid phone number is required.' });
   if (!agencyName || typeof agencyName !== 'string' || !agencyName.trim())
@@ -255,7 +255,8 @@ router.post('/agents', async (req, res) => {
     phone: sanitisedPhone,
     agency_name: agencyName.trim(),
     wa_number: (waNumber || sanitisedPhone).trim(),
-    service_fee: Number(serviceFee) || 10000,
+    // Agencies build their margin into the trip price — no separate fee.
+    service_fee: 0,
     color: color || '#6366f1',
     plan_type: planType || 'starter',
     tagline: tagline?.trim() || null,
@@ -882,10 +883,10 @@ router.post('/notify/subscribe', async (req, res) => {
 
 // POST /api/pro/setup
 // Create or update the agency profile tied to the authenticated user.
-// Body: { agencyName, tagline?, phone, waNumber?, serviceFee?, color?, planType? }
+// Body: { agencyName, tagline?, phone, waNumber?, color?, planType? }
 router.post('/pro/setup', requireAuth, async (req, res) => {
   const { uid, email, name } = req.user;
-  const { agencyName, tagline, phone, waNumber, serviceFee, color, planType } = req.body;
+  const { agencyName, tagline, phone, waNumber, color, planType } = req.body;
 
   if (!agencyName || typeof agencyName !== 'string' || !agencyName.trim()) {
     return res.status(400).json({ error: 'agencyName is required.' });
@@ -896,7 +897,6 @@ router.post('/pro/setup', requireAuth, async (req, res) => {
 
   const cleanPhone    = phone.trim().replace(/\s+/g, '');
   const cleanWaNumber = waNumber?.trim()?.replace(/\s+/g, '') || cleanPhone;
-  const fee           = Math.max(0, Number(serviceFee) || 10000);
   const agentId       = `agent_${cleanPhone}`;
 
   await db.agents.upsert({
@@ -904,7 +904,8 @@ router.post('/pro/setup', requireAuth, async (req, res) => {
     phone:       cleanPhone,
     agency_name: agencyName.trim(),
     wa_number:   cleanWaNumber,
-    service_fee: fee,
+    // Agencies build their margin into the trip price — no separate fee.
+    service_fee: 0,
     color:       typeof color === 'string' ? color : '#6366f1',
     plan_type:   planType === 'growth' ? 'growth' : 'starter',
     tagline:     typeof tagline === 'string' ? tagline.trim() : '',
@@ -2200,7 +2201,8 @@ router.post('/custom-trip', requireAuth, async (req, res) => {
           offline_note: '',
         }),
         JSON.stringify({ city, squadSize: squad, dayCount: planDays.length }),
-        ledger.DEFAULT_SERVICE_FEE,
+        // Karije takes no service fee on trips people build themselves.
+        0,
         tripId,
       ]
     );
@@ -2301,7 +2303,7 @@ async function createCuratedTrip({ experienceId, days, squadSize, userId }) {
   await db.trips.insert({ id: tripId, organiser_phone: process.env.WA_DISPLAY_NUMBER || 'karije' });
   await db.raw(
     `UPDATE trips SET user_id=?, origin=?, destination=?, days=?, squad_size=?,
-       status=?, plan=?, intake_json=?, service_fee_per_person=? WHERE id=?`,
+       status=?, plan=?, intake_json=?, service_fee_per_person=?, platform_fee_pct=? WHERE id=?`,
     [
       userId, exp.state, exp.state, cappedDays, squadSize,
       'curated',
@@ -2330,7 +2332,10 @@ async function createCuratedTrip({ experienceId, days, squadSize, userId }) {
         },
       }),
       JSON.stringify({ curatedId: exp.id, days: cappedDays, squadSize }),
-      ledger.DEFAULT_SERVICE_FEE,
+      // Karije runs curated trips itself: no per-person fee, and 10% of what's
+      // collected is Karije's margin — the other 90% is the trip's budget.
+      0,
+      ledger.CURATED_FEE_PCT,
       tripId,
     ]
   );

@@ -116,11 +116,11 @@ router.get('/money', requireAdmin, async (req, res) => {
     const trips = await ledger.outstandingTrips();
     const totals = trips.reduce((t, x) => ({
       collected:   t.collected   + x.collected,
-      serviceFee:  t.serviceFee  + x.serviceFee,
+      karijeShare: t.karijeShare + x.karijeShare,
       paidOut:     t.paidOut     + x.paidOut,
       outstanding: t.outstanding + x.outstanding,
-    }), { collected: 0, serviceFee: 0, paidOut: 0, outstanding: 0 });
-    res.json({ trips, totals, feePerPerson: ledger.DEFAULT_SERVICE_FEE });
+    }), { collected: 0, karijeShare: 0, paidOut: 0, outstanding: 0 });
+    res.json({ trips, totals, curatedFeePct: ledger.CURATED_FEE_PCT });
   } catch (err) {
     console.error('[admin] GET money failed:', err.message);
     res.status(500).json({ error: err.message });
@@ -257,7 +257,7 @@ router.get('/agents/:id', requireAdmin, async (req, res) => {
 // is stored), same as any other account.
 router.post('/agents', requireAdmin, async (req, res) => {
   try {
-    const { email, password, agencyName, phone, waNumber, tagline, serviceFee, color } = req.body || {};
+    const { email, password, agencyName, phone, waNumber, tagline, color } = req.body || {};
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'A valid email address is required.' });
@@ -295,7 +295,7 @@ router.post('/agents', requireAdmin, async (req, res) => {
       phone:       cleanPhone,
       agency_name: agencyName.trim(),
       wa_number:   waNumber?.trim()?.replace(/\s+/g, '') || cleanPhone,
-      service_fee: Math.max(0, Number(serviceFee) || 10000),
+      service_fee: 0,
       color:       typeof color === 'string' && color ? color : '#0B0B0B',
       plan_type:   'starter',
       tagline:     typeof tagline === 'string' ? tagline.trim() : '',

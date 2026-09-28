@@ -26,7 +26,6 @@ const ProSetup = () => {
     tagline: "",
     phone: "",
     waNumber: "",
-    serviceFee: "10000",
     color: "#6366f1",
     plan: "starter" as "starter" | "growth",
   });
@@ -78,7 +77,6 @@ const ProSetup = () => {
           tagline:    agent.tagline                          || "",
           phone:      agent.phone                           || "",
           waNumber:   agent.waNumber    || agent.wa_number  || "",
-          serviceFee: String(agent.serviceFee ?? agent.service_fee ?? 10000),
           color:      agent.color                           || "#6366f1",
           plan:       (urlPlan ?? agent.planType ?? agent.plan_type ?? "starter") as "starter" | "growth",
         });
@@ -192,7 +190,6 @@ const ProSetup = () => {
           tagline:     form.tagline.trim(),
           phone:       form.phone.trim().replace(/\s+/g, ""),
           waNumber:    form.waNumber.trim().replace(/\s+/g, "") || undefined,
-          serviceFee:  Number(form.serviceFee) || 10000,
           color:       form.color,
           planType:    form.plan,
         },
@@ -534,29 +531,6 @@ const ProSetup = () => {
               )}
             </div>
           )}
-
-          {/* Service fee */}
-          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
-            <div className="font-semibold text-sm">Your service fee</div>
-            <p className="text-xs text-muted-foreground">Your own margin per trip. Karije takes no cut of what you collect — the ₦10,000/month covers the platform. You keep 100%.</p>
-            <div className="flex items-center gap-3">
-              <span className="font-display text-lg font-semibold shrink-0">₦</span>
-              <input
-                type="number"
-                min="0"
-                step="500"
-                value={form.serviceFee}
-                onChange={(e) => set("serviceFee", e.target.value)}
-                className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm font-display font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
-              />
-            </div>
-            {Number(form.serviceFee) > 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                For an 8-person squad →{" "}
-                <strong>₦{Math.round(Number(form.serviceFee) / 8).toLocaleString()} per person</strong> added to their Paystack link
-              </p>
-            )}
-          </div>
 
           {/* Logo */}
           <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">

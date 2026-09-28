@@ -184,7 +184,6 @@ export type AgentProfile = {
   phone: string;
   agencyName: string;
   waNumber?: string;
-  serviceFee: number;
   color: string;
   planType: 'starter' | 'growth';
   tagline?: string;
@@ -366,7 +365,7 @@ export type AgencySquadMember = {
 /** One trip's money position — returned by both /api/pro/money and the admin equivalent. */
 export type ProMoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
-  paidCount: number; squadSize: number; collected: number; serviceFee: number;
+  paidCount: number; squadSize: number; collected: number; karijeShare: number;
   dueToOrganiser: number; paidOut: number; outstanding: number;
   readyToDisburse: boolean;
   payoutAccountName: string | null;
@@ -395,7 +394,7 @@ export type AgencyTripDetail = {
   squad: AgencySquadMember[];
   /** The trip's money position, from the ledger. */
   money: {
-    collected: number; serviceFee: number; dueToOrganiser: number;
+    collected: number; karijeShare: number; dueToOrganiser: number;
     paidOut: number; outstanding: number;
   } | null;
   summary: { joined: number; paid: number; pending: number; collected: number };
@@ -620,13 +619,13 @@ export const api = {
 
   /** Create or update the agency profile tied to the authenticated user. */
   setupPro: (
-    payload: { agencyName: string; tagline?: string; phone: string; waNumber?: string; serviceFee?: number; color?: string; planType?: string },
+    payload: { agencyName: string; tagline?: string; phone: string; waNumber?: string; color?: string; planType?: string },
     token: string,
   ) => post<{ ok: boolean; agent: AgentProfile }>('/api/pro/setup', payload, bearer(token)),
 
   /** Get the agency profile for the authenticated user (404 if not set up). */
   getProMe: (token: string) =>
-    get<{ agent: AgentProfile & { agency_name: string; plan_type: string; service_fee: number; wa_number?: string } }>('/api/pro/me', bearer(token)),
+    get<{ agent: AgentProfile & { agency_name: string; plan_type: string; wa_number?: string } }>('/api/pro/me', bearer(token)),
 
   /** Get the full agency dashboard (agent + trips + summary) for the authenticated user. */
   getProDashboard: (token: string) =>

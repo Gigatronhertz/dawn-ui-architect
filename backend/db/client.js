@@ -412,6 +412,17 @@ const MIGRATIONS = [
   `ALTER TABLE agents ADD COLUMN subscription_authorization_code TEXT`,
   `ALTER TABLE agents ADD COLUMN subscription_next_charge_at INTEGER`,
   `ALTER TABLE agents ADD COLUMN subscription_failed_attempts INTEGER NOT NULL DEFAULT 0`,
+  // Phase 23 — fees reworked (Sept 2026). Karije no longer takes a flat
+  // per-person service fee on any trip; agencies pay the monthly subscription
+  // instead. Karije's own curated trips carry a percentage margin (10%) of
+  // what's collected, snapshotted per trip here.
+  `ALTER TABLE trips ADD COLUMN platform_fee_pct INTEGER NOT NULL DEFAULT 0`,
+  // Both idempotent, so safe on every boot: clear the old per-person fee off
+  // every trip, and give curated trips created before this their 10%.
+  `UPDATE trips SET service_fee_per_person = 0 WHERE service_fee_per_person IS NULL OR service_fee_per_person <> 0`,
+  `UPDATE trips SET platform_fee_pct = 10
+     WHERE platform_fee_pct = 0 AND agent_id IS NULL
+       AND (CASE WHEN json_valid(intake_json) THEN json_extract(intake_json, '$.curatedId') END) IS NOT NULL`,
 ];
 
 const ready = (async () => {

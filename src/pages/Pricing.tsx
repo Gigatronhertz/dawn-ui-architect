@@ -225,7 +225,7 @@ export default function Pricing() {
               Run your travel business on Karije Pro.
             </h2>
             <p className="text-parchment/50 font-jost font-light text-sm max-w-xs leading-relaxed">
-              White-label the WhatsApp bot, set your own service fee, and let Karije collect payments for you — invisibly.
+              Your brand on every trip. Price trips your way, and let Karije collect payments for you.
             </p>
           </div>
 
@@ -248,7 +248,7 @@ export default function Pricing() {
               <ul className="space-y-3 text-sm font-jost font-light text-parchment/80 flex-1 mb-8">
                 <li className="flex items-start gap-2.5"><CheckWhite /><span>White-label WhatsApp bot</span></li>
                 <li className="flex items-start gap-2.5"><CheckWhite /><span>Agency dashboard &amp; custom branding</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Set your own service fee (you keep 100%)</span></li>
+                <li className="flex items-start gap-2.5"><CheckWhite /><span>No cut of what you collect — you keep 100%</span></li>
                 <li className="flex items-start gap-2.5"><CheckWhite /><span>Squad Paystack payment collection</span></li>
                 <li className="flex items-start gap-2.5"><CheckWhite /><span>Up to 5 active trips at once</span></li>
                 <li className="flex items-start gap-2.5">
@@ -324,7 +324,7 @@ export default function Pricing() {
                   ["Build and own your own trips",       "—",     "—",  "—",  "✓"],
                   ["Agency dashboard + branding",        "—",     "—",  "—",  "✓"],
                   ["Send payment reminders yourself",    "—",     "—",  "—",  "✓"],
-                  ["Set own service fee (keep 100%)",    "—",     "—",  "—",  "✓"],
+                  ["Keep 100% of what you collect",      "—",     "—",  "—",  "✓"],
                   ["Analytics & revenue dashboard",      "—",     "—",  "—",  "✓"],
                 ].map(([feature, free, ai, ready, pro]) => (
                   <tr key={feature} className="hover:bg-secondary/30 transition-colors">

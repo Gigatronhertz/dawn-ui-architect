@@ -961,7 +961,6 @@ const ProDashboard = () => {
               { label: "Email (login)",      value: user.email },
               { label: "WhatsApp number",    value: agent.phone },
               { label: "Client-facing WA",   value: agent.wa_number || agent.phone },
-              { label: "Service fee",         value: fmtNGN(agent.service_fee ?? 0) + " per trip" },
               { label: "Plan",               value: "Karije Pro · ₦10,000/mo" },
             ] as { label: string; value: string }[]).map((r) => (
               <div key={r.label} className="flex justify-between text-sm">

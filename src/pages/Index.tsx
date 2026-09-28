@@ -343,7 +343,7 @@ const proBenefits = [
   { icon: "◆", text: "Branded plan pages with your agency name and logo" },
   { icon: "◆", text: "Live dashboard — trips, payments, and squad status" },
   { icon: "◆", text: "Automated WhatsApp reminders on your behalf" },
-  { icon: "◆", text: "Collect contributions and service fees in one flow" },
+  { icon: "◆", text: "Collect every payment in one flow — no cut taken" },
 ];
 
 const AgenciesSection = () => (
@@ -391,7 +391,7 @@ const AgenciesSection = () => (
           <div>
             <h3 className="font-marcellus text-xl text-foreground">Create your agency account</h3>
             <p className="font-jost font-light text-sm text-muted-foreground mt-1.5">
-              Name, logo, phone number, service fee — set once, live in minutes.
+              Name, logo, phone number — set once, live in minutes.
             </p>
           </div>
           <Link

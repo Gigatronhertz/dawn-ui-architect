@@ -34,7 +34,6 @@ export type ProNav = "overview" | "trips" | "completed" | "money" | "templates" 
 export type ProAgent = AgentProfile & {
   agency_name: string;
   plan_type: string;
-  service_fee: number;
   wa_number?: string;
 };
 

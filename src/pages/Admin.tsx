@@ -29,7 +29,7 @@ type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "a
 
 type MoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
-  paidCount: number; squadSize: number; collected: number; serviceFee: number;
+  paidCount: number; squadSize: number; collected: number; karijeShare: number; feePct: number;
   dueToOrganiser: number; paidOut: number; outstanding: number;
   /** All seats filled and paid — the signal for "safe to release the full balance now". */
   readyToDisburse: boolean;
@@ -1102,16 +1102,15 @@ function EventsSection({ adminKey }: { adminKey: string }) {
  */
 function MoneySection({ adminKey }: { adminKey: string }) {
   const [trips, setTrips]   = useState<MoneyTrip[]>([]);
-  const [totals, setTotals] = useState({ collected: 0, serviceFee: 0, paidOut: 0, outstanding: 0 });
-  const [fee, setFee]       = useState(0);
+  const [totals, setTotals] = useState({ collected: 0, karijeShare: 0, paidOut: 0, outstanding: 0 });
   const [loading, setLoad]  = useState(true);
   const [err, setErr]       = useState("");
   const [openTrip, setOpen] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoad(true);
-    apiFetch<{ trips: MoneyTrip[]; totals: typeof totals; feePerPerson: number }>("/admin/money", adminKey)
-      .then(d => { setTrips(d.trips); setTotals(d.totals); setFee(d.feePerPerson); })
+    apiFetch<{ trips: MoneyTrip[]; totals: typeof totals }>("/admin/money", adminKey)
+      .then(d => { setTrips(d.trips); setTotals(d.totals); })
       .catch(e => setErr(e.message))
       .finally(() => setLoad(false));
   }, [adminKey]);
@@ -1124,7 +1123,7 @@ function MoneySection({ adminKey }: { adminKey: string }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
           { label: "Collected",       value: totals.collected,   hint: "from squad members" },
-          { label: "Karije fee",      value: totals.serviceFee,  hint: `${naira(fee)}/person` },
+          { label: "Karije share",    value: totals.karijeShare, hint: "10% of curated trips" },
           { label: "Paid out",        value: totals.paidOut,     hint: "released to organisers" },
           { label: "Still to pay",    value: totals.outstanding, hint: "owed right now", accent: true },
         ].map(s => (
@@ -1194,14 +1193,14 @@ function MoneySection({ adminKey }: { adminKey: string }) {
 function TripMoneyDetail({ tripId, adminKey, onChange }: {
   tripId: string; adminKey: string; onChange: () => void;
 }) {
-  const [data, setData] = useState<(MoneyTrip & { payouts: Payout[]; feePerPerson: number }) | null>(null);
+  const [data, setData] = useState<(MoneyTrip & { payouts: Payout[] }) | null>(null);
   const [amount, setAmount] = useState("");
   const [note, setNote]     = useState("");
   const [busy, setBusy]     = useState(false);
   const [err, setErr]       = useState("");
 
   const load = useCallback(() => {
-    apiFetch<MoneyTrip & { payouts: Payout[]; feePerPerson: number }>(`/admin/money/${tripId}`, adminKey)
+    apiFetch<MoneyTrip & { payouts: Payout[] }>(`/admin/money/${tripId}`, adminKey)
       .then(setData)
       .catch(e => setErr(e.message));
   }, [tripId, adminKey]);
@@ -1229,7 +1228,7 @@ function TripMoneyDetail({ tripId, adminKey, onChange }: {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         {[
           ["Collected", data.collected],
-          [`Fee (${data.paidCount} × ${naira(data.feePerPerson)})`, data.serviceFee],
+          [data.feePct > 0 ? `Karije share (${data.feePct}%)` : "Karije share", data.karijeShare],
           ["Due to organiser", data.dueToOrganiser],
           ["Already paid out", data.paidOut],
         ].map(([label, value]) => (
@@ -1325,7 +1324,6 @@ type Agent = {
   phone: string;
   wa_number: string | null;
   tagline: string | null;
-  service_fee: number;
   verification_status: "pending" | "verified" | "rejected";
   nin: string | null;
   id_document_image_id: string | null;
