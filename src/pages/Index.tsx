@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, ShieldCheck, Lock } from "lucide-react";
+import { CalendarClock, ShieldCheck, Lock, Instagram } from "lucide-react";
+import { api, imageUrl, type PublicAgency } from "@/lib/api";
 import { Nav } from "@/components/Nav";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Footer } from "@/components/CTA";
@@ -258,6 +259,85 @@ const DestinationsGrid = () => (
   </section>
 );
 
+// ── Agencies showcase ────────────────────────────────────────────────────────
+// Real, verified agencies already running trips on Karije — the social proof
+// that makes the "Running a travel business?" pitch below it credible. Fetched
+// client-side and renders nothing at all when the list is empty, rather than
+// showing an awkward "no agencies yet" state on a fresh install.
+const AgenciesShowcase = () => {
+  const [agencies, setAgencies] = useState<PublicAgency[]>([]);
+
+  useEffect(() => {
+    let live = true;
+    api.getAgencies()
+      .then((d) => { if (live) setAgencies(d.agencies); })
+      .catch(() => { /* the rest of the page works fine without this */ });
+    return () => { live = false; };
+  }, []);
+
+  if (agencies.length === 0) return null;
+
+  return (
+    <section className="py-20 md:py-28 bg-forest text-parchment border-t border-parchment/10">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="flex items-center gap-4 mb-5">
+          <span className="h-px w-8 bg-signal" />
+          <span className="text-[10px] font-jost font-light tracking-label text-parchment/60 uppercase">
+            Agencies we work with
+          </span>
+        </div>
+        <h2 className="font-marcellus text-3xl md:text-4xl text-parchment leading-snug mb-10 max-w-lg">
+          Real agencies, already running real trips.
+        </h2>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {agencies.map((a) => {
+            const initials = a.name.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+            return (
+              <div
+                key={a.id}
+                className="rounded-2xl border-[3px] border-parchment/20 bg-parchment/5 p-5 flex items-start gap-4"
+              >
+                <div
+                  className="w-12 h-12 rounded-xl border-2 border-parchment/30 grid place-items-center shrink-0 overflow-hidden text-parchment font-marcellus font-bold shrink-0"
+                  style={imageUrl(a.logoUrl) ? undefined : { backgroundColor: a.color || "#F5C518" }}
+                >
+                  {imageUrl(a.logoUrl)
+                    ? <img src={imageUrl(a.logoUrl)!} alt={a.name} className="w-full h-full object-contain" />
+                    : <span className="text-ink">{initials || "?"}</span>}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-marcellus text-parchment truncate">{a.name}</div>
+                  {a.tagline && (
+                    <p className="text-xs font-jost font-light text-parchment/70 mt-0.5 leading-relaxed line-clamp-2">
+                      {a.tagline}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="text-[10px] font-jost text-parchment/50">
+                      {a.tripCount} {a.tripCount === 1 ? "trip" : "trips"}
+                    </span>
+                    {a.instagram && (
+                      <a
+                        href={a.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] font-jost text-parchment/70 hover:text-parchment transition-colors"
+                      >
+                        <Instagram className="w-3 h-3" /> Instagram
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 // ── Agencies / Pro ────────────────────────────────────────────────────────────
 const proBenefits = [
   { icon: "◆", text: "Branded plan pages with your agency name and logo" },
@@ -356,6 +436,7 @@ const Index = () => {
       <Services />
       <DestinationsGrid />
       <HowItWorks />
+      <AgenciesShowcase />
       <AgenciesSection />
       <Footer />
     </main>

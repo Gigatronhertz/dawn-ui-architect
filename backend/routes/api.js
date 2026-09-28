@@ -1865,6 +1865,43 @@ router.get('/listings', async (req, res) => {
   }
 });
 
+// GET /api/agencies — verified agencies with at least one listed trip, for
+// the home page's "agencies we work with" showcase. Same verification gate
+// as /listings: an agency mid-KYC or rejected doesn't show here either.
+router.get('/agencies', async (req, res) => {
+  try {
+    const rows = await db.rawAll(
+      `SELECT a.id, a.agency_name, a.tagline, a.color, a.logo_image_id, a.social_links,
+              COUNT(t.id) AS trip_count
+         FROM agents a
+         JOIN trips t ON t.agent_id = a.id AND t.listed = 1 AND t.status = 'custom'
+        WHERE a.verification_status = 'verified'
+        GROUP BY a.id
+        ORDER BY trip_count DESC, a.agency_name ASC`
+    );
+
+    const agencies = rows.map(r => {
+      let social = {};
+      try { social = r.social_links ? JSON.parse(r.social_links) : {}; } catch (_) {}
+      return {
+        id:        r.id,
+        name:      r.agency_name,
+        tagline:   r.tagline || null,
+        color:     r.color || null,
+        logoUrl:   r.logo_image_id ? `/api/trip-image/${r.logo_image_id}` : null,
+        tripCount: Number(r.trip_count) || 0,
+        instagram: social.instagram || null,
+        website:   social.website || null,
+      };
+    });
+
+    res.json({ agencies });
+  } catch (err) {
+    console.error('[api/agencies]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/experiences', async (req, res) => {
   try {
     const { state = 'Lagos' } = req.query;

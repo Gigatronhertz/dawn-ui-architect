@@ -397,6 +397,18 @@ export type AgencyListing = {
   agencyLogo: string | null;
 };
 
+/** A verified agency shown on the home page's showcase — GET /api/agencies. */
+export type PublicAgency = {
+  id: string;
+  name: string;
+  tagline: string | null;
+  color: string | null;
+  logoUrl: string | null;
+  tripCount: number;
+  instagram: string | null;
+  website: string | null;
+};
+
 /** The agency running a trip, shown on its public plan. */
 export type PlanAgency = {
   name: string;
@@ -736,6 +748,10 @@ export const api = {
     get<{ experiences: import('./experienceTypes').Experience[]; agencyTrips: AgencyListing[] }>(
       city ? `/api/listings?city=${encodeURIComponent(city)}` : '/api/listings',
     ),
+
+  /** Verified agencies with at least one listed trip — the home page's
+   *  "agencies we work with" showcase. */
+  getAgencies: () => get<{ agencies: PublicAgency[] }>('/api/agencies'),
 
   registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),
   getAgent: (phone: string) => get<{ agent: AgentProfile }>(`/api/agents/${encodeURIComponent(phone)}`),
