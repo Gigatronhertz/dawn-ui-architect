@@ -1333,6 +1333,16 @@ type Agent = {
   social_links: string | null;
   verified_at: number | null;
   created_at: number;
+  subscription_status: "exempt" | "active" | "past_due" | "suspended";
+  subscription_next_charge_at: number | null;
+  subscription_failed_attempts: number;
+};
+
+const SUBSCRIPTION_STATUS_STYLE: Record<Agent["subscription_status"], string> = {
+  exempt:    "bg-gray-50 text-gray-600 border-gray-200",
+  active:    "bg-green-50 text-green-700 border-green-200",
+  past_due:  "bg-amber-50 text-amber-700 border-amber-200",
+  suspended: "bg-red-50 text-red-700 border-red-200",
 };
 
 const STATUS_STYLE: Record<Agent["verification_status"], string> = {
@@ -1409,6 +1419,11 @@ function AgentsSection({ adminKey }: { adminKey: string }) {
               <span className={`shrink-0 text-[11px] font-medium px-2 py-1 rounded-full border ${STATUS_STYLE[a.verification_status]}`}>
                 {a.verification_status}
               </span>
+              {a.subscription_status !== "exempt" && (
+                <span className={`shrink-0 text-[11px] font-medium px-2 py-1 rounded-full border ${SUBSCRIPTION_STATUS_STYLE[a.subscription_status]}`}>
+                  {a.subscription_status.replace("_", " ")}
+                </span>
+              )}
               <span className="text-gray-400 text-xs">{open === a.id ? "▲" : "▼"}</span>
             </button>
 
@@ -1523,6 +1538,19 @@ function AgentDetail({ agent, adminKey, onChange }: { agent: Agent; adminKey: st
     } finally { setBusy(false); }
   }
 
+  async function setSubscriptionStatus(status: Agent["subscription_status"]) {
+    setBusy(true); setErr("");
+    try {
+      await apiFetch(`/admin/agents/${agent.id}/subscription`, adminKey, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      });
+      onChange();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not update billing status.");
+    } finally { setBusy(false); }
+  }
+
   async function uploadDoc(kind: "id" | "business", file: File | undefined) {
     if (!file) return;
     setBusy(true); setErr(""); setNote("");
@@ -1599,6 +1627,31 @@ function AgentDetail({ agent, adminKey, onChange }: { agent: Agent; adminKey: st
             {s}
           </button>
         ))}
+      </div>
+
+      {/* Billing — every agency lands on 'exempt' by default (nobody already
+          onboarded gets surprise-billed); this is the grandfather-clause
+          lever to flip one to 'active' when it's time to actually charge
+          them, or manually reset a 'suspended' one. */}
+      <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+        <span className="text-xs text-gray-500 mr-1">Billing:</span>
+        {(["exempt", "active", "past_due", "suspended"] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setSubscriptionStatus(s)}
+            disabled={busy}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition disabled:opacity-40 ${
+              agent.subscription_status === s ? SUBSCRIPTION_STATUS_STYLE[s] : "border-gray-200 text-gray-500 hover:border-gray-400"
+            }`}
+          >
+            {s.replace("_", " ")}
+          </button>
+        ))}
+        {agent.subscription_next_charge_at && (
+          <span className="text-[11px] text-gray-400 ml-1">
+            next charge {new Date(agent.subscription_next_charge_at * 1000).toLocaleDateString()}
+          </span>
+        )}
       </div>
     </div>
   );

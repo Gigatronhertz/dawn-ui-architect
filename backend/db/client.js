@@ -193,6 +193,18 @@ const SCHEMA = [
     reference      TEXT NOT NULL UNIQUE,
     created_at     INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // Every charge attempt against an agency's ₦10k/month subscription —
+  // success or failure. Append-only, same shape as payouts/participant_payments,
+  // so an agency (and admin) gets a real billing history without anything
+  // separately maintaining a running total.
+  `CREATE TABLE IF NOT EXISTS subscription_charges (
+    id         TEXT PRIMARY KEY,
+    agent_id   TEXT NOT NULL,
+    amount     INTEGER NOT NULL,
+    reference  TEXT NOT NULL UNIQUE,
+    status     TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
   // Uploaded trip photos. Deliberately its own table: the Explore page does
   // SELECT * FROM experiences on every load, and image bytes must never ride
   // along with it. Trips reference a row here by URL path, not by join.
@@ -389,6 +401,17 @@ const MIGRATIONS = [
   `ALTER TABLE trips ADD COLUMN installment_min_months  INTEGER NOT NULL DEFAULT 2`,
   `ALTER TABLE trips ADD COLUMN installment_max_months  INTEGER NOT NULL DEFAULT 12`,
   `ALTER TABLE trips ADD COLUMN installment_min_amount  INTEGER`,
+  // Phase 22 — ₦10,000/month agency subscription billing. DEFAULT 'exempt'
+  // is deliberate, not just a placeholder: SQLite backfills it onto every
+  // row that already exists the moment this column is added, which is
+  // exactly the grandfather clause every currently-onboarded agency needs —
+  // nobody gets surprise-billed. New agencies land here too; nothing flips
+  // an agency to 'active' implicitly — only the agency's own "Add billing"
+  // card-capture flow, or an explicit admin override, ever does that.
+  `ALTER TABLE agents ADD COLUMN subscription_status TEXT NOT NULL DEFAULT 'exempt'`,
+  `ALTER TABLE agents ADD COLUMN subscription_authorization_code TEXT`,
+  `ALTER TABLE agents ADD COLUMN subscription_next_charge_at INTEGER`,
+  `ALTER TABLE agents ADD COLUMN subscription_failed_attempts INTEGER NOT NULL DEFAULT 0`,
 ];
 
 const ready = (async () => {
@@ -907,6 +930,124 @@ async function updateAgentPayout({ id, bankCode, accountNo, accountName }) {
   await client.execute({
     sql: `UPDATE agents SET payout_bank_code = ?, payout_account_no = ?, payout_account_name = ? WHERE id = ?`,
     args: [bankCode || null, accountNo || null, accountName || null, id],
+  });
+}
+
+// ── Subscription billing ───────────────────────────────────────────────────
+
+const SUBSCRIPTION_INTERVAL_SECONDS = 30 * 24 * 60 * 60;
+
+/** Called once a card-capture charge succeeds — the agency's first ever
+ *  subscription payment. Starts the monthly clock from here. */
+async function activateAgentSubscription({ id, authorizationCode }) {
+  await client.execute({
+    sql: `UPDATE agents SET
+            subscription_status              = 'active',
+            subscription_authorization_code  = ?,
+            subscription_next_charge_at      = unixepoch() + ${SUBSCRIPTION_INTERVAL_SECONDS},
+            subscription_failed_attempts     = 0
+          WHERE id = ?`,
+    args: [authorizationCode, id],
+  });
+}
+
+/** Records one successful charge attempt against the running billing
+ *  history. Idempotent on reference, same as participant_payments — a
+ *  replayed webhook event for a charge already recorded is a no-op. */
+async function recordSubscriptionCharge({ agentId, amount, reference, status }) {
+  const insert = await client.execute({
+    sql: `INSERT OR IGNORE INTO subscription_charges (id, agent_id, amount, reference, status, created_at)
+          VALUES (?, ?, ?, ?, ?, unixepoch())`,
+    args: [randomUUID(), agentId, amount, reference, status],
+  });
+  return !!insert.rowsAffected;
+}
+
+/**
+ * Credits one successful charge — the first-ever card-capture charge and
+ * every later recurring one are handled identically here. Reuses
+ * `activateAgentSubscription` for both: re-storing the same authorization
+ * code on a recurring charge is harmless (it's always the same code being
+ * charged again), and either way the effect wanted is the same — active,
+ * clock advanced a month, failure streak cleared.
+ *
+ * A recurring charge can be confirmed from two directions — the cron's own
+ * synchronous `charge_authorization` response, and Paystack's async
+ * `charge.success` webhook for the same event — so this has to tolerate
+ * being called twice for one real charge. The reference-keyed insert above
+ * is what makes that safe: only a genuinely new reference advances the
+ * clock, a replay is a no-op.
+ */
+async function creditSubscriptionCharge({ agentId, authorizationCode, amount, reference }) {
+  const credited = await recordSubscriptionCharge({ agentId, amount, reference, status: 'success' });
+  if (credited) await activateAgentSubscription({ id: agentId, authorizationCode });
+  return credited;
+}
+
+/**
+ * A recurring charge failed. First failure moves the agency to `past_due`
+ * and schedules a retry a few days out (matching the escalating cadence
+ * `reminders.js` already uses for one-time payments); the third failure
+ * gives up and suspends — which is the only status that actually delists a
+ * trip (see GET /api/listings, GET /api/agencies). Nothing here ever
+ * touches a trip's collected money or its payout — that's a fully separate
+ * system.
+ */
+const SUBSCRIPTION_RETRY_STEPS = [3 * 24 * 60 * 60, 7 * 24 * 60 * 60]; // +3d, +7d after the first failure
+async function markSubscriptionFailed(agentId) {
+  const agent = await getAgentById(agentId);
+  const attempts = Number(agent?.subscription_failed_attempts || 0) + 1;
+  const suspended = attempts > SUBSCRIPTION_RETRY_STEPS.length;
+  // Bound parameters are literal values, not SQL — the retry offset has to
+  // be resolved to an actual timestamp in JS before it goes in args.
+  const nextChargeAt = suspended
+    ? null
+    : Math.floor(Date.now() / 1000) + SUBSCRIPTION_RETRY_STEPS[attempts - 1];
+
+  await client.execute({
+    sql: `UPDATE agents SET
+            subscription_status          = ?,
+            subscription_failed_attempts = ?,
+            subscription_next_charge_at  = ?
+          WHERE id = ?`,
+    args: [suspended ? 'suspended' : 'past_due', attempts, nextChargeAt, agentId],
+  });
+  return { attempts, suspended };
+}
+
+/** Agencies whose next subscription charge is due right now. `exempt` and
+ *  `suspended` agencies are never picked up — exempt because they're not
+ *  billed at all, suspended because retries are already exhausted and the
+ *  agency needs to re-run billing setup with a new card to restart. */
+async function findDueSubscriptions() {
+  const res = await client.execute(
+    `SELECT * FROM agents
+      WHERE subscription_status IN ('active', 'past_due')
+        AND subscription_next_charge_at IS NOT NULL
+        AND subscription_next_charge_at <= unixepoch()`
+  );
+  return res.rows;
+}
+
+/** One agency's billing history, most recent first. */
+async function getSubscriptionCharges(agentId) {
+  const res = await client.execute({
+    sql: `SELECT amount, reference, status, created_at FROM subscription_charges
+           WHERE agent_id = ? ORDER BY created_at DESC`,
+    args: [agentId],
+  });
+  return res.rows;
+}
+
+/** Admin override — the grandfather-clause lever: flip a pilot agency to
+ *  `active` when it's time to actually start billing them, or manually
+ *  reset a suspended one back to exempt/active after they've sorted their
+ *  card out some other way. Never sets a next_charge_at itself; that only
+ *  ever comes from a real successful card-capture charge. */
+async function setAgentSubscriptionStatus({ id, status }) {
+  await client.execute({
+    sql: `UPDATE agents SET subscription_status = ? WHERE id = ?`,
+    args: [status, id],
   });
 }
 
@@ -1542,6 +1683,11 @@ module.exports = {
     updateVerification: updateAgentVerification,
     updateSelfVerification: updateAgentSelfVerification,
     updatePayout:       updateAgentPayout,
+    creditSubscriptionCharge: creditSubscriptionCharge,
+    markSubscriptionFailed:   markSubscriptionFailed,
+    dueSubscriptions:         findDueSubscriptions,
+    subscriptionCharges:      getSubscriptionCharges,
+    setSubscriptionStatus:    setAgentSubscriptionStatus,
   },
   attractions:  {
     byState:     getAttractionsByState,

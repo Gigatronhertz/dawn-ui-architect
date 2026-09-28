@@ -40,7 +40,7 @@ async function initializePayment({ tripId, phone, name, amountNGN }) {
 // Verify a payment by reference — call this in the Paystack webhook/callback
 async function verifyPayment(reference) {
   const res = await axios.get(`${BASE}/transaction/verify/${reference}`, { headers: headers() });
-  const { status, amount, metadata } = res.data.data;
+  const { status, amount, metadata, authorization } = res.data.data;
   return {
     success: status === 'success',
     amountNGN: amount / 100,
@@ -50,6 +50,11 @@ async function verifyPayment(reference) {
     // enough to find them — a new one is raised each time they open a pay
     // link, so an older link's reference won't match the row.
     participantId: metadata?.participant_id,
+    agentId: metadata?.agent_id,
+    // Present only when the charge came off a card Paystack has marked
+    // reusable — this is what recurring subscription billing charges again
+    // later. A bank-transfer/USSD payment never carries one.
+    authorizationCode: authorization?.reusable ? authorization.authorization_code : null,
   };
 }
 
@@ -89,4 +94,64 @@ async function initializeWebPayment({ tripId, participantId, email, name, amount
   return { reference, authorization_url: res.data.data.authorization_url };
 }
 
-module.exports = { available, initializePayment, initializeWebPayment, verifyPayment, fmtNGN };
+/**
+ * Mints the one-time ₦10k checkout an agency completes to start subscription
+ * billing. Card-only (`channels: ['card']`) — the reusable-authorization
+ * charging the monthly billing cron depends on only works reliably off a
+ * card, not bank transfer/USSD. Reference prefixed PROSUB- so the shared
+ * webhook (webhook.js processPayment) can route it separately from a
+ * traveller's WEBSQ- trip payment.
+ */
+async function initializeSubscriptionSetup({ agentId, email, amountNGN, callbackUrl }) {
+  const amountKobo = Math.round(amountNGN * 100);
+  const reference  = `PROSUB-${agentId.slice(0, 20)}-${Date.now()}`;
+
+  const res = await axios.post(
+    `${BASE}/transaction/initialize`,
+    {
+      email,
+      amount:       amountKobo,
+      reference,
+      callback_url: callbackUrl,
+      currency:     'NGN',
+      channels:     ['card'],
+      metadata: {
+        payment_type: 'pro_subscription_setup',
+        agent_id:     agentId,
+      },
+    },
+    { headers: headers() }
+  );
+
+  return { reference, authorization_url: res.data.data.authorization_url };
+}
+
+/**
+ * Charges a previously-captured reusable card authorization again — no
+ * redirect, no checkout page; the card is already on file. This is the one
+ * call the monthly billing cron (services/subscriptionBilling.js) makes.
+ */
+async function chargeAuthorization({ agentId, authorizationCode, email, amountNGN }) {
+  const amountKobo = Math.round(amountNGN * 100);
+  const reference  = `PROSUB-${agentId.slice(0, 20)}-${Date.now()}`;
+
+  const res = await axios.post(
+    `${BASE}/transaction/charge_authorization`,
+    {
+      authorization_code: authorizationCode,
+      email,
+      amount:   amountKobo,
+      reference,
+      metadata: { payment_type: 'pro_subscription_recurring', agent_id: agentId },
+    },
+    { headers: headers() }
+  );
+
+  const { status, gateway_response } = res.data.data;
+  return { success: status === 'success', reference, gatewayResponse: gateway_response };
+}
+
+module.exports = {
+  available, initializePayment, initializeWebPayment, verifyPayment, fmtNGN,
+  initializeSubscriptionSetup, chargeAuthorization,
+};

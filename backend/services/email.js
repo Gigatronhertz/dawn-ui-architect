@@ -301,6 +301,42 @@ async function sendInstallmentDigestEmail({ to, agencyName, link, trips }) {
   });
 }
 
+/**
+ * The agency's own ₦10k/month subscription charge failed. Tone escalates
+ * with attempts, same shape as the payment-reminder tones — the last one
+ * says plainly that the trips have come off the public catalog, so there's
+ * no ambiguity about what suspension actually did (and didn't do).
+ */
+async function sendSubscriptionPaymentFailedEmail({ to, agencyName, attempts, suspended }) {
+  const resend = getResend();
+  if (!resend || !to) return;
+
+  const who = agencyName ? `${agencyName}, ` : '';
+  const heading = suspended
+    ? `Your Karije Pro billing has lapsed`
+    : `We couldn't charge your card this month`;
+
+  const body = suspended
+    ? `<p style="margin:0 0 12px;">${who}we tried ${attempts} times and couldn't process your ₦10,000 monthly charge. Your trips have come off Karije's public catalog — existing share links, payments, and payouts are completely unaffected, nothing there has changed.</p>
+       <p style="margin:0;">Update your card in your Pro dashboard and your trips are back in the catalog right away.</p>`
+    : `<p style="margin:0;">${who}your ₦10,000 monthly Karije Pro charge didn't go through. We'll try again in a few days — update your card in your Pro dashboard if it needs a fix.</p>`;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: suspended ? `Action needed — your trips are off the Karije catalog` : `Payment issue — Karije Pro`,
+    html: shell({
+      heading,
+      body,
+      ctaLabel: 'Update billing',
+      ctaUrl: `${FRONTEND}/pro/setup`,
+      footnote: suspended
+        ? `Nothing about money already moving through your trips has changed — this only affects new discovery on Karije.`
+        : undefined,
+    }),
+  });
+}
+
 module.exports = {
   sendPlanReadyEmail,
   sendPlanConfirmedEmail,
@@ -309,5 +345,6 @@ module.exports = {
   sendPayoutReleasedEmail,
   sendInstallmentReminderEmail,
   sendInstallmentDigestEmail,
+  sendSubscriptionPaymentFailedEmail,
   available,
 };

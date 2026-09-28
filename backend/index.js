@@ -76,6 +76,7 @@ db.ready.then(() => {
     if (process.env.REMINDERS !== 'off') {
       require('./services/reminders').start();
       require('./services/installmentReminders').start();
+      require('./services/subscriptionBilling').start();
     }
   });
 });

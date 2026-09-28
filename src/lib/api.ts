@@ -202,6 +202,21 @@ export type AgentProfile = {
   payout_bank_code?: string | null;
   payout_account_no?: string | null;
   payout_account_name?: string | null;
+  /** ₦10k/month billing. 'exempt' is the default for every agency onboarded
+   *  before this shipped, and stays that way until an admin or the agency's
+   *  own "Add billing" flow moves it — never set implicitly. */
+  subscription_status?: 'exempt' | 'active' | 'past_due' | 'suspended';
+  subscription_next_charge_at?: number | null;
+  subscription_failed_attempts?: number;
+};
+
+/** GET /api/pro/billing — this agency's subscription status + charge history. */
+export type ProBilling = {
+  status: 'exempt' | 'active' | 'past_due' | 'suspended';
+  nextChargeAt: number | null;
+  failedAttempts: number;
+  amount: number;
+  charges: { amount: number; reference: string; status: string; createdAt: number }[];
 };
 
 export type TripRow = {
@@ -650,6 +665,14 @@ export const api = {
   /** The agency's own saved payout account — copied onto each new trip at creation time. */
   updatePayout: (payload: { bankCode?: string; accountNo: string; accountName: string }, token: string) =>
     patch<{ ok: boolean; agent: AgentProfile }>('/api/pro/payout', payload, bearer(token)),
+
+  /** This agency's ₦10k/month subscription status + charge history. */
+  getBilling: (token: string) => get<ProBilling>('/api/pro/billing', bearer(token)),
+
+  /** Mints the one-time card-capture checkout that starts billing. Browser
+   *  navigation to authorization_url, same as any other Paystack checkout. */
+  setupBilling: (token: string) =>
+    post<{ authorization_url: string; reference: string }>('/api/pro/billing/setup', {}, bearer(token)),
 
   /** NIN + social links — never verification_status; only the admin panel sets that. */
   updateVerification: (payload: { nin?: string; socialLinks?: Record<string, string> }, token: string) =>

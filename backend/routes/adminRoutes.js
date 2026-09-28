@@ -335,6 +335,31 @@ router.put('/agents/:id/verification', requireAdmin, async (req, res) => {
   }
 });
 
+// PUT /admin/agents/:id/subscription — the grandfather-clause lever. Every
+// currently-onboarded agency lands on 'exempt' by default (never billed);
+// this is how you flip one to 'active' when it's time to actually start
+// charging them, or manually reset a 'suspended' one back after they've
+// sorted their card out. Never sets subscription_next_charge_at itself —
+// that only ever comes from a real successful card-capture charge, so
+// flipping to 'active' here doesn't start billing on its own; the agency
+// still has to complete their own "Add billing" flow.
+router.put('/agents/:id/subscription', requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.body || {};
+    if (!['exempt', 'active', 'past_due', 'suspended'].includes(status)) {
+      return res.status(400).json({ error: "status must be 'exempt', 'active', 'past_due' or 'suspended'." });
+    }
+    const agent = await db.agents.getById(req.params.id);
+    if (!agent) return res.status(404).json({ error: 'Agency not found.' });
+
+    await db.agents.setSubscriptionStatus({ id: req.params.id, status });
+    res.json({ ok: true, agent: await db.agents.getById(req.params.id) });
+  } catch (err) {
+    console.error('[admin] PUT agents subscription failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /admin/agents/:id/documents/:kind — kind is 'id' or 'business'.
 // Same raw-upload shape as /admin/trip-images, but stored under a field that
 // is never exposed through the public /api/trip-image/:id route — see

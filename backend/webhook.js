@@ -119,6 +119,32 @@ async function processPayment(reference) {
     return true;
   }
 
+  // ── Agency ₦10k/month subscription billing ─────────────────────────────────
+  // Covers both the one-time card-capture charge (a real browser checkout
+  // redirect) and every later recurring charge (fired by the cron in
+  // services/subscriptionBilling.js via charge_authorization — this webhook
+  // arrives for those too, alongside the cron's own synchronous response;
+  // db.agents.creditSubscriptionCharge is what makes handling both safe).
+  if (reference.startsWith('PROSUB-')) {
+    if (!result.agentId) { console.warn('[processPayment] no agent_id on ref', reference); return false; }
+    if (!result.authorizationCode) {
+      // A card-capture attempt that succeeded but wasn't marked reusable —
+      // shouldn't happen given channels:['card'], but if it does, there's
+      // no way to charge this agency again later, so don't pretend billing
+      // is set up.
+      console.warn('[processPayment] PROSUB- charge had no reusable authorization', reference);
+      return false;
+    }
+    const credited = await db.agents.creditSubscriptionCharge({
+      agentId:           result.agentId,
+      authorizationCode: result.authorizationCode,
+      amount:            result.amountNGN,
+      reference,
+    });
+    if (credited) console.log(`[processPayment] agent ${result.agentId} subscription charged ${result.amountNGN}`);
+    return credited;
+  }
+
   // ── Legacy WhatsApp-group member payment flow ─────────────────────────────
   // The group bot that sent these notifications is retired (its outbound
   // channel, Zavu, was removed). Crediting the payment still happens — money

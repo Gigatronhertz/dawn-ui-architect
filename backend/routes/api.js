@@ -1186,6 +1186,57 @@ router.patch('/pro/payout', requireAuth, requireAgent, async (req, res) => {
   }
 });
 
+// ── Subscription billing (₦10,000/month) ────────────────────────────────────
+const SUBSCRIPTION_FEE_NGN = Number(process.env.PRO_SUBSCRIPTION_FEE || 10000);
+
+// POST /api/pro/billing/setup — the one-time card-capture checkout an agency
+// completes to start being billed. Card-only: the recurring charge the
+// monthly cron makes (services/subscriptionBilling.js) only works reliably
+// off a saved card, not bank transfer/USSD.
+router.post('/pro/billing/setup', requireAuth, requireAgent, async (req, res) => {
+  if (!paystack.available()) {
+    return res.status(503).json({ error: 'Payments are not enabled yet.' });
+  }
+  if (!req.agent.email) {
+    return res.status(400).json({ error: 'Add an email to your account before setting up billing.' });
+  }
+  try {
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '');
+    const { reference, authorization_url } = await paystack.initializeSubscriptionSetup({
+      agentId:     req.agent.id,
+      email:       req.agent.email,
+      amountNGN:   SUBSCRIPTION_FEE_NGN,
+      callbackUrl: `${frontendUrl}/pro/setup?billing=1`,
+    });
+    res.json({ authorization_url, reference });
+  } catch (err) {
+    console.error('[api/pro/billing/setup]', err.message);
+    res.status(500).json({ error: 'Could not start billing setup. Please try again.' });
+  }
+});
+
+// GET /api/pro/billing — this agency's subscription status and charge history.
+router.get('/pro/billing', requireAuth, requireAgent, async (req, res) => {
+  try {
+    const charges = await db.agents.subscriptionCharges(req.agent.id);
+    res.json({
+      status:         req.agent.subscription_status || 'exempt',
+      nextChargeAt:   req.agent.subscription_next_charge_at ? Number(req.agent.subscription_next_charge_at) : null,
+      failedAttempts: Number(req.agent.subscription_failed_attempts || 0),
+      amount:         SUBSCRIPTION_FEE_NGN,
+      charges: charges.map(c => ({
+        amount:    Number(c.amount),
+        reference: c.reference,
+        status:    c.status,
+        createdAt: Number(c.created_at),
+      })),
+    });
+  } catch (err) {
+    console.error('[api/pro/billing]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Trip cover photo ─────────────────────────────────────────────────────────
 // The one field the public catalog already expects (/api/listings reads
 // cover_image_id) but nothing ever wrote — same upload shape as the agency
@@ -1824,14 +1875,22 @@ router.get('/listings', async (req, res) => {
 
     // verification_status = 'verified' is the actual protection promised to
     // travellers — an agency mid-KYC (or rejected) can still build and share
-    // trips by link, they just don't show up here yet.
+    // trips by link, they just don't show up here yet. subscription_status
+    // != 'suspended' is the billing equivalent: a lapsed agency (retries on
+    // its ₦10k/month charge exhausted) drops out of the catalog the same
+    // way, but everything about its already-collecting trips — the share
+    // link, payments, payouts — keeps working untouched. 'exempt' (every
+    // currently-onboarded pilot agency) and 'active'/'past_due' all still
+    // show here; only 'suspended' doesn't.
     const agencyRows = await db.rawAll(
       `SELECT t.id, t.title, t.summary, t.destination, t.days, t.squad_size,
               t.selected_date, t.plan, t.created_at, t.cover_image_id,
               a.agency_name, a.color, a.logo_image_id
          FROM trips t
          JOIN agents a ON a.id = t.agent_id
-        WHERE t.listed = 1 AND t.status = 'custom' AND a.verification_status = 'verified'
+        WHERE t.listed = 1 AND t.status = 'custom'
+          AND a.verification_status = 'verified'
+          AND a.subscription_status != 'suspended'
           AND (? = '' OR t.destination = ?)
         ORDER BY t.created_at DESC`,
       [city, city]
@@ -1876,6 +1935,7 @@ router.get('/agencies', async (req, res) => {
          FROM agents a
          JOIN trips t ON t.agent_id = a.id AND t.listed = 1 AND t.status = 'custom'
         WHERE a.verification_status = 'verified'
+          AND a.subscription_status != 'suspended'
         GROUP BY a.id
         ORDER BY trip_count DESC, a.agency_name ASC`
     );

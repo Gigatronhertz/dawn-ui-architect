@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, imageUrl } from "@/lib/api";
+import { api, imageUrl, type ProBilling } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
 
 
@@ -57,6 +57,11 @@ const ProSetup = () => {
   const [payoutErr, setPayoutErr]     = useState("");
   const [payoutNote, setPayoutNote]   = useState("");
 
+  // ── Billing — Karije's own ₦10k/month Pro subscription.
+  const [billing, setBilling]     = useState<ProBilling | null>(null);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingErr, setBillingErr]   = useState("");
+
   // Pre-fill plan from URL (?plan=growth) and any existing saved form
   useEffect(() => {
     const urlPlan = searchParams.get("plan") === "growth" ? "growth" : null;
@@ -89,9 +94,27 @@ const ProSetup = () => {
         setBankCode(agent.payout_bank_code || "");
         setAccountNo(agent.payout_account_no || "");
         setAccountName(agent.payout_account_name || "");
+        api.getBilling(token).then(setBilling).catch(() => { /* card matches the "coming back from Paystack" case below */ });
       })
       .catch(() => { /* first time — no profile yet */ });
   }, [user, getIdToken, searchParams]);
+
+  // Coming back from the billing-setup Paystack checkout (?billing=1) —
+  // the webhook may land a moment after the redirect, so re-check briefly
+  // rather than trusting the query param alone.
+  useEffect(() => {
+    if (searchParams.get("billing") !== "1" || !user) return;
+    const token = getIdToken();
+    if (!token) return;
+    let tries = 0;
+    const check = () => {
+      api.getBilling(token).then((b) => {
+        setBilling(b);
+        if (b.status !== "active" && ++tries < 8) setTimeout(check, 2000);
+      }).catch(() => {});
+    };
+    check();
+  }, [searchParams, user, getIdToken]);
 
   const initials = form.agencyName
     .trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
@@ -139,6 +162,19 @@ const ProSetup = () => {
     } catch (e) {
       setPayoutErr(e instanceof Error ? e.message : "Could not save that.");
     } finally { setPayoutBusy(false); }
+  }
+
+  async function startBillingSetup() {
+    const token = getIdToken();
+    if (!token) return;
+    setBillingBusy(true); setBillingErr("");
+    try {
+      const { authorization_url } = await api.setupBilling(token);
+      window.location.href = authorization_url;
+    } catch (e) {
+      setBillingErr(e instanceof Error ? e.message : "Could not start billing setup.");
+      setBillingBusy(false);
+    }
   }
 
   const submit = async (e: React.FormEvent) => {
@@ -429,6 +465,73 @@ const ProSetup = () => {
               </button>
               {payoutNote && <p className="text-xs text-emerald-700 dark:text-emerald-400">{payoutNote}</p>}
               {payoutErr && <p className="text-xs text-destructive">{payoutErr}</p>}
+            </div>
+          )}
+
+          {/* Billing — Karije's own ₦10k/month Pro subscription */}
+          {hasAgent && billing && (
+            <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="font-semibold text-sm">Billing</div>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border ${
+                  billing.status === "active"    ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300" :
+                  billing.status === "past_due"  ? "bg-signal/20 text-ink border-signal" :
+                  billing.status === "suspended" ? "bg-destructive/10 text-destructive border-destructive/30" :
+                  "bg-secondary text-muted-foreground border-border"
+                }`}>
+                  {billing.status === "exempt" ? "Free pilot" : billing.status.replace("_", " ")}
+                </span>
+              </div>
+
+              {billing.status === "exempt" && (
+                <p className="text-xs text-muted-foreground -mt-1">
+                  You're on Karije's free pilot — nothing is being charged. We'll let you know before that ever changes.
+                </p>
+              )}
+              {billing.status === "active" && (
+                <p className="text-xs text-muted-foreground -mt-1">
+                  ₦{billing.amount.toLocaleString()}/month, unlimited trips.
+                  {billing.nextChargeAt && ` Next charge ${new Date(billing.nextChargeAt * 1000).toLocaleDateString()}.`}
+                </p>
+              )}
+              {billing.status === "past_due" && (
+                <p className="text-xs text-muted-foreground -mt-1">
+                  We couldn't charge your card this month — we'll keep retrying for a bit.
+                  Your trips are still fully live in the meantime; update your card to stop the retries.
+                </p>
+              )}
+              {billing.status === "suspended" && (
+                <p className="text-xs text-destructive -mt-1">
+                  Billing lapsed after a few failed attempts — your trips have come off the public catalog.
+                  Share links, payments and payouts are completely unaffected. Add a card to get relisted right away.
+                </p>
+              )}
+
+              {billing.status !== "exempt" && (
+                <button
+                  type="button"
+                  onClick={startBillingSetup}
+                  disabled={billingBusy}
+                  className="text-xs font-bold rounded-full bg-signal text-ink border-2 border-foreground px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
+                >
+                  {billingBusy ? "Redirecting…" : billing.status === "active" ? "Update card" : "Add card"}
+                </button>
+              )}
+              {billingErr && <p className="text-xs text-destructive">{billingErr}</p>}
+
+              {billing.charges.length > 0 && (
+                <div className="pt-3 border-t border-border space-y-1.5">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Charge history</div>
+                  {billing.charges.slice(0, 5).map((c) => (
+                    <div key={c.reference} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{new Date(c.createdAt * 1000).toLocaleDateString()}</span>
+                      <span className={c.status === "success" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}>
+                        ₦{c.amount.toLocaleString()} · {c.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
