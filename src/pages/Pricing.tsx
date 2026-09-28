@@ -27,11 +27,11 @@ const FAQ_ITEMS = [
   },
   {
     q: "How does the 10% commission work on Ready-made Trips?",
-    a: "There's no upfront fee. When your squad books a Karije Ready-made Trip and pays via Paystack, Karije deducts 10% of the total collected amount. The remaining 90% goes to the trip operator. You see the full breakdown before you confirm the booking.",
+    a: "There's no upfront fee. When your squad books a Karije Ready-made Trip and pays via Paystack, Karije keeps 10% of the total collected. The remaining 90% goes into running the trip itself. You see the full breakdown before you confirm the booking.",
   },
   {
-    q: "Can I switch between pay-per-plan and monthly?",
-    a: "Yes, anytime. If you're planning a big trip month and want unlimited plans, switch to monthly (₦1,000) before you start. Switch back to pay-per-plan the following month. No penalties, no questions asked.",
+    q: "Is there a monthly fee for AI plans?",
+    a: "No. Your first plan is free. After that it's ₦500 for 3 plans — a one-off payment, no subscription, and your plans never expire. Pro agencies generate plans free.",
   },
   {
     q: "Is there a contract for Pro?",
@@ -49,7 +49,6 @@ const FAQ_ITEMS = [
 
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function Pricing() {
-  const [aiMode, setAiMode]     = useState<"pay" | "monthly">("pay");
   const [openFaq, setOpenFaq]   = useState<number | null>(null);
 
   return (
@@ -67,7 +66,7 @@ export default function Pricing() {
             Pay for what you actually use.
           </h1>
           <p className="text-muted-foreground font-jost font-light text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            Start free. Generate an AI trip plan for ₦500. Book a curated Karije experience. Or power your travel agency on Pro — all priced for Nigeria.
+            Your first AI trip plan is free, then ₦500 for 3. Book a curated Karije experience. Or power your travel agency on Pro — all priced for Nigeria.
           </p>
         </div>
       </section>
@@ -97,7 +96,7 @@ export default function Pricing() {
               </p>
 
               <ul className="space-y-3 text-sm font-jost font-light text-foreground flex-1 mb-8">
-                <li className="flex items-start gap-2.5"><Check /><span>3 AI trip plans per month</span></li>
+                <li className="flex items-start gap-2.5"><Check /><span>1 free AI trip plan</span></li>
                 <li className="flex items-start gap-2.5"><Check /><span>Browse Ready-made Trips catalog</span></li>
                 <li className="flex items-start gap-2.5"><Check /><span>Basic itinerary view</span></li>
                 <li className="flex items-start gap-2.5"><Dash /><span className="text-muted-foreground">Squad Paystack payment collection</span></li>
@@ -126,38 +125,8 @@ export default function Pricing() {
                   AI Curated Trips
                 </span>
 
-                {/* Mode toggle */}
-                <div className="flex rounded-full bg-background border-[3px] border-foreground p-1 mb-4 w-fit gap-1">
-                  {(["pay", "monthly"] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setAiMode(m)}
-                      className={`text-[11px] font-jost font-bold px-3.5 py-1.5 rounded-full transition-all ${
-                        aiMode === m
-                          ? "bg-signal text-ink shadow-[2px_2px_0_0_hsl(var(--foreground))]"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {m === "pay" ? "Per plan" : "Monthly"}
-                    </button>
-                  ))}
-                </div>
-
-                {aiMode === "pay" ? (
-                  <>
-                    <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦500</div>
-                    <div className="text-sm font-jost font-light text-muted-foreground">per AI plan generated</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦1,000</div>
-                    <div className="text-sm font-jost font-light text-muted-foreground">
-                      / month · unlimited plans{" "}
-                      <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-foreground">saves ₦4,000+ vs per-plan</span>
-                    </div>
-                  </>
-                )}
+                <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦500</div>
+                <div className="text-sm font-jost font-light text-muted-foreground">for 3 AI plans · one-off, no subscription</div>
               </div>
 
               <p className="text-sm font-jost font-light text-muted-foreground leading-relaxed mb-7">
@@ -313,7 +282,7 @@ export default function Pricing() {
               </thead>
               <tbody className="divide-y divide-border">
                 {[
-                  ["AI trip plan generation",           "3/mo",  "✓",  "—",  "✓"],
+                  ["AI trip plan generation",           "1 free", "3 for ₦500", "—", "Free"],
                   ["Venue picker (full DB)",             "—",     "✓",  "✓",  "✓"],
                   ["Per-person cost breakdown",          "—",     "✓",  "✓",  "✓"],
                   ["Squad Paystack payment",             "—",     "✓",  "✓",  "✓"],

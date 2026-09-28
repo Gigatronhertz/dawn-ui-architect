@@ -180,6 +180,14 @@ export function imageUrl(path: string | null | undefined): string | null {
   return `${API_URL}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
+export type AiCreditStatus = {
+  isPro: boolean;
+  credits: number;
+  freeUsed: boolean;
+  packPrice: number;
+  packCredits: number;
+};
+
 export type AgentProfile = {
   phone: string;
   agencyName: string;
@@ -265,6 +273,17 @@ export type DashboardData = {
   summary: DashboardSummary;
 };
 
+/** A failed request, keeping the HTTP status and any machine-readable `code`. */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function post<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: 'POST',
@@ -272,7 +291,7 @@ async function post<T>(path: string, body: unknown, headers?: Record<string, str
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  if (!res.ok) throw new ApiError(data.error || 'Request failed', res.status, data.code);
   return data as T;
 }
 
@@ -434,8 +453,24 @@ export type PlanAgency = {
 
 export const api = {
   /** Fire-and-forget: creates the job, returns tripId immediately. */
-  createPlan:   (intake: IntakeData, email?: string, waNumber?: string) =>
-    post<CreatePlanResponse>('/api/plan', { ...intake, ...(email ? { email } : {}), ...(waNumber ? { waNumber } : {}) }),
+  createPlan:   (intake: IntakeData, email?: string, waNumber?: string, token?: string | null) =>
+    post<CreatePlanResponse>(
+      '/api/plan',
+      { ...intake, ...(email ? { email } : {}), ...(waNumber ? { waNumber } : {}) },
+      token ? bearer(token) : undefined,
+    ),
+
+  /** How the next AI plan gets paid for: free plan left, pack credits, or Pro. */
+  getAiCredits: (token?: string | null) =>
+    get<AiCreditStatus>('/api/ai-credits', token ? bearer(token) : undefined),
+
+  /** Start a Paystack checkout for a pack of AI plans. */
+  buyAiCredits: (token: string) =>
+    post<{ reference: string; url: string }>('/api/ai-credits/checkout', {}, bearer(token)),
+
+  /** Confirm a pack purchase on return from Paystack. */
+  verifyAiCredits: (reference: string, token: string) =>
+    post<AiCreditStatus>('/api/ai-credits/verify', { reference }, bearer(token)),
   /** Poll until status is 'plan_review' or 'error'. */
   pollPlan:     (tripId: string)     => get<PollPlanResponse>(`/api/plan/${tripId}`),
   /** @deprecated Use createPlan + pollPlan instead. Kept for any legacy callers. */

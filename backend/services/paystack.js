@@ -51,6 +51,9 @@ async function verifyPayment(reference) {
     // link, so an older link's reference won't match the row.
     participantId: metadata?.participant_id,
     agentId: metadata?.agent_id,
+    userId: metadata?.user_id,
+    credits: Number(metadata?.credits) || 0,
+    customerEmail: res.data.data.customer?.email || null,
     // Present only when the charge came off a card Paystack has marked
     // reusable — this is what recurring subscription billing charges again
     // later. A bank-transfer/USSD payment never carries one.
@@ -151,7 +154,28 @@ async function chargeAuthorization({ agentId, authorizationCode, email, amountNG
   return { success: status === 'success', reference, gatewayResponse: gateway_response };
 }
 
+/**
+ * Checkout for a one-off pack of AI trip plans. Reference prefixed AIPLAN- so
+ * the shared webhook can route it.
+ */
+async function initializeAiCreditsPayment({ userId, email, amountNGN, credits, callbackUrl }) {
+  const reference = `AIPLAN-${String(userId).slice(0, 20)}-${Date.now()}`;
+  const res = await axios.post(
+    `${BASE}/transaction/initialize`,
+    {
+      email,
+      amount:       Math.round(amountNGN * 100),
+      reference,
+      callback_url: callbackUrl,
+      currency:     'NGN',
+      metadata: { payment_type: 'ai_credits', user_id: userId, credits },
+    },
+    { headers: headers() }
+  );
+  return { reference, authorization_url: res.data.data.authorization_url };
+}
+
 module.exports = {
-  available, initializePayment, initializeWebPayment, verifyPayment, fmtNGN,
+  available, initializeAiCreditsPayment, initializePayment, initializeWebPayment, verifyPayment, fmtNGN,
   initializeSubscriptionSetup, chargeAuthorization,
 };

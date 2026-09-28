@@ -27,7 +27,9 @@ async function sendPlanReadyEmail({ to, destination, origin, days, squadSize, pe
   const resend = getResend();
   if (!resend || !to) return;
 
-  const planUrl = `${FRONTEND}/start?job=${tripId}`;
+  const planUrl = `${FRONTEND}/start/trip?job=${tripId}`;
+  // Signing up while on the plan's page ties the plan to the new account.
+  const signupUrl = `${FRONTEND}/login?mode=signup&next=${encodeURIComponent(`/start/trip?job=${tripId}`)}`;
   const fmtNGN  = (n) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
   const html = `<!DOCTYPE html>
@@ -74,6 +76,15 @@ async function sendPlanReadyEmail({ to, destination, origin, days, squadSize, pe
           <p style="margin:16px 0 0;font-size:12px;color:#9ca3af">
             Or paste this link: <a href="${planUrl}" style="color:#6366f1">${planUrl}</a>
           </p>
+        </td></tr>
+
+        <!-- Save it: create an account -->
+        <tr><td style="padding:0 32px 28px">
+          <div style="border:1px solid #e5e7eb;border-radius:12px;padding:18px 20px;text-align:center">
+            <div style="font-size:14px;font-weight:600;color:#111827">Keep this plan</div>
+            <p style="margin:6px 0 14px;font-size:13px;color:#6b7280">Create a free account to save it, edit it and share it with your squad.</p>
+            <a href="${signupUrl}" style="display:inline-block;border:2px solid #111827;color:#111827;text-decoration:none;padding:10px 24px;border-radius:100px;font-weight:600;font-size:13px">Create your account →</a>
+          </div>
         </td></tr>
 
         <!-- Footer -->

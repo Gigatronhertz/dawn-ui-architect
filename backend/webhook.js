@@ -145,6 +145,20 @@ async function processPayment(reference) {
     return credited;
   }
 
+  // ── AI trip plan pack (₦500 for 3 plans) ──────────────────────────────────
+  if (reference.startsWith('AIPLAN-')) {
+    if (!result.userId || result.credits <= 0) { console.warn('[processPayment] AIPLAN- missing user/credits', reference); return false; }
+    const credited = await db.aiCredits.recordPurchase({
+      userId:    result.userId,
+      email:     result.customerEmail,
+      amount:    result.amountNGN,
+      credits:   result.credits,
+      reference,
+    });
+    if (credited) console.log(`[processPayment] user ${result.userId} bought ${result.credits} AI plan credits`);
+    return credited;
+  }
+
   // ── Legacy WhatsApp-group member payment flow ─────────────────────────────
   // The group bot that sent these notifications is retired (its outbound
   // channel, Zavu, was removed). Crediting the payment still happens — money

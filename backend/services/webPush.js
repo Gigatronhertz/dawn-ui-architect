@@ -35,7 +35,7 @@ async function sendPlanReadyPush({ subscription, destination, tripId }) {
   const payload = JSON.stringify({
     title: 'Your squad plan is ready! 🎉',
     body:  `Trip to ${destination} is all mapped out. Tap to view.`,
-    url:   `${FRONTEND}/start?job=${tripId}`,
+    url:   `${FRONTEND}/start/trip?job=${tripId}`,
   });
 
   try {

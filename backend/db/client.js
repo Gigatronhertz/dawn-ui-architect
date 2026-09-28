@@ -205,6 +205,33 @@ const SCHEMA = [
     status     TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // AI trip plan credits. One-off packs (₦500 for 3 plans), no expiry — a
+  // row per successful purchase, idempotent on the Paystack reference.
+  `CREATE TABLE IF NOT EXISTS ai_credit_purchases (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    email      TEXT,
+    amount     INTEGER NOT NULL,
+    credits    INTEGER NOT NULL,
+    reference  TEXT NOT NULL UNIQUE,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  // One row per AI plan generated through the web planner, recording how it
+  // was paid for: 'free' (everyone's first plan), 'credit' (from a pack) or
+  // 'pro' (Pro agencies generate free). A credit balance is always
+  // SUM(purchases) - COUNT(credit rows) — derived, never stored — and a
+  // generation that fails deletes its row, which is the refund.
+  `CREATE TABLE IF NOT EXISTS ai_plan_usage (
+    trip_id    TEXT PRIMARY KEY,
+    user_id    TEXT,
+    email      TEXT,
+    kind       TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  // The free plan is one per email. Enforced here too, so two submits racing
+  // each other can't both get one.
+  `CREATE UNIQUE INDEX IF NOT EXISTS ai_plan_usage_one_free
+     ON ai_plan_usage(email) WHERE kind = 'free'`,
   // Uploaded trip photos. Deliberately its own table: the Explore page does
   // SELECT * FROM experiences on every load, and image bytes must never ride
   // along with it. Trips reference a row here by URL path, not by join.
@@ -1671,6 +1698,63 @@ async function upsertExperience(exp) {
   return raw('SELECT * FROM experiences WHERE id = ?', [exp.id]).then(parseExpRow);
 }
 
+// ── AI plan credits ──────────────────────────────────────────────────────────
+
+/** Credits bought minus credits used. */
+async function getAiCreditBalance(userId) {
+  if (!userId) return 0;
+  const r = await client.execute({
+    sql: `SELECT
+            (SELECT COALESCE(SUM(credits), 0) FROM ai_credit_purchases WHERE user_id = ?) -
+            (SELECT COUNT(*) FROM ai_plan_usage WHERE user_id = ? AND kind = 'credit') AS n`,
+    args: [userId, userId],
+  });
+  return Math.max(0, Number(r.rows[0]?.n ?? 0));
+}
+
+/** True once this person (by email, or by account) has had their free plan. */
+async function hasUsedFreeAiPlan({ userId, email }) {
+  const r = await client.execute({
+    sql: `SELECT 1 FROM ai_plan_usage
+           WHERE kind = 'free' AND ((? IS NOT NULL AND email = ?) OR (? IS NOT NULL AND user_id = ?))
+           LIMIT 1`,
+    args: [email || null, email || null, userId || null, userId || null],
+  });
+  return r.rows.length > 0;
+}
+
+/** Reserves a plan generation. Returns false if the insert was refused —
+ *  i.e. a free plan this email already used. */
+async function recordAiPlanUsage({ tripId, userId, email, kind }) {
+  try {
+    const r = await client.execute({
+      sql: `INSERT INTO ai_plan_usage (trip_id, user_id, email, kind, created_at)
+            VALUES (?, ?, ?, ?, unixepoch())`,
+      args: [tripId, userId || null, email || null, kind],
+    });
+    return !!r.rowsAffected;
+  } catch (err) {
+    if (/UNIQUE/i.test(err.message)) return false;
+    throw err;
+  }
+}
+
+/** A generation failed — give back whatever it used. */
+async function releaseAiPlanUsage(tripId) {
+  await client.execute({ sql: `DELETE FROM ai_plan_usage WHERE trip_id = ?`, args: [tripId] });
+}
+
+/** Records a paid pack. Idempotent on reference — webhook and browser
+ *  return can both confirm the same payment. */
+async function recordAiCreditPurchase({ userId, email, amount, credits, reference }) {
+  const r = await client.execute({
+    sql: `INSERT OR IGNORE INTO ai_credit_purchases (id, user_id, email, amount, credits, reference, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, unixepoch())`,
+    args: [randomUUID(), userId, email || null, amount, credits, reference],
+  });
+  return !!r.rowsAffected;
+}
+
 module.exports = {
   ready,
   raw,
@@ -1728,6 +1812,13 @@ module.exports = {
     payments: getParticipantPayments,
     dueInstallments: findDueInstallments,
     computeCharge: computeParticipantCharge,
+  },
+  aiCredits: {
+    balance:        getAiCreditBalance,
+    hasUsedFree:    hasUsedFreeAiPlan,
+    recordUsage:    recordAiPlanUsage,
+    releaseUsage:   releaseAiPlanUsage,
+    recordPurchase: recordAiCreditPurchase,
   },
   installmentDigests: {
     dueAgents:   listAgentsDueInstallmentDigest,

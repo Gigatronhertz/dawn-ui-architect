@@ -7,7 +7,8 @@ const { generateTripPlan, buildSkeletonPlan } = require('../services/planGenerat
 const GT   = require('../services/googleTravel');
 const GIGM = require('../services/gigm');
 const { getLines } = require('../utils/logger');
-const { requireAuth }        = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
+const aiCredits              = require('../services/aiCredits');
 const { sendPlanReadyEmail, sendPlanConfirmedEmail } = require('../services/email');
 const { sendPlanReadyPush  } = require('../services/webPush');
 const whisper360              = require('../services/whisper360');
@@ -32,7 +33,7 @@ const router = Router();
 // POST /api/plan
 // Creates a trip job and returns tripId immediately.
 // Actual AI + scraping runs in the background — client polls GET /api/plan/:tripId.
-router.post('/plan', async (req, res) => {
+router.post('/plan', optionalAuth, async (req, res) => {
   const { origin, destination, budget, hotelBudgetPerNight, days, squadSize, accommodationType, dateFlexibility, dealbreakers, transport, vibe, specificDates, email, waNumber } = req.body;
 
   // The web intake sends hotelBudgetPerNight; the WhatsApp bot sends budget.
@@ -51,14 +52,42 @@ router.post('/plan', async (req, res) => {
   const cleanNotifyWa = typeof waNumber === 'string' && waNumber.replace(/\D/g, '').length >= 10
     ? waNumber.trim() : null;
 
+  // Who's paying for this one: first plan free, then a ₦500 pack of 3, and
+  // free for Pro agencies. Reserved before generating; refunded on failure.
+  // The free plan is keyed on email, so anyone not signed in must give one.
+  if (!req.user && !cleanNotifyEmail) {
+    return res.status(400).json({ error: 'Enter your email so we can send you the plan.' });
+  }
+  const payer = await aiCredits.decide({ user: req.user, email: cleanNotifyEmail });
+  if (payer.denied) {
+    return res.status(402).json({
+      code: payer.denied,
+      error: payer.denied === 'SIGN_IN_REQUIRED'
+        ? "You've used your free plan. Sign in to generate more."
+        : `You're out of plans. Get ${aiCredits.PACK_CREDITS} more for ₦${aiCredits.PACK_PRICE_NGN}.`,
+      packPrice: aiCredits.PACK_PRICE_NGN,
+      packCredits: aiCredits.PACK_CREDITS,
+    });
+  }
+
   const tripId = uuid();
+  const reserved = await db.aiCredits.recordUsage({
+    tripId,
+    userId: req.user?.uid || null,
+    email:  (req.user?.email || cleanNotifyEmail || '').toLowerCase() || null,
+    kind:   payer.kind,
+  });
+  if (!reserved) {
+    // Lost a race for the same free plan.
+    return res.status(402).json({ code: req.user ? 'NO_CREDITS' : 'SIGN_IN_REQUIRED', error: "You've used your free plan." });
+  }
 
   await db.trips.insert({ id: tripId, organiser_phone: `web_${tripId}` });
   await db.raw(
     `UPDATE trips SET
        origin=?, destination=?, budget=?, hotel_budget_per_night=?, days=?, squad_size=?,
        accommodation=?, date_flexibility=?, specific_dates=?, dealbreakers=?,
-       status=?, intake_json=?, notify_email=?, notify_wa=?
+       status=?, intake_json=?, notify_email=?, notify_wa=?, user_id=COALESCE(user_id, ?)
      WHERE id=?`,
     [
       origin, destination, budget ? Number(budget) : null, hotelNightly,
@@ -66,6 +95,7 @@ router.post('/plan', async (req, res) => {
       accommodationType || 'Hotel', dateFlexibility || 'Flexible',
       specificDates || null, dealbreakers || null,
       'generating', JSON.stringify(req.body), cleanNotifyEmail, cleanNotifyWa,
+      req.user?.uid || null,
       tripId,
     ]
   );
@@ -147,7 +177,7 @@ router.post('/plan', async (req, res) => {
       // WhatsApp — a first-contact message, so it must be an approved
       // template (see services/whisper360.js's docblock on the 24h window).
       if (trip?.notify_wa) {
-        const planUrl = `${(process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '')}/start?job=${tripId}`;
+        const planUrl = `${(process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '')}/start/trip?job=${tripId}`;
         whisper360.sendTemplate(trip.notify_wa, WHISPER360_TEMPLATE_PLAN_READY, {
           destination: destination || 'your trip',
           link: planUrl,
@@ -158,8 +188,56 @@ router.post('/plan', async (req, res) => {
     } catch (err) {
       console.error('[api/plan/bg]', err.message);
       await db.raw(`UPDATE trips SET status=? WHERE id=?`, ['error', tripId]);
+      // Nothing was delivered, so nothing is charged.
+      await db.aiCredits.releaseUsage(tripId).catch(() => {});
     }
   })();
+});
+
+// ── AI plan credits ─────────────────────────────────────────────────────────
+// GET /api/ai-credits — what the planner shows before someone generates.
+router.get('/ai-credits', optionalAuth, async (req, res) => {
+  try {
+    res.json(await aiCredits.status(req.user));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ai-credits/checkout — start a ₦500 / 3-plan pack purchase.
+router.post('/ai-credits/checkout', requireAuth, async (req, res) => {
+  if (!paystack.available()) return res.status(503).json({ error: 'Payments are not available right now.' });
+  if (!req.user.email) return res.status(400).json({ error: 'Your account needs an email address to pay.' });
+  try {
+    const frontend = (process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '');
+    const { reference, authorization_url } = await paystack.initializeAiCreditsPayment({
+      userId:      req.user.uid,
+      email:       req.user.email,
+      amountNGN:   aiCredits.PACK_PRICE_NGN,
+      credits:     aiCredits.PACK_CREDITS,
+      callbackUrl: `${frontend}/start/trip?credits=1`,
+    });
+    res.json({ reference, url: authorization_url });
+  } catch (err) {
+    console.error('[api/ai-credits/checkout]', err.message);
+    res.status(500).json({ error: 'Could not start checkout. Please try again.' });
+  }
+});
+
+// POST /api/ai-credits/verify — the browser coming back from Paystack.
+// Credits the pack without waiting on the webhook; idempotent either way.
+router.post('/ai-credits/verify', requireAuth, async (req, res) => {
+  const { reference } = req.body || {};
+  if (typeof reference !== 'string' || !reference.startsWith('AIPLAN-')) {
+    return res.status(400).json({ error: 'Invalid reference.' });
+  }
+  try {
+    await processPayment(reference);
+    res.json(await aiCredits.status(req.user));
+  } catch (err) {
+    console.error('[api/ai-credits/verify]', err.message);
+    res.status(500).json({ error: 'Could not confirm that payment yet.' });
+  }
 });
 
 // POST /api/confirm

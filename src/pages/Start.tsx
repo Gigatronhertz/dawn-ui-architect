@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { MapPin, Check, Mail, Bell, MessageCircle } from "lucide-react";
-import { api, session, imageUrl, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type Attraction } from "@/lib/api";
+import { api, ApiError, session, imageUrl, type AiCreditStatus, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { KarijeLogo } from "@/components/Nav";
 import { GIGM_CITIES, FLIGHT_CITIES } from "@/lib/cities";
@@ -1716,8 +1716,23 @@ function LockBanner({ tripId }: { tripId: string }) {
 /* ─── page shell ─────────────────────────────────────────────────────────────── */
 type Step = "intake" | "generating" | "plan" | "confirm";
 
+/** The intake someone was about to generate when the paywall stopped them —
+ *  kept across a sign-in or Paystack round trip so it runs straight after. */
+const PENDING_KEY = "karije_pending_intake";
+type PendingIntake = { intake: IntakeData; email: string; waNumber: string };
+function savePending(p: PendingIntake) {
+  try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ }
+}
+function takePending(): PendingIntake | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_KEY);
+    sessionStorage.removeItem(PENDING_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 export default function Start() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, getIdToken } = useAuth();
   const location = useLocation();
   const navState = location.state as { origin?: string; destination?: string } | null;
   const [step, setStep] = useState<Step>("intake");
@@ -1731,6 +1746,60 @@ export default function Start() {
   const [confirmedPlan, setConfirmedPlan] = useState<TripPlan | null>(null);
   const [confirmData, setConfirmData] = useState<{ destination: string; squadSize: number; emailSent: boolean; selectedDate?: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paywall, setPaywall] = useState<"SIGN_IN_REQUIRED" | "NO_CREDITS" | null>(null);
+  const [credits, setCredits] = useState<AiCreditStatus | null>(null);
+  const [buying, setBuying] = useState(false);
+  const [creditNotice, setCreditNotice] = useState<string | null>(null);
+
+  // Plan allowance, refreshed whenever who's signed in changes.
+  useEffect(() => {
+    api.getAiCredits(getIdToken()).then(setCredits).catch(() => {});
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Back from sign-in (?resume=1) or from Paystack (?credits=1&reference=…):
+  // confirm any purchase, then run the plan they were trying to generate.
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference") || params.get("trxref");
+    const fromPaystack = params.get("credits") === "1" && !!reference;
+    const fromSignIn = params.get("resume") === "1";
+    if (!fromPaystack && !fromSignIn) return;
+
+    const url = new URL(window.location.href);
+    ["credits", "reference", "trxref", "resume"].forEach((k) => url.searchParams.delete(k));
+    window.history.replaceState({}, "", url.toString());
+
+    (async () => {
+      const token = getIdToken();
+      if (fromPaystack && token && reference) {
+        try {
+          const status = await api.verifyAiCredits(reference, token);
+          setCredits(status);
+          setCreditNotice(`Payment received. You have ${status.credits} plan${status.credits === 1 ? "" : "s"} to use.`);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "We couldn't confirm that payment yet.");
+          return;
+        }
+      }
+      const pending = takePending();
+      if (pending) handleIntakeSubmit(pending.intake, pending.email, pending.waNumber);
+    })();
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function buyPlans() {
+    const token = getIdToken();
+    if (!token) return;
+    setBuying(true);
+    try {
+      if (intake) savePending({ intake, email, waNumber });
+      const { url } = await api.buyAiCredits(token);
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start checkout.");
+      setBuying(false);
+    }
+  }
 
   useEffect(() => {
     document.title = "Plan your trip · Karije";
@@ -1850,12 +1919,14 @@ export default function Start() {
     setWaNumber(organisersWaNumber);
     setScraped(null);
     setError(null);
+    setPaywall(null);
     setStep("generating"); // show spinner immediately
 
     try {
       // POST /api/plan now returns in ~100 ms with just a tripId
-      const { tripId: newTripId } = await api.createPlan(data, organisersEmail, organisersWaNumber);
+      const { tripId: newTripId } = await api.createPlan(data, organisersEmail, organisersWaNumber, getIdToken());
       setTripId(newTripId);
+      api.getAiCredits(getIdToken()).then(setCredits).catch(() => {});
 
       // Persist the job in the URL so refresh / close → reopen still works
       const url = new URL(window.location.href);
@@ -1865,6 +1936,11 @@ export default function Start() {
       // Start polling
       schedulePoll(newTripId, data);
     } catch (err) {
+      if (err instanceof ApiError && err.status === 402) {
+        setPaywall(err.code === "NO_CREDITS" ? "NO_CREDITS" : "SIGN_IN_REQUIRED");
+        setStep("intake");
+        return;
+      }
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setStep("intake");
     }
@@ -1960,6 +2036,14 @@ export default function Start() {
           <div className="mb-5 rounded-2xl bg-primary/8 ring-1 ring-primary/15 px-5 py-3 flex items-center justify-between gap-4">
             <p className="text-sm text-foreground/80">
               Signed in as <span className="font-medium text-foreground">{user.email}</span>
+              {credits && (
+                <span className="text-muted-foreground">
+                  {" · "}
+                  {credits.isPro ? "Pro · unlimited plans"
+                    : !credits.freeUsed ? "1 free plan"
+                    : `${credits.credits} plan${credits.credits === 1 ? "" : "s"} left`}
+                </span>
+              )}
             </p>
             <Link
               to="/my-plans"
@@ -1984,6 +2068,42 @@ export default function Start() {
             <span className="ml-1 text-xs text-muted-foreground">
               {step === "intake" ? "1 — Tell us the details" : step === "generating" ? "2 — AI is building your plan…" : "3 — Review & edit"}
             </span>
+          </div>
+        )}
+
+        {/* Credit notice */}
+        {creditNotice && step === "intake" && (
+          <div className="mb-5 rounded-2xl bg-primary/10 ring-1 ring-primary/20 px-5 py-3 text-sm text-foreground">{creditNotice}</div>
+        )}
+
+        {/* Paywall — out of free plan / credits */}
+        {paywall && step === "intake" && (
+          <div className="mb-6 rounded-3xl bg-card border-[3px] border-foreground shadow-[6px_6px_0_0_hsl(var(--foreground))] p-6 md:p-7">
+            {paywall === "SIGN_IN_REQUIRED" ? (
+              <>
+                <h2 className="font-marcellus text-2xl text-foreground">You've used your free plan.</h2>
+                <p className="mt-2 text-sm text-muted-foreground">Sign in to keep planning. Get {credits?.packCredits ?? 3} more plans for ₦{(credits?.packPrice ?? 500).toLocaleString()}, no subscription.</p>
+                <Link
+                  to={`/login?next=${encodeURIComponent("/start/trip?resume=1")}`}
+                  onClick={() => { if (intake) savePending({ intake, email, waNumber }); }}
+                  className="mt-5 inline-block rounded-full bg-signal text-ink border-[3px] border-foreground px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 transition-transform"
+                >
+                  Sign in to continue
+                </Link>
+              </>
+            ) : (
+              <>
+                <h2 className="font-marcellus text-2xl text-foreground">You're out of plans.</h2>
+                <p className="mt-2 text-sm text-muted-foreground">Get {credits?.packCredits ?? 3} more AI trip plans for ₦{(credits?.packPrice ?? 500).toLocaleString()}. One-off payment, no subscription.</p>
+                <button
+                  onClick={buyPlans}
+                  disabled={buying}
+                  className="mt-5 rounded-full bg-signal text-ink border-[3px] border-foreground px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 transition-transform disabled:opacity-60"
+                >
+                  {buying ? "Opening Paystack…" : `Get ${credits?.packCredits ?? 3} plans for ₦${(credits?.packPrice ?? 500).toLocaleString()}`}
+                </button>
+              </>
+            )}
           </div>
         )}
 
