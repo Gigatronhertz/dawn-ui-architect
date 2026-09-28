@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/CTA";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
@@ -57,10 +57,6 @@ const ProDemo = () => {
     document.title = "Karije Pro — Run your travel business properly";
   }, []);
 
-  const [agencyName, setAgencyName] = useState("Chioma Travels");
-
-  const agency = agencyName.trim() || "Your Agency";
-  const agencyInitials = agencyName.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "YA";
   const dashReveal = useScrollReveal<HTMLDivElement>();
 
   return (
@@ -165,55 +161,43 @@ const ProDemo = () => {
         </div>
       </Section>
 
-      {/* Interactive branding demo */}
+      {/* What you get */}
       <Section
-        id="try-it"
-        eyebrow="White label"
-        title={<>Your name on everything. <span className="text-muted-foreground">Not ours.</span></>}
-        sub="Type your agency name and watch it go live."
+        id="features"
+        eyebrow="What you get"
+        title={<>Sell more trips. <span className="text-muted-foreground">Chase nobody.</span></>}
       >
-        <div className="flex items-center gap-3 mb-8 max-w-md">
-          <div className={`${avatarCls} w-10 h-10 rounded-xl shrink-0`}>{agencyInitials}</div>
-          <input
-            value={agencyName}
-            onChange={(e) => setAgencyName(e.target.value)}
-            placeholder="Your agency name"
-            maxLength={40}
-            className="flex-1 rounded-xl bg-background border-2 border-foreground px-4 py-3 text-sm font-jost font-medium focus:outline-none focus:border-signal transition"
-          />
+        <div className="grid sm:grid-cols-2 gap-5">
+          {[
+            { t: "Pay monthly", d: "Travellers pay in 2–12 monthly instalments. More people say yes." },
+            { t: "Listed on Karije", d: "Your trips go live on Karije Explore, under your agency name." },
+            { t: "WhatsApp reminders", d: "Automatic nudges on WhatsApp and email. You never type one." },
+            { t: "Chase-ups, handled", d: "Late payer? We escalate: nudge, overdue, final notice." },
+          ].map((f) => (
+            <div key={f.t} className={`${cardClsSm} p-6`}>
+              <div className="font-marcellus text-2xl text-foreground">{f.t}</div>
+              <div className="mt-2 text-sm font-jost text-muted-foreground leading-relaxed">{f.d}</div>
+            </div>
+          ))}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-5">
-          {/* Trip page */}
-          <div className={`${cardClsSm} p-5`}>
-            <div className="text-[10px] font-jost uppercase tracking-wider text-muted-foreground mb-3">Trip page</div>
-            <div className="rounded-xl border-2 border-border p-5">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className={`${avatarCls} w-9 h-9 rounded-lg text-xs shrink-0`}>{agencyInitials}</div>
-                <div className="font-jost font-semibold text-sm">{agency}</div>
-              </div>
-              <div className="font-marcellus text-xl">Calabar Carnival 2026</div>
-              <div className="text-xs font-jost text-muted-foreground mt-1">Curated by {agency} · 4 days</div>
-              <div className="font-marcellus text-2xl mt-3 tabular-nums">₦65,000<span className="text-sm font-jost text-muted-foreground">/person</span></div>
-            </div>
+        {/* Bookkeeping */}
+        <div className="mt-8 rounded-3xl bg-ink text-paper border-[3px] border-foreground shadow-[6px_6px_0_0_hsl(var(--signal))] p-7 md:p-10 grid md:grid-cols-[1fr,1fr] gap-8 items-center">
+          <div>
+            <div className="text-[10px] font-jost uppercase tracking-wider text-signal mb-3">Bookkeeping, built in</div>
+            <h3 className="font-marcellus text-3xl md:text-4xl leading-tight">Your books, done.</h3>
+            <p className="mt-3 font-jost text-sm opacity-80 max-w-sm">Every naira in, every naira out. No spreadsheets. No guesswork.</p>
           </div>
-
-          {/* Payment page */}
-          <div className={`${cardClsSm} p-5`}>
-            <div className="text-[10px] font-jost uppercase tracking-wider text-muted-foreground mb-3">Payment page</div>
-            <div className="rounded-xl border-2 border-border p-5">
-              <div className="flex items-center justify-between text-sm font-jost py-2 border-b border-border">
-                <span className="text-muted-foreground">Trip share</span>
-                <span className="font-semibold tabular-nums">₦23,917</span>
-              </div>
-              <div className="flex items-center justify-between text-sm font-jost py-2">
-                <span className="text-muted-foreground">Planning fee — {agency}</span>
-                <span className="font-semibold tabular-nums">₦10,000</span>
-              </div>
-              <div className="mt-4 rounded-full bg-signal text-ink border-2 border-foreground text-sm text-center py-2.5 font-jost font-bold">Pay ₦33,917</div>
-              <div className="mt-2 text-center text-[10px] font-jost text-muted-foreground">Booking via {agency}</div>
-            </div>
-          </div>
+          <ul className="space-y-3 font-jost text-sm">
+            {[
+              "Every payment logged automatically",
+              "Who's paid, who owes, what's due next",
+              "Your fees and payouts, tracked",
+              "Export your books anytime",
+            ].map((l) => (
+              <li key={l} className="flex gap-3 border-b border-paper/15 pb-3 last:border-0 last:pb-0"><span className="text-signal">✓</span>{l}</li>
+            ))}
+          </ul>
         </div>
       </Section>
 
@@ -229,9 +213,10 @@ const ProDemo = () => {
             <ul className="mt-6 space-y-2.5 text-sm font-jost">
               {[
                 "Unlimited trips",
-                "Your brand, not ours",
-                "Keep 100% of your fees",
-                "Paystack payments + reminders",
+                "Monthly payment plans",
+                "Listed on Karije Explore",
+                "WhatsApp reminders + chase-ups",
+                "Bookkeeping built in",
               ].map((f) => (
                 <li key={f} className="flex gap-2"><span className="text-signal">✓</span>{f}</li>
               ))}
