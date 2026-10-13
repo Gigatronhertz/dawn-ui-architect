@@ -96,7 +96,7 @@ function attractionCategory(name: string): string {
 
 /* ─── shared UI ─────────────────────────────────────────────────────────────── */
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-3xl bg-card border-[3px] border-foreground shadow-[6px_6px_0_0_hsl(var(--foreground))] p-6 md:p-8 animate-rise ${className}`}>{children}</div>
+  <div className={`rounded-3xl bg-card border-2 border-line p-6 md:p-8 animate-rise ${className}`}>{children}</div>
 );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -104,8 +104,8 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 );
 
 const chipCls = (active: boolean) =>
-  `px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-foreground transition-all ${
-    active ? "bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--foreground))]" : "bg-card text-foreground hover:bg-secondary"
+  `px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-line-strong transition-all ${
+    active ? "bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--paper))]" : "bg-card text-foreground hover:bg-secondary"
   }`;
 
 /**
@@ -194,11 +194,11 @@ function IntakeStep({
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">How are you getting there?</div>
         <div className="flex gap-3">
           <button type="button" onClick={() => switchMode('bus')}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border-2 border-foreground transition ${transportMode === 'bus' ? 'bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--foreground))]' : 'bg-card text-foreground hover:bg-secondary'}`}>
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border-2 border-line-strong transition ${transportMode === 'bus' ? 'bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--paper))]' : 'bg-card text-foreground hover:bg-secondary'}`}>
             🚌 Bus
           </button>
           <button type="button" onClick={() => switchMode('flight')}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border-2 border-foreground transition ${transportMode === 'flight' ? 'bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--foreground))]' : 'bg-card text-foreground hover:bg-secondary'}`}>
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border-2 border-line-strong transition ${transportMode === 'flight' ? 'bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--paper))]' : 'bg-card text-foreground hover:bg-secondary'}`}>
             ✈️ Flight
           </button>
         </div>
@@ -372,7 +372,7 @@ function IntakeStep({
         <button
           onClick={() => onSubmit(form, email, waNumber)}
           disabled={!email.includes("@")}
-          className="group inline-flex items-center gap-2 rounded-full bg-signal text-ink border-[3px] border-foreground px-6 py-3 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] active:translate-y-0 active:shadow-[2px_2px_0_0_hsl(var(--foreground))] transition-transform w-full sm:w-auto justify-center disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_0_hsl(var(--foreground))]"
+          className="group inline-flex items-center gap-2 rounded-full bg-signal text-ink px-6 py-3 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--paper))] active:translate-y-0 active:shadow-[2px_2px_0_0_hsl(var(--paper))] transition-transform w-full sm:w-auto justify-center disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_0_hsl(var(--paper))]"
         >
           Generate my squad plan
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1674,7 +1674,7 @@ function LockBanner({ tripId }: { tripId: string }) {
   if (user || state === 'linking') {
     return (
       <Card className="flex items-center gap-4">
-        <div className="w-6 h-6 rounded-full border-2 border-foreground border-t-transparent animate-spin shrink-0" />
+        <div className="w-6 h-6 rounded-full border-2 border-signal border-t-transparent animate-spin shrink-0" />
         <div className="text-sm text-muted-foreground">Saving plan to your account…</div>
       </Card>
     );
@@ -2078,7 +2078,7 @@ export default function Start() {
 
         {/* Paywall — out of free plan / credits */}
         {paywall && step === "intake" && (
-          <div className="mb-6 rounded-3xl bg-card border-[3px] border-foreground shadow-[6px_6px_0_0_hsl(var(--foreground))] p-6 md:p-7">
+          <div className="mb-6 rounded-3xl bg-card border-2 border-line p-6 md:p-7">
             {paywall === "SIGN_IN_REQUIRED" ? (
               <>
                 <h2 className="font-marcellus text-2xl text-foreground">You've used your free plan.</h2>
@@ -2086,7 +2086,7 @@ export default function Start() {
                 <Link
                   to={`/login?next=${encodeURIComponent("/start/trip?resume=1")}`}
                   onClick={() => { if (intake) savePending({ intake, email, waNumber }); }}
-                  className="mt-5 inline-block rounded-full bg-signal text-ink border-[3px] border-foreground px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 transition-transform"
+                  className="mt-5 inline-block rounded-full bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform"
                 >
                   Sign in to continue
                 </Link>
@@ -2098,7 +2098,7 @@ export default function Start() {
                 <button
                   onClick={buyPlans}
                   disabled={buying}
-                  className="mt-5 rounded-full bg-signal text-ink border-[3px] border-foreground px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 transition-transform disabled:opacity-60"
+                  className="mt-5 rounded-full bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform disabled:opacity-60"
                 >
                   {buying ? "Opening Paystack…" : `Get ${credits?.packCredits ?? 3} plans for ₦${(credits?.packPrice ?? 500).toLocaleString()}`}
                 </button>

@@ -2289,7 +2289,7 @@ export default function Admin() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <KarijeLogo />
+            <KarijeLogo className="text-ink" />
             <p className="text-sm text-gray-500 mt-2">Admin panel</p>
           </div>
           <form onSubmit={handleLogin} className="bg-white border border-gray-200 rounded-xl p-8 space-y-4 shadow-sm">
@@ -2332,7 +2332,7 @@ export default function Admin() {
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200">
         <div className="px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <KarijeLogo />
+            <KarijeLogo className="text-ink" />
             <span className="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded">admin</span>
           </div>
           <button onClick={logout} className="text-xs text-gray-400 hover:text-gray-700">Sign out</button>

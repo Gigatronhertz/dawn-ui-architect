@@ -36,7 +36,7 @@ export default function EventPage() {
       <main className="min-h-screen bg-background">
         <Nav />
         <div className="pt-40 pb-24 grid place-items-center">
-          <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
         </div>
       </main>
     );
@@ -71,7 +71,7 @@ export default function EventPage() {
           </Link>
 
           {/* Cover image */}
-          <div className="rounded-3xl overflow-hidden border-[3px] border-foreground shadow-[6px_6px_0_0_hsl(var(--foreground))] h-64 md:h-80 relative mb-8" style={{ backgroundColor: event.colorFallback || "#1A1A1A" }}>
+          <div className="rounded-3xl overflow-hidden border-2 border-line h-64 md:h-80 relative mb-8" style={{ backgroundColor: event.colorFallback || "#1A1A1A" }}>
             {event.imageId && (
               <img
                 src={tripImageUrl(event.imageId, 900, 500)}
@@ -80,7 +80,7 @@ export default function EventPage() {
               />
             )}
             {free && (
-              <span className="absolute top-4 left-4 text-xs font-jost font-bold uppercase tracking-wide px-3 py-1.5 rounded-full bg-signal text-ink border-2 border-foreground">
+              <span className="absolute top-4 left-4 text-xs font-jost font-bold uppercase tracking-wide px-3 py-1.5 rounded-full bg-signal text-ink ">
                 Free entry
               </span>
             )}
@@ -97,11 +97,11 @@ export default function EventPage() {
           )}
 
           <div className="flex flex-wrap gap-3 mb-8">
-            <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-foreground rounded-full px-3.5 py-1.5">
+            <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-line-strong rounded-full px-3.5 py-1.5">
               <MapPin className="w-3.5 h-3.5" /> {hasLocation ? event.location : "Location to be disclosed"}
             </span>
             {!free && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-foreground rounded-full px-3.5 py-1.5">
+              <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-line-strong rounded-full px-3.5 py-1.5">
                 {event.priceNote || (event.priceMax > 0 ? `₦${event.priceMin.toLocaleString()}–₦${event.priceMax.toLocaleString()}` : "See details")}
               </span>
             )}
@@ -114,7 +114,7 @@ export default function EventPage() {
           )}
 
           {/* Registration */}
-          <div className="rounded-3xl border-[3px] border-foreground shadow-[6px_6px_0_0_hsl(var(--signal))] p-6 md:p-8">
+          <div className="rounded-3xl border-2 border-line shadow-[6px_6px_0_0_hsl(var(--signal))] p-6 md:p-8">
             <h2 className="font-marcellus text-2xl text-foreground mb-1">Register your interest</h2>
             <p className="font-jost text-sm text-muted-foreground mb-5">
               Drop your WhatsApp number and we'll reach out with the details{hasLocation ? "" : ", including the location,"} as the date gets closer. {free && "It's completely free."}

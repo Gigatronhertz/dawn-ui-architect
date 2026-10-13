@@ -1553,7 +1553,7 @@ const Demo = () => {
 
       <header className="relative pt-8 pb-6">
         <div className="mx-auto max-w-4xl px-6 flex items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-2 font-marcellus text-xl text-forest tracking-logo" style={{ textIndent: "0.1em" }}>
+          <Link to="/" className="flex items-center gap-2 font-marcellus text-xl text-signal tracking-logo" style={{ textIndent: "0.1em" }}>
             Karije
           </Link>
           <div className="flex items-center gap-2">

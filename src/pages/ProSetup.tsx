@@ -223,7 +223,7 @@ const ProSetup = () => {
   if (loading) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -234,7 +234,7 @@ const ProSetup = () => {
   // ── Setup form ─────────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 glass border-b-[3px] border-foreground">
+      <header className="sticky top-0 z-50 glass border-b-[3px] border-line">
         <div className="mx-auto max-w-5xl px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <KarijeLogo size="sm" />
@@ -244,7 +244,7 @@ const ProSetup = () => {
             <span className="hidden sm:block text-xs text-muted-foreground truncate max-w-[200px]">{user.email}</span>
             <Link
               to="/pro/dashboard"
-              className="text-xs font-bold rounded-full bg-signal text-ink border-2 border-foreground px-3.5 py-1.5 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
+              className="text-xs font-bold rounded-full bg-signal text-ink px-3.5 py-1.5 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
             >
               Dashboard →
             </Link>
@@ -255,7 +255,7 @@ const ProSetup = () => {
       <div className="mx-auto max-w-3xl px-6 py-16">
         <div className="text-center mb-12">
           <div
-            className="w-16 h-16 rounded-2xl border-2 border-foreground grid place-items-center text-white font-display font-bold text-xl mx-auto mb-4 transition-all"
+            className="w-16 h-16 rounded-2xl border-2 border-line-strong grid place-items-center text-white font-display font-bold text-xl mx-auto mb-4 transition-all"
             style={{ backgroundColor: form.color }}
           >
             {initials}
@@ -268,7 +268,7 @@ const ProSetup = () => {
 
           {/* Agency + Contact — paired on desktop, stacked on mobile */}
           <div className="grid sm:grid-cols-2 gap-5">
-          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
+          <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
             <div className="font-semibold text-sm">Your agency</div>
             <div>
               <label className="text-xs text-muted-foreground block mb-1.5">Agency name *</label>
@@ -295,7 +295,7 @@ const ProSetup = () => {
           </div>
 
           {/* WhatsApp contact */}
-          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
+          <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
             <div className="font-semibold text-sm">Contact number</div>
             <p className="text-xs text-muted-foreground -mt-1">
               How we reach you about your agency, and the number that identifies it. <strong>Not used for sign-in</strong> — you sign in with {user.email}.
@@ -329,7 +329,7 @@ const ProSetup = () => {
           {/* Verification (KYC) — only shows once the agency record exists,
               which it does immediately for an admin-created account. */}
           {hasAgent && (
-            <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
+            <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="font-semibold text-sm">Verification</div>
                 <span className={`text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full ${
@@ -372,7 +372,7 @@ const ProSetup = () => {
                 type="button"
                 onClick={saveVerificationInfo}
                 disabled={verifyBusy}
-                className="text-xs font-bold rounded-full bg-signal text-ink border-2 border-foreground px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
+                className="text-xs font-bold rounded-full bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
               >
                 Save NIN & Instagram
               </button>
@@ -417,7 +417,7 @@ const ProSetup = () => {
 
           {/* Payout account — where collected money is actually sent */}
           {hasAgent && (
-            <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
+            <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
               <div className="font-semibold text-sm">Payout account</div>
               <p className="text-xs text-muted-foreground -mt-1">
                 Karije holds what travellers pay until a trip's seats are all filled, then pays it out here in one go —
@@ -456,7 +456,7 @@ const ProSetup = () => {
                 type="button"
                 onClick={savePayoutAccount}
                 disabled={payoutBusy}
-                className="text-xs font-bold rounded-full bg-signal text-ink border-2 border-foreground px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
+                className="text-xs font-bold rounded-full bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
               >
                 {payoutBusy ? "Saving…" : "Save payout account"}
               </button>
@@ -467,7 +467,7 @@ const ProSetup = () => {
 
           {/* Billing — Karije's own ₦10k/month Pro subscription */}
           {hasAgent && billing && (
-            <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
+            <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="font-semibold text-sm">Billing</div>
                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border ${
@@ -509,7 +509,7 @@ const ProSetup = () => {
                   type="button"
                   onClick={startBillingSetup}
                   disabled={billingBusy}
-                  className="text-xs font-bold rounded-full bg-signal text-ink border-2 border-foreground px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
+                  className="text-xs font-bold rounded-full bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
                 >
                   {billingBusy ? "Redirecting…" : billing.status === "active" ? "Update card" : "Add card"}
                 </button>
@@ -533,7 +533,7 @@ const ProSetup = () => {
           )}
 
           {/* Logo */}
-          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
+          <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
             <div className="font-semibold text-sm">Your logo</div>
             <p className="text-xs text-muted-foreground -mt-1">
               Shown on your dashboard, on every trip you build, and on the plan page
@@ -592,7 +592,7 @@ const ProSetup = () => {
           </div>
 
           {/* Brand color */}
-          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4">
+          <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
             <div className="font-semibold text-sm">Brand color</div>
             <div className="flex flex-wrap gap-3">
               {COLORS.map((c) => (
@@ -623,7 +623,7 @@ const ProSetup = () => {
           </div>
 
           {/* Plan — one plan, so there is nothing to choose */}
-          <div className="rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6">
+          <div className="rounded-2xl border-2 border-line bg-card p-6">
             <div className="flex items-baseline justify-between gap-4 flex-wrap">
               <div>
                 <div className="font-semibold text-sm">Karije Pro</div>
@@ -640,7 +640,7 @@ const ProSetup = () => {
           <button
             type="submit"
             disabled={status === "loading" || !form.phone.trim() || !form.agencyName.trim()}
-            className="w-full rounded-full bg-signal text-ink border-2 border-foreground py-4 text-sm font-bold shadow-[3px_3px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_hsl(var(--foreground))] transition-transform disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+            className="w-full rounded-full bg-signal text-ink py-4 text-sm font-bold shadow-[3px_3px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
             {status === "loading" ? "Saving…" : "Launch my agency →"}
           </button>

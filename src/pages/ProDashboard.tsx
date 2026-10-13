@@ -90,7 +90,7 @@ const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?
     brand:   "bg-primary",
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border border-foreground/70 px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border border-line-strong px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${dots[tone]}`} />
       {children}
     </span>
@@ -120,9 +120,9 @@ const KPI = ({ icon, label, value, sub, accent, solid, to }: { icon: React.React
       </div>
     </>
   );
-  const cls = "rounded-2xl border-[3px] border-foreground shadow-[3px_3px_0_0_hsl(var(--foreground))] bg-card p-5 flex items-start gap-4";
+  const cls = "rounded-2xl border-2 border-line bg-card p-5 flex items-start gap-4";
   return to
-    ? <Link to={to} className={`${cls} hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_hsl(var(--foreground))] transition-transform`}>{body}</Link>
+    ? <Link to={to} className={`${cls} hover:-translate-y-0.5 transition-transform`}>{body}</Link>
     : <div className={cls}>{body}</div>;
 };
 
@@ -284,7 +284,7 @@ const MoneyTab = () => {
   }, [getIdToken]);
 
   if (loading) {
-    return <div className="px-6 py-12 text-center"><div className="w-6 h-6 rounded-full border-2 border-foreground border-t-transparent animate-spin mx-auto" /></div>;
+    return <div className="px-6 py-12 text-center"><div className="w-6 h-6 rounded-full border-2 border-signal border-t-transparent animate-spin mx-auto" /></div>;
   }
 
   return (
@@ -295,7 +295,7 @@ const MoneyTab = () => {
           { label: "Paid out to you",  value: totals.paidOut },
           { label: "Held — not out yet", value: totals.outstanding, accent: totals.outstanding > 0 },
         ].map(s => (
-          <div key={s.label} className="rounded-2xl border-[3px] border-foreground shadow-[3px_3px_0_0_hsl(var(--foreground))] bg-card p-5">
+          <div key={s.label} className="rounded-2xl border-2 border-line bg-card p-5">
             <div className="text-[11px] font-medium text-muted-foreground">{s.label}</div>
             <div className={`font-display text-xl font-semibold mt-0.5 tabular-nums ${s.accent ? "text-amber-600 dark:text-amber-400" : ""}`}>{fmtNGN(s.value)}</div>
           </div>
@@ -303,8 +303,8 @@ const MoneyTab = () => {
       </div>
 
       {trips.length === 0 ? (
-        <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card px-6 py-16 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-foreground grid place-items-center mx-auto mb-4">
+        <div className="rounded-3xl border-2 border-line bg-card px-6 py-16 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-line-strong grid place-items-center mx-auto mb-4">
             <IconMoney className="w-5 h-5 text-muted-foreground" />
           </div>
           <h3 className="font-display font-semibold text-lg mb-1">Nothing collected yet</h3>
@@ -315,7 +315,7 @@ const MoneyTab = () => {
       ) : (
         <div className="space-y-2">
           {trips.map(t => (
-            <div key={t.tripId} className="rounded-2xl border-[3px] border-foreground shadow-[3px_3px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
+            <div key={t.tripId} className="rounded-2xl border-2 border-line bg-card overflow-hidden">
               <button
                 onClick={() => setOpen(open === t.tripId ? null : t.tripId)}
                 className="w-full flex items-center gap-4 p-4 text-left hover:bg-secondary/40 transition-colors"
@@ -552,7 +552,7 @@ const ProDashboard = () => {
   if (authLoading || (!data && !error && user)) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -590,7 +590,7 @@ const ProDashboard = () => {
           )}
           <Link
             to="/pro/trips/new"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm rounded-full bg-signal text-ink border-2 border-foreground px-3 sm:px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform font-bold"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm rounded-full bg-signal text-ink px-3 sm:px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform font-bold"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             <span className="hidden sm:inline">New trip</span>
@@ -681,7 +681,7 @@ const ProDashboard = () => {
           </div>
 
           {/* Recent activity — a taste of what's moving, not the full list. */}
-          <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
+          <div className="rounded-3xl border-2 border-line bg-card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="font-display font-semibold text-sm">Recent trips</h2>
               <Link to="/pro/dashboard?tab=trips" className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
@@ -693,7 +693,7 @@ const ProDashboard = () => {
                 <p className="text-sm text-muted-foreground mb-4">Nothing built yet.</p>
                 <Link
                   to="/pro/trips/new"
-                  className="inline-flex items-center gap-2 rounded-full bg-signal text-ink border-2 border-foreground px-4 py-2 text-xs font-bold shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
+                  className="inline-flex items-center gap-2 rounded-full bg-signal text-ink px-4 py-2 text-xs font-bold shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
                 >
                   Build your first trip →
                 </Link>
@@ -775,14 +775,14 @@ const ProDashboard = () => {
             </div>
           )}
 
-          <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
+          <div className="rounded-3xl border-2 border-line bg-card overflow-hidden">
             {fetching ? (
               <div className="px-6 py-12 text-center">
-                <div className="w-6 h-6 rounded-full border-2 border-foreground border-t-transparent animate-spin mx-auto" />
+                <div className="w-6 h-6 rounded-full border-2 border-signal border-t-transparent animate-spin mx-auto" />
               </div>
             ) : openTrips.length === 0 ? (
               <div className="px-6 py-16 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-foreground grid place-items-center mx-auto mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-line-strong grid place-items-center mx-auto mb-4">
                   <IconTrips className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <h3 className="font-display font-semibold text-lg mb-1">No trips yet</h3>
@@ -791,7 +791,7 @@ const ProDashboard = () => {
                 </p>
                 <Link
                   to="/pro/trips/new"
-                  className="inline-flex items-center gap-2 rounded-full bg-signal text-ink border-2 border-foreground px-5 py-2.5 text-sm font-bold shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
+                  className="inline-flex items-center gap-2 rounded-full bg-signal text-ink px-5 py-2.5 text-sm font-bold shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
                 >
                   Build your first trip →
                 </Link>
@@ -836,10 +836,10 @@ const ProDashboard = () => {
 
       {/* ── Completed tab ─────────────────────────────────────────────────── */}
       {activeTab === "completed" && (
-        <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
+        <div className="rounded-3xl border-2 border-line bg-card overflow-hidden">
           {completedTrips.length === 0 ? (
             <div className="px-6 py-16 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-foreground grid place-items-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-line-strong grid place-items-center mx-auto mb-4">
                 <IconCompleted className="w-5 h-5 text-muted-foreground" />
               </div>
               <h3 className="font-display font-semibold text-lg mb-1">Nothing marked done yet</h3>
@@ -878,10 +878,10 @@ const ProDashboard = () => {
 
       {/* Templates tab */}
       {activeTab === "templates" && (
-        <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card overflow-hidden">
+        <div className="rounded-3xl border-2 border-line bg-card overflow-hidden">
           {templates.length === 0 ? (
             <div className="px-6 py-16 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-foreground grid place-items-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-secondary border-2 border-line-strong grid place-items-center mx-auto mb-4">
                 <IconTemplates className="w-5 h-5 text-muted-foreground" />
               </div>
               <h3 className="font-display font-semibold text-lg mb-1">No templates yet</h3>
@@ -921,7 +921,7 @@ const ProDashboard = () => {
                       starts here rather than three clicks into the builder. */}
                   <Link
                     to={`/pro/trips/new?template=${t.id}`}
-                    className="text-[11px] rounded-full bg-signal text-ink border-2 border-foreground px-3 py-1.5 font-bold shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
+                    className="text-[11px] rounded-full bg-signal text-ink px-3 py-1.5 font-bold shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
                   >
                     Start a trip from this →
                   </Link>
@@ -942,10 +942,10 @@ const ProDashboard = () => {
       {/* Settings tab */}
       {activeTab === "settings" && agent && (
         <div className="max-w-xl">
-          <div className="rounded-3xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] bg-card p-6 space-y-4 text-sm">
+          <div className="rounded-3xl border-2 border-line bg-card p-6 space-y-4 text-sm">
             <div className="flex items-center gap-3 pb-4 border-b border-border">
               <div
-                className="w-12 h-12 rounded-xl border-2 border-foreground grid place-items-center text-white font-display font-bold text-base shrink-0 overflow-hidden"
+                className="w-12 h-12 rounded-xl border-2 border-line-strong grid place-items-center text-white font-display font-bold text-base shrink-0 overflow-hidden"
                 style={agencyLogo ? undefined : { backgroundColor: agentColor }}
               >
                 {agencyLogo
@@ -971,7 +971,7 @@ const ProDashboard = () => {
             <div className="pt-4">
               <Link
                 to="/pro/setup"
-                className="inline-flex rounded-full bg-foreground text-background border-2 border-foreground px-4 py-2 text-xs font-bold shadow-[2px_2px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--foreground))] transition-transform"
+                className="inline-flex rounded-full bg-foreground text-background border-2 border-line-strong px-4 py-2 text-xs font-bold hover:-translate-y-0.5 transition-transform"
               >
                 Edit settings →
               </Link>

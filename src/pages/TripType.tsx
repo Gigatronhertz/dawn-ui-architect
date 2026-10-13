@@ -45,10 +45,10 @@ export default function TripType() {
           {/* ── Intrastate ── */}
           <Link
             to="/start/explore"
-            className="group bg-background border-[3px] border-foreground rounded-2xl p-8 flex flex-col gap-6 shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
+            className="group bg-background border-2 border-line rounded-2xl p-8 flex flex-col gap-6 hover:-translate-y-1 transition-transform"
           >
             {/* Icon */}
-            <div className="w-12 h-12 rounded-lg bg-signal text-ink border-2 border-foreground grid place-items-center shrink-0">
+            <div className="w-12 h-12 rounded-lg bg-signal text-ink grid place-items-center shrink-0">
               <svg
                 viewBox="0 0 24 24"
                 className="w-5 h-5"
@@ -81,7 +81,7 @@ export default function TripType() {
               {["Beach camping", "Water park", "Canopy walk", "Street art tour"].map((eg) => (
                 <span
                   key={eg}
-                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-foreground rounded-full px-2.5 py-1 text-foreground"
+                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-line-strong rounded-full px-2.5 py-1 text-foreground"
                 >
                   {eg}
                 </span>
@@ -108,10 +108,10 @@ export default function TripType() {
           {/* ── Interstate ── */}
           <Link
             to="/start/trip"
-            className="group bg-background border-[3px] border-foreground rounded-2xl p-8 flex flex-col gap-6 shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
+            className="group bg-background border-2 border-line rounded-2xl p-8 flex flex-col gap-6 hover:-translate-y-1 transition-transform"
           >
             {/* Icon */}
-            <div className="w-12 h-12 rounded-lg bg-forest text-parchment border-2 border-foreground grid place-items-center shrink-0">
+            <div className="w-12 h-12 rounded-lg bg-signal text-ink grid place-items-center shrink-0">
               <svg
                 viewBox="0 0 24 24"
                 className="w-5 h-5"
@@ -142,7 +142,7 @@ export default function TripType() {
               {["Lagos → Calabar", "Abuja → Enugu", "Ibadan → Port Harcourt"].map((eg) => (
                 <span
                   key={eg}
-                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-foreground rounded-full px-2.5 py-1 text-foreground"
+                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-line-strong rounded-full px-2.5 py-1 text-foreground"
                 >
                   {eg}
                 </span>

@@ -63,7 +63,7 @@ const CAT_LABEL: Record<string, string> = {
 };
 
 const CAT_COLOR: Record<string, string> = {
-  adventure: "bg-forest text-parchment",
+  adventure: "bg-ink text-signal",
   culture:   "bg-primary text-ink",
   nature:    "bg-sage text-parchment",
   leisure:   "bg-warm-grey text-white",
@@ -106,7 +106,7 @@ function AgencyTripCard({ trip }: { trip: AgencyListing }) {
   return (
     <Link
       to={trip.href}
-      className="group relative aspect-square overflow-hidden text-left flex flex-col justify-end p-4 rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
+      className="group relative aspect-square overflow-hidden text-left flex flex-col justify-end p-4 rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
     >
       <span className="absolute top-3 left-3 text-[9px] font-jost font-medium tracking-[0.14em] uppercase bg-signal text-ink px-2 py-0.5">
         {trip.agency}
@@ -133,7 +133,7 @@ function CuratedNightlifeCard({ v, onSelect }: { v: NightlifeVenue; onSelect: ()
   return (
     <button
       onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
+      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
       style={{ backgroundColor: v.colorFallback }}
     >
       {v.imageId && (
@@ -178,7 +178,7 @@ function FallbackNightlifeCard({ v, index, onSelect }: { v: VenueItem; index: nu
   return (
     <button
       onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
+      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
     >
       <img
         src={image}
@@ -257,7 +257,7 @@ function EventCard({ ev, onSelect }: { ev: EventItem; onSelect: () => void }) {
   return (
     <button
       onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
+      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
       style={{ backgroundColor: ev.colorFallback }}
     >
       {ev.imageId && (
@@ -361,7 +361,7 @@ function MapsActions({ location }: { location: string }) {
         }}
         className={`inline-flex items-center gap-1 border px-3 py-1.5 text-[11px] font-jost font-medium tracking-[0.04em] transition-colors ${
           copied
-            ? "border-foreground text-foreground"
+            ? "border-line text-foreground"
             : "border-border text-foreground hover:border-signal hover:text-signal"
         }`}
       >
@@ -614,7 +614,7 @@ function ExperienceCard({ exp, onSelect }: { exp: Experience; onSelect: () => vo
   return (
     <button
       onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
+      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
       style={{ backgroundColor: exp.colorFallback }}
     >
       {/* Full-bleed photo */}
@@ -914,7 +914,7 @@ export function BuildYourOwn({
           step={step}
           value={cost}
           onChange={e => setPendingAdd(p => p && { ...p, cost: Number(e.target.value) })}
-          className="w-full accent-forest"
+          className="w-full accent-signal"
           aria-label={`Spend at ${v.name}`}
         />
         <div className="flex items-center justify-between text-[10px] font-jost text-muted-foreground/70 tabular-nums">
@@ -1024,29 +1024,29 @@ export function BuildYourOwn({
       {/* ── Left: the days being built ── */}
       <div className="space-y-5 min-w-0">
         <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-xs font-jost font-light text-muted-foreground">Days</label>
+          <label className="kj-label text-muted-foreground">Days</label>
           <div className="flex">
             {[1, 2, 3, 4, 5].map(n => (
               <button
                 key={n}
                 onClick={() => setDayCount(n)}
-                className={`w-9 h-9 text-sm font-jost border transition-colors ${
+                className={`w-11 h-11 font-display text-lg border-2 border-signal transition-colors ${
                   dayCount === n
-                    ? "border-forest bg-forest text-parchment font-medium"
-                    : "border-border text-muted-foreground hover:border-forest"
-                } ${n > 1 ? "-ml-px" : ""}`}
+                    ? "bg-signal text-ink"
+                    : "text-signal hover:bg-signal/10"
+                } ${n > 1 ? "-ml-0.5" : ""}`}
               >
                 {n}
               </button>
             ))}
           </div>
-          <label className="text-xs font-jost font-light text-muted-foreground ml-2">Squad</label>
-          <div className="flex items-stretch border border-border">
+          <label className="kj-label text-muted-foreground ml-2">Squad</label>
+          <div className="flex items-stretch border-2 border-signal">
             <button
               type="button"
               onClick={() => setSquad(s => Math.max(1, s - 1))}
               aria-label="Fewer people"
-              className="w-8 grid place-items-center text-muted-foreground hover:text-forest hover:bg-secondary/50 transition-colors border-r border-border"
+              className="w-11 h-11 grid place-items-center text-signal text-xl hover:bg-signal/10 transition-colors"
             >
               −
             </button>
@@ -1064,13 +1064,13 @@ export function BuildYourOwn({
                 if (!Number.isNaN(n)) setSquad(Math.min(60, Math.max(0, Math.round(n))));
               }}
               onBlur={() => setSquad(s => Math.max(1, s))}
-              className="w-12 border-0 bg-background px-1 py-1.5 text-sm font-jost text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-12 border-0 bg-transparent px-1 py-1.5 font-display text-lg text-center tabular-nums focus:outline-none"
             />
             <button
               type="button"
               onClick={() => setSquad(s => Math.min(60, s + 1))}
               aria-label="More people"
-              className="w-8 grid place-items-center text-muted-foreground hover:text-forest hover:bg-secondary/50 transition-colors border-l border-border"
+              className="w-11 h-11 grid place-items-center text-signal text-xl hover:bg-signal/10 transition-colors"
             >
               +
             </button>
@@ -1078,22 +1078,22 @@ export function BuildYourOwn({
         </div>
 
         {days.map(d => (
-          <div key={d} className="border border-border">
-            <div className="px-4 py-2.5 border-b border-border bg-secondary/30 flex items-center justify-between">
-              <span className="font-jost font-medium text-sm">Day {d + 1}</span>
-              <span className="text-[11px] font-jost font-light text-muted-foreground">
+          <div key={d} className="kj-card">
+            <div className="px-5 py-4 border-b-2 border-line flex items-center justify-between">
+              <span className="font-display text-xl">Day {d + 1}</span>
+              <span className="text-sm text-muted-foreground">
                 {(stops[d] ?? []).length} stop{(stops[d] ?? []).length === 1 ? "" : "s"}
               </span>
             </div>
 
             {(stops[d] ?? []).length === 0 ? (
-              <p className="px-4 py-6 text-sm font-jost font-light text-muted-foreground text-center">
-                Nothing here yet — add somewhere from the list.
+              <p className="px-5 py-8 text-[17px] text-faint text-center">
+                Nothing here yet. Add a place from the list.
               </p>
             ) : (
               <ul>
                 {(stops[d] ?? []).map(s => (
-                  <li key={s.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/60 last:border-0">
+                  <li key={s.id} className="flex items-center gap-3 px-5 py-3.5 border-b border-line last:border-0">
                     <input
                       type="text" value={s.time}
                       onChange={e => setStopTime(d, s.id, e.target.value)}
@@ -1101,7 +1101,7 @@ export function BuildYourOwn({
                       className="w-16 shrink-0 border border-border bg-background px-2 py-1 text-xs font-jost text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/50"
                     />
                     <span className="text-lg shrink-0 leading-none">{s.emoji}</span>
-                    <span className="flex-1 min-w-0 text-sm font-jost truncate">{s.title}</span>
+                    <span className="flex-1 min-w-0 text-base font-semibold truncate">{s.title}</span>
                     <span className="text-xs font-jost tabular-nums text-muted-foreground shrink-0">
                       {s.cost > 0 ? formatNGN(s.cost) : "Free"}
                     </span>
@@ -1120,16 +1120,16 @@ export function BuildYourOwn({
         ))}
 
         {/* Total + save */}
-        <div className="border border-border p-5 space-y-3">
+        <div className="bg-signal text-ink p-6 space-y-4 kj-cut-panel">
           {extraFields}
           <div className="flex items-end justify-between">
             <div>
-              <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Per person</div>
-              <div className="font-marcellus text-3xl text-foreground">{formatNGN(perPerson)}</div>
+              <div className="text-xs font-bold tracking-[0.24em] uppercase">Per person</div>
+              <div className="font-display text-4xl md:text-[52px] leading-none">{formatNGN(perPerson)}</div>
             </div>
             <div className="text-right">
-              <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Squad total</div>
-              <div className="font-marcellus text-xl text-foreground">{formatNGN(perPerson * squadSize)}</div>
+              <div className="text-xs font-bold tracking-[0.24em] uppercase">Squad total</div>
+              <div className="font-display text-2xl md:text-[30px] leading-none">{formatNGN(perPerson * squadSize)}</div>
             </div>
           </div>
 
@@ -1137,21 +1137,21 @@ export function BuildYourOwn({
             <button
               onClick={handleSave}
               disabled={saving || totalStops === 0}
-              className="w-full bg-signal text-ink py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-ink hover:text-signal transition-colors disabled:opacity-40"
+              className="w-full kj-btn-ink text-lg py-4 disabled:opacity-50"
             >
-              {saving ? "Saving…" : totalStops === 0 ? "Add a stop to continue" : (saveLabel ?? "Create shareable link →")}
+              {saving ? "Saving…" : totalStops === 0 ? "Add a stop to continue" : (saveLabel ?? "Share with the squad →")}
             </button>
           ) : (
             <Link
               to="/login?redirect=/start/explore"
-              className="w-full block text-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors"
+              className="w-full kj-btn-ink text-lg py-4"
             >
-              Sign in to save and share this
+              Sign in to share with the squad
             </Link>
           )}
 
-          {err && <p className="text-xs font-jost text-red-500">{err}</p>}
-          <p className="text-[10px] font-jost font-light text-muted-foreground leading-relaxed">
+          {err && <p className="text-sm font-semibold text-red-700">{err}</p>}
+          <p className="text-[13px] font-medium leading-relaxed">
             Entry fees only — food, transport between stops and anything you book yourself aren't
             included. You can edit all of this before sharing.
           </p>
@@ -1175,7 +1175,7 @@ export function BuildYourOwn({
           it underneath would mean scrolling past the whole plan to add one
           place, which is the thing people do most. */}
       <div
-        className={`bg-background border border-border p-4 space-y-3 lg:block lg:sticky lg:top-6 lg:max-h-none lg:overflow-visible lg:z-auto ${
+        className={`kj-card p-5 space-y-3 lg:block lg:sticky lg:top-24 lg:max-h-none lg:overflow-visible lg:z-auto ${
           libOpen
             ? "fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl"
             : "hidden"
@@ -1192,16 +1192,16 @@ export function BuildYourOwn({
           </button>
         </div>
 
-        <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+        <div className="kj-label tracking-[0.24em] text-signal">
           Places in {city}
-          {venues.length > 0 && <span className="text-foreground"> · {venues.length}</span>}
+          {venues.length > 0 && <span> · {venues.length}</span>}
         </div>
 
         <input
           type="text" value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={`Search ${city}…`}
-          className="w-full border border-border bg-background px-3 py-2 text-sm font-jost focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/60"
+          className="w-full border-2 border-line-strong bg-ink px-3.5 py-2.5 text-[15px] focus:outline-none focus:border-signal"
         />
 
         {allowCustomPlaces && (
@@ -1257,10 +1257,10 @@ export function BuildYourOwn({
             <button
               key={v}
               onClick={() => setVibe(v)}
-              className={`text-[10px] font-jost px-2 py-1 border transition-colors ${
+              className={`kj-label text-[11px] tracking-[0.1em] px-2.5 py-1.5 border-2 transition-colors ${
                 vibe === v
-                  ? "border-forest bg-forest/5 text-forest font-medium"
-                  : "border-border text-muted-foreground hover:border-forest"
+                  ? "border-signal bg-signal text-ink"
+                  : "border-line-strong text-paper hover:border-signal"
               }`}
             >
               {VIBE_EMOJI[v]} {v}
@@ -1274,7 +1274,7 @@ export function BuildYourOwn({
             <button
               onClick={getIdeas}
               disabled={thinking}
-              className="w-full text-[11px] font-jost font-medium py-2 border border-border text-muted-foreground hover:border-forest hover:text-forest transition-colors disabled:opacity-50"
+              className="w-full kj-btn-outline py-2.5 disabled:opacity-50"
             >
               {thinking ? "Thinking…" : totalStops === 0 ? "✨ What should we do?" : "✨ What else goes with this?"}
             </button>
@@ -1300,7 +1300,7 @@ export function BuildYourOwn({
                             onClick={() => isPending ? setPendingAdd(null) : openSpendPicker(rowKey, v, "ideas")}
                             aria-expanded={isPending}
                             className={`text-[10px] font-jost border px-1.5 py-1 shrink-0 transition-colors ${
-                              isPending ? "border-forest bg-forest/5 text-forest font-medium" : "border-border hover:border-forest"
+                              isPending ? "border-signal bg-signal/10 text-signal font-medium" : "border-border hover:border-signal"
                             }`}
                           >
                             {isPending ? "✕ Close" : "+ Add"}
@@ -1315,7 +1315,7 @@ export function BuildYourOwn({
                               }
                             }}
                             aria-label={`Add ${v.name} to a day`}
-                            className="text-[10px] font-jost border border-border bg-background px-1.5 py-1 shrink-0 cursor-pointer hover:border-forest focus:outline-none focus:ring-1 focus:ring-primary/30"
+                            className="text-[10px] font-jost border border-border bg-background px-1.5 py-1 shrink-0 cursor-pointer hover:border-signal focus:outline-none focus:ring-1 focus:ring-primary/30"
                           >
                             <option value="">+ Add</option>
                             {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
@@ -1347,23 +1347,23 @@ export function BuildYourOwn({
               const rowKey = `matches-${v.id}`;
               const isPending = pendingAdd?.key === rowKey;
               return (
-                <li key={v.id} className="py-2 border-b border-border/50 last:border-0">
-                  <div className="flex items-center gap-2">
+                <li key={v.id} className="py-3.5 border-t border-line first:border-t-0">
+                  <div className="flex items-center gap-3.5">
                     {imageUrl(v.imageUrl) ? (
                       <img
                         src={imageUrl(v.imageUrl)!}
                         alt=""
-                        className="w-8 h-8 rounded-lg object-cover shrink-0"
+                        className="w-12 h-12 object-cover shrink-0"
                         loading="lazy"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                       />
                     ) : (
-                      <span className="w-8 h-8 grid place-items-center text-base shrink-0 leading-none">{v.emoji}</span>
+                      <span className="w-12 h-12 grid place-items-center text-xl bg-[#1A1A1A] shrink-0 leading-none">{v.emoji}</span>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-jost font-medium truncate">{v.name}</div>
-                      <div className="text-[10px] font-jost font-light text-muted-foreground truncate">
-                        <span className="text-foreground/70">{v.vibe}</span> · {v.feeNote}
+                      <div className="text-[15px] font-bold truncate">{v.name}</div>
+                      <div className="text-[13px] text-muted-foreground truncate">
+                        <span>{v.vibe}</span> · {v.feeNote}
                       </div>
                       {(v.address || v.phone) && (
                         <div className="flex items-center gap-2 mt-0.5">
@@ -1395,8 +1395,8 @@ export function BuildYourOwn({
                         type="button"
                         onClick={() => isPending ? setPendingAdd(null) : openSpendPicker(rowKey, v, "matches")}
                         aria-expanded={isPending}
-                        className={`text-[10px] font-jost border px-1.5 py-1 shrink-0 transition-colors ${
-                          isPending ? "border-forest bg-forest/5 text-forest font-medium" : "border-border hover:border-forest"
+                        className={`kj-label text-xs border-2 border-signal px-3 py-2 shrink-0 transition-colors ${
+                          isPending ? "bg-signal text-ink" : "text-signal hover:bg-signal/10"
                         }`}
                       >
                         {isPending ? "✕ Close" : "+ Add"}
@@ -1406,7 +1406,7 @@ export function BuildYourOwn({
                         value=""
                         onChange={e => { if (e.target.value !== "") addStop(Number(e.target.value), v); }}
                         aria-label={`Add ${v.name} to a day`}
-                        className="text-[10px] font-jost border border-border bg-background px-1.5 py-1 shrink-0 cursor-pointer hover:border-forest focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        className="kj-label text-xs border-2 border-signal text-signal bg-transparent px-2 py-2 shrink-0 cursor-pointer hover:bg-signal/10 focus:outline-none"
                       >
                         <option value="">+ Add</option>
                         {days.map(d => <option key={d} value={d}>Day {d + 1}</option>)}
@@ -1431,7 +1431,7 @@ export function BuildYourOwn({
             </div>
             <button
               onClick={() => setLibOpen(true)}
-              className="flex-1 bg-forest text-parchment py-3 font-jost font-medium text-sm tracking-[0.06em] active:opacity-90 transition"
+              className="flex-1 bg-signal text-ink py-3 font-display text-base tracking-[0.04em] active:opacity-90 transition"
             >
               ＋ Add a place
             </button>
@@ -1703,8 +1703,8 @@ export default function Explore() {
                   onClick={() => setTab(id)}
                   className={`px-5 py-2.5 rounded-full text-sm font-jost border-2 transition-all ${
                     tab === id
-                      ? "border-foreground bg-signal text-ink font-bold shadow-[3px_3px_0_0_hsl(var(--foreground))]"
-                      : "border-foreground/40 text-muted-foreground hover:border-foreground hover:text-foreground"
+                      ? " bg-signal text-ink font-bold shadow-[3px_3px_0_0_hsl(var(--paper))]"
+                      : "border-line-strong text-muted-foreground hover:border-signal hover:text-foreground"
                   }`}
                 >
                   {label}
@@ -1734,8 +1734,8 @@ export default function Explore() {
                     onClick={() => setVibe(value)}
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border-2 text-sm font-jost transition-all ${
                       vibe === value
-                        ? "border-foreground bg-signal text-ink font-bold shadow-[3px_3px_0_0_hsl(var(--foreground))]"
-                        : "border-foreground/40 text-muted-foreground font-light hover:border-foreground hover:text-foreground"
+                        ? " bg-signal text-ink font-bold shadow-[3px_3px_0_0_hsl(var(--paper))]"
+                        : "border-line-strong text-muted-foreground font-light hover:border-signal hover:text-foreground"
                     }`}
                   >
                     <span>{emoji}</span>
@@ -1817,7 +1817,7 @@ export default function Explore() {
               {experiences.length === 0 ? (
                 <Link
                   to="/start/trip"
-                  className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
+                  className="inline-flex items-center gap-2 bg-signal text-ink px-6 py-3 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors"
                 >
                   Plan a trip between cities
                   <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1827,7 +1827,7 @@ export default function Explore() {
               ) : (
                 <button
                   onClick={() => setVibe("all")}
-                  className="inline-flex items-center gap-2 bg-forest text-parchment px-6 py-3 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors"
+                  className="inline-flex items-center gap-2 bg-signal text-ink px-6 py-3 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors"
                 >
                   Show everything in {city}
                 </button>
@@ -1919,7 +1919,7 @@ export default function Explore() {
                   {selected.included.map((item) => (
                     <div key={item} className="flex items-start gap-2.5">
                       <svg
-                        className="w-4 h-4 text-forest mt-0.5 shrink-0"
+                        className="w-4 h-4 text-signal mt-0.5 shrink-0"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -1947,7 +1947,7 @@ export default function Explore() {
                 {daySchedules.map((sched, dayIdx) => (
                   <div key={dayIdx} className={dayIdx > 0 ? "mt-8" : ""}>
                     {days > 1 && (
-                      <div className="font-marcellus text-sm text-forest mb-4 flex items-center gap-3">
+                      <div className="font-marcellus text-sm text-signal mb-4 flex items-center gap-3">
                         <span>Day {dayIdx + 1}</span>
                         <span className="flex-1 h-px bg-border" />
                       </div>
@@ -2049,7 +2049,7 @@ export default function Explore() {
                 {/* CTA */}
                 <button
                   onClick={openShare}
-                  className="w-full bg-forest text-parchment py-4 font-jost font-medium text-sm tracking-[0.06em] hover:bg-primary transition-colors"
+                  className="w-full bg-signal text-ink py-4 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors"
                 >
                   Share with squad →
                 </button>
@@ -2058,7 +2058,7 @@ export default function Explore() {
                 {savedId ? (
                   <Link
                     to="/my-plans"
-                    className="w-full flex items-center justify-center gap-2 border border-forest text-forest py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-forest/5 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 border border-signal text-signal py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-signal/10 transition-colors"
                   >
                     <Check className="w-4 h-4" /> Saved — view in My Plans
                   </Link>
@@ -2066,7 +2066,7 @@ export default function Explore() {
                   <button
                     onClick={handleAddToPlan}
                     disabled={saving}
-                    className="w-full border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors disabled:opacity-50"
+                    className="w-full border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-signal hover:text-signal transition-colors disabled:opacity-50"
                   >
                     {saving ? "Saving…" : "+ Add to my plans"}
                   </button>
@@ -2074,7 +2074,7 @@ export default function Explore() {
                   <button
                     onClick={signInToSave}
                     disabled={sharePrep}
-                    className="w-full flex items-center justify-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors disabled:opacity-60"
+                    className="w-full flex items-center justify-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-signal hover:text-signal transition-colors disabled:opacity-60"
                   >
                     {sharePrep ? "Holding your trip…" : "Sign in to save this trip"}
                   </button>
@@ -2220,7 +2220,7 @@ export default function Explore() {
             {savedId ? (
               <Link
                 to="/my-plans"
-                className="w-full flex items-center justify-center gap-2 border border-forest text-forest py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-forest/5 transition-colors"
+                className="w-full flex items-center justify-center gap-2 border border-signal text-signal py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-signal/10 transition-colors"
               >
                 <Check className="w-4 h-4" /> Saved — view in My Plans
               </Link>
@@ -2228,7 +2228,7 @@ export default function Explore() {
               <button
                 onClick={handleAddToPlan}
                 disabled={saving}
-                className="w-full border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors disabled:opacity-50"
+                className="w-full border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-signal hover:text-signal transition-colors disabled:opacity-50"
               >
                 {saving ? "Saving…" : "+ Save to my plans"}
               </button>
@@ -2236,7 +2236,7 @@ export default function Explore() {
               <button
                 onClick={signInToSave}
                 disabled={sharePrep}
-                className="w-full flex items-center justify-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-forest hover:text-forest transition-colors disabled:opacity-60"
+                className="w-full flex items-center justify-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-signal hover:text-signal transition-colors disabled:opacity-60"
               >
                 {sharePrep ? "Holding your trip…" : "Sign in to save this trip"}
               </button>

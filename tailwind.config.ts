@@ -57,7 +57,9 @@ export default {
         signal: "hsl(var(--signal))",   /* #F5C518 — fills, never type */
         panel:  "hsl(var(--panel))",    /* #1A1A1A — surfaces only */
         paper:  "hsl(var(--paper))",    /* #FFFFFF — the ground */
-        logo:   "hsl(var(--logo))",     /* ink on paper, signal on ink */
+        logo:   "hsl(var(--logo))",     /* signal on ink */
+        line:   "hsl(var(--line))",     /* #2A2A2A — card and divider edges */
+        "line-strong": "hsl(var(--line-strong))", /* #3A3A3A — unselected controls */
 
         /* Legacy names, remapped onto the new palette (see index.css) */
         terracotta: "hsl(var(--terracotta))",
@@ -87,17 +89,23 @@ export default {
           ring:                 "hsl(var(--sidebar-ring))",
         },
       },
+      /* The brand is cut, not rounded: every radius is square except
+         `full`, which stays round for dots, avatars and spinners. */
       borderRadius: {
-        lg:    "var(--radius)",
-        md:    "calc(var(--radius) - 2px)",
-        sm:    "calc(var(--radius) - 4px)",
-        "2xl": "calc(var(--radius) + 8px)",
-        "3xl": "calc(var(--radius) + 16px)",
+        none:    "0px",
+        sm:      "0px",
+        DEFAULT: "0px",
+        md:      "0px",
+        lg:      "0px",
+        xl:      "0px",
+        "2xl":   "0px",
+        "3xl":   "0px",
       },
       fontFamily: {
         /* Karije brand fonts */
-        display:    ['"Marcellus"', 'Georgia', 'serif'],
-        marcellus:  ['"Marcellus"', 'Georgia', 'serif'],
+        display:    ['"Bowlby One"', 'Impact', 'sans-serif'],
+        /* Legacy name — every heading that used Marcellus now sets in Bowlby One */
+        marcellus:  ['"Bowlby One"', 'Impact', 'sans-serif'],
         sans:       ['"Jost"', 'system-ui', 'sans-serif'],
         jost:       ['"Jost"', 'system-ui', 'sans-serif'],
       },

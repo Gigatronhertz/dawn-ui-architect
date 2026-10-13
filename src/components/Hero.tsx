@@ -1,142 +1,70 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { KarijeWordmark } from "@/components/Nav";
 import { HeroSearch } from "@/components/HeroSearch";
 
-// ── Headline locale switcher ───────────────────────────────────────────────
-// Pidgin is the confirmed line. Igbo and Yoruba are draft translations of
-// "where are we going next?" — UNVERIFIED by a native speaker. Confirm both
-// before treating this copy as final.
-type Locale = "pidgin" | "igbo" | "yoruba";
-const HEADLINES: Record<Locale, { tab: string; text: string }> = {
-  pidgin: { tab: "Pidgin",  text: "Abeg, where we dey go next?" },
-  igbo:   { tab: "Igbo",    text: "Ebee ka anyị na-aga?" },   // UNVERIFIED
-  yoruba: { tab: "Yoruba",  text: "Nibo la n lo?" },           // UNVERIFIED
-};
-const LOCALE_ORDER: Locale[] = ["pidgin", "igbo", "yoruba"];
-const AUTO_ROTATE_MS = 3500;
+// ── Headline — "where are we going?" in four languages ─────────────────────
+// Pidgin is the confirmed line. Yoruba, Igbo and Hausa are draft translations
+// — UNVERIFIED by a native speaker. Confirm them before treating as final.
+// Each splits into two lines: the first in yellow, the second on a yellow slab.
+const HEADLINES: { lang: string; l1: string; l2: string }[] = [
+  { lang: "Pidgin", l1: "Where we",  l2: "dey go?" },
+  { lang: "Yoruba", l1: "Nibo la",   l2: "n lo?" },        // UNVERIFIED
+  { lang: "Igbo",   l1: "Ebee ka",   l2: "anyị na-aga?" }, // UNVERIFIED
+  { lang: "Hausa",  l1: "Ina za",    l2: "mu je?" },       // UNVERIFIED
+];
+const ROTATE_MS = 3200;
 
-function img(id: string, w: number, h: number) {
-  return `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
-}
+const HERO_PHOTO =
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&h=1100&q=80";
 
 export const Hero = () => {
-  const [locale, setLocale] = useState<Locale>("pidgin");
-  // Cycles on its own; a manual tab click takes over and stops the timer, so
-  // it never fights someone who picked a language on purpose.
-  const [autoRotate, setAutoRotate] = useState(true);
+  const [i, setI] = useState(0);
 
   useEffect(() => {
-    if (!autoRotate) return;
-    const id = setInterval(() => {
-      setLocale((prev) => LOCALE_ORDER[(LOCALE_ORDER.indexOf(prev) + 1) % LOCALE_ORDER.length]);
-    }, AUTO_ROTATE_MS);
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => setI((n) => (n + 1) % HEADLINES.length), ROTATE_MS);
     return () => clearInterval(id);
-  }, [autoRotate]);
+  }, []);
 
-  function selectLocale(key: Locale) {
-    setAutoRotate(false);
-    setLocale(key);
-  }
+  const h = HEADLINES[i];
+  const big = "font-display leading-[0.92] text-[clamp(3.6rem,10vw,9.25rem)] origin-left";
 
   return (
-  <section className="relative pt-24 pb-16 md:pt-36 md:pb-24 bg-hero-mesh overflow-hidden">
-    {/* Beachfront sunset overlay — visible backdrop */}
-    <img
-      src={img("1507525428034-b723cf961d3e", 1600, 900)}
-      alt=""
-      aria-hidden="true"
-      className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
-    />
-    <div className="relative mx-auto max-w-6xl px-6">
+    <section className="relative min-h-[600px] md:min-h-[760px] flex items-center overflow-hidden">
+      {/* Photo — a beach at dusk — under a left-heavy ink gradient */}
+      <img
+        src={HERO_PHOTO}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "linear-gradient(90deg, rgba(11,11,11,0.94) 0%, rgba(11,11,11,0.75) 55%, rgba(11,11,11,0.35) 100%)" }}
+      />
 
-      {/* ── Eyebrow ─────────────────────────────────────────────────── */}
-      <div className="animate-rise flex items-center gap-4 mb-10" style={{ animationDelay: "0.03s" }}>
-        <span className="h-px w-10 bg-primary" />
-        <span className="text-[11px] font-jost font-light tracking-label text-muted-foreground uppercase">
-          Private beta · Lagos · Accra · Abuja · Dakar
-        </span>
-      </div>
-
-      {/* ── Main column — no photo collage, search replaces it ───────── */}
-      <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
-
-        <div>
-          {/* Wordmark — the headline reads as its subtitle */}
-          <span className="animate-rise inline-block mb-7">
-            <KarijeWordmark className="h-28 md:h-40 lg:h-48 w-auto text-logo" offset />
+      <div className="relative w-full max-w-[1280px] mx-auto px-5 md:px-8 pt-28 pb-16 md:pt-40 md:pb-28 flex flex-col gap-8 md:gap-9">
+        {/* Rotating headline — keyed so each language replays the drop-in */}
+        <h1 aria-live="polite" className="min-h-[clamp(130px,19vw,290px)] flex flex-col items-start gap-1.5 normal-case">
+          <span key={`a${i}`} lang={h.lang.slice(0, 2).toLowerCase()} className={`${big} text-signal -rotate-2 kj-in-1`}>
+            {h.l1}
           </span>
-
-          {/* Headline locale tabs */}
-          <div
-            className="animate-rise flex justify-center gap-2 mb-4"
-            style={{ animationDelay: "0.03s" }}
+          <span
+            key={`b${i}`}
+            className={`${big} text-ink bg-signal px-[0.15em] pt-1 pb-2.5 rotate-1 kj-in-2`}
+            style={{ clipPath: "polygon(0 6%,2% 0,98% 3%,100% 92%,97% 100%,1% 96%)" }}
           >
-            {(Object.keys(HEADLINES) as Locale[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => selectLocale(key)}
-                className={`text-[11px] font-jost font-semibold tracking-[0.08em] uppercase rounded-full px-3.5 py-1.5 transition-colors ${
-                  locale === key
-                    ? "bg-ink text-paper"
-                    : "border border-border text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {HEADLINES[key].tab}
-              </button>
-            ))}
-          </div>
+            {h.l2}
+          </span>
+        </h1>
 
-          {/* Headline */}
-          <h1
-            className="animate-rise font-marcellus text-4xl sm:text-5xl md:text-5xl lg:text-6xl leading-[1.08] text-foreground"
-            style={{ animationDelay: "0.05s" }}
-          >
-            {HEADLINES[locale].text}
-          </h1>
-
-          {/* Tagline rule */}
-          <div
-            className="animate-rise flex items-center gap-5 mt-6 mb-6"
-            style={{ animationDelay: "0.1s" }}
-          >
-            <span className="h-px flex-1 bg-border" />
-            <span className="text-[10px] font-jost font-light tracking-[0.08em] text-muted-foreground lowercase">
-              we connect · we travel · we make memories
-            </span>
-            <span className="h-px w-8 bg-primary" />
-          </div>
-
-          {/* Subtitle */}
-          <p
-            className="animate-rise font-jost font-light text-base md:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto"
-            style={{ animationDelay: "0.12s" }}
-          >
-            We handle the boring part — itinerary, hotels, chasing
-            everyone for their share.{" "}
-            <span className="text-foreground font-medium">
-              Your squad just shows up.
-            </span>
-          </p>
-        </div>
-
-        {/* Search — replaces the old CTA buttons + photo collage */}
-        <div className="mt-8 w-full flex justify-center">
-          <HeroSearch />
-        </div>
-
-        <p
-          className="animate-rise mt-5 text-xs font-jost font-light text-muted-foreground"
-          style={{ animationDelay: "0.24s" }}
-        >
-          <Link to="/pro/login" className="hover:text-foreground transition-colors">For agencies</Link>
-          <span className="mx-2">·</span>
-          47 squads in beta · ₦12M+ collected · No app download
+        <p className="text-lg md:text-[22px] leading-relaxed text-[#E6E6E6] max-w-[560px]">
+          We handle the boring part — itinerary, hotels, chasing everyone for their share.{" "}
+          <strong className="text-signal font-bold">Your squad just shows up.</strong>
         </p>
 
+        <HeroSearch />
       </div>
-    </div>
-  </section>
+    </section>
   );
 };

@@ -39,7 +39,7 @@ export const MobileBottomNav = () => {
   return (
     <nav
       aria-label="Quick links"
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t-[3px] border-foreground bg-background pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t-[3px] border-signal bg-ink pb-[env(safe-area-inset-bottom)]"
     >
       <div className="grid grid-cols-5 items-end px-2 pt-2 pb-1.5">
         {ITEMS.map(({ to, label, icon: Icon, primary }) => {
@@ -47,10 +47,10 @@ export const MobileBottomNav = () => {
           if (primary) {
             return (
               <Link key={to} to={to} className="flex flex-col items-center gap-1 -mt-6">
-                <span className="w-12 h-12 rounded-full bg-signal text-ink border-2 border-foreground shadow-[3px_3px_0_0_hsl(var(--foreground))] grid place-items-center">
+                <span className="w-12 h-12 bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--paper))] -rotate-3 grid place-items-center">
                   <Icon className="w-5 h-5" strokeWidth={2.5} />
                 </span>
-                <span className="text-[10px] font-jost font-bold text-foreground">{label}</span>
+                <span className="text-[10px] font-jost font-bold uppercase tracking-[0.12em] text-signal">{label}</span>
               </Link>
             );
           }
@@ -59,11 +59,11 @@ export const MobileBottomNav = () => {
               key={to}
               to={to}
               className={`flex flex-col items-center gap-1 py-1.5 transition-colors ${
-                active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                active ? "text-signal" : "text-muted-foreground hover:text-paper"
               }`}
             >
               <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
-              <span className={`text-[10px] font-jost ${active ? "font-bold" : "font-medium"}`}>{label}</span>
+              <span className={`text-[10px] font-jost uppercase tracking-[0.12em] ${active ? "font-bold" : "font-medium"}`}>{label}</span>
               <span className={`h-1 w-1 rounded-full ${active ? "bg-signal" : "bg-transparent"}`} />
             </Link>
           );

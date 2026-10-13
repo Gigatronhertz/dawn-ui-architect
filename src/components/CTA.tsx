@@ -37,30 +37,35 @@ export const CTA = () => (
 );
 
 export const Footer = () => (
-  <footer className="border-t border-border py-12">
-    <div className="mx-auto max-w-6xl px-6 flex flex-col gap-8">
-      {/* Category links — query-param deep links into Explore, since there's
-         no per-city route yet. Lagos-only for now: it's the one city with a
-         full curated catalog. */}
-      <div className="flex flex-wrap gap-x-6 gap-y-2">
+  <footer className="border-t-[3px] border-signal">
+    <div className="mx-auto max-w-[1280px] px-5 md:px-8 py-14 flex flex-col gap-10">
+      <div className="flex flex-wrap items-center justify-between gap-7">
+        <KarijeLogo size="lg" className="text-logo [&_svg]:!h-24 md:[&_svg]:!h-[120px]" />
+        <div className="kj-label text-[15px] tracking-[0.24em] leading-loose text-signal md:text-right">
+          We connect · We travel · We make memories
+        </div>
+      </div>
+
+      {/* Category links — query-param deep links into Explore. Lagos-only
+         for now: it's the one city with a full curated catalog. */}
+      <div className="flex flex-wrap gap-x-6 gap-y-2 border-t-2 border-line pt-8">
         {TRIP_CATEGORIES.filter((c) => c.value !== "all").map((c) => (
           <Link
             key={c.value}
             to={`/start/explore?category=${c.value}`}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="text-sm text-muted-foreground hover:text-signal transition-colors"
           >
             {c.label} in Lagos
           </Link>
         ))}
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <KarijeLogo size="sm" />
-        <p className="text-xs text-muted-foreground">© 2026 Karije. Made for West African squads. 🇳🇬 🇬🇭 🇸🇳 🇨🇮</p>
-        <div className="flex gap-5 text-xs text-muted-foreground">
-          <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-          <Link to="/terms"   className="hover:text-foreground transition-colors">Terms</Link>
-          <a href="mailto:hello@karije.com" className="hover:text-foreground transition-colors">Contact</a>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm text-faint">
+        <p>© 2026 Karije. Made for West African squads.</p>
+        <div className="flex gap-6 kj-label text-[12px]">
+          <Link to="/privacy" className="hover:text-signal transition-colors">Privacy</Link>
+          <Link to="/terms"   className="hover:text-signal transition-colors">Terms</Link>
+          <a href="mailto:hello@karije.com" className="hover:text-signal transition-colors">Contact</a>
         </div>
       </div>
     </div>

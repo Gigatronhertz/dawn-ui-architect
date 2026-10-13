@@ -131,7 +131,7 @@ export default function MyPlans() {
   if (loading) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -233,7 +233,7 @@ export default function MyPlans() {
                 onClick={() => resetForm(mode)}
                 className={`pb-2.5 text-xs font-jost font-medium mr-4 border-b-2 transition-colors ${
                   authMode === mode
-                    ? "border-foreground text-foreground"
+                    ? "border-line text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -280,7 +280,7 @@ export default function MyPlans() {
               <button
                 type="submit"
                 disabled={isBusy || !email.trim() || !password}
-                className="w-full bg-forest text-parchment py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isBusy ? "Signing in…" : "Sign in"}
               </button>
@@ -343,7 +343,7 @@ export default function MyPlans() {
               <button
                 type="submit"
                 disabled={isBusy || !email.trim() || password.length < 8 || !confirm}
-                className="w-full bg-forest text-parchment py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isBusy ? "Creating account…" : "Create account"}
               </button>
@@ -370,7 +370,7 @@ export default function MyPlans() {
               <button
                 type="submit"
                 disabled={isBusy || !email.trim()}
-                className="w-full bg-forest text-parchment py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isBusy ? "Sending…" : "Send sign-in link"}
               </button>
@@ -431,7 +431,7 @@ export default function MyPlans() {
         {/* Plan a new trip CTA */}
         <Link
           to="/start"
-          className="group flex items-center justify-between rounded-2xl border-[3px] border-foreground p-6 shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform"
+          className="group flex items-center justify-between rounded-2xl border-2 border-line p-6 hover:-translate-y-1 transition-transform"
         >
           <div>
             <div className="font-marcellus text-xl text-foreground">Plan a new trip</div>
@@ -439,7 +439,7 @@ export default function MyPlans() {
               Interstate or local experience — you pick the type first
             </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-signal text-ink border-2 border-foreground grid place-items-center shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-signal text-ink grid place-items-center shrink-0">
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M13 5l7 7-7 7" />
             </svg>
@@ -449,7 +449,7 @@ export default function MyPlans() {
         {/* Plans list */}
         {fetching && (
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+            <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
           </div>
         )}
 
@@ -460,7 +460,7 @@ export default function MyPlans() {
         )}
 
         {!fetching && plans.length === 0 && !error && (
-          <div className="rounded-3xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] p-10 text-center">
+          <div className="rounded-3xl border-2 border-line p-10 text-center">
             <div className="text-4xl mb-3">🗺️</div>
             <div className="font-marcellus text-lg">No saved plans yet</div>
             <p className="text-sm font-jost text-muted-foreground mt-1">Generate a plan and lock it in to save it here.</p>
@@ -483,12 +483,12 @@ export default function MyPlans() {
                     <Link
                       to={`/start/trip?job=${p.tripId}`}
                       style={revealStyle}
-                      className={`${revealCls} group flex flex-col aspect-[4/5] rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform overflow-hidden`}
+                      className={`${revealCls} group flex flex-col aspect-[4/5] rounded-2xl border-2 border-line p-4 hover:-translate-y-1 transition-transform overflow-hidden`}
                     >
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </Link>
                   ) : p.status === 'awaiting_group' ? (
-                    <div style={revealStyle} className={`${revealCls} rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] p-5 space-y-4`}>
+                    <div style={revealStyle} className={`${revealCls} rounded-2xl border-2 border-line p-5 space-y-4`}>
                       {/* Compact trip header */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -520,7 +520,7 @@ export default function MyPlans() {
                           </div>
                           <Link
                             to={`/plan/${p.tripId}`}
-                            className="inline-flex items-center gap-1.5 rounded-full border-2 border-foreground bg-signal text-ink px-4 py-2 text-xs font-jost font-bold hover:-translate-y-0.5 transition-transform"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-signal text-ink px-4 py-2 text-xs font-jost font-bold hover:-translate-y-0.5 transition-transform"
                           >
                             View squad page →
                           </Link>
@@ -549,12 +549,12 @@ export default function MyPlans() {
                     <Link
                       to={`/plan/${p.tripId}`}
                       style={revealStyle}
-                      className={`${revealCls} group flex flex-col aspect-[4/5] rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform overflow-hidden`}
+                      className={`${revealCls} group flex flex-col aspect-[4/5] rounded-2xl border-2 border-line p-4 hover:-translate-y-1 transition-transform overflow-hidden`}
                     >
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </Link>
                   ) : (
-                    <div style={revealStyle} className={`${revealCls} flex flex-col aspect-[4/5] rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] p-4 overflow-hidden`}>
+                    <div style={revealStyle} className={`${revealCls} flex flex-col aspect-[4/5] rounded-2xl border-2 border-line p-4 overflow-hidden`}>
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </div>
                   )}

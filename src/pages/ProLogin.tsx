@@ -116,7 +116,7 @@ export default function ProLogin() {
   if (loading) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -126,7 +126,7 @@ export default function ProLogin() {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground text-sm">
-          <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
           <span>Loading your Pro dashboard…</span>
         </div>
       </main>

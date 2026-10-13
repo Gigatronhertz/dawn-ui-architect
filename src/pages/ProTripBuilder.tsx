@@ -139,7 +139,7 @@ export default function ProTripBuilder() {
   if (loading || checking) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -167,7 +167,7 @@ export default function ProTripBuilder() {
                   className={`flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors ${
                     usedTemplate === t.id
                       ? "border-primary bg-primary/10"
-                      : "border-border hover:border-foreground"
+                      : "border-border hover:border-signal"
                   }`}
                 >
                   <button

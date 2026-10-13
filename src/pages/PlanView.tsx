@@ -279,7 +279,7 @@ function PaymentSection({
   if (payState === "verifying") {
     return (
       <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full border-2 border-foreground border-t-transparent animate-spin shrink-0" />
+        <div className="w-7 h-7 rounded-full border-2 border-signal border-t-transparent animate-spin shrink-0" />
         <div>
           <div className="font-display font-semibold">Checking your payment…</div>
           <p className="text-sm text-muted-foreground mt-0.5">One moment — confirming with Paystack.</p>
@@ -291,7 +291,7 @@ function PaymentSection({
   if (payState === "redirecting") {
     return (
       <div className="rounded-2xl bg-secondary/60 ring-hairline p-5 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full border-2 border-foreground border-t-transparent animate-spin shrink-0" />
+        <div className="w-7 h-7 rounded-full border-2 border-signal border-t-transparent animate-spin shrink-0" />
         <div>
           <div className="font-display font-semibold">Taking you to Paystack…</div>
           <p className="text-sm text-muted-foreground mt-0.5">Complete your payment on the next screen.</p>
@@ -521,7 +521,7 @@ function PaymentSection({
 
       {payState === "loading" && (
         <div className="flex items-center justify-center py-3 gap-3 text-sm text-muted-foreground">
-          <div className="w-5 h-5 rounded-full border-2 border-foreground border-t-transparent animate-spin shrink-0" />
+          <div className="w-5 h-5 rounded-full border-2 border-signal border-t-transparent animate-spin shrink-0" />
           Opening secure payment…
         </div>
       )}
@@ -737,7 +737,7 @@ function JoinSection({
         </div>
       ) : joinState === "loading" ? (
         <div className="flex justify-center py-4">
-          <div className="w-7 h-7 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+          <div className="w-7 h-7 rounded-full border-2 border-signal border-t-transparent animate-spin" />
         </div>
       ) : (
         <button onClick={() => setJoinState("name-input")}

@@ -1,74 +1,50 @@
 import { Link } from "react-router-dom";
 import { TRIP_CATEGORIES } from "@/lib/categories";
-import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { LAGOS_EXPERIENCES } from "@/data/experiences";
+import { tripImageUrl } from "@/lib/tripImage";
+import { Eyebrow } from "@/components/Nav";
+import { BrandIcon, CATEGORY_ICON_PATHS, CUTS } from "@/lib/brandIcons";
 
-// The six real categories from src/lib/categories.ts (same list Explore's
-// vibe chips use) — "all" is dropped here, a card grid doesn't need an
-// "Everything" tile. Colors/icon per card, alternating paper/ink/signal/panel
-// like Explore's own category badges (CAT_COLOR in Explore.tsx).
-// Every card gets the bold 2px outline from the approved mock — that's the
-// specific "cut-out sticker" quality being borrowed from Chowdeck's cards.
-// `border-foreground` (not `border-ink`) so it stays black-on-light and
-// flips to white-on-dark instead of vanishing on the dark theme.
-const CARD_STYLE: Record<string, { bg: string; fg: string; icon: JSX.Element }> = {
-  adventure: {
-    bg: "bg-background", fg: "text-foreground",
-    icon: <path d="M3 18h18M5 18l2-9h10l2 9M12 3v6M9 9l3-3 3 3" />,
-  },
-  culture: {
-    bg: "bg-forest", fg: "text-parchment",
-    icon: <path d="M9 4c0 3-3 3-3 6a3 3 0 0 0 6 0M15 4c0 3 3 3 3 6a3 3 0 0 1-6 0M9 10v3a3 3 0 0 0 6 0v-3" />,
-  },
-  nature: {
-    bg: "bg-signal", fg: "text-ink",
-    icon: <path d="M6 21c1-4-2-6-2-10a8 8 0 0 1 16 0c0 4-3 6-2 10M12 21V11" />,
-  },
-  leisure: {
-    bg: "bg-background", fg: "text-foreground",
-    icon: <path d="M2 17c1.5 1.5 3 1.5 4.5 0s3-1.5 4.5 0 3 1.5 4.5 0 3-1.5 4.5 0M2 12c1.5 1.5 3 1.5 4.5 0s3-1.5 4.5 0 3 1.5 4.5 0 3-1.5 4.5 0" />,
-  },
-  food: {
-    bg: "bg-sage", fg: "text-parchment",
-    icon: <path d="M7 3v18M7 3c0 4 3 4 3 8s-3 4-3 4M17 3v18M17 13h4M17 8h4" />,
-  },
-  nightlife: {
-    bg: "bg-background", fg: "text-foreground",
-    icon: <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />,
-  },
+// One photo per vibe — the first curated Lagos trip in that category, with a
+// fallback for categories that don't have one yet.
+const FALLBACK_PHOTO: Record<string, string> = {
+  nightlife: "1566737236500-c8ac43014a67", // nightclub interior — same verified photo Explore uses
 };
+const photoFor = (category: string) =>
+  LAGOS_EXPERIENCES.find((e) => e.category === category)?.imageId ?? FALLBACK_PHOTO[category] ?? null;
+
+const TILTS = ["-rotate-3", "rotate-2", "-rotate-[1.5deg]", "rotate-[2.5deg]", "-rotate-2", "rotate-[1.5deg]"];
 
 export const TripCategories = () => {
-  const reveal = useScrollReveal<HTMLDivElement>();
   const cards = TRIP_CATEGORIES.filter((c) => c.value !== "all");
 
   return (
-    <section className="py-24 md:py-32 border-t border-border">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="flex items-center gap-4 mb-5">
-          <span className="h-px w-8 bg-primary" />
-          <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-            Pick your kind of trip
-          </span>
-        </div>
-        <h2 className="font-marcellus text-3xl md:text-4xl text-foreground leading-snug mb-12">
-          Six vibes. Same city.
-        </h2>
+    <section className="max-w-[1280px] mx-auto px-5 md:px-8 pt-24 md:pt-28 pb-10 flex flex-col gap-12">
+      <div className="flex flex-col gap-4">
+        <Eyebrow>Pick your kind of trip</Eyebrow>
+        <h2 className="kj-title"><span className="text-signal">Six vibes.</span><br />Same city.</h2>
+      </div>
 
-        <div ref={reveal.ref} className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {cards.map((c, i) => (
+      <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))]">
+        {cards.map((c, i) => {
+          const photo = photoFor(c.value);
+          return (
             <Link
               key={c.value}
               to={`/start/explore?category=${c.value}`}
-              className={`${reveal.visible ? "animate-rise" : "opacity-0"} ${CARD_STYLE[c.value].bg} ${CARD_STYLE[c.value].fg} border-[3px] border-foreground rounded-2xl p-6 flex flex-col justify-between gap-8 min-h-[160px] shadow-[5px_5px_0_0_hsl(var(--foreground))] transition-transform hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))]`}
-              style={{ animationDelay: `${i * 0.06}s` }}
+              className={`relative h-[260px] md:h-[300px] bg-[#1A1A1A] ${CUTS[i % CUTS.length]} transition-transform duration-300 hover:-translate-y-1.5 hover:-rotate-[0.6deg]`}
             >
-              <svg viewBox="0 0 24 24" className="w-7 h-7 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                {CARD_STYLE[c.value].icon}
-              </svg>
-              <span className="font-marcellus text-lg">{c.label}</span>
+              {photo && (
+                <img src={tripImageUrl(photo, 720, 600)} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-ink/85 to-transparent to-60%" />
+              <div className={`absolute left-5 bottom-6 flex items-center gap-3 font-display text-3xl md:text-[40px] leading-none text-ink bg-signal px-4 pt-2 pb-2.5 ${TILTS[i % TILTS.length]}`}>
+                <BrandIcon d={CATEGORY_ICON_PATHS[c.value]} className="w-7 h-7" strokeWidth={2.4} />
+                <span>{c.label}</span>
+              </div>
             </Link>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </section>
   );

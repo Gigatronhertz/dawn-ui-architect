@@ -109,14 +109,14 @@ export default function Login() {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
     <main className="min-h-screen bg-background grid place-items-center">
-      <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+      <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
     </main>
   );
 
   // ── Already signed in (routing) ───────────────────────────────────────────
   if (user) return (
     <main className="min-h-screen bg-background grid place-items-center">
-      <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+      <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
     </main>
   );
 
@@ -211,7 +211,7 @@ export default function Login() {
               onClick={() => resetForm(mode)}
               className={`pb-2.5 text-xs font-jost font-medium mr-4 border-b-2 transition-colors ${
                 authMode === mode
-                  ? "border-foreground text-foreground"
+                  ? "border-line text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -245,7 +245,7 @@ export default function Login() {
             {submitErr && <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>}
 
             <button type="submit" disabled={isBusy || !email.trim() || !password}
-              className="w-full bg-forest text-parchment py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {isBusy ? "Signing in…" : "Sign in"}
             </button>
 
@@ -287,7 +287,7 @@ export default function Login() {
             {submitErr && <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>}
 
             <button type="submit" disabled={isBusy || !email.trim() || !password || !confirm}
-              className="w-full bg-forest text-parchment py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {isBusy ? "Creating account…" : "Create account"}
             </button>
           </form>
@@ -306,7 +306,7 @@ export default function Login() {
             {submitErr && <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>}
 
             <button type="submit" disabled={isBusy || !email.trim()}
-              className="w-full bg-forest text-parchment py-3.5 text-sm font-jost font-medium tracking-[0.06em] hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {isBusy ? "Sending…" : "Send sign-in link"}
             </button>
             <p className="text-center text-xs font-jost font-light text-muted-foreground pt-0.5">

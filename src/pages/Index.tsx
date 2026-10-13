@@ -1,54 +1,48 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, ShieldCheck, Lock, Instagram } from "lucide-react";
+import { Instagram } from "lucide-react";
 import { api, imageUrl, type PublicAgency } from "@/lib/api";
-import { Nav } from "@/components/Nav";
-import { HowItWorks } from "@/components/HowItWorks";
+import { Nav, Eyebrow } from "@/components/Nav";
 import { Footer } from "@/components/CTA";
 import { Hero } from "@/components/Hero";
 import { TripCategories } from "@/components/TripCategories";
 import { ExploreCityTeaser } from "@/components/ExploreCityTeaser";
-import { TrustProof } from "@/components/TrustProof";
 import { UpcomingEvents } from "@/components/UpcomingEvents";
+import { BuildYourOwn } from "@/pages/Explore";
+import { BrandIcon } from "@/lib/brandIcons";
 
-// ── Feature strip ───────────────────────────────────────────────────────────
-// Sits between the two most photo-heavy sections on the page (category cards,
-// then the Explore Lagos photo grid) so there's real substance about how
-// Karije actually works in between — not just pictures back to back.
-const featureHighlights = [
+// ── Trust — the yellow band ─────────────────────────────────────────────────
+const TRUST = [
   {
-    icon: CalendarClock,
+    icon: "M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4 M8 14h3",
     title: "Pay monthly",
     desc: "On trips that support it, split your share into monthly payments instead of one lump sum.",
   },
   {
-    icon: Lock,
+    icon: "M5 11h14v10H5z M8 11V7a4 4 0 018 0v4 M12 15v2",
     title: "Your money, held safe",
     desc: "Karije holds every payment and only releases it to the agency once the whole trip is paid up.",
   },
   {
-    icon: ShieldCheck,
+    icon: "M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z M9 12l2 2 4-4",
     title: "Verified agencies only",
     desc: "Every agency running trips on Karije is ID- and business-checked before they go live.",
   },
 ];
 
-const FeatureStrip = () => (
-  <section className="py-16 md:py-20 border-t border-border bg-card">
-    <div className="mx-auto max-w-6xl px-6">
-      <div className="grid md:grid-cols-3 gap-4">
-        {featureHighlights.map((f) => (
-          <div
-            key={f.title}
-            className="flex items-start gap-4 rounded-2xl border-[3px] border-foreground bg-background p-5 shadow-[4px_4px_0_0_hsl(var(--foreground))]"
-          >
-            <div className="w-10 h-10 rounded-lg border-2 border-foreground bg-signal text-ink grid place-items-center shrink-0">
-              <f.icon className="w-5 h-5" strokeWidth={2} />
+const TrustBand = () => (
+  <section className="mt-24 md:mt-28 bg-signal text-ink">
+    <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-20 md:py-24 flex flex-col gap-12">
+      <h2 className="kj-title">Your money.<br /><span className="kj-hl-ink px-4">Held safe.</span></h2>
+      <div className="grid gap-10 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
+        {TRUST.map((t, i) => (
+          <div key={t.title} className="flex flex-col gap-3 border-t-4 border-ink pt-5">
+            <div className="flex justify-between items-center">
+              <BrandIcon d={t.icon} className="w-12 h-12" />
+              <span className="font-display text-[22px]">0{i + 1}</span>
             </div>
-            <div>
-              <div className="font-marcellus text-base text-foreground mb-1">{f.title}</div>
-              <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-            </div>
+            <h3 className="font-display text-2xl md:text-[26px]">{t.title}</h3>
+            <p className="text-[17px] leading-relaxed font-medium">{t.desc}</p>
           </div>
         ))}
       </div>
@@ -56,214 +50,23 @@ const FeatureStrip = () => (
   </section>
 );
 
-// ── Services ─────────────────────────────────────────────────────────────────
-const services = [
-  {
-    n: "01",
-    color: "bg-forest", fg: "text-paper",
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
-        <path d="M12 6v6l4 2" />
-      </svg>
-    ),
-    title: "AI Trip Planning",
-    desc: "Answer 9 quick questions and boom — full itinerary, hotels, transport, day-by-day, cost per person. Under 20 seconds.",
-  },
-  {
-    n: "02",
-    color: "bg-primary", fg: "text-ink",
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2.5" y="4.5" width="19" height="15" rx="2" />
-        <path d="m3 6.5 8.1 6a1.5 1.5 0 0 0 1.8 0l8.1-6" />
-      </svg>
-    ),
-    title: "Automatic Follow-ups",
-    desc: "We email everyone their share and keep chasing the ones ghosting the group chat. You never have to ask twice.",
-  },
-  {
-    n: "03",
-    color: "bg-sage", fg: "text-paper",
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-        <line x1="1" y1="10" x2="23" y2="10" />
-      </svg>
-    ),
-    title: "Squad Payments",
-    desc: "Everyone gets their own Paystack link. Watch who's paid in real time. No spreadsheet, no chasing anybody on DM.",
-  },
-];
-
-const Services = () => (
-  <section id="services" className="py-24 md:py-32 bg-card border-t border-border">
-    <div className="mx-auto max-w-6xl px-6">
-      {/* Section heading */}
-      <div className="mb-14">
-        <div className="flex items-center gap-4 mb-5">
-          <span className="h-px w-8 bg-primary" />
-          <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-            What we do
-          </span>
-        </div>
-        <h2 className="font-marcellus text-3xl md:text-4xl text-foreground max-w-lg leading-snug">
-          Everything a squad trip needs, in one place.
-        </h2>
-      </div>
-
-      {/* Cards */}
-      <div className="grid md:grid-cols-3 gap-4">
-        {services.map((s) => (
-          <div
-            key={s.title}
-            className="bg-card border-[3px] border-foreground rounded-2xl p-8 md:p-10 flex flex-col gap-5 shadow-[5px_5px_0_0_hsl(var(--foreground))] hover:-translate-y-1 hover:shadow-[7px_7px_0_0_hsl(var(--foreground))] transition-transform group"
-          >
-            {/* Number + icon */}
-            <div className="flex items-start justify-between">
-              <div className={`w-10 h-10 rounded-lg border-2 border-foreground ${s.color} ${s.fg} grid place-items-center shrink-0`}>
-                {s.icon}
-              </div>
-              <span className="font-marcellus text-3xl text-border group-hover:text-foreground/30 transition-colors">
-                {s.n}
-              </span>
-            </div>
-            <div>
-              <h3 className="font-marcellus text-xl text-foreground mb-2">{s.title}</h3>
-              <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-10 flex items-center gap-5">
-        <Link
-          to="/start"
-          className="inline-flex items-center gap-2 bg-signal text-ink border-[3px] border-foreground rounded-full px-7 py-3.5 text-sm font-jost font-bold tracking-[0.06em] shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform"
-        >
-          Try Karije free
-          <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M13 5l7 7-7 7" />
-          </svg>
-        </Link>
-        <span className="text-xs font-jost font-light tracking-[0.06em] text-muted-foreground">
-          No account required
-        </span>
-      </div>
-    </div>
-  </section>
-);
-
-// ── Destinations ──────────────────────────────────────────────────────────────
-// Full Unsplash URLs, same hotlink pattern as everywhere else in the app
-// (see src/lib/tripImage.ts). These replace a previous set of imports from
-// src/assets/places/*.jpg.asset.json — platform-specific relative asset
-// references (`/__l5e/assets-v1/...`) that only resolved inside whatever
-// app-builder tool generated them, so every one of these images was a
-// broken link on the actual deployed site.
-const destinations = [
-  { id: "enugu",    src: "https://images.unsplash.com/photo-1577900190299-7316c32fe85f?auto=format&fit=crop&w=600&h=900&q=80", label: "Enugu",              sub: "Coal City, Nigeria",          credit: "Unsplash License", tall: true  },
-  { id: "durbar",   src: "https://images.unsplash.com/photo-1778338943061-49a276779511?auto=format&fit=crop&w=600&h=440&q=80", label: "Culture & Heritage", sub: "Bida Durbar, Niger State",    credit: "Unsplash License", tall: false },
-  { id: "elegushi", src: "https://images.unsplash.com/photo-1608846376283-4e219eb75191?auto=format&fit=crop&w=600&h=440&q=80", label: "Beach Weekend",      sub: "Elegushi Beach, Lagos",       credit: "Unsplash License", tall: false },
-  { id: "calabar",  src: "https://images.unsplash.com/photo-1686626466981-31a2a4814bff?auto=format&fit=crop&w=600&h=440&q=80", label: "Road Trip",          sub: "Marina Resort, Calabar",      credit: "Unsplash License", tall: false },
-  { id: "abuja",    src: "https://images.unsplash.com/photo-1554457606-ed16c39db884?auto=format&fit=crop&w=600&h=440&q=80", label: "Abuja",              sub: "Millennium Park",             credit: "Unsplash License", tall: false },
-  { id: "obudu",    src: "https://images.unsplash.com/photo-1593285942976-70dbd769a590?auto=format&fit=crop&w=600&h=900&q=80", label: "Mountain Escape",    sub: "Obudu Mountain Resort",       credit: "Unsplash License", tall: true  },
-];
-
-function imgUrl(id: string, _w = 600, _h = 450) {
-  return destinations.find((d) => d.id === id)?.src ?? "";
-}
-
-const DestinationsGrid = () => (
-  <section className="py-20 md:py-28 overflow-hidden">
-    <div className="mx-auto max-w-6xl px-6">
-      {/* Heading */}
-      <div className="flex items-end justify-between mb-10">
-        <div>
-          <div className="flex items-center gap-4 mb-4">
-            <span className="h-px w-8 bg-primary" />
-            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
-              Where squads go
-            </span>
-          </div>
-          <h2 className="font-marcellus text-3xl md:text-4xl text-foreground">
-            Nigeria is waiting.
-          </h2>
-        </div>
-        <p className="hidden md:block text-sm font-jost font-light text-muted-foreground max-w-xs text-right leading-relaxed">
-          From Obudu to Elegushi Beach — your squad can go anywhere. We'll plan every detail.
-        </p>
-      </div>
-
-      {/* Desktop grid — masonry-style */}
-      <div className="hidden md:grid grid-cols-3 gap-4" style={{ gridAutoRows: "210px" }}>
-        {destinations.map((d) => (
-          <div
-            key={d.id}
-            className={`relative overflow-hidden group cursor-default rounded-2xl border-[3px] border-foreground shadow-[5px_5px_0_0_hsl(var(--foreground))] ${d.tall ? "row-span-2" : ""}`}
-          >
-            <img
-              src={imgUrl(d.id, d.tall ? 600 : 600, d.tall ? 900 : 440)}
-              alt={d.label}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-forest/70 via-forest/10 to-transparent" />
-            <div className="absolute bottom-4 left-4 text-parchment">
-              <div className="font-marcellus text-sm">{d.label}</div>
-              <div className="text-[10px] font-jost font-light tracking-wide opacity-70 mt-0.5">{d.sub}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Mobile — horizontal scroll */}
-      <div className="md:hidden -mx-6 overflow-x-auto flex gap-3 px-6 pb-2 snap-x snap-mandatory">
-        {destinations.map((d) => (
-          <div
-            key={d.id}
-            className="flex-none w-56 h-48 overflow-hidden relative snap-start rounded-2xl border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))]"
-          >
-            <img
-              src={imgUrl(d.id, 400, 320)}
-              alt={d.label}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-forest/65 to-transparent" />
-            <div className="absolute bottom-3 left-3 text-parchment">
-              <div className="font-marcellus text-sm">{d.label}</div>
-              <div className="text-[10px] font-jost font-light opacity-70">{d.sub}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Mobile description */}
-      <p className="md:hidden mt-6 text-sm font-jost font-light text-muted-foreground leading-relaxed">
-        From Obudu to Elegushi Beach — your squad can go anywhere. We'll plan every detail.
+// ── Build your own — the real day builder, embedded ─────────────────────────
+const BuildSection = () => (
+  <section id="build" className="max-w-[1280px] mx-auto px-5 md:px-8 py-24 md:py-28 flex flex-col gap-10">
+    <div className="flex flex-col gap-4">
+      <Eyebrow>Build your own</Eyebrow>
+      <h2 className="kj-title">Your day out.<br /><span className="text-signal">Your rules.</span></h2>
+      <p className="text-lg md:text-[19px] leading-relaxed text-muted-foreground max-w-[640px]">
+        Plan your own day out in Lagos. Add the places you want, we'll tell you what they cost, then share it with your squad to collect everyone's share.
       </p>
-
-      <div className="mt-8">
-        <Link
-          to="/start"
-          className="inline-flex items-center gap-2 border-[3px] border-foreground text-foreground rounded-full px-7 py-3.5 text-sm font-jost font-bold tracking-[0.06em] shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform"
-        >
-          Plan your trip now
-          <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M13 5l7 7-7 7" />
-          </svg>
-        </Link>
-      </div>
     </div>
+    <BuildYourOwn city="Lagos" />
   </section>
 );
 
 // ── Agencies showcase ────────────────────────────────────────────────────────
-// Real, verified agencies already running trips on Karije — the social proof
-// that makes the "Running a travel business?" pitch below it credible. Fetched
-// client-side and renders nothing at all when the list is empty, rather than
-// showing an awkward "no agencies yet" state on a fresh install.
+// Real, verified agencies already running trips on Karije. Renders nothing
+// when the list is empty rather than an awkward "no agencies yet" state.
 const AgenciesShowcase = () => {
   const [agencies, setAgencies] = useState<PublicAgency[]>([]);
 
@@ -278,53 +81,33 @@ const AgenciesShowcase = () => {
   if (agencies.length === 0) return null;
 
   return (
-    <section className="py-20 md:py-28 bg-forest text-parchment border-t border-parchment/10">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="flex items-center gap-4 mb-5">
-          <span className="h-px w-8 bg-signal" />
-          <span className="text-[10px] font-jost font-light tracking-label text-parchment/60 uppercase">
-            Agencies we work with
-          </span>
+    <section className="border-t-2 border-line">
+      <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-24 md:py-28 flex flex-col gap-10">
+        <div className="flex flex-col gap-4">
+          <Eyebrow>Agencies we work with</Eyebrow>
+          <h2 className="kj-title-sm">Real agencies.<br /><span className="text-signal">Real trips.</span></h2>
         </div>
-        <h2 className="font-marcellus text-3xl md:text-4xl text-parchment leading-snug mb-10 max-w-lg">
-          Real agencies, already running real trips.
-        </h2>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {agencies.map((a) => {
             const initials = a.name.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+            const logo = imageUrl(a.logoUrl);
             return (
-              <div
-                key={a.id}
-                className="rounded-2xl border-[3px] border-parchment/20 bg-parchment/5 p-5 flex items-start gap-4"
-              >
+              <div key={a.id} className="kj-card p-5 flex items-start gap-4">
                 <div
-                  className="w-12 h-12 rounded-xl border-2 border-parchment/30 grid place-items-center shrink-0 overflow-hidden text-parchment font-marcellus font-bold shrink-0"
-                  style={imageUrl(a.logoUrl) ? undefined : { backgroundColor: a.color || "#F5C518" }}
+                  className="w-14 h-14 grid place-items-center shrink-0 overflow-hidden font-display text-ink"
+                  style={logo ? { backgroundColor: "#fff" } : { backgroundColor: a.color || "#F5C518" }}
                 >
-                  {imageUrl(a.logoUrl)
-                    ? <img src={imageUrl(a.logoUrl)!} alt={a.name} className="w-full h-full object-contain" />
-                    : <span className="text-ink">{initials || "?"}</span>}
+                  {logo ? <img src={logo} alt={a.name} className="w-full h-full object-contain" /> : initials || "?"}
                 </div>
                 <div className="min-w-0">
-                  <div className="font-marcellus text-parchment truncate">{a.name}</div>
-                  {a.tagline && (
-                    <p className="text-xs font-jost font-light text-parchment/70 mt-0.5 leading-relaxed line-clamp-2">
-                      {a.tagline}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="text-[10px] font-jost text-parchment/50">
-                      {a.tripCount} {a.tripCount === 1 ? "trip" : "trips"}
-                    </span>
+                  <h3 className="font-display text-xl truncate">{a.name}</h3>
+                  {a.tagline && <p className="text-sm text-muted-foreground mt-1 leading-relaxed line-clamp-2">{a.tagline}</p>}
+                  <div className="flex items-center gap-4 mt-2 kj-label text-[11px]">
+                    <span className="text-signal">{a.tripCount} {a.tripCount === 1 ? "trip" : "trips"}</span>
                     {a.instagram && (
-                      <a
-                        href={a.instagram}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] font-jost text-parchment/70 hover:text-parchment transition-colors"
-                      >
-                        <Instagram className="w-3 h-3" /> Instagram
+                      <a href={a.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-paper transition-colors">
+                        <Instagram className="w-3.5 h-3.5" /> Instagram
                       </a>
                     )}
                   </div>
@@ -339,74 +122,34 @@ const AgenciesShowcase = () => {
 };
 
 // ── Agencies / Pro ────────────────────────────────────────────────────────────
-const proBenefits = [
-  { icon: "◆", text: "Branded plan pages with your agency name and logo" },
-  { icon: "◆", text: "Live dashboard — trips, payments, and squad status" },
-  { icon: "◆", text: "Automated WhatsApp reminders on your behalf" },
-  { icon: "◆", text: "Collect every payment in one flow — no cut taken" },
+const PRO_POINTS = [
+  "Your brand on every trip page",
+  "Pay-monthly plans for your travellers",
+  "WhatsApp reminders and chase-ups, automatic",
+  "Bookkeeping built in — keep 100% of what you collect",
 ];
 
 const AgenciesSection = () => (
-  <section id="agencies" className="py-24 md:py-32 bg-forest text-parchment">
-    <div className="mx-auto max-w-6xl px-6">
-      <div className="grid lg:grid-cols-2 gap-14 lg:gap-20 items-start">
-        {/* Left — copy */}
+  <section id="agencies" className="border-t-[3px] border-signal">
+    <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-24 md:py-28 grid lg:grid-cols-[1.2fr,1fr] gap-12 lg:gap-16 items-center">
+      <div className="flex flex-col gap-6">
+        <Eyebrow>Karije Pro · For agencies</Eyebrow>
+        <h2 className="kj-title-sm">Running a<br /><span className="kj-hl px-4">travel business?</span></h2>
+        <ul className="flex flex-col gap-3 mt-2">
+          {PRO_POINTS.map((p) => (
+            <li key={p} className="flex gap-3 text-lg"><span className="text-signal font-bold">✓</span>{p}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="bg-signal text-ink p-7 md:p-9 flex flex-col gap-5 kj-cut-panel">
         <div>
-          <div className="flex items-center gap-4 mb-6">
-            <span className="h-px w-8 bg-primary" />
-            <span className="text-[10px] font-jost font-light tracking-label text-parchment/60 uppercase">
-              Pro Plan
-            </span>
-          </div>
-          <h2 className="font-marcellus text-3xl md:text-4xl text-parchment leading-snug">
-            Running a travel business?
-          </h2>
-          <p className="mt-5 font-jost font-light text-base text-parchment/70 leading-relaxed max-w-md">
-            Karije Pro is built for travel agencies, tour operators, and individual
-            planners who manage group trips on behalf of clients. Automate the
-            coordination. Focus on the experience.
-          </p>
-
-          <ul className="mt-8 space-y-4">
-            {proBenefits.map((b) => (
-              <li key={b.text} className="flex items-start gap-4">
-                <span className="text-foreground text-[8px] mt-1.5 shrink-0">{b.icon}</span>
-                <span className="font-jost font-light text-sm text-parchment/80 leading-relaxed">
-                  {b.text}
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-8 border-[3px] border-signal rounded-2xl px-5 py-4">
-            <span className="font-marcellus text-parchment">Set up in minutes.</span>{" "}
-            <span className="font-jost font-light text-sm text-parchment/70">
-              No waitlist, no cohort — create your account and start listing trips today.
-            </span>
-          </div>
+          <div className="kj-label text-xs tracking-[0.24em]">Karije Pro</div>
+          <div className="font-display text-5xl md:text-6xl leading-none mt-1">₦10,000<span className="font-sans text-base font-semibold normal-case"> /month</span></div>
         </div>
-
-        {/* Right — direct signup, no lead-capture form */}
-        <div className="bg-card text-foreground border-[3px] border-foreground rounded-2xl p-8 shadow-[6px_6px_0_0_hsl(var(--signal))] flex flex-col items-center text-center gap-5">
-          <div>
-            <h3 className="font-marcellus text-xl text-foreground">Create your agency account</h3>
-            <p className="font-jost font-light text-sm text-muted-foreground mt-1.5">
-              Name, logo, phone number — set once, live in minutes.
-            </p>
-          </div>
-          <Link
-            to="/pro/login?mode=signup"
-            className="w-full inline-flex items-center justify-center gap-2 bg-signal text-ink border-[3px] border-foreground rounded-full px-7 py-3.5 text-sm font-jost font-bold tracking-[0.06em] shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--foreground))] transition-transform"
-          >
-            Create account
-            <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M13 5l7 7-7 7" />
-            </svg>
-          </Link>
-          <Link to="/pro" className="text-xs font-jost text-muted-foreground hover:text-foreground transition-colors">
-            See what Pro does &amp; costs →
-          </Link>
-        </div>
+        <p className="text-base font-medium">Unlimited trips. No cut of what you collect. Live in 10 minutes.</p>
+        <Link to="/pro/login?mode=signup" className="kj-btn-ink text-lg py-4">Create your agency account →</Link>
+        <Link to="/pro" className="kj-label text-xs underline underline-offset-4">See what Pro does</Link>
       </div>
     </div>
   </section>
@@ -425,17 +168,14 @@ const Index = () => {
   }, []);
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background overflow-x-hidden">
       <Nav />
       <Hero />
       <UpcomingEvents />
       <TripCategories />
-      <FeatureStrip />
       <ExploreCityTeaser />
-      <TrustProof />
-      <Services />
-      <DestinationsGrid />
-      <HowItWorks />
+      <TrustBand />
+      <BuildSection />
       <AgenciesShowcase />
       <AgenciesSection />
       <Footer />

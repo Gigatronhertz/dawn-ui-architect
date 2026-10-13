@@ -53,65 +53,57 @@ export const HeroSearch = () => {
     navigate("/start/trip", { state: { origin, destination } });
   }
 
+  const scopeBtn = (active: boolean) =>
+    `font-display text-[15px] md:text-base px-5 md:px-6 py-3 border-2 border-signal transition-colors ${
+      active ? "bg-signal text-ink" : "bg-transparent text-signal hover:bg-signal/10"
+    }`;
+  const goBtn =
+    "shrink-0 self-stretch font-display text-lg md:text-xl bg-ink text-signal px-6 md:px-8 hover:bg-[#2A2A2A] transition-colors";
+
   return (
-    <div className="animate-rise flex flex-col items-center gap-4 w-full" style={{ animationDelay: "0.12s" }}>
-      {/* Toggle */}
-      <div className="inline-flex border-[3px] border-foreground rounded-full p-1 gap-1 bg-background shadow-[4px_4px_0_0_hsl(var(--foreground))]">
-        <button
-          type="button"
-          onClick={() => setMode("lagos")}
-          className={`text-sm font-jost font-bold rounded-full px-5 py-2.5 transition-colors ${
-            mode === "lagos" ? "bg-signal text-ink" : "text-muted-foreground"
-          }`}
-        >
+    <div className="flex flex-col gap-3.5 w-full max-w-[640px]">
+      {/* Scope */}
+      <div className="flex">
+        <button type="button" onClick={() => setMode("lagos")} className={scopeBtn(mode === "lagos")}>
           Within Lagos
         </button>
-        <button
-          type="button"
-          onClick={() => setMode("interstate")}
-          className={`text-sm font-jost font-bold rounded-full px-5 py-2.5 transition-colors ${
-            mode === "interstate" ? "bg-signal text-ink" : "text-muted-foreground"
-          }`}
-        >
+        <button type="button" onClick={() => setMode("interstate")} className={`${scopeBtn(mode === "interstate")} -ml-0.5`}>
           Interstate
         </button>
       </div>
 
       {/* Within-Lagos search */}
       {mode === "lagos" && (
-        <div ref={boxRef} className="relative w-full max-w-xl">
-          <div className="flex items-center gap-3 h-16 bg-background border-[3px] border-foreground rounded-full pl-6 pr-2 shadow-[5px_5px_0_0_hsl(var(--foreground))]">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-foreground">
-              <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+        <div ref={boxRef} className="relative w-full">
+          <div className="flex items-center bg-paper shadow-[6px_6px_0_hsl(var(--signal))]">
+            <svg viewBox="0 0 24 24" className="w-6 h-6 ml-5 shrink-0" fill="none" stroke="#0B0B0B" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M11 4a7 7 0 100 14 7 7 0 000-14z M20 20l-4-4" />
             </svg>
             <input
               value={query}
               onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
               onFocus={() => setOpen(true)}
               onKeyDown={(e) => { if (e.key === "Enter") goToPlace(matches[0]); }}
-              placeholder="Search places — Tarkwa Bay, Lekki, Nike Art Gallery…"
-              className="flex-1 bg-transparent outline-none text-base placeholder:text-muted-foreground min-w-0"
+              placeholder="Tarkwa Bay, Lekki, Nike Art Gallery…"
+              aria-label="Search places in Lagos"
+              className="flex-1 min-w-0 bg-transparent outline-none text-base md:text-[19px] text-ink px-4 py-5 placeholder:text-[#8A8A8A]"
             />
-            <button
-              type="button"
-              onClick={() => goToPlace(matches[0])}
-              className="shrink-0 font-jost font-bold text-sm text-background bg-foreground rounded-full px-6 py-3.5 whitespace-nowrap"
-            >
+            <button type="button" onClick={() => goToPlace(matches[0])} className={goBtn}>
               Go →
             </button>
           </div>
 
           {open && matches.length > 0 && (
-            <div className="absolute left-0 right-0 mt-2 bg-background border-[3px] border-foreground rounded-2xl shadow-[5px_5px_0_0_hsl(var(--foreground))] overflow-hidden z-20 max-h-[min(20rem,60vh)] overflow-y-auto overscroll-contain">
+            <div className="absolute left-0 right-0 mt-3 bg-ink border-2 border-signal z-20 max-h-[min(20rem,60vh)] overflow-y-auto overscroll-contain">
               {matches.map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => goToPlace(p)}
-                  className="w-full text-left px-5 py-3 hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                  className="w-full text-left px-5 py-3 hover:bg-[#1A1A1A] transition-colors border-b border-line last:border-b-0"
                 >
-                  <div className="font-jost font-medium text-sm text-foreground">{p.name}</div>
-                  {p.address && <div className="font-jost text-xs text-muted-foreground">{p.address}</div>}
+                  <div className="font-semibold text-sm text-paper">{p.name}</div>
+                  {p.address && <div className="text-xs text-muted-foreground">{p.address}</div>}
                 </button>
               ))}
             </div>
@@ -121,27 +113,25 @@ export const HeroSearch = () => {
 
       {/* Interstate: from / to */}
       {mode === "interstate" && (
-        <div className="flex items-center gap-3 w-full max-w-xl h-16 bg-background border-[3px] border-foreground rounded-full pl-2 pr-2 shadow-[5px_5px_0_0_hsl(var(--foreground))]">
+        <div className="flex items-center bg-paper shadow-[6px_6px_0_hsl(var(--signal))] text-ink">
           <select
             value={origin}
             onChange={(e) => setOrigin(e.target.value)}
-            className="flex-1 min-w-0 bg-transparent outline-none text-sm font-jost font-medium text-foreground px-4 py-3 appearance-none"
+            aria-label="From"
+            className="flex-1 min-w-0 bg-transparent outline-none text-base md:text-lg font-semibold px-5 py-5 appearance-none"
           >
             {GIGM_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <span className="text-muted-foreground shrink-0">→</span>
+          <span className="shrink-0 font-display text-lg">→</span>
           <select
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
-            className="flex-1 min-w-0 bg-transparent outline-none text-sm font-jost font-medium text-foreground px-4 py-3 appearance-none"
+            aria-label="To"
+            className="flex-1 min-w-0 bg-transparent outline-none text-base md:text-lg font-semibold px-5 py-5 appearance-none"
           >
             {GIGM_CITIES.filter((c) => c !== origin).map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <button
-            type="button"
-            onClick={goInterstate}
-            className="shrink-0 font-jost font-bold text-sm text-background bg-foreground rounded-full px-6 py-3.5 whitespace-nowrap"
-          >
+          <button type="button" onClick={goInterstate} className={goBtn}>
             Go →
           </button>
         </div>

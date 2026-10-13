@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 // ── Karije identity — traced artwork from the brand guide ─────────────────
 // The display lettering is vector artwork, not a typeface: never re-set in a
@@ -85,65 +84,53 @@ export const KarijeLogo = ({
 }: {
   size?: "sm" | "md" | "lg";
   onClick?: () => void;
-  /** Override when the logo sits on a surface that is not the page ground. */
+  /** Override when the logo sits on a surface that is not the ink ground. */
   className?: string;
 }) => {
-  const height = size === "sm" ? 32 : size === "lg" ? 72 : 44;
-  // Same hard-shadow "sticker" trick as KarijeWordmark's `offset`, scaled
-  // down for nav-bar sizes — every KarijeLogo instance site-wide gets it,
-  // not opt-in, since this is the one mark that appears everywhere.
-  const shadowOffset = Math.max(2, Math.round(height * 0.045));
-
+  const height = size === "sm" ? 32 : size === "lg" ? 72 : 46;
   return (
-    <span className="relative inline-block">
+    <Link
+      to="/"
+      onClick={onClick}
+      className={`inline-block shrink-0 hover:opacity-80 transition-opacity ${className}`}
+      style={{ textDecoration: "none" }}
+      aria-label="Karije — home"
+    >
       <svg
         viewBox={WORDMARK_VIEWBOX}
-        style={{ height, width: "auto", display: "block", position: "absolute", top: shadowOffset, left: shadowOffset }}
-        className="text-signal dark:text-ink -z-10"
+        style={{ height, width: "auto", display: "block" }}
         fill="currentColor"
         aria-hidden="true"
       >
         <path fillRule="evenodd" d={WORDMARK_PATH} />
       </svg>
-      <Link
-        to="/"
-        onClick={onClick}
-        className={`inline-block hover:opacity-80 transition-opacity ${className}`}
-        style={{ textDecoration: "none" }}
-        aria-label="Karije — home"
-      >
-        <svg
-          viewBox={WORDMARK_VIEWBOX}
-          style={{ height, width: "auto", display: "block" }}
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path fillRule="evenodd" d={WORDMARK_PATH} />
-        </svg>
-      </Link>
-    </span>
+    </Link>
   );
 };
 
+/** Section eyebrow from the template: the plane-A mark and a tracked label. */
+export const Eyebrow = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`flex items-center gap-3 ${className}`}>
+    <span className="text-signal"><KarijeMark size={22} /></span>
+    <span className="kj-eyebrow">{children}</span>
+  </div>
+);
+
 // ── Nav links ──────────────────────────────────────────────────────────────
 const navLinks = [
-  { label: "Services",  href: "/#services" },
-  { label: "Pricing",   href: "/pricing" },
-  { label: "Pro Plan",  href: "/pro" },
+  { label: "Trips",          href: "/start/explore" },
+  { label: "Build your own", href: "/start/explore?tab=own" },
+  { label: "Events",         href: "/start/explore?tab=events" },
+  { label: "Pricing",        href: "/pricing" },
+  { label: "For agencies",   href: "/pro" },
 ];
+
+const linkCls = "text-[13px] font-semibold tracking-[0.14em] uppercase text-paper hover:text-signal transition-colors";
 
 // ── Main Nav ───────────────────────────────────────────────────────────────
 export const Nav = () => {
   const { user, signOut } = useAuth();
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -155,175 +142,83 @@ export const Nav = () => {
   return (
     <>
       {/* ── Top bar ─────────────────────────────────────────────────── */}
-      <header
-        className={`fixed top-0 inset-x-0 z-50 transition-all duration-500 ${
-          scrolled ? "py-2" : "py-4"
-        }`}
-      >
-        <div className="mx-auto max-w-6xl px-5">
-          <div
-            className={`flex items-center justify-between px-4 py-2.5 transition-all duration-500 ${
-              scrolled
-                ? "glass border-[3px] border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] rounded-2xl"
-                : ""
-            }`}
-          >
-            {/* Logo */}
-            <KarijeLogo onClick={close} />
+      <header className="fixed top-0 inset-x-0 z-50 bg-ink border-b-[3px] border-signal">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-8 py-3.5 flex items-center gap-8">
+          <KarijeLogo onClick={close} />
 
-            {/* Centre links — desktop */}
-            <nav className="hidden md:flex items-center gap-1">
-              {navLinks.map((l) =>
-                l.href.startsWith("/") ? (
-                  <Link
-                    key={l.href}
-                    to={l.href}
-                    className="px-4 py-1.5 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {l.label}
-                  </Link>
-                ) : (
-                  <a
-                    key={l.href}
-                    href={l.href}
-                    className="px-4 py-1.5 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {l.label}
-                  </a>
-                )
-              )}
-            </nav>
+          {/* Centre links — desktop */}
+          <nav className="hidden lg:flex flex-1 items-center justify-center gap-7">
+            {navLinks.map((l) => (
+              <Link key={l.href} to={l.href} className={linkCls}>{l.label}</Link>
+            ))}
+          </nav>
 
-            {/* Right actions */}
-            <div className="flex items-center gap-2">
-              {/* Auth — desktop */}
-              {user ? (
-                <>
-                  <Link
-                    to="/my-plans"
-                    className="hidden md:inline-flex items-center px-4 py-1.5 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    My Plans
-                  </Link>
-                  <button
-                    onClick={signOut}
-                    className="hidden md:inline-flex items-center px-4 py-1.5 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Log out
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/login"
-                  className="hidden md:inline-flex items-center px-4 py-1.5 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Log in
-                </Link>
-              )}
+          {/* Right actions */}
+          <div className="ml-auto lg:ml-0 flex items-center gap-5">
+            {user ? (
+              <>
+                <Link to="/my-plans" className={`hidden lg:inline ${linkCls} text-muted-foreground`}>My plans</Link>
+                <button onClick={signOut} className={`hidden lg:inline ${linkCls} text-muted-foreground`}>Log out</button>
+              </>
+            ) : (
+              <Link to="/login" className={`hidden lg:inline ${linkCls} text-muted-foreground`}>Log in</Link>
+            )}
 
-              <ThemeToggle className="hidden md:grid" />
+            <Link to="/start" onClick={close} className="kj-btn text-[15px] px-5 py-3 hidden sm:inline-flex">
+              Plan a trip →
+            </Link>
 
-              {/* Primary CTA */}
-              <Link
-                to="/start"
-                onClick={close}
-                className="inline-flex items-center gap-2 bg-signal text-ink border-2 border-foreground px-5 py-2 text-[13px] font-jost font-bold tracking-[0.06em] shadow-[3px_3px_0_0_hsl(var(--foreground))] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_hsl(var(--foreground))] transition-transform rounded-full"
-              >
-                Plan a trip
-                <svg
-                  viewBox="0 0 24 24"
-                  className="w-3.5 h-3.5 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14M13 5l7 7-7 7" />
+            {/* Hamburger — below lg */}
+            <button
+              onClick={() => setOpen((v) => !v)}
+              aria-label={open ? "Close menu" : "Open menu"}
+              className="lg:hidden w-10 h-10 flex items-center justify-center text-signal border-2 border-signal"
+            >
+              {open ? (
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
-              </Link>
-
-              {/* Hamburger — mobile */}
-              <button
-                onClick={() => setOpen((v) => !v)}
-                aria-label={open ? "Close menu" : "Open menu"}
-                className="md:hidden ml-1 w-9 h-9 flex items-center justify-center text-foreground hover:text-foreground/60 transition-colors"
-              >
-                {open ? (
-                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 12h18M3 6h18M3 18h18" />
-                  </svg>
-                )}
-              </button>
-            </div>
+              ) : (
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12h18M3 6h18M3 18h18" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
       {/* ── Mobile full-screen menu ──────────────────────────────────── */}
       <div
-        className={`fixed inset-0 z-40 md:hidden flex flex-col bg-background transition-all duration-300 ${
+        className={`fixed inset-0 z-40 lg:hidden flex flex-col bg-ink pt-[77px] transition-opacity duration-300 ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
-        {/* Top strip — a spacer only. The fixed header sits above this panel
-           at z-50 and already shows the logo and the close button; rendering a
-           second KarijeLogo here stacked two offset copies on top of each
-           other. Height matches the unscrolled header (16 + 10 + 44 + 10 + 16). */}
-        <div className="h-24 shrink-0 border-b border-border" />
-
-        {/* Tagline rule */}
-        <div className="px-5 py-4 flex items-center gap-4">
-          <span className="flex-1 h-px bg-primary" />
-          <span className="text-[10px] font-jost font-light tracking-[0.08em] text-muted-foreground lowercase">
-            we connect · we travel · we make memories
-          </span>
-          <span className="flex-1 h-px bg-primary" />
-        </div>
-
-        {/* Links */}
-        <nav className="flex-1 overflow-y-auto px-5 pt-2">
-          {navLinks.map((l) =>
-            l.href.startsWith("/") ? (
-              <Link
-                key={l.href}
-                to={l.href}
-                onClick={close}
-                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-foreground/60 transition-colors"
-              >
-                {l.label}
-                <span className="text-foreground text-base">↗</span>
-              </Link>
-            ) : (
-              <a
-                key={l.href}
-                href={l.href}
-                onClick={close}
-                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-foreground/60 transition-colors"
-              >
-                {l.label}
-                <span className="text-foreground text-base">↗</span>
-              </a>
-            )
-          )}
-
+        <nav className="flex-1 overflow-y-auto px-5 pt-4">
+          {navLinks.map((l) => (
+            <Link
+              key={l.href}
+              to={l.href}
+              onClick={close}
+              className="flex items-center justify-between py-5 border-b-2 border-line font-display text-3xl text-paper hover:text-signal transition-colors"
+            >
+              {l.label}
+              <span className="text-signal text-xl">→</span>
+            </Link>
+          ))}
           {user ? (
             <>
               <Link
                 to="/my-plans"
                 onClick={close}
-                className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-foreground/60 transition-colors"
+                className="flex items-center justify-between py-5 border-b-2 border-line font-display text-3xl text-paper hover:text-signal transition-colors"
               >
-                My Plans
-                <span className="text-foreground text-base">↗</span>
+                My plans
+                <span className="text-signal text-xl">→</span>
               </Link>
               <button
                 onClick={() => { signOut(); close(); }}
-                className="w-full text-left py-4 mt-2 text-sm font-jost font-light tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors"
+                className="w-full text-left py-5 kj-label text-muted-foreground hover:text-paper transition-colors"
               >
                 Log out
               </button>
@@ -332,29 +227,20 @@ export const Nav = () => {
             <Link
               to="/login"
               onClick={close}
-              className="flex items-center justify-between py-5 border-b border-border font-marcellus text-2xl text-foreground hover:text-foreground/60 transition-colors"
+              className="flex items-center justify-between py-5 border-b-2 border-line font-display text-3xl text-paper hover:text-signal transition-colors"
             >
               Log in
-              <span className="text-foreground text-base">↗</span>
+              <span className="text-signal text-xl">→</span>
             </Link>
           )}
         </nav>
 
-        {/* Bottom CTA */}
         <div className="px-5 pb-12 pt-6 shrink-0">
-          <div className="flex justify-end pb-3">
-            <ThemeToggle />
-          </div>
-          <Link
-            to="/start"
-            onClick={close}
-            className="w-full flex items-center justify-center gap-3 bg-signal text-ink px-6 py-4 font-jost font-medium tracking-[0.08em] hover:bg-ink hover:text-signal transition-colors"
-          >
-            <KarijeMark size={16} color="currentColor" />
-            PLAN A TRIP
+          <Link to="/start" onClick={close} className="kj-btn w-full text-lg py-4">
+            Plan a trip →
           </Link>
-          <p className="text-center text-xs font-jost font-light tracking-[0.06em] text-muted-foreground mt-3">
-            No sign-up needed · Takes 2 minutes
+          <p className="text-center kj-label text-[11px] text-signal mt-5">
+            We connect · We travel · We make memories
           </p>
         </div>
       </div>

@@ -32,7 +32,8 @@ const queryClient = new QueryClient();
 const App = () => (
   <ThemeProvider
     attribute="class"
-    defaultTheme="light"
+    defaultTheme="dark"
+    forcedTheme="dark"
     enableSystem={false}
     storageKey="karije-theme"
     disableTransitionOnChange

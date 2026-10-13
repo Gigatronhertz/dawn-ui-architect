@@ -151,7 +151,7 @@ function TravellerRow({ m, perPerson, onRemind, sending }: {
           <button
             onClick={onRemind}
             disabled={sending}
-            className="text-xs font-jost border border-border px-3 py-1.5 hover:border-foreground transition-colors disabled:opacity-40 whitespace-nowrap"
+            className="text-xs font-jost border border-border px-3 py-1.5 hover:border-signal transition-colors disabled:opacity-40 whitespace-nowrap"
           >
             {sending ? "Sending…" : "Remind"}
           </button>
@@ -373,7 +373,7 @@ export default function ProTripDetail() {
   if (loading || busy) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
-        <div className="w-8 h-8 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-signal border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -415,7 +415,7 @@ export default function ProTripDetail() {
             className={`text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap disabled:opacity-40 ${
               trip.completedAt
                 ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                : "border-border text-muted-foreground hover:border-signal hover:text-foreground"
             }`}
           >
             {completedBusy ? "Saving…" : trip.completedAt ? (<span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Completed</span>) : "Mark completed"}
@@ -425,7 +425,7 @@ export default function ProTripDetail() {
             className={`text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap ${
               trip.listed
                 ? "border-primary bg-primary/10 text-foreground"
-                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                : "border-border text-muted-foreground hover:border-signal hover:text-foreground"
             }`}
           >
             {trip.listed ? "Listed on Karije" : "Link only"}
@@ -503,7 +503,7 @@ export default function ProTripDetail() {
               className={`shrink-0 text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap disabled:opacity-40 ${
                 trip.installmentsEnabled
                   ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                  : "border-border text-muted-foreground hover:border-signal hover:text-foreground"
               }`}
             >
               {trip.installmentsEnabled ? "On" : "Off"}
@@ -613,7 +613,7 @@ export default function ProTripDetail() {
             <button
               onClick={exportCsv}
               disabled={exporting || squad.length === 0}
-              className="text-xs rounded-lg border border-border px-3 py-2 hover:border-foreground transition-colors disabled:opacity-40 whitespace-nowrap"
+              className="text-xs rounded-lg border border-border px-3 py-2 hover:border-signal transition-colors disabled:opacity-40 whitespace-nowrap"
             >
               {exporting ? "Preparing…" : "↓ Export CSV"}
             </button>
