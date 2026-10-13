@@ -54,11 +54,11 @@ export const HeroSearch = () => {
   }
 
   const scopeBtn = (active: boolean) =>
-    `font-display text-[15px] md:text-base px-5 md:px-6 py-3 border-2 border-signal transition-colors ${
+    `font-display text-sm md:text-base tracking-[0.04em] px-4 md:px-6 py-2.5 md:py-3 border-2 border-signal transition-colors ${
       active ? "bg-signal text-ink" : "bg-transparent text-signal hover:bg-signal/10"
     }`;
   const goBtn =
-    "shrink-0 self-stretch font-display text-lg md:text-xl bg-ink text-signal px-6 md:px-8 hover:bg-[#2A2A2A] transition-colors";
+    "shrink-0 self-stretch font-display text-base md:text-lg tracking-[0.04em] bg-ink text-signal px-6 md:px-8 hover:bg-[#2A2A2A] transition-colors";
 
   return (
     <div className="flex flex-col gap-3.5 w-full max-w-[640px]">
@@ -86,7 +86,7 @@ export const HeroSearch = () => {
               onKeyDown={(e) => { if (e.key === "Enter") goToPlace(matches[0]); }}
               placeholder="Tarkwa Bay, Lekki, Nike Art Gallery…"
               aria-label="Search places in Lagos"
-              className="flex-1 min-w-0 bg-transparent outline-none text-base md:text-[19px] text-ink px-4 py-5 placeholder:text-[#8A8A8A]"
+              className="flex-1 min-w-0 bg-transparent outline-none text-base md:text-lg text-ink px-4 py-4 md:py-5 placeholder:text-[#8A8A8A]"
             />
             <button type="button" onClick={() => goToPlace(matches[0])} className={goBtn}>
               Go →

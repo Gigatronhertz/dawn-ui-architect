@@ -26,10 +26,10 @@ export const Hero = () => {
   }, []);
 
   const h = HEADLINES[i];
-  const big = "font-display leading-[0.92] text-[clamp(3.6rem,10vw,9.25rem)] origin-left";
+  const big = "font-display leading-[0.95] text-[clamp(2.6rem,7.5vw,6.5rem)] origin-left";
 
   return (
-    <section className="relative min-h-[600px] md:min-h-[760px] flex items-center overflow-hidden">
+    <section className="relative min-h-[520px] md:min-h-[680px] flex items-center overflow-hidden">
       {/* Photo — a beach at dusk — under a left-heavy ink gradient */}
       <img
         src={HERO_PHOTO}
@@ -43,9 +43,9 @@ export const Hero = () => {
         style={{ background: "linear-gradient(90deg, rgba(11,11,11,0.94) 0%, rgba(11,11,11,0.75) 55%, rgba(11,11,11,0.35) 100%)" }}
       />
 
-      <div className="relative w-full max-w-[1280px] mx-auto px-5 md:px-8 pt-28 pb-16 md:pt-40 md:pb-28 flex flex-col gap-8 md:gap-9">
+      <div className="relative w-full max-w-[1280px] mx-auto px-5 md:px-8 pt-24 pb-14 md:pt-32 md:pb-24 flex flex-col gap-6 md:gap-8">
         {/* Rotating headline — keyed so each language replays the drop-in */}
-        <h1 aria-live="polite" className="min-h-[clamp(130px,19vw,290px)] flex flex-col items-start gap-1.5 normal-case">
+        <h1 aria-live="polite" className="min-h-[clamp(110px,15vw,220px)] flex flex-col items-start gap-1.5 normal-case">
           <span key={`a${i}`} lang={h.lang.slice(0, 2).toLowerCase()} className={`${big} text-signal -rotate-2 kj-in-1`}>
             {h.l1}
           </span>
@@ -58,7 +58,7 @@ export const Hero = () => {
           </span>
         </h1>
 
-        <p className="text-lg md:text-[22px] leading-relaxed text-[#E6E6E6] max-w-[560px]">
+        <p className="text-base md:text-xl leading-relaxed text-[#E6E6E6] max-w-[520px]">
           We handle the boring part — itinerary, hotels, chasing everyone for their share.{" "}
           <strong className="text-signal font-bold">Your squad just shows up.</strong>
         </p>

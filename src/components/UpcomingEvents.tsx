@@ -43,18 +43,18 @@ export const UpcomingEvents = () => {
   if (!loading && events.length === 0) return null;
 
   return (
-    <section id="events" className="max-w-[1280px] mx-auto px-5 md:px-8 pt-24 md:pt-28 pb-5 flex flex-col gap-11">
+    <section id="events" className="max-w-[1280px] mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-5 flex flex-col gap-7 md:gap-10">
       <h2 className="kj-title">
         Something's <span className="kj-hl-r px-4">on.</span>
       </h2>
 
-      <div className="grid gap-7 [grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))]">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-6 md:gap-6">
         {events.map((ev, i) => {
           const free = (ev.priceMin ?? 0) === 0 && (ev.priceMax ?? 0) === 0;
           const d = dateParts(ev.eventDate);
           return (
-            <Link key={ev.id} to={`/events/${ev.id}`} className="group flex flex-col gap-4 kj-lift">
-              <div className={`relative h-[260px] ${CUTS[(i * 2) % CUTS.length]}`} style={{ backgroundColor: ev.colorFallback || "#1A1A1A" }}>
+            <Link key={ev.id} to={`/events/${ev.id}`} className={`group flex-col gap-3 md:gap-4 kj-lift ${i === 2 ? "hidden lg:flex" : "flex"}`}>
+              <div className={`relative h-[150px] sm:h-[200px] md:h-[230px] ${CUTS[(i * 2) % CUTS.length]}`} style={{ backgroundColor: ev.colorFallback || "#1A1A1A" }}>
                 {ev.imageId && (
                   <img
                     src={tripImageUrl(ev.imageId, 720, 520)}
@@ -63,26 +63,26 @@ export const UpcomingEvents = () => {
                     loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }}
                   />
                 )}
-                <div className="absolute top-0 left-0 bg-signal text-ink px-4 py-3 flex flex-col items-center">
+                <div className="absolute top-0 left-0 bg-signal text-ink px-2.5 py-1.5 md:px-3.5 md:py-2.5 flex flex-col items-center">
                   {d ? (
                     <>
-                      <span className="text-xs font-bold tracking-[0.2em]">{d.dow}</span>
-                      <span className="font-display text-[38px] leading-none">{d.day}</span>
-                      <span className="text-xs font-bold tracking-[0.2em]">{d.mon}</span>
+                      <span className="text-[10px] md:text-xs font-bold tracking-[0.2em]">{d.dow}</span>
+                      <span className="font-display text-2xl md:text-[32px] leading-none">{d.day}</span>
+                      <span className="text-[10px] md:text-xs font-bold tracking-[0.2em]">{d.mon}</span>
                     </>
                   ) : (
                     <span className="font-display text-lg leading-none py-2">TBA</span>
                   )}
                 </div>
                 {free && (
-                  <div className="absolute top-4 right-4 font-display text-lg bg-paper text-ink px-3 py-1.5 rotate-[4deg]">Free</div>
+                  <div className="absolute top-2.5 right-2.5 md:top-4 md:right-4 font-display text-sm md:text-base bg-paper text-ink px-2 py-1 md:px-3 rotate-[4deg]">Free</div>
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
-                <h3 className="font-display text-[26px] md:text-[28px] leading-[1.05] group-hover:text-signal transition-colors">{ev.name}</h3>
+                <h3 className="font-display text-base sm:text-xl md:text-2xl leading-[1.1] group-hover:text-signal transition-colors">{ev.name}</h3>
                 {ev.tagline && (
-                  <p className="text-base text-muted-foreground flex items-start gap-2">
-                    <span className="text-signal mt-1"><BrandIcon d={CALENDAR} className="w-[17px] h-[17px]" /></span>
+                  <p className="text-xs sm:text-sm md:text-base text-muted-foreground flex items-start gap-2 line-clamp-2">
+                    <span className="text-signal mt-0.5 hidden sm:inline"><BrandIcon d={CALENDAR} className="w-4 h-4" /></span>
                     {ev.tagline}
                   </p>
                 )}

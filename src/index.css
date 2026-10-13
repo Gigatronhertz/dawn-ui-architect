@@ -9,7 +9,7 @@
    Signal   : #F5C518 — fills, highlight blocks, outlines and accent type.
               Anything sitting ON yellow is set in ink.
    Surfaces : card #141414 · panel #1A1A1A · edges #2A2A2A / #3A3A3A
-   Display  : Bowlby One, always uppercase, tight leading.
+   Display  : Anton, always uppercase, slight tracking.
    Body     : Jost 400–700.
    Shape    : square, cut edges (clip-path) and small tilts — never rounded.
    Voice    : we connect · we travel · we make memories
@@ -108,11 +108,11 @@
     font-weight: 400;
   }
   h1, h2, h3, h4 {
-    font-family: 'Bowlby One', Impact, sans-serif;
+    font-family: 'Anton', Impact, sans-serif;
     font-weight: 400;
-    letter-spacing: 0;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
-    line-height: 0.98;
+    line-height: 1.02;
   }
   ::placeholder { color: hsl(var(--faint)); }
   ::selection { background: hsl(var(--signal)); color: hsl(var(--ink)); }
@@ -130,16 +130,17 @@
 @layer utilities {
   /* ── Typography ── */
   .font-display, .font-marcellus {
-    font-family: 'Bowlby One', Impact, sans-serif;
+    font-family: 'Anton', Impact, sans-serif;
     font-weight: 400;
     text-transform: uppercase;
+    letter-spacing: 0.01em;
   }
   .font-sans { font-family: 'Jost', system-ui, sans-serif; }
   .text-faint { color: hsl(var(--faint)); }
 
-  /* Section headline scale from the template: clamp(48px, 7vw, 96px). */
-  .kj-title  { font-family: 'Bowlby One', Impact, sans-serif; text-transform: uppercase; line-height: 0.95; font-size: clamp(2.6rem, 7vw, 6rem); }
-  .kj-title-sm { font-family: 'Bowlby One', Impact, sans-serif; text-transform: uppercase; line-height: 0.95; font-size: clamp(2.1rem, 5vw, 4rem); }
+  /* Section headline scale — a notch under the template's 48–96px. */
+  .kj-title  { font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; line-height: 1; letter-spacing: 0.01em; font-size: clamp(2.1rem, 5.2vw, 4.25rem); }
+  .kj-title-sm { font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; line-height: 1; letter-spacing: 0.01em; font-size: clamp(1.8rem, 4vw, 3.25rem); }
 
   /* Eyebrow label — 13px, 700, wide tracking, yellow. */
   .kj-eyebrow { font-family: 'Jost', system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: hsl(var(--signal)); }
@@ -168,7 +169,7 @@
   /* Primary button — yellow, ink lettering, white offset, cut and tilted. */
   .kj-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.6em;
-    font-family: 'Bowlby One', Impact, sans-serif; text-transform: uppercase; letter-spacing: 0.04em;
+    font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: 0.04em;
     background: hsl(var(--signal)); color: hsl(var(--ink));
     padding: 0.8em 1.4em; box-shadow: 4px 4px 0 hsl(var(--paper));
     clip-path: polygon(0 4%, 4% 0, 100% 2%, 99% 100%, 3% 97%);
@@ -179,7 +180,7 @@
   /* Ink button — for use on yellow surfaces. */
   .kj-btn-ink {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.6em;
-    font-family: 'Bowlby One', Impact, sans-serif; text-transform: uppercase;
+    font-family: 'Anton', Impact, sans-serif; text-transform: uppercase;
     background: hsl(var(--ink)); color: hsl(var(--signal));
     padding: 0.9em 1.4em; transition: background .2s;
   }

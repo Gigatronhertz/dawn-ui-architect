@@ -103,9 +103,9 @@ export default {
       },
       fontFamily: {
         /* Karije brand fonts */
-        display:    ['"Bowlby One"', 'Impact', 'sans-serif'],
-        /* Legacy name — every heading that used Marcellus now sets in Bowlby One */
-        marcellus:  ['"Bowlby One"', 'Impact', 'sans-serif'],
+        display:    ['"Anton"', 'Impact', 'sans-serif'],
+        /* Legacy name — every heading that used Marcellus now sets in Anton */
+        marcellus:  ['"Anton"', 'Impact', 'sans-serif'],
         sans:       ['"Jost"', 'system-ui', 'sans-serif'],
         jost:       ['"Jost"', 'system-ui', 'sans-serif'],
       },

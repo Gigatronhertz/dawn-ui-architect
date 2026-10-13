@@ -8,7 +8,6 @@ import { Hero } from "@/components/Hero";
 import { TripCategories } from "@/components/TripCategories";
 import { ExploreCityTeaser } from "@/components/ExploreCityTeaser";
 import { UpcomingEvents } from "@/components/UpcomingEvents";
-import { BuildYourOwn } from "@/pages/Explore";
 import { BrandIcon } from "@/lib/brandIcons";
 
 // ── Trust — the yellow band ─────────────────────────────────────────────────
@@ -31,18 +30,18 @@ const TRUST = [
 ];
 
 const TrustBand = () => (
-  <section className="mt-24 md:mt-28 bg-signal text-ink">
-    <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-20 md:py-24 flex flex-col gap-12">
-      <h2 className="kj-title">Your money.<br /><span className="kj-hl-ink px-4">Held safe.</span></h2>
-      <div className="grid gap-10 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
+  <section className="mt-16 md:mt-24 bg-signal text-ink">
+    <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-12 md:py-16 flex flex-col gap-8 md:gap-10">
+      <h2 className="kj-title-sm">Your money. <span className="kj-hl-ink px-2">Held safe.</span></h2>
+      <div className="grid sm:grid-cols-3 gap-6 md:gap-10">
         {TRUST.map((t, i) => (
-          <div key={t.title} className="flex flex-col gap-3 border-t-4 border-ink pt-5">
+          <div key={t.title} className="flex flex-col gap-2 border-t-[3px] border-ink pt-4">
             <div className="flex justify-between items-center">
-              <BrandIcon d={t.icon} className="w-12 h-12" />
-              <span className="font-display text-[22px]">0{i + 1}</span>
+              <BrandIcon d={t.icon} className="w-7 h-7 md:w-8 md:h-8" />
+              <span className="font-display text-base">0{i + 1}</span>
             </div>
-            <h3 className="font-display text-2xl md:text-[26px]">{t.title}</h3>
-            <p className="text-[17px] leading-relaxed font-medium">{t.desc}</p>
+            <h3 className="font-display text-lg md:text-xl">{t.title}</h3>
+            <p className="text-sm md:text-base leading-relaxed font-medium">{t.desc}</p>
           </div>
         ))}
       </div>
@@ -50,17 +49,43 @@ const TrustBand = () => (
   </section>
 );
 
-// ── Build your own — the real day builder, embedded ─────────────────────────
-const BuildSection = () => (
-  <section id="build" className="max-w-[1280px] mx-auto px-5 md:px-8 py-24 md:py-28 flex flex-col gap-10">
-    <div className="flex flex-col gap-4">
-      <Eyebrow>Build your own</Eyebrow>
-      <h2 className="kj-title">Your day out.<br /><span className="text-signal">Your rules.</span></h2>
-      <p className="text-lg md:text-[19px] leading-relaxed text-muted-foreground max-w-[640px]">
-        Plan your own day out in Lagos. Add the places you want, we'll tell you what they cost, then share it with your squad to collect everyone's share.
-      </p>
+// ── How it works — the pitch, in three beats ────────────────────────────────
+const STEPS = [
+  {
+    title: "Plan it in minutes",
+    desc: "Tell us where the squad's headed. AI builds the itinerary with live hotel and transport prices — or pick a trip we already run.",
+  },
+  {
+    title: "Send one link",
+    desc: "The whole plan on one page. Everyone sees what they're paying for and pays their own share — all at once or monthly.",
+  },
+  {
+    title: "We chase. You go.",
+    desc: "Reminders go out on their own. Nobody's stuck fronting the money, and the trip actually happens.",
+  },
+];
+
+const HowItWorks = () => (
+  <section className="max-w-[1280px] mx-auto px-5 md:px-8 pt-16 md:pt-24 flex flex-col gap-8 md:gap-10">
+    <div className="flex flex-col gap-3 max-w-2xl">
+      <Eyebrow>How Karije works</Eyebrow>
+      <h2 className="kj-title-sm">Group trips,<br /><span className="text-signal">minus the group chat chaos.</span></h2>
     </div>
-    <BuildYourOwn city="Lagos" />
+    <div className="grid md:grid-cols-3 gap-3 md:gap-5">
+      {STEPS.map((s, i) => (
+        <div key={s.title} className="kj-card p-5 md:p-6 flex gap-4 md:flex-col md:gap-3">
+          <span className="font-display text-2xl md:text-3xl text-signal leading-none shrink-0">0{i + 1}</span>
+          <div className="flex flex-col gap-1.5">
+            <h3 className="font-display text-lg md:text-xl">{s.title}</h3>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{s.desc}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+    <div className="flex flex-wrap items-center gap-5">
+      <Link to="/start" className="kj-btn text-base">Plan a trip →</Link>
+      <Link to="/pricing" className="kj-label text-xs text-muted-foreground hover:text-signal">First plan's free · see pricing</Link>
+    </div>
   </section>
 );
 
@@ -82,7 +107,7 @@ const AgenciesShowcase = () => {
 
   return (
     <section className="border-t-2 border-line">
-      <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-24 md:py-28 flex flex-col gap-10">
+      <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-16 md:py-24 flex flex-col gap-8">
         <div className="flex flex-col gap-4">
           <Eyebrow>Agencies we work with</Eyebrow>
           <h2 className="kj-title-sm">Real agencies.<br /><span className="text-signal">Real trips.</span></h2>
@@ -131,13 +156,13 @@ const PRO_POINTS = [
 
 const AgenciesSection = () => (
   <section id="agencies" className="border-t-[3px] border-signal">
-    <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-24 md:py-28 grid lg:grid-cols-[1.2fr,1fr] gap-12 lg:gap-16 items-center">
+    <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-16 md:py-24 grid lg:grid-cols-[1.2fr,1fr] gap-10 lg:gap-16 items-center">
       <div className="flex flex-col gap-6">
         <Eyebrow>Karije Pro · For agencies</Eyebrow>
         <h2 className="kj-title-sm">Running a<br /><span className="kj-hl px-4">travel business?</span></h2>
         <ul className="flex flex-col gap-3 mt-2">
           {PRO_POINTS.map((p) => (
-            <li key={p} className="flex gap-3 text-lg"><span className="text-signal font-bold">✓</span>{p}</li>
+            <li key={p} className="flex gap-3 text-base md:text-lg"><span className="text-signal font-bold">✓</span>{p}</li>
           ))}
         </ul>
       </div>
@@ -145,10 +170,10 @@ const AgenciesSection = () => (
       <div className="bg-signal text-ink p-7 md:p-9 flex flex-col gap-5 kj-cut-panel">
         <div>
           <div className="kj-label text-xs tracking-[0.24em]">Karije Pro</div>
-          <div className="font-display text-5xl md:text-6xl leading-none mt-1">₦10,000<span className="font-sans text-base font-semibold normal-case"> /month</span></div>
+          <div className="font-display text-4xl md:text-5xl leading-none mt-1">₦10,000<span className="font-sans text-base font-semibold normal-case"> /month</span></div>
         </div>
         <p className="text-base font-medium">Unlimited trips. No cut of what you collect. Live in 10 minutes.</p>
-        <Link to="/pro/login?mode=signup" className="kj-btn-ink text-lg py-4">Create your agency account →</Link>
+        <Link to="/pro/login?mode=signup" className="kj-btn-ink text-base py-3.5">Create your agency account →</Link>
         <Link to="/pro" className="kj-label text-xs underline underline-offset-4">See what Pro does</Link>
       </div>
     </div>
@@ -171,11 +196,11 @@ const Index = () => {
     <main className="min-h-screen bg-background overflow-x-hidden">
       <Nav />
       <Hero />
+      <HowItWorks />
       <UpcomingEvents />
       <TripCategories />
       <ExploreCityTeaser />
       <TrustBand />
-      <BuildSection />
       <AgenciesShowcase />
       <AgenciesSection />
       <Footer />
