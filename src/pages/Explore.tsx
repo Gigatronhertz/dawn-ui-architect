@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { MapPin, Check } from "lucide-react";
 import { Nav } from "@/components/Nav";
-import { BrandIcon, CATEGORY_ICON_PATHS, CLOCK_PATH, PIN_PATH } from "@/lib/brandIcons";
+import { BrandIcon, CATEGORY_ICON_PATHS } from "@/lib/brandIcons";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
 import type { AgencyListing } from "@/lib/api";
 import { api, imageUrl } from "@/lib/api";
@@ -117,46 +117,64 @@ function AgencyTripCard({ trip }: { trip: AgencyListing }) {
 }
 
 /**
- * A curated nightlife venue — admin-added, with a photo, from /admin →
- * Nightlife. Same aspect-square card shape as a Trip, so switching between
- * tabs on Explore feels like one consistent grid rather than a different UI.
- * Clicking it opens the full detail — location, entry fee, weekly program.
+ * The one card shape Explore uses for trips, nightlife and events: photo on
+ * top, text underneath — so a long name or price range can never run over
+ * the picture, even two-up on a phone.
  */
-function CuratedNightlifeCard({ v, onSelect }: { v: NightlifeVenue; onSelect: () => void }) {
+function TileCard({ image, fallbackColor, tag, corner, title, sub, price, onSelect }: {
+  image?: string | null; fallbackColor?: string; tag?: React.ReactNode; corner?: React.ReactNode;
+  title: string; sub?: string | null; price?: string | null; onSelect: () => void;
+}) {
   return (
-    <button
-      onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
-      style={{ backgroundColor: v.colorFallback }}
-    >
-      {v.imageId && (
-        <img
-          src={cdnImg(v.imageId, 600, 600)}
-          alt={v.name}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
-          loading="lazy"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-        />
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
-      <div className="absolute top-0 left-0 right-0 flex items-start justify-between p-3">
-        <span className="text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-foreground text-background">
-          🌙 {v.vibe}
-        </span>
+    <button onClick={onSelect} className="group kj-card kj-card-hover flex flex-col text-left min-w-0">
+      <div className="relative h-[120px] sm:h-[170px] md:h-[220px] shrink-0 overflow-hidden" style={{ backgroundColor: fallbackColor || "#1A1A1A" }}>
+        {image && (
+          <img
+            src={image}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
+        {tag && (
+          <span className="absolute top-2 left-2 md:top-3 md:left-3 kj-label text-[9px] md:text-[11px] tracking-[0.14em] bg-ink text-signal px-1.5 py-1 md:px-2.5 md:py-1.5 max-w-[calc(100%-1rem)] truncate">
+            {tag}
+          </span>
+        )}
+        {corner && (
+          <span className="absolute bottom-2 left-2 md:bottom-3 md:left-3 kj-label text-[9px] md:text-[11px] tracking-[0.1em] bg-signal text-ink max-w-[calc(100%-1rem)] truncate px-1.5 py-1 md:px-2.5 md:py-1.5">
+            {corner}
+          </span>
+        )}
       </div>
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <h3 className="font-marcellus text-base leading-snug text-white">{v.name}</h3>
-        <p className="flex items-center gap-1 text-[11px] font-jost font-light text-white/60 mt-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" /> {v.location}</p>
-        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/15">
-          <span className="font-marcellus text-sm text-white">
-            {v.feeNote || (v.feeMax > 0 ? `₦${v.feeMin.toLocaleString()}–₦${v.feeMax.toLocaleString()}` : "Free entry")}
-          </span>
-          <span className="text-[11px] font-jost font-light text-white/70 group-hover:text-white transition">
-            Details →
-          </span>
-        </div>
+      <div className="p-3 md:p-5 flex flex-col gap-1 md:gap-1.5 flex-1 min-w-0">
+        <h3 className="font-display text-base sm:text-lg md:text-2xl leading-[1.1] line-clamp-2 group-hover:text-signal transition-colors">{title}</h3>
+        {sub && (
+          <p className="flex items-center gap-1 text-[11px] md:text-sm text-muted-foreground min-w-0">
+            <MapPin className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0 text-signal" />
+            <span className="truncate">{sub}</span>
+          </p>
+        )}
+        {price && (
+          <p className="mt-auto pt-1.5 md:pt-2 text-xs md:text-base font-bold text-signal line-clamp-2">{price}</p>
+        )}
       </div>
     </button>
+  );
+}
+
+function CuratedNightlifeCard({ v, onSelect }: { v: NightlifeVenue; onSelect: () => void }) {
+  return (
+    <TileCard
+      image={v.imageId ? cdnImg(v.imageId, 600, 450) : null}
+      fallbackColor={v.colorFallback}
+      tag={v.vibe}
+      title={v.name}
+      sub={v.location}
+      price={v.feeNote || (v.feeMax > 0 ? `₦${v.feeMin.toLocaleString()}–₦${v.feeMax.toLocaleString()}` : "Free entry")}
+      onSelect={onSelect}
+    />
   );
 }
 
@@ -167,28 +185,9 @@ function CuratedNightlifeCard({ v, onSelect }: { v: NightlifeVenue; onSelect: ()
  *  a bare colour block. */
 function FallbackNightlifeCard({ v, index, onSelect }: { v: VenueItem; index: number; onSelect: () => void }) {
   const realPhoto = imageUrl(v.imageUrl);
-  const image = realPhoto || cdnImg(FALLBACK_NIGHTLIFE_IMAGES[index % FALLBACK_NIGHTLIFE_IMAGES.length], 600, 600);
+  const image = realPhoto || cdnImg(FALLBACK_NIGHTLIFE_IMAGES[index % FALLBACK_NIGHTLIFE_IMAGES.length], 600, 450);
   return (
-    <button
-      onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
-    >
-      <img
-        src={image}
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
-        loading="lazy"
-        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/15" />
-      <div className="absolute top-0 left-0 right-0 p-3">
-        <span className="text-2xl leading-none">{v.emoji}</span>
-      </div>
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <h3 className="font-marcellus text-base leading-snug text-white truncate">{v.name}</h3>
-        <p className="text-[11px] font-jost font-light text-white/70 mt-1">{v.feeNote}</p>
-      </div>
-    </button>
+    <TileCard image={image} tag="Nightlife" title={v.name} sub={v.address ?? null} price={v.feeNote} onSelect={onSelect} />
   );
 }
 
@@ -207,7 +206,7 @@ function NightlifeSection({
 }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="aspect-square bg-secondary animate-pulse" />
         ))}
@@ -230,7 +229,7 @@ function NightlifeSection({
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
       {curated.length > 0
         ? curated.map(v => <CuratedNightlifeCard key={v.id} v={v} onSelect={() => onSelectVenue(v)} />)
         : fallback.map((v, i) => <FallbackNightlifeCard key={v.id} v={v} index={i} onSelect={() => onSelectFallback(v)} />)}
@@ -238,52 +237,21 @@ function NightlifeSection({
   );
 }
 
-/**
- * A single curated event — admin-added, from /admin → Events. Same
- * aspect-square card shape as a Trip and a nightlife venue. Clicking it
- * opens the full detail — location, description and the ticket link.
- */
 function EventCard({ ev, onSelect }: { ev: EventItem; onSelect: () => void }) {
   const dateLabel = ev.eventDate
     ? new Date(ev.eventDate).toLocaleDateString(undefined, { day: "numeric", month: "short" })
     : "Date TBA";
   return (
-    <button
-      onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
-      style={{ backgroundColor: ev.colorFallback }}
-    >
-      {ev.imageId && (
-        <img
-          src={cdnImg(ev.imageId, 600, 600)}
-          alt={ev.name}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
-          loading="lazy"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-        />
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
-      <div className="absolute top-0 left-0 right-0 flex items-start justify-between p-3">
-        <span className="text-[10px] font-jost font-medium tracking-wide px-2 py-1 bg-signal text-ink capitalize">
-          {ev.category}
-        </span>
-        <span className="text-[10px] font-jost font-light px-2 py-1 bg-black/50 text-white/90">
-          {dateLabel}
-        </span>
-      </div>
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <h3 className="font-marcellus text-base leading-snug text-white">{ev.name}</h3>
-        <p className="flex items-center gap-1 text-[11px] font-jost font-light text-white/60 mt-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" /> {ev.location}</p>
-        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/15">
-          <span className="font-marcellus text-sm text-white">
-            {ev.priceNote || (ev.priceMax > 0 ? `₦${ev.priceMin.toLocaleString()}–₦${ev.priceMax.toLocaleString()}` : "Free")}
-          </span>
-          <span className="text-[11px] font-jost font-light text-white/70 group-hover:text-white transition">
-            Details →
-          </span>
-        </div>
-      </div>
-    </button>
+    <TileCard
+      image={ev.imageId ? cdnImg(ev.imageId, 600, 450) : null}
+      fallbackColor={ev.colorFallback}
+      tag={ev.category}
+      corner={dateLabel}
+      title={ev.name}
+      sub={ev.location}
+      price={ev.priceNote || (ev.priceMax > 0 ? `₦${ev.priceMin.toLocaleString()}–₦${ev.priceMax.toLocaleString()}` : "Free")}
+      onSelect={onSelect}
+    />
   );
 }
 
@@ -299,7 +267,7 @@ function EventsSection({
 }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="aspect-square bg-secondary animate-pulse" />
         ))}
@@ -322,7 +290,7 @@ function EventsSection({
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
       {events.map(ev => <EventCard key={ev.id} ev={ev} onSelect={() => onSelectEvent(ev)} />)}
     </div>
   );
@@ -605,37 +573,16 @@ function EventDetail({ event, onClose }: { event: EventItem; onClose: () => void
 
 function ExperienceCard({ exp, onSelect }: { exp: Experience; onSelect: () => void }) {
   return (
-    <button onClick={onSelect} className="group kj-card kj-card-hover flex flex-col text-left">
-      <div className="relative h-[220px] md:h-[250px]" style={{ backgroundColor: exp.colorFallback }}>
-        <img
-          src={cdnImg(exp.imageId, 720, 520)}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-          loading="lazy"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-        />
-        <span className="absolute top-4 left-4 kj-label text-xs tracking-[0.2em] bg-ink text-signal px-3 py-1.5">
-          {CAT_LABEL[exp.category]}
-        </span>
-        <span className="absolute -right-1.5 -bottom-5 font-display text-2xl md:text-[28px] leading-none bg-signal text-ink px-4 pt-2.5 pb-3 -rotate-3 shadow-[4px_4px_0_hsl(var(--ink))]">
-          {formatNGN(exp.pricePerPersonPerDay)}
-          <span className="font-sans text-[13px] font-semibold normal-case"> /p·day</span>
-        </span>
-      </div>
-      <div className="px-5 pt-9 pb-5 flex flex-col gap-2">
-        <h3 className="font-display text-2xl md:text-[28px] leading-[1.05]">{exp.name}</h3>
-        <div className="flex justify-between gap-3 text-[15px] text-muted-foreground">
-          <span className="flex items-center gap-1.5 min-w-0">
-            <span className="text-signal"><BrandIcon d={PIN_PATH} className="w-[17px] h-[17px]" /></span>
-            <span className="truncate">{exp.location}</span>
-          </span>
-          <span className="flex items-center gap-1.5 font-semibold text-paper shrink-0">
-            <span className="text-signal"><BrandIcon d={CLOCK_PATH} className="w-[17px] h-[17px]" /></span>
-            {exp.maxDays === 1 ? "1 day" : `Up to ${exp.maxDays} days`}
-          </span>
-        </div>
-      </div>
-    </button>
+    <TileCard
+      image={cdnImg(exp.imageId, 600, 450)}
+      fallbackColor={exp.colorFallback}
+      tag={CAT_LABEL[exp.category]}
+      corner={exp.maxDays === 1 ? "1 day" : `Up to ${exp.maxDays} days`}
+      title={exp.name}
+      sub={exp.location}
+      price={`${formatNGN(exp.pricePerPersonPerDay)} /person a day`}
+      onSelect={onSelect}
+    />
   );
 }
 
@@ -1141,7 +1088,7 @@ export function BuildYourOwn({
         </div>
 
         {/* Clearance for the fixed add-a-place bar on phones */}
-        <div className="lg:hidden h-24" aria-hidden="true" />
+        <div className="lg:hidden h-44 md:h-24" aria-hidden="true" />
       </div>
 
       {/* Dimmer behind the mobile sheet */}
@@ -1406,7 +1353,7 @@ export function BuildYourOwn({
 
       {/* Phone-only bar — the library is one tap away, not a scroll away */}
       {!libOpen && (
-        <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
+        <div className="lg:hidden fixed inset-x-0 bottom-[4.5rem] md:bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
           <div className="flex items-center gap-3">
             <div className="min-w-0">
               <div className="kj-eyebrow">Per person</div>
@@ -1755,7 +1702,7 @@ export default function Explore() {
           )}
 
           {tab === "ours" && loading && (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="border border-border animate-pulse">
                   <div className="h-40 bg-secondary" />
@@ -1769,7 +1716,7 @@ export default function Explore() {
           )}
 
           {tab === "ours" && !loading && (shown.length > 0 || agencyTrips.length > 0) && (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-7">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
               {shown.map((exp) => (
                 <ExperienceCard
                   key={exp.id}
