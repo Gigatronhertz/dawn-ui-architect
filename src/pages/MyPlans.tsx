@@ -190,8 +190,8 @@ export default function MyPlans() {
         <div className="mx-auto max-w-sm px-6 pb-24">
           {/* Eyebrow */}
           <div className="flex items-center gap-4 mb-6">
-            <span className="h-px w-8 bg-primary" />
-            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Your account</span>
+            <span aria-hidden="true" className="kj-mark" />
+            <span className="kj-eyebrow">Your account</span>
           </div>
 
           {/* Verified banner */}
@@ -419,8 +419,8 @@ export default function MyPlans() {
         {/* Header */}
         <div>
           <div className="flex items-center gap-4 mb-3">
-            <span className="h-px w-8 bg-primary" />
-            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Your account</span>
+            <span aria-hidden="true" className="kj-mark" />
+            <span className="kj-eyebrow">Your account</span>
           </div>
           <h1 className="font-marcellus font-bold text-4xl md:text-5xl text-foreground leading-none">My Plans</h1>
           <p className="text-muted-foreground mt-3 text-sm font-jost">
@@ -493,7 +493,7 @@ export default function MyPlans() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${s.color}`}>{s.label}</span>
+                            <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 ${s.color}`}>{s.label}</span>
                             <span className="text-[11px] text-muted-foreground">{date}</span>
                           </div>
                           <div className="font-marcellus truncate">{p.origin || "—"} → {p.destination || "—"}</div>
@@ -520,7 +520,7 @@ export default function MyPlans() {
                           </div>
                           <Link
                             to={`/plan/${p.tripId}`}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-signal text-ink px-4 py-2 text-xs font-jost font-bold hover:-translate-y-0.5 transition-transform"
+                            className="inline-flex items-center gap-1.5 bg-signal text-ink px-4 py-2 text-xs font-jost font-bold hover:-translate-y-0.5 transition-transform"
                           >
                             View squad page →
                           </Link>
@@ -694,7 +694,7 @@ function PlanCardSquare({ p, s, date, perPerson }: {
     <div className="flex flex-col h-full">
       {/* Status + date */}
       <div className="flex items-center gap-1.5 flex-wrap mb-2">
-        <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${s.color} ${p.status === 'generating' ? 'animate-pulse' : ''}`}>
+        <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 ${s.color} ${p.status === 'generating' ? 'animate-pulse' : ''}`}>
           {s.label}
         </span>
         <span className="text-[10px] text-muted-foreground">{date}</span>

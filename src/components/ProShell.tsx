@@ -101,7 +101,7 @@ function SidebarContent({
               <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1 text-left">{label}</span>
               {badge ? (
-                <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 ${
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 ${
                   active === id ? "bg-background/20" : "bg-secondary"
                 }`}>
                   {badge}

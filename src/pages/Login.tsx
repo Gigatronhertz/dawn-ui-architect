@@ -168,8 +168,8 @@ export default function Login() {
       <div className="mx-auto max-w-sm w-full px-6 pb-24 flex-1 lg:flex lg:flex-col lg:justify-center">
         {/* Eyebrow */}
         <div className="flex items-center gap-4 mb-6">
-          <span className="h-px w-8 bg-primary" />
-          <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Your account</span>
+          <span aria-hidden="true" className="kj-mark" />
+          <span className="kj-eyebrow">Your account</span>
         </div>
 
         {/* Verified banner */}

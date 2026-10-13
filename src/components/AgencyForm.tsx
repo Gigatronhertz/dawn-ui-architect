@@ -111,7 +111,7 @@ export const AgencyForm = ({ className = "" }: { className?: string }) => {
       <button
         type="submit"
         disabled={status === "loading" || !form.name || !form.phone || !form.email}
-        className="w-full rounded-full bg-signal text-ink px-6 py-3 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--paper))] active:translate-y-0 active:shadow-[2px_2px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_0_hsl(var(--paper))]"
+        className="w-full bg-signal text-ink px-6 py-3 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--paper))] active:translate-y-0 active:shadow-[2px_2px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_0_hsl(var(--paper))]"
       >
         {status === "loading" ? "Sending…" : "Get early access →"}
       </button>

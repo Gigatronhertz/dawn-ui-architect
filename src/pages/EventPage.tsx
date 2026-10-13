@@ -80,7 +80,7 @@ export default function EventPage() {
               />
             )}
             {free && (
-              <span className="absolute top-4 left-4 text-xs font-jost font-bold uppercase tracking-wide px-3 py-1.5 rounded-full bg-signal text-ink ">
+              <span className="absolute top-4 left-4 text-xs font-jost font-bold uppercase tracking-wide px-3 py-1.5 bg-signal text-ink ">
                 Free entry
               </span>
             )}
@@ -97,11 +97,11 @@ export default function EventPage() {
           )}
 
           <div className="flex flex-wrap gap-3 mb-8">
-            <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-line-strong rounded-full px-3.5 py-1.5">
+            <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-line-strong px-3.5 py-1.5">
               <MapPin className="w-3.5 h-3.5" /> {hasLocation ? event.location : "Location to be disclosed"}
             </span>
             {!free && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-line-strong rounded-full px-3.5 py-1.5">
+              <span className="inline-flex items-center gap-1.5 text-xs font-jost font-semibold border-2 border-line-strong px-3.5 py-1.5">
                 {event.priceNote || (event.priceMax > 0 ? `₦${event.priceMin.toLocaleString()}–₦${event.priceMax.toLocaleString()}` : "See details")}
               </span>
             )}

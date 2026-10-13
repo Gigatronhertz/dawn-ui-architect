@@ -198,7 +198,7 @@ function WhatsAppView({ onNext, onBack }: { onNext: () => void; onBack: () => vo
                 if (m.from === "system") {
                   return (
                     <div key={i} className="flex justify-center">
-                      <div className="text-[11px] text-muted-foreground bg-secondary/80 rounded-full px-3 py-1">
+                      <div className="text-[11px] text-muted-foreground bg-secondary/80 px-3 py-1">
                         {m.text}
                       </div>
                     </div>
@@ -236,7 +236,7 @@ function WhatsAppView({ onNext, onBack }: { onNext: () => void; onBack: () => vo
 
             {/* input bar */}
             <div className="p-3 border-t border-border bg-card flex items-center gap-2">
-              <div className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm text-muted-foreground">Message</div>
+              <div className="flex-1 bg-secondary px-4 py-2 text-sm text-muted-foreground">Message</div>
               <div className="w-9 h-9 rounded-full bg-whatsapp grid place-items-center text-primary-foreground">
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z" /></svg>
               </div>
@@ -332,7 +332,7 @@ function IntakeForm({ onSubmit, onBack }: { onSubmit: (i: Intake) => void; onBac
   const inputCls = "w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition";
   const selectCls = `${inputCls} cursor-pointer appearance-none`;
   const chipCls = (active: boolean) =>
-    `px-3 py-1.5 rounded-full text-xs font-medium ring-hairline transition ${active ? "bg-foreground text-background" : "bg-card text-foreground hover:bg-secondary"}`;
+    `px-3 py-1.5 text-xs font-medium ring-hairline transition ${active ? "bg-foreground text-background" : "bg-card text-foreground hover:bg-secondary"}`;
 
   return (
     <Section>
@@ -634,7 +634,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
             { tag: "Per person", val: fmtNGN(realPlan?.cost_breakdown.per_person ?? fallbackPlan.perPerson), sub: "All-in · live", color: "bg-primary-soft text-foreground" },
           ].map((c) => (
             <div key={c.tag} className="rounded-xl bg-secondary/60 p-2.5 min-w-0">
-              <span className={`inline-flex text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${c.color}`}>{c.tag}</span>
+              <span className={`inline-flex text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 ${c.color}`}>{c.tag}</span>
               <div className="mt-1.5 font-display text-sm md:text-lg font-semibold tabular-nums truncate">{c.val}</div>
               <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{c.sub}</div>
             </div>
@@ -645,7 +645,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Route map · {intake.origin} → {intake.destination}</div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">Live</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 bg-google-green/15 text-google-green">Live</span>
           </div>
           <div className="relative rounded-2xl overflow-hidden ring-hairline shadow-card bg-card">
             {mapLoaded ? (
@@ -658,15 +658,15 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
                 />
                 <div className="pointer-events-none absolute inset-0">
                   <div className="absolute left-[18%] top-[68%] flex flex-col items-center">
-                    <div className="px-2.5 py-1 rounded-full bg-foreground text-background text-[10px] font-semibold shadow-card whitespace-nowrap">🚌 {intake.origin}</div>
+                    <div className="px-2.5 py-1 bg-foreground text-background text-[10px] font-semibold shadow-card whitespace-nowrap">🚌 {intake.origin}</div>
                     <div className="w-2 h-2 rounded-full bg-foreground mt-1 ring-4 ring-background" />
                   </div>
                   <div className="absolute left-[66%] top-[26%] flex flex-col items-center">
-                    <div className="px-2.5 py-1 rounded-full bg-gradient-primary text-primary-foreground text-[10px] font-semibold shadow-glow whitespace-nowrap">📍 {intake.destination}</div>
+                    <div className="px-2.5 py-1 bg-gradient-primary text-primary-foreground text-[10px] font-semibold shadow-glow whitespace-nowrap">📍 {intake.destination}</div>
                     <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1 ring-4 ring-background animate-pulse" />
                   </div>
                   <div className="absolute left-[60%] top-[38%]">
-                    <div className="px-2 py-0.5 rounded-full bg-card ring-hairline text-[10px] font-semibold text-foreground shadow-soft whitespace-nowrap">🏨 {(realPlan?.hotel.name ?? fallbackPlan.hotel.name).split(" ")[0]}</div>
+                    <div className="px-2 py-0.5 bg-card ring-hairline text-[10px] font-semibold text-foreground shadow-soft whitespace-nowrap">🏨 {(realPlan?.hotel.name ?? fallbackPlan.hotel.name).split(" ")[0]}</div>
                   </div>
                 </div>
                 <div className="absolute bottom-0 inset-x-0 flex flex-wrap items-center justify-between gap-2 bg-card/85 backdrop-blur px-4 py-2 text-xs">
@@ -799,7 +799,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
             {(realPlan?.highlights?.length ?? 0) > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {realPlan!.highlights.map((hl: string) => (
-                  <span key={hl} className="text-[10px] px-2 py-0.5 rounded-full bg-google-pink/10 text-google-pink">{hl}</span>
+                  <span key={hl} className="text-[10px] px-2 py-0.5 bg-google-pink/10 text-google-pink">{hl}</span>
                 ))}
               </div>
             )}
@@ -814,7 +814,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center justify-between">
                   <span>🚌 GIGM Buses — live prices</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">{busOffers.length} departures</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-google-green/15 text-google-green">{busOffers.length} departures</span>
                 </div>
                 <div className="space-y-1.5">
                   {busOffers.map((bus, i) => (
@@ -845,7 +845,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center justify-between">
                   <span>Flights — Google Travel</span>
-                  {scraped?.flights?.directAvailable && <span className="text-[10px] px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">Direct available</span>}
+                  {scraped?.flights?.directAvailable && <span className="text-[10px] px-2 py-0.5 bg-google-green/15 text-google-green">Direct available</span>}
                 </div>
                 <div className="space-y-1.5">
                   {flightOffers.map((fl, i) => (
@@ -886,16 +886,16 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
                         <div className="min-w-0 flex-1">
                           <div className="font-display text-sm font-semibold truncate flex items-center gap-1.5 flex-wrap">
                             {h.name}
-                            {h.badge && <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground shrink-0">{h.badge}</span>}
+                            {h.badge && <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 bg-primary text-primary-foreground shrink-0">{h.badge}</span>}
                           </div>
                           <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
                             {h.area && <span>{h.area}</span>}
                             {h.rating && <span>⭐ {h.rating}</span>}
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">{h.source}</span>
+                            <span className="text-[9px] px-1.5 py-0.5 bg-secondary text-muted-foreground">{h.source}</span>
                           </div>
                           {h.perks.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-1">
-                              {h.perks.map(p => <span key={p} className="text-[9px] px-1.5 py-0.5 rounded-full bg-secondary/70 text-muted-foreground">{p}</span>)}
+                              {h.perks.map(p => <span key={p} className="text-[9px] px-1.5 py-0.5 bg-secondary/70 text-muted-foreground">{p}</span>)}
                             </div>
                           )}
                         </div>
@@ -1057,7 +1057,7 @@ function VoteView({ intake, plan, onNext, onBack }: { intake: Intake; plan: Trip
                     <div className="min-w-0">
                       <div className="font-display font-semibold truncate flex items-center gap-2 flex-wrap">
                         {hotelLabel}
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-foreground shrink-0">AI pick</span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 bg-primary/10 text-foreground shrink-0">AI pick</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">{fmtNGN(hotelPrice)}/night · ⭐ {hotelRating}</div>
                     </div>
@@ -1224,7 +1224,7 @@ function DuringTripView({ intake, onNext, onBack }: { intake: Intake; onNext: ()
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Live trip feed</div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-google-green/15 text-google-green flex items-center gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 bg-google-green/15 text-google-green flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Trip live
             </span>
           </div>
@@ -1291,7 +1291,7 @@ function DuringTripView({ intake, onNext, onBack }: { intake: Intake; onNext: ()
                 <li key={s.stop} className="flex items-center gap-3 text-sm">
                   <span className="font-display text-xs font-semibold tabular-nums text-muted-foreground w-12">{s.time}</span>
                   <span className="flex-1 truncate">{s.stop}</span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-google-green/15 text-google-green">🛡️ check-in</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 bg-google-green/15 text-google-green">🛡️ check-in</span>
                 </li>
               ))}
             </ol>
@@ -1372,7 +1372,7 @@ function AfterTripView({ intake, onRestart }: { intake: Intake; onRestart: () =>
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-google-pink">📸 Auto collage</div>
             <div className="font-display text-xl md:text-2xl font-semibold mt-1">87 photos · 12 videos from the group</div>
           </div>
-          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full ${collageBuilding ? "bg-google-yellow/20 text-google-yellow" : "bg-google-green/20 text-google-green"}`}>
+          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 ${collageBuilding ? "bg-google-yellow/20 text-google-yellow" : "bg-google-green/20 text-google-green"}`}>
             {collageBuilding ? "Building…" : "✓ Ready"}
           </span>
         </div>
@@ -1566,7 +1566,7 @@ const Demo = () => {
                 ▶ Show me the demo
               </button>
             )}
-            <span className="hidden md:inline text-xs font-medium px-3 py-1.5 rounded-full glass ring-hairline text-muted-foreground">Interactive</span>
+            <span className="hidden md:inline text-xs font-medium px-3 py-1.5 glass ring-hairline text-muted-foreground">Interactive</span>
           </div>
         </div>
       </header>

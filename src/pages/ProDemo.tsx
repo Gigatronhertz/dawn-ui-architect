@@ -15,7 +15,7 @@ const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?
     brand: "bg-ink text-paper border-ink",
   };
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border-2 px-2.5 py-0.5 text-[10px] font-jost font-bold ${tones[tone]}`}>{children}</span>
+    <span className={`inline-flex items-center gap-1 border-2 px-2.5 py-0.5 text-[10px] font-jost font-bold ${tones[tone]}`}>{children}</span>
   );
 };
 
@@ -25,8 +25,8 @@ const Section = ({ id, eyebrow, title, sub, children }: { id?: string; eyebrow?:
       <div className="max-w-2xl mb-10">
         {eyebrow && (
           <div className="flex items-center gap-4 mb-4">
-            <span className="h-px w-8 bg-primary" />
-            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">{eyebrow}</span>
+            <span aria-hidden="true" className="kj-mark" />
+            <span className="kj-eyebrow">{eyebrow}</span>
           </div>
         )}
         <h2 className="font-marcellus text-3xl md:text-4xl text-foreground leading-snug">{title}</h2>
@@ -50,7 +50,7 @@ const trips = [
   { name: "Cape Coast Weekend", date: "Jan 10 — 12", paid: 2, total: 6, status: "Collecting", tone: "default" as const },
 ];
 
-const ctaCls = "rounded-full bg-signal text-ink px-7 py-3.5 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--paper))] transition-transform";
+const ctaCls = " bg-signal text-ink px-7 py-3.5 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--paper))] transition-transform";
 
 const ProDemo = () => {
   useEffect(() => {
@@ -68,8 +68,8 @@ const ProDemo = () => {
         <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-[1.2fr,1fr] gap-12 items-center">
           <div>
             <div className="flex items-center gap-4 mb-5">
-              <span className="h-px w-8 bg-primary" />
-              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Karije Pro · For travel agents</span>
+              <span aria-hidden="true" className="kj-mark" />
+              <span className="kj-eyebrow">Karije Pro · For travel agents</span>
             </div>
             <h1 className="font-marcellus text-5xl md:text-7xl text-foreground leading-[1.02]">
               Stop chasing payments.
@@ -236,7 +236,7 @@ const ProDemo = () => {
             <span className="text-signal">Live in 10 minutes.</span>
           </h2>
           <div className="mt-10">
-            <Link to="/pro/login?mode=signup" className="inline-block rounded-full bg-signal text-ink border-[3px] border-paper px-8 py-3.5 text-sm font-jost font-bold shadow-[4px_4px_0_0_rgba(255,255,255,0.25)] hover:-translate-y-0.5 transition-transform">Start Karije Pro</Link>
+            <Link to="/pro/login?mode=signup" className="inline-block bg-signal text-ink border-[3px] border-paper px-8 py-3.5 text-sm font-jost font-bold shadow-[4px_4px_0_0_rgba(255,255,255,0.25)] hover:-translate-y-0.5 transition-transform">Start Karije Pro</Link>
           </div>
         </div>
       </section>

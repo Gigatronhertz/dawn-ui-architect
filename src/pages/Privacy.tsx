@@ -14,8 +14,8 @@ export default function Privacy() {
 
       <div className="mx-auto max-w-2xl px-6 py-16 pb-24">
         <div className="flex items-center gap-4 mb-6">
-          <span className="h-px w-8 bg-primary" />
-          <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Legal</span>
+          <span aria-hidden="true" className="kj-mark" />
+          <span className="kj-eyebrow">Legal</span>
         </div>
 
         <h1 className="font-marcellus text-4xl text-foreground mb-3">Privacy Policy</h1>

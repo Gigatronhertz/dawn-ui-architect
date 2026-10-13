@@ -78,7 +78,7 @@ export const Pricing = () => (
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-lg font-semibold">{p.name}</h3>
-                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full ${
+                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 ${
                   isPrimary ? "bg-white/20" : isDark ? "bg-white/10" : "bg-secondary text-muted-foreground"
                 }`}>{p.tag}</span>
               </div>

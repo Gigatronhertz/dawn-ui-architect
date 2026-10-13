@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { MapPin, Check, Mail, Bell, MessageCircle } from "lucide-react";
 import { api, ApiError, session, imageUrl, type AiCreditStatus, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { KarijeLogo } from "@/components/Nav";
+import { KarijeLogo, KarijeMark } from "@/components/Nav";
 import { GIGM_CITIES, FLIGHT_CITIES } from "@/lib/cities";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
@@ -100,12 +100,12 @@ const Card = ({ children, className = "" }: { children: React.ReactNode; classNa
 );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground mb-1">{children}</div>
+  <div className="kj-label tracking-[0.24em] text-signal mb-2">{children}</div>
 );
 
 const chipCls = (active: boolean) =>
-  `px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-line-strong transition-all ${
-    active ? "bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--paper))]" : "bg-card text-foreground hover:bg-secondary"
+  `kj-label px-4 py-3 border-2 flex items-center gap-2.5 transition-colors ${
+    active ? "bg-signal text-ink border-signal" : "bg-transparent text-paper border-line-strong hover:border-signal"
   }`;
 
 /**
@@ -116,16 +116,69 @@ const chipCls = (active: boolean) =>
  * for IntakeStep means every keystroke in any field. This is the fix for
  * that report.
  */
-const Field = ({ n, label, children }: { n: number; label: string; children: React.ReactNode }) => (
-  <label className="block">
-    <div className="flex items-baseline gap-2 mb-2">
-      <span className="font-display text-xs font-semibold tabular-nums text-muted-foreground">
-        {String(n).padStart(2, "0")}
-      </span>
-      <span className="text-sm font-medium">{label}</span>
+const Field = ({ n, label, value, children }: { n: number; label: string; value?: React.ReactNode; children: React.ReactNode }) => (
+  <div className="block">
+    <div className="flex items-end justify-between gap-4 mb-4">
+      <div className="flex items-baseline gap-3">
+        <span className="font-display text-2xl leading-none text-signal tabular-nums">{String(n).padStart(2, "0")}</span>
+        <span className="text-lg font-bold">{label}</span>
+      </div>
+      {value !== undefined && (
+        <span className="font-display text-xl md:text-[26px] leading-none bg-signal text-ink px-3.5 py-2 -rotate-2 shadow-[3px_3px_0_hsl(var(--paper))] whitespace-nowrap">
+          {value}
+        </span>
+      )}
     </div>
     {children}
-  </label>
+  </div>
+);
+
+/** Brand slider with min/max captions. */
+const RangeField = ({ min, max, step = 1, value, onChange, lo, hi, label }: {
+  min: number; max: number; step?: number; value: number; onChange: (v: number) => void; lo: string; hi: string; label: string;
+}) => (
+  <>
+    <input
+      type="range" min={min} max={max} step={step} value={value}
+      onChange={(e) => onChange(+e.target.value)}
+      aria-label={label}
+      className="kj-range"
+      style={{ ["--pct" as string]: `${((value - min) / (max - min)) * 100}%` }}
+    />
+    <div className="flex justify-between text-[13px] font-bold text-muted-foreground mt-2">
+      <span>{lo}</span><span>{hi}</span>
+    </div>
+  </>
+);
+
+const ICON = {
+  bus:     "M5 4h14a1 1 0 011 1v11a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z M4 11h16 M7 17v2 M17 17v2 M8 14h.01 M16 14h.01",
+  plane:   "M21 15l-8-5V4.5a1.5 1.5 0 00-3 0V10l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-4.5l8 2.5z",
+  swap:    "M7 7h13 M16 3l4 4-4 4 M17 17H4 M8 13l-4 4 4 4",
+  pin:     "M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z M12 8a2 2 0 100 4 2 2 0 000-4z",
+  dot:     "M12 9a3 3 0 100 6 3 3 0 000-6z",
+  arrow:   "M5 12h14 M13 5l7 7-7 7",
+  hotel:   "M4 21V7l8-4 8 4v14 M9 21v-6h6v6 M9 10h.01 M15 10h.01",
+  key:     "M15 7a4 4 0 11-3.9 4.9L4 19v2h3v-2h2v-2h2l1.1-1.1A4 4 0 0115 7z M16 9h.01",
+  house:   "M3 11l9-8 9 8 M5 9v12h14V9 M10 21v-6h4v6",
+  sparkle: "M12 3l2 7 7 2-7 2-2 7-2-7-7-2 7-2z",
+  cal:     "M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4",
+  shuffle: "M4 7h4l8 10h4 M4 17h4l2-2.5 M14 9.5L16 7h4 M18 4l3 3-3 3 M18 14l3 3-3 3",
+};
+const VIBE_ICON: Record<string, string> = {
+  "Chill & scenic": "M2 9c3-3 5 3 8 0s5 3 8 0 4 0 4 0 M2 15c3-3 5 3 8 0s5 3 8 0 4 0 4 0",
+  "Nightlife":      "M20 14A8 8 0 1110 4a6 6 0 0010 10z",
+  "Foodie tour":    "M7 3v18 M4 3v5a3 3 0 006 0V3 M17 21V3c-2 0-3 3-3 7h3",
+  "Adventure":      "M3 20l6-11 4 7 3-4 5 8z",
+  "Cultural":       "M6 4h12l-2 16H8z M7.5 8l9 8 M16.5 8l-9 8",
+};
+const STAY_ICON: Record<string, string> = {
+  "Hotel": ICON.hotel, "Shortlet": ICON.key, "Budget guesthouse": ICON.house, "Surprise me": ICON.sparkle,
+};
+const Ico = ({ d, className = "w-[18px] h-[18px]" }: { d: string; className?: string }) => (
+  <svg viewBox="0 0 24 24" className={`shrink-0 ${className}`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={d} />
+  </svg>
 );
 
 /* ─── step 1: intake ────────────────────────────────────────────────────────── */
@@ -174,213 +227,262 @@ function IntakeStep({
     }));
   };
 
-  const inputCls = "w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition";
-  const selectCls = `${inputCls} cursor-pointer appearance-none`;
+  const inputCls = "w-full bg-card border-2 border-line-strong px-4 py-3.5 text-base font-semibold focus:outline-none focus:border-signal transition-colors";
+  const selectCls = `${inputCls} cursor-pointer appearance-none pl-12`;
+
+  // Progress — how many of the ten questions have an answer.
+  const answered = [
+    true, !!form.origin, !!form.destination, !!form.vibe, form.hotelBudgetPerNight > 0,
+    form.days > 0, form.squadSize > 0, !!form.accommodationType,
+    form.dateFlexibility === "Flexible" || !!form.specificDates,
+    email.includes("@"),
+  ].filter(Boolean).length;
+
+  const swap = () => setForm((p) => {
+    const ok = cities.includes(p.destination!) && cities.includes(p.origin!);
+    return ok ? { ...p, origin: p.destination, destination: p.origin } : p;
+  });
+
+  const transportCard = (mode: "bus" | "flight", label: string, icon: string) => {
+    const on = transportMode === mode;
+    return (
+      <button
+        type="button"
+        onClick={() => switchMode(mode)}
+        aria-pressed={on}
+        className={`flex-1 flex items-center justify-between gap-4 px-6 md:px-7 py-6 font-display text-2xl md:text-[28px] transition-colors ${
+          on
+            ? "bg-signal text-ink shadow-[5px_5px_0_hsl(var(--paper))] -rotate-1 kj-cut-5"
+            : "border-2 border-signal text-signal hover:bg-signal/10"
+        }`}
+      >
+        {label}
+        <Ico d={icon} className="w-8 h-8 md:w-9 md:h-9" />
+      </button>
+    );
+  };
+
+  const canSubmit = email.includes("@");
 
   return (
-    <Card>
-      <div className="mb-7">
-        <SectionLabel>Plan your trip</SectionLabel>
-        <h1 className="font-display text-2xl md:text-4xl font-semibold tracking-tight leading-tight text-gradient">
-          Tell us about the trip.
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          10 quick questions. AI builds the full itinerary with live prices. You edit before it goes to the squad.
-        </p>
+    <div className="animate-rise pb-32">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-5">
+        <span className="text-signal"><KarijeMark size={22} /></span>
+        <span className="kj-eyebrow">Plan your trip</span>
+      </div>
+      <h1 className="font-display text-[clamp(2.6rem,8vw,5rem)] leading-[0.95]">
+        Tell us about<br />
+        <span className="inline-block bg-signal text-ink px-[0.18em] pt-1 pb-2 mt-1 -rotate-1 kj-cut-5">the trip.</span>
+      </h1>
+      <p className="mt-5 text-base md:text-lg text-muted-foreground leading-relaxed max-w-xl">
+        10 quick questions. AI builds the full itinerary with live prices. You edit before it goes to the squad.
+      </p>
+
+      {/* Progress */}
+      <div className="mt-7 flex items-center gap-4">
+        <div className="flex-1 h-2.5 bg-[#1A1A1A]" role="progressbar" aria-valuemin={0} aria-valuemax={10} aria-valuenow={answered}>
+          <div className="h-full bg-signal transition-[width] duration-500" style={{ width: `${answered * 10}%` }} />
+        </div>
+        <span className="font-display text-lg text-signal tabular-nums">{answered}/10</span>
       </div>
 
-      {/* Transport mode toggle */}
-      <div className="mb-6 p-4 rounded-2xl bg-secondary/40 ring-hairline">
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">How are you getting there?</div>
-        <div className="flex gap-3">
-          <button type="button" onClick={() => switchMode('bus')}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border-2 border-line-strong transition ${transportMode === 'bus' ? 'bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--paper))]' : 'bg-card text-foreground hover:bg-secondary'}`}>
-            🚌 Bus
-          </button>
-          <button type="button" onClick={() => switchMode('flight')}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold border-2 border-line-strong transition ${transportMode === 'flight' ? 'bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--paper))]' : 'bg-card text-foreground hover:bg-secondary'}`}>
-            ✈️ Flight
-          </button>
+      {/* Transport */}
+      <div className="mt-12">
+        <div className="kj-label tracking-[0.24em] text-muted-foreground mb-4">How are you getting there?</div>
+        <div className="flex flex-col sm:flex-row gap-4">
+          {transportCard("bus", "Bus", ICON.bus)}
+          {transportCard("flight", "Flight", ICON.plane)}
         </div>
-        <div className="mt-3 flex items-center justify-between">
-          <p className="text-[11px] text-muted-foreground">
+        <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-sm text-muted-foreground">
             {transportMode === 'bus'
               ? `GIGM live prices · ${GIGM_CITIES.length} cities covered`
               : `Google Travel live prices · ${FLIGHT_CITIES.length} airports covered`}
           </p>
-          {/* Round trip toggle */}
           <button
             type="button"
             onClick={() => set("roundTrip", !form.roundTrip)}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold ring-hairline transition ${
-              form.roundTrip
-                ? "bg-primary text-primary-foreground shadow-glow"
-                : "bg-card text-muted-foreground hover:text-foreground"
+            aria-pressed={!!form.roundTrip}
+            className={`kj-label text-xs px-4 py-2.5 border-2 flex items-center gap-2 transition-colors ${
+              form.roundTrip ? "bg-signal text-ink border-signal" : "border-line-strong text-paper hover:border-signal"
             }`}
           >
-            <span>↩</span>
-            Round trip
+            <Ico d={ICON.swap} className="w-4 h-4" /> Round trip
           </button>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-5">
+      {/* Route */}
+      <div className="mt-12 grid grid-cols-1 md:grid-cols-[1fr,auto,1fr] gap-4 md:gap-3 items-end">
         <Field n={1} label="Where from?">
-          <select className={selectCls} value={form.origin}
-            onChange={e => {
-              const v = e.target.value;
-              set("origin", v);
-              if (v === form.destination) set("destination", cities.find(c => c !== v) ?? cities[1]);
-            }}>
-            {cities.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </Field>
-        <Field n={2} label="Where to?">
-          <select className={selectCls} value={form.destination}
-            onChange={e => set("destination", e.target.value)}>
-            {cities.filter(c => c !== form.origin).map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </Field>
-
-        <div className="md:col-span-2">
-          <Field n={3} label="Squad vibe">
-            <div className="flex flex-wrap gap-2">
-              {VIBES.map((v) => (
-                <button key={v} type="button" onClick={() => set("vibe", v)} className={chipCls(form.vibe === v)}>
-                  {v}
-                </button>
-              ))}
-            </div>
-          </Field>
-        </div>
-
-        <Field n={4} label={`Hotel budget per night · ${fmtNGN(form.hotelBudgetPerNight)}`}>
-          <input
-            type="range" min={5000} max={150000} step={1000} value={form.hotelBudgetPerNight}
-            onChange={(e) => set("hotelBudgetPerNight", +e.target.value)} className="w-full accent-primary"
-          />
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-            <span>₦5k</span><span>₦150k</span>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-signal pointer-events-none"><Ico d={ICON.dot} className="w-4 h-4" /></span>
+            <select className={selectCls} value={form.origin} aria-label="Where from"
+              onChange={e => {
+                const v = e.target.value;
+                set("origin", v);
+                if (v === form.destination) set("destination", cities.find(c => c !== v) ?? cities[1]);
+              }}>
+              {cities.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+        </Field>
+        <button
+          type="button"
+          onClick={swap}
+          aria-label="Swap origin and destination"
+          className="hidden md:grid w-[52px] h-[55px] place-items-center border-2 border-signal text-signal hover:bg-signal hover:text-ink transition-colors"
+        >
+          <Ico d={ICON.swap} className="w-5 h-5" />
+        </button>
+        <Field n={2} label="Where to?">
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-signal pointer-events-none"><Ico d={ICON.pin} className="w-[18px] h-[18px]" /></span>
+            <select className={selectCls} value={form.destination} aria-label="Where to"
+              onChange={e => set("destination", e.target.value)}>
+              {cities.filter(c => c !== form.origin).map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </Field>
+      </div>
+
+      <div className="mt-12 flex flex-col gap-12">
+        <Field n={3} label="Squad vibe">
+          <div className="flex flex-wrap gap-2.5">
+            {VIBES.map((v) => (
+              <button key={v} type="button" onClick={() => set("vibe", v)} className={chipCls(form.vibe === v)} aria-pressed={form.vibe === v}>
+                <Ico d={VIBE_ICON[v]} /> {v}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        <Field n={4} label="Hotel budget per night" value={fmtNGN(form.hotelBudgetPerNight)}>
+          <RangeField label="Hotel budget per night" min={5000} max={150000} step={1000} value={form.hotelBudgetPerNight}
+            onChange={(v) => set("hotelBudgetPerNight", v)} lo="₦5k" hi="₦150k" />
+          <p className="text-sm text-muted-foreground mt-4 leading-relaxed max-w-xl">
             Sets your room ceiling only. Transport, activities and food are priced at what they
             actually cost — swap the hotel or edit the itinerary on the next screen to move the total.
           </p>
         </Field>
 
-        <Field n={5} label={`How many days? · ${form.days}`}>
-          <input
-            type="range" min={1} max={10} value={form.days}
-            onChange={(e) => set("days", +e.target.value)} className="w-full accent-primary"
-          />
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-            <span>1 day</span><span>10 days</span>
-          </div>
+        <Field n={5} label="How many days?" value={`${form.days} ${form.days === 1 ? "day" : "days"}`}>
+          <RangeField label="How many days" min={1} max={10} value={form.days} onChange={(v) => set("days", v)} lo="1 day" hi="10 days" />
         </Field>
 
-        <Field n={6} label={`Squad size · ${form.squadSize} people`}>
-          <input
-            type="range" min={2} max={40} value={form.squadSize}
-            onChange={(e) => set("squadSize", +e.target.value)} className="w-full accent-primary"
-          />
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-            <span>2</span><span>40</span>
-          </div>
+        <Field n={6} label="Squad size" value={`${form.squadSize} people`}>
+          <RangeField label="Squad size" min={2} max={40} value={form.squadSize} onChange={(v) => set("squadSize", v)} lo="2" hi="40" />
         </Field>
 
         <Field n={7} label="Accommodation type">
-          <div className="flex flex-wrap gap-2">
-            {ACCOMMODATION_TYPES.map((t) => (
-              <button key={t} type="button" onClick={() => set("accommodationType", t)} className={chipCls(form.accommodationType === t)}>
-                {t}
-              </button>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {ACCOMMODATION_TYPES.map((t) => {
+              const on = form.accommodationType === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => set("accommodationType", t)}
+                  aria-pressed={on}
+                  className={`flex flex-col items-start gap-4 p-5 min-h-[110px] border-2 text-left kj-label text-[13px] transition-colors ${
+                    on ? "bg-signal text-ink border-signal" : "border-line-strong text-paper hover:border-signal"
+                  }`}
+                >
+                  <Ico d={STAY_ICON[t]} className="w-6 h-6" />
+                  {t}
+                </button>
+              );
+            })}
           </div>
         </Field>
 
         <Field n={8} label="Specific dates or flexible?">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2.5">
             {DATE_OPTIONS.map((d) => (
-              <button key={d} type="button" onClick={() => set("dateFlexibility", d)} className={chipCls(form.dateFlexibility === d)}>
-                {d}
+              <button key={d} type="button" onClick={() => set("dateFlexibility", d)} className={chipCls(form.dateFlexibility === d)} aria-pressed={form.dateFlexibility === d}>
+                <Ico d={d === "Flexible" ? ICON.shuffle : ICON.cal} /> {d === "Flexible" ? "I'm flexible" : "Specific dates"}
               </button>
             ))}
           </div>
           {form.dateFlexibility === "I have specific dates" && (
-            <div className="mt-3">
+            <div className="mt-4 max-w-xs">
               <input
                 type="date"
+                aria-label="Departure date"
                 className={inputCls}
                 value={form.specificDates || ""}
                 onChange={(e) => set("specificDates", e.target.value)}
                 min={new Date().toISOString().split("T")[0]}
               />
-              <p className="text-[11px] text-muted-foreground mt-1">Departure date — used to fetch live bus/flight prices</p>
+              <p className="text-sm text-muted-foreground mt-2">Departure date — used to fetch live bus/flight prices</p>
             </div>
           )}
         </Field>
 
-        <div className="md:col-span-2">
-          <Field n={9} label="Any dealbreakers?">
+        <Field n={9} label="Any dealbreakers?">
+          <input
+            className={inputCls}
+            aria-label="Any dealbreakers"
+            placeholder="e.g. must have AC / halal food / no shared rooms"
+            value={form.dealbreakers}
+            onChange={(e) => set("dealbreakers", e.target.value)}
+          />
+        </Field>
+
+        <div className="grid sm:grid-cols-2 gap-6">
+          <Field n={10} label="Your email">
             <input
+              type="email"
+              aria-label="Your email"
               className={inputCls}
-              placeholder="e.g. must have AC / halal food / no shared rooms"
-              value={form.dealbreakers}
-              onChange={(e) => set("dealbreakers", e.target.value)}
+              placeholder="you@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              We'll email you the plan and your share link the moment you confirm.
+            </p>
+          </Field>
+          <Field n={11} label="WhatsApp (optional)">
+            <input
+              type="tel"
+              aria-label="WhatsApp number"
+              className={inputCls}
+              placeholder="080…"
+              value={waNumber}
+              onChange={(e) => setWaNumber(e.target.value)}
+            />
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Get the plan link on WhatsApp too. No spam — just the one message.
+            </p>
           </Field>
         </div>
+      </div>
 
-        <div className="md:col-span-2">
-          <div className="rounded-2xl bg-primary/8 ring-1 ring-primary/20 p-4 grid sm:grid-cols-2 gap-4">
-            <div>
-              <Field n={10} label="Your email">
-                <input
-                  type="email"
-                  className={inputCls}
-                  placeholder="you@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </Field>
-              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                We'll email you the plan and your share link the moment you confirm.
-              </p>
+      {/* Summary bar — always in reach */}
+      <div className="fixed inset-x-0 bottom-[4.5rem] md:bottom-0 z-30 bg-signal text-ink">
+        <div className="max-w-3xl mx-auto px-5 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4">
+          <div className="min-w-0 hidden sm:block">
+            <div className="font-display text-lg md:text-2xl leading-tight truncate">
+              {form.origin} → {form.destination}
             </div>
-            <div>
-              <Field n={11} label="WhatsApp number (optional)">
-                <input
-                  type="tel"
-                  className={inputCls}
-                  placeholder="080…"
-                  value={waNumber}
-                  onChange={(e) => setWaNumber(e.target.value)}
-                />
-              </Field>
-              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                Get the plan link on WhatsApp too. No spam — just the one message.
-              </p>
+            <div className="text-xs md:text-sm font-bold truncate">
+              {transportMode === "bus" ? "Bus" : "Flight"} · {form.days} {form.days === 1 ? "day" : "days"} · {form.squadSize} people · up to {fmtNGN(form.hotelBudgetPerNight)}/night
             </div>
           </div>
+          <button
+            onClick={() => onSubmit(form, email, waNumber)}
+            disabled={!canSubmit}
+            title={canSubmit ? undefined : "Add your email (question 10) first"}
+            className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2.5 bg-ink text-signal font-display text-base md:text-lg px-4 md:px-6 py-3 md:py-3.5 shadow-[4px_4px_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:translate-y-0"
+          >
+            {canSubmit ? "Build my itinerary" : "Add your email"}
+            <Ico d={ICON.arrow} className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
         </div>
       </div>
-
-      <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          Takes ~20 seconds. AI builds your plan with live prices from GIGM and Google Travel.
-        </p>
-        <button
-          onClick={() => onSubmit(form, email, waNumber)}
-          disabled={!email.includes("@")}
-          className="group inline-flex items-center gap-2 rounded-full bg-signal text-ink px-6 py-3 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--paper))] active:translate-y-0 active:shadow-[2px_2px_0_0_hsl(var(--paper))] transition-transform w-full sm:w-auto justify-center disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_0_hsl(var(--paper))]"
-        >
-          Generate my squad plan
-          <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M13 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-    </Card>
+    </div>
   );
 }
 
@@ -955,7 +1057,7 @@ function PlanStep({
               <div className="font-display text-lg md:text-2xl font-semibold tabular-nums">{c.val}</div>
               <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{c.sub}</div>
               {c.badge && (
-                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 text-foreground px-2 py-0.5 text-[10px] font-semibold">
+                <div className="mt-1 inline-flex items-center gap-1 bg-primary/10 text-foreground px-2 py-0.5 text-[10px] font-semibold">
                   {c.badge}
                 </div>
               )}
@@ -1079,7 +1181,7 @@ function PlanStep({
               {isEmptyPlan ? "Build your days." : "Edit before sending to the squad."}
             </h2>
           </div>
-          <span className="text-xs text-muted-foreground bg-google-blue/10 text-google-blue px-2.5 py-1 rounded-full font-medium">Editable</span>
+          <span className="text-xs text-muted-foreground bg-google-blue/10 text-google-blue px-2.5 py-1 font-medium">Editable</span>
         </div>
 
         {/* Nothing planned yet — offer a draft rather than leaving a blank page */}
@@ -1326,7 +1428,7 @@ function PlanStep({
                 <span className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full bg-primary text-primary-foreground grid place-items-center"><Check className="w-2.5 h-2.5" strokeWidth={3} /></span>
               )}
               {opt.badge && (
-                <span className="absolute top-1.5 left-1.5 z-10 text-[9px] font-semibold px-1 py-0.5 rounded-full bg-primary text-primary-foreground">{opt.badge}</span>
+                <span className="absolute top-1.5 left-1.5 z-10 text-[9px] font-semibold px-1 py-0.5 bg-primary text-primary-foreground">{opt.badge}</span>
               )}
 
               {/* Real photo when we have one (Google Places); a generic,
@@ -1387,7 +1489,7 @@ function PlanStep({
             {/* AI-suggested date chips */}
             {initialPlan.date_options && initialPlan.date_options.length > 0 && (
               <div className="mb-3 flex flex-wrap gap-2">
-                <span className="self-center text-[10px] text-muted-foreground uppercase tracking-label shrink-0">AI picks:</span>
+                <span className="self-center kj-label text-[11px] tracking-[0.24em] text-muted-foreground shrink-0">AI picks:</span>
                 {initialPlan.date_options.map(opt => {
                   const isoDate = parseDateOptionLabel(opt.label);
                   const isActive = isoDate && selectedDate === isoDate;
@@ -1551,7 +1653,7 @@ function ConfirmStep({ destination, tripId, squadSize, finalPlan, selectedDate, 
               <span className="w-6 h-6 rounded-full bg-primary/15 text-foreground grid place-items-center text-xs font-semibold shrink-0 mt-0.5">{i + 1}</span>
               <span className="text-foreground/90 leading-relaxed">
                 {step}
-                {tag && <span className={`ml-2 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${tag === "Works now" ? "bg-google-green/15 text-google-green" : "bg-secondary text-muted-foreground"}`}>{tag}</span>}
+                {tag && <span className={`ml-2 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 ${tag === "Works now" ? "bg-google-green/15 text-google-green" : "bg-secondary text-muted-foreground"}`}>{tag}</span>}
               </span>
             </li>
           ))}
@@ -1976,9 +2078,7 @@ export default function Start() {
   const shellWidth = step === "plan" ? "max-w-3xl lg:max-w-7xl" : "max-w-3xl";
 
   return (
-    <main className="min-h-screen bg-hero-mesh">
-      <div className="pointer-events-none fixed -top-32 -left-32 w-[28rem] h-[28rem] rounded-full bg-primary/15 blur-3xl animate-float" />
-      <div className="pointer-events-none fixed top-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-accent/15 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
+    <main className="min-h-screen bg-background">
 
       {/* Header */}
       <header className="relative pt-8 pb-6">
@@ -2020,7 +2120,7 @@ export default function Start() {
             ) : step === "intake" ? (
               <Link
                 to="/my-plans"
-                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="kj-label text-xs text-muted-foreground hover:text-signal transition-colors"
               >
                 Sign in
               </Link>
@@ -2054,7 +2154,7 @@ export default function Start() {
           </div>
         )}
 
-        {step !== "confirm" && (
+        {step !== "confirm" && step !== "intake" && (
           <div className="flex items-center gap-2 mb-8">
             {(["intake", "generating", "plan"] as const).map((s, i) => (
               <div key={s} className="flex items-center gap-2">
@@ -2066,7 +2166,7 @@ export default function Start() {
               </div>
             ))}
             <span className="ml-1 text-xs text-muted-foreground">
-              {step === "intake" ? "1 — Tell us the details" : step === "generating" ? "2 — AI is building your plan…" : "3 — Review & edit"}
+              {step === "generating" ? "2 — AI is building your plan…" : "3 — Review & edit"}
             </span>
           </div>
         )}
@@ -2086,7 +2186,7 @@ export default function Start() {
                 <Link
                   to={`/login?next=${encodeURIComponent("/start/trip?resume=1")}`}
                   onClick={() => { if (intake) savePending({ intake, email, waNumber }); }}
-                  className="mt-5 inline-block rounded-full bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform"
+                  className="mt-5 inline-block bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform"
                 >
                   Sign in to continue
                 </Link>
@@ -2098,7 +2198,7 @@ export default function Start() {
                 <button
                   onClick={buyPlans}
                   disabled={buying}
-                  className="mt-5 rounded-full bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform disabled:opacity-60"
+                  className="mt-5 bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform disabled:opacity-60"
                 >
                   {buying ? "Opening Paystack…" : `Get ${credits?.packCredits ?? 3} plans for ₦${(credits?.packPrice ?? 500).toLocaleString()}`}
                 </button>

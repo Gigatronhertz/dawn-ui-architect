@@ -26,8 +26,8 @@ export default function TripType() {
       <div className="mx-auto max-w-3xl px-6 pb-24">
         {/* Eyebrow */}
         <div className="flex items-center gap-4 mb-6">
-          <span className="h-px w-8 bg-primary" />
-          <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+          <span aria-hidden="true" className="kj-mark" />
+          <span className="kj-eyebrow">
             New trip
           </span>
         </div>
@@ -81,7 +81,7 @@ export default function TripType() {
               {["Beach camping", "Water park", "Canopy walk", "Street art tour"].map((eg) => (
                 <span
                   key={eg}
-                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-line-strong rounded-full px-2.5 py-1 text-foreground"
+                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-line-strong px-2.5 py-1 text-foreground"
                 >
                   {eg}
                 </span>
@@ -142,7 +142,7 @@ export default function TripType() {
               {["Lagos → Calabar", "Abuja → Enugu", "Ibadan → Port Harcourt"].map((eg) => (
                 <span
                   key={eg}
-                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-line-strong rounded-full px-2.5 py-1 text-foreground"
+                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-line-strong px-2.5 py-1 text-foreground"
                 >
                   {eg}
                 </span>

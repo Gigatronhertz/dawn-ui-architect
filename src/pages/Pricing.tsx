@@ -10,12 +10,10 @@ const CheckWhite = () => <CheckIcon className="w-4 h-4 shrink-0 text-parchment/6
 const Dash = () => <Minus className="w-4 h-4 shrink-0 text-muted-foreground/30 mt-0.5" />;
 
 // ── Eyebrow / section label ────────────────────────────────────────────────
-const SectionEyebrow = ({ label, light = false }: { label: string; light?: boolean }) => (
-  <div className="flex items-center gap-4 mb-5">
-    <span className={`h-px w-8 ${light ? "bg-parchment/40" : "bg-primary"}`} />
-    <span className={`text-[10px] font-jost font-light tracking-label uppercase ${light ? "text-parchment/50" : "text-muted-foreground"}`}>
-      {label}
-    </span>
+const SectionEyebrow = ({ label }: { label: string; light?: boolean }) => (
+  <div className="flex items-center gap-3 mb-5">
+    <span aria-hidden="true" className="kj-mark" />
+    <span className="kj-eyebrow">{label}</span>
   </div>
 );
 
@@ -58,7 +56,7 @@ export default function Pricing() {
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="pt-32 pb-20 bg-hero-mesh text-center px-6">
         <div className="mx-auto max-w-3xl">
-          <div className="inline-flex items-center gap-2 text-[10px] font-jost font-light tracking-label uppercase text-muted-foreground mb-6">
+          <div className="inline-flex items-center gap-3 kj-eyebrow mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
             Pricing
           </div>
@@ -84,7 +82,7 @@ export default function Pricing() {
             {/* ── Free ──────────────────────────────────────────────── */}
             <div className="rounded-3xl border-2 border-line bg-card p-8 flex flex-col ">
               <div className="mb-6">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full bg-secondary text-muted-foreground mb-4">
+                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 bg-secondary text-muted-foreground mb-4">
                   Free
                 </span>
                 <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦0</div>
@@ -115,13 +113,13 @@ export default function Pricing() {
             {/* ── AI Curated (featured) ──────────────────────────── */}
             <div className="rounded-3xl border-2 border-line bg-primary-soft p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--signal))] relative">
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                <span className="inline-block text-[10px] font-jost font-bold tracking-[0.12em] uppercase px-4 py-1.5 rounded-full bg-signal text-ink whitespace-nowrap">
+                <span className="inline-block text-[10px] font-jost font-bold tracking-[0.12em] uppercase px-4 py-1.5 bg-signal text-ink whitespace-nowrap">
                   Most popular
                 </span>
               </div>
 
               <div className="mb-6 mt-2">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full bg-primary/10 text-foreground mb-4">
+                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 bg-primary/10 text-foreground mb-4">
                   AI Curated Trips
                 </span>
 
@@ -153,7 +151,7 @@ export default function Pricing() {
             {/* ── Ready-made Trips ───────────────────────────────── */}
             <div className="rounded-3xl border-2 border-line bg-card p-8 flex flex-col ">
               <div className="mb-6">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full bg-secondary text-muted-foreground mb-4">
+                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 bg-secondary text-muted-foreground mb-4">
                   Ready-made Trips
                 </span>
                 <div className="font-marcellus text-5xl text-foreground leading-none mb-1">10%</div>
@@ -203,7 +201,7 @@ export default function Pricing() {
             {/* ── Pro Starter ───────────────────────────────────── */}
             <div className="rounded-3xl border-[3px] border-signal bg-parchment/5 p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--signal))]">
               <div className="mb-6">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 rounded-full border-2 border-signal text-parchment/80 mb-4">
+                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 border-2 border-signal text-parchment/80 mb-4">
                   Pro Starter
                 </span>
                 <div className="font-marcellus text-5xl text-parchment leading-none mb-1">₦10,000</div>
@@ -377,7 +375,7 @@ export default function Pricing() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
                   to="/start/trip"
-                  className="inline-flex items-center gap-2 bg-signal text-ink border-[3px] border-background px-7 py-3.5 font-jost font-bold text-sm tracking-[0.06em] shadow-[4px_4px_0_0_rgba(255,255,255,0.25)] hover:-translate-y-0.5 transition-transform rounded-full"
+                  className="inline-flex items-center gap-2 bg-signal text-ink border-[3px] border-background px-7 py-3.5 font-jost font-bold text-sm tracking-[0.06em] shadow-[4px_4px_0_0_rgba(255,255,255,0.25)] hover:-translate-y-0.5 transition-transform"
                 >
                   Plan a trip free
                   <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -386,7 +384,7 @@ export default function Pricing() {
                 </Link>
                 <Link
                   to="/pro"
-                  className="inline-flex items-center gap-2 border-[3px] border-white/30 text-background/80 px-7 py-3.5 font-jost font-bold text-sm tracking-[0.06em] hover:text-background hover:border-white/60 transition-colors rounded-full"
+                  className="inline-flex items-center gap-2 border-[3px] border-white/30 text-background/80 px-7 py-3.5 font-jost font-bold text-sm tracking-[0.06em] hover:text-background hover:border-white/60 transition-colors"
                 >
                   Explore Pro →
                 </Link>

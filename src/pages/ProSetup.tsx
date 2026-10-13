@@ -244,7 +244,7 @@ const ProSetup = () => {
             <span className="hidden sm:block text-xs text-muted-foreground truncate max-w-[200px]">{user.email}</span>
             <Link
               to="/pro/dashboard"
-              className="text-xs font-bold rounded-full bg-signal text-ink px-3.5 py-1.5 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
+              className="text-xs font-bold bg-signal text-ink px-3.5 py-1.5 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
             >
               Dashboard →
             </Link>
@@ -332,7 +332,7 @@ const ProSetup = () => {
             <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="font-semibold text-sm">Verification</div>
-                <span className={`text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full ${
+                <span className={`text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1 ${
                   verificationStatus === "verified" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
                   : verificationStatus === "rejected" ? "bg-destructive/10 text-destructive"
                   : "bg-signal/20 text-foreground"
@@ -372,7 +372,7 @@ const ProSetup = () => {
                 type="button"
                 onClick={saveVerificationInfo}
                 disabled={verifyBusy}
-                className="text-xs font-bold rounded-full bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
+                className="text-xs font-bold bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
               >
                 Save NIN & Instagram
               </button>
@@ -456,7 +456,7 @@ const ProSetup = () => {
                 type="button"
                 onClick={savePayoutAccount}
                 disabled={payoutBusy}
-                className="text-xs font-bold rounded-full bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
+                className="text-xs font-bold bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
               >
                 {payoutBusy ? "Saving…" : "Save payout account"}
               </button>
@@ -470,7 +470,7 @@ const ProSetup = () => {
             <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="font-semibold text-sm">Billing</div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border ${
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 border ${
                   billing.status === "active"    ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300" :
                   billing.status === "past_due"  ? "bg-signal/20 text-ink border-signal" :
                   billing.status === "suspended" ? "bg-destructive/10 text-destructive border-destructive/30" :
@@ -509,7 +509,7 @@ const ProSetup = () => {
                   type="button"
                   onClick={startBillingSetup}
                   disabled={billingBusy}
-                  className="text-xs font-bold rounded-full bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
+                  className="text-xs font-bold bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
                 >
                   {billingBusy ? "Redirecting…" : billing.status === "active" ? "Update card" : "Add card"}
                 </button>

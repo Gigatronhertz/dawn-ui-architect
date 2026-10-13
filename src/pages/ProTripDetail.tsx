@@ -92,7 +92,7 @@ function TravellerRow({ m, perPerson, onRemind, sending }: {
             {m.paid ? "Paid" : "Pending"}
           </span>
           {m.paymentPlan === "installment" && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-jost font-medium rounded-full border border-primary/30 bg-primary/10 text-foreground px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-jost font-medium border border-primary/30 bg-primary/10 text-foreground px-2 py-0.5">
               Installment{m.installmentMonths ? ` · ${m.installmentMonths}mo` : ""}
             </span>
           )}
@@ -450,7 +450,7 @@ export default function ProTripDetail() {
               alt={agency.name}
               className="h-7 w-auto max-w-[6rem] object-contain"
             />
-            <span className="text-[10px] tracking-label text-muted-foreground uppercase">
+            <span className="kj-label text-[11px] tracking-[0.24em] text-muted-foreground">
               {agency.name}
             </span>
           </div>

@@ -38,7 +38,7 @@ export const PoweredByKarije = () => {
       <div className="pointer-events-none absolute top-40 -right-20 w-96 h-96 rounded-full bg-accent/20 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
 
       <div className="relative mx-auto max-w-6xl px-6 text-center">
-        <div className="inline-flex items-center gap-2 rounded-full glass ring-hairline px-3 py-1.5 text-xs font-medium text-muted-foreground mb-8">
+        <div className="inline-flex items-center gap-2 glass ring-hairline px-3 py-1.5 text-xs font-medium text-muted-foreground mb-8">
           <KarijeLogo />
           Powered by Karije
         </div>
@@ -66,7 +66,7 @@ export const PoweredByKarije = () => {
           {row.map((c, i) => (
             <div
               key={i}
-              className="shrink-0 inline-flex items-center gap-2.5 rounded-full bg-card ring-hairline px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+              className="shrink-0 inline-flex items-center gap-2.5 bg-card ring-hairline px-5 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
             >
               <KarijeLogo />
               <span>{c.label}</span>

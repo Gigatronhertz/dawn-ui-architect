@@ -90,7 +90,7 @@ const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?
     brand:   "bg-primary",
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border border-line-strong px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>
+    <span className={`inline-flex items-center gap-1.5 border border-line-strong px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${dots[tone]}`} />
       {children}
     </span>
@@ -324,7 +324,7 @@ const MoneyTab = () => {
                   <div className="flex items-center gap-2">
                     <span className="font-medium truncate">{t.name}</span>
                     {t.outstanding > 0 && (
-                      <span className={`shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      <span className={`shrink-0 text-[10px] font-medium px-2 py-0.5 border ${
                         t.readyToDisburse
                           ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300"
                           : "bg-secondary text-muted-foreground border-border"
@@ -590,7 +590,7 @@ const ProDashboard = () => {
           )}
           <Link
             to="/pro/trips/new"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm rounded-full bg-signal text-ink px-3 sm:px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform font-bold"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm bg-signal text-ink px-3 sm:px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform font-bold"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             <span className="hidden sm:inline">New trip</span>
@@ -693,7 +693,7 @@ const ProDashboard = () => {
                 <p className="text-sm text-muted-foreground mb-4">Nothing built yet.</p>
                 <Link
                   to="/pro/trips/new"
-                  className="inline-flex items-center gap-2 rounded-full bg-signal text-ink px-4 py-2 text-xs font-bold shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
+                  className="inline-flex items-center gap-2 bg-signal text-ink px-4 py-2 text-xs font-bold shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
                 >
                   Build your first trip →
                 </Link>
@@ -743,7 +743,7 @@ const ProDashboard = () => {
               <div className="flex items-center gap-1 overflow-x-auto">
                 <button
                   onClick={() => setStatusFilter("all")}
-                  className={`shrink-0 text-xs px-3 py-1.5 rounded-full transition-colors ${
+                  className={`shrink-0 text-xs px-3 py-1.5 transition-colors ${
                     statusFilter === "all" ? "bg-foreground text-background font-medium" : "bg-secondary/60 text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -756,7 +756,7 @@ const ProDashboard = () => {
                     <button
                       key={s}
                       onClick={() => setStatusFilter(s)}
-                      className={`shrink-0 text-xs px-3 py-1.5 rounded-full transition-colors ${
+                      className={`shrink-0 text-xs px-3 py-1.5 transition-colors ${
                         statusFilter === s ? "bg-foreground text-background font-medium" : "bg-secondary/60 text-muted-foreground hover:text-foreground"
                       }`}
                     >
@@ -791,7 +791,7 @@ const ProDashboard = () => {
                 </p>
                 <Link
                   to="/pro/trips/new"
-                  className="inline-flex items-center gap-2 rounded-full bg-signal text-ink px-5 py-2.5 text-sm font-bold shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
+                  className="inline-flex items-center gap-2 bg-signal text-ink px-5 py-2.5 text-sm font-bold shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
                 >
                   Build your first trip →
                 </Link>
@@ -921,7 +921,7 @@ const ProDashboard = () => {
                       starts here rather than three clicks into the builder. */}
                   <Link
                     to={`/pro/trips/new?template=${t.id}`}
-                    className="text-[11px] rounded-full bg-signal text-ink px-3 py-1.5 font-bold shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
+                    className="text-[11px] bg-signal text-ink px-3 py-1.5 font-bold shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform"
                   >
                     Start a trip from this →
                   </Link>
@@ -971,7 +971,7 @@ const ProDashboard = () => {
             <div className="pt-4">
               <Link
                 to="/pro/setup"
-                className="inline-flex rounded-full bg-foreground text-background border-2 border-line-strong px-4 py-2 text-xs font-bold hover:-translate-y-0.5 transition-transform"
+                className="inline-flex bg-foreground text-background border-2 border-line-strong px-4 py-2 text-xs font-bold hover:-translate-y-0.5 transition-transform"
               >
                 Edit settings →
               </Link>

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { MapPin, Check } from "lucide-react";
-import { KarijeLogo } from "@/components/Nav";
+import { Nav } from "@/components/Nav";
+import { BrandIcon, CATEGORY_ICON_PATHS, CLOCK_PATH, PIN_PATH } from "@/lib/brandIcons";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
 import type { AgencyListing } from "@/lib/api";
 import { api, imageUrl } from "@/lib/api";
@@ -75,26 +76,18 @@ const CAT_COLOR: Record<string, string> = {
 
 function PageHeader({ onBack }: { onBack?: () => void }) {
   return (
-    <header className="relative pt-8 pb-4">
-      <div className="mx-auto max-w-5xl px-6 flex items-center justify-between">
-        <KarijeLogo />
-        {onBack ? (
-          <button
-            onClick={onBack}
-            className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors"
-          >
+    <>
+      <Nav />
+      {/* Clears the fixed nav bar */}
+      <div aria-hidden="true" className="h-[77px]" />
+      {onBack && (
+        <div className="mx-auto max-w-[1280px] px-5 md:px-8 pt-6">
+          <button onClick={onBack} className="kj-label text-xs text-muted-foreground hover:text-signal transition-colors">
             ← Back
           </button>
-        ) : (
-          <Link
-            to="/start"
-            className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors"
-          >
-            ← Change trip type
-          </Link>
-        )}
-      </div>
-    </header>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -425,12 +418,12 @@ function NightlifeVenueDetail({ venue, onClose }: { venue: NightlifeVenue; onClo
 
         <div className="flex items-start justify-between gap-4 border-y border-border py-4">
           <div>
-            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Location</div>
+            <div className="kj-label text-[11px] tracking-[0.24em] text-muted-foreground mb-1">Location</div>
             <div className="flex items-center gap-1.5 font-jost text-sm text-foreground"><MapPin className="w-4 h-4 shrink-0" /> {venue.location}</div>
             <MapsActions location={venue.location} />
           </div>
           <div className="text-right shrink-0">
-            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Entry</div>
+            <div className="kj-label text-[11px] tracking-[0.24em] text-muted-foreground mb-1">Entry</div>
             <div className="font-marcellus text-base text-foreground">
               {venue.feeNote || (venue.feeMax > 0 ? `₦${venue.feeMin.toLocaleString()}–₦${venue.feeMax.toLocaleString()}` : "Free entry")}
             </div>
@@ -440,8 +433,8 @@ function NightlifeVenueDetail({ venue, onClose }: { venue: NightlifeVenue; onClo
         {venue.weeklyProgram.length > 0 && (
           <div>
             <div className="flex items-center gap-4 mb-3">
-              <span className="h-px w-6 bg-primary" />
-              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+              <span aria-hidden="true" className="kj-mark" />
+              <span className="kj-eyebrow">
                 What's on
               </span>
             </div>
@@ -520,7 +513,7 @@ function FallbackVenueDetail({ venue, onClose }: { venue: VenueItem; onClose: ()
           <MapsActions location={venue.address || venue.name} />
         </div>
         <div className="border-t border-border pt-4">
-          <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Entry</div>
+          <div className="kj-label text-[11px] tracking-[0.24em] text-muted-foreground mb-1">Entry</div>
           <div className="font-marcellus text-base text-foreground">{venue.feeNote}</div>
         </div>
         {!venue.address && (
@@ -573,18 +566,18 @@ function EventDetail({ event, onClose }: { event: EventItem; onClose: () => void
 
         <div className="grid grid-cols-2 gap-4 border-y border-border py-4">
           <div>
-            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Date</div>
+            <div className="kj-label text-[11px] tracking-[0.24em] text-muted-foreground mb-1">Date</div>
             <div className="font-jost text-sm text-foreground">{dateLabel}</div>
           </div>
           <div>
-            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Location</div>
+            <div className="kj-label text-[11px] tracking-[0.24em] text-muted-foreground mb-1">Location</div>
             <div className="flex items-center gap-1.5 font-jost text-sm text-foreground"><MapPin className="w-4 h-4 shrink-0" /> {event.location}</div>
           </div>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase mb-1">Price</div>
+            <div className="kj-label text-[11px] tracking-[0.24em] text-muted-foreground mb-1">Price</div>
             <div className="font-marcellus text-lg text-foreground">
               {event.priceNote || (event.priceMax > 0 ? `₦${event.priceMin.toLocaleString()}–₦${event.priceMax.toLocaleString()}` : "Free")}
             </div>
@@ -612,44 +605,33 @@ function EventDetail({ event, onClose }: { event: EventItem; onClose: () => void
 
 function ExperienceCard({ exp, onSelect }: { exp: Experience; onSelect: () => void }) {
   return (
-    <button
-      onClick={onSelect}
-      className="group relative aspect-square overflow-hidden text-left rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
-      style={{ backgroundColor: exp.colorFallback }}
-    >
-      {/* Full-bleed photo */}
-      <img
-        src={cdnImg(exp.imageId, 600, 600)}
-        alt={exp.name}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
-        loading="lazy"
-        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-      />
-
-      {/* Gradient overlay — heavier at bottom */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
-
-      {/* Top row: category + day cap */}
-      <div className="absolute top-0 left-0 right-0 flex items-start justify-between p-3">
-        <span className={`text-[10px] font-jost font-medium tracking-wide px-2 py-1 ${CAT_COLOR[exp.category]}`}>
+    <button onClick={onSelect} className="group kj-card kj-card-hover flex flex-col text-left">
+      <div className="relative h-[220px] md:h-[250px]" style={{ backgroundColor: exp.colorFallback }}>
+        <img
+          src={cdnImg(exp.imageId, 720, 520)}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+        <span className="absolute top-4 left-4 kj-label text-xs tracking-[0.2em] bg-ink text-signal px-3 py-1.5">
           {CAT_LABEL[exp.category]}
         </span>
-        <span className="text-[10px] font-jost font-light px-2 py-1 bg-black/50 text-white/90">
-          {exp.maxDays === 1 ? "1 day" : `↑ ${exp.maxDays} days`}
+        <span className="absolute -right-1.5 -bottom-5 font-display text-2xl md:text-[28px] leading-none bg-signal text-ink px-4 pt-2.5 pb-3 -rotate-3 shadow-[4px_4px_0_hsl(var(--ink))]">
+          {formatNGN(exp.pricePerPersonPerDay)}
+          <span className="font-sans text-[13px] font-semibold normal-case"> /p·day</span>
         </span>
       </div>
-
-      {/* Bottom: name, location, price */}
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <h3 className="font-marcellus text-base leading-snug text-white">{exp.name}</h3>
-        <p className="flex items-center gap-1 text-[11px] font-jost font-light text-white/60 mt-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" /> {exp.location}</p>
-        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/15">
-          <span className="font-marcellus text-sm text-white">
-            {formatNGN(exp.pricePerPersonPerDay)}
-            <span className="text-[10px] font-jost font-light text-white/55">/p·day</span>
+      <div className="px-5 pt-9 pb-5 flex flex-col gap-2">
+        <h3 className="font-display text-2xl md:text-[28px] leading-[1.05]">{exp.name}</h3>
+        <div className="flex justify-between gap-3 text-[15px] text-muted-foreground">
+          <span className="flex items-center gap-1.5 min-w-0">
+            <span className="text-signal"><BrandIcon d={PIN_PATH} className="w-[17px] h-[17px]" /></span>
+            <span className="truncate">{exp.location}</span>
           </span>
-          <span className="text-[11px] font-jost font-light text-white/70 group-hover:text-white transition">
-            Explore →
+          <span className="flex items-center gap-1.5 font-semibold text-paper shrink-0">
+            <span className="text-signal"><BrandIcon d={CLOCK_PATH} className="w-[17px] h-[17px]" /></span>
+            {exp.maxDays === 1 ? "1 day" : `Up to ${exp.maxDays} days`}
           </span>
         </div>
       </div>
@@ -674,9 +656,9 @@ function RangeSlider({
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-2.5">
-        <span className="text-sm font-jost font-light text-foreground">{label}</span>
-        <span className="font-marcellus text-lg text-foreground">{format(value)}</span>
+      <div className="flex items-end justify-between gap-4 mb-3">
+        <span className="text-lg font-bold">{label}</span>
+        <span className="font-display text-xl leading-none bg-signal text-ink px-3 py-1.5 -rotate-2 shadow-[3px_3px_0_hsl(var(--paper))]">{format(value)}</span>
       </div>
       <input
         type="range"
@@ -684,12 +666,13 @@ function RangeSlider({
         max={max}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-[3px] bg-border rounded-full appearance-none cursor-pointer"
-        style={{ accentColor: "hsl(var(--primary))" }}
+        aria-label={label}
+        className="kj-range"
+        style={{ ["--pct" as string]: `${max > min ? ((value - min) / (max - min)) * 100 : 0}%` }}
       />
-      <div className="flex justify-between mt-1.5">
-        <span className="text-[10px] font-jost font-light text-muted-foreground">{format(min)}</span>
-        <span className="text-[10px] font-jost font-light text-muted-foreground">{format(max)}</span>
+      <div className="flex justify-between mt-1.5 text-[13px] font-bold text-muted-foreground">
+        <span>{format(min)}</span>
+        <span>{format(max)}</span>
       </div>
     </div>
   );
@@ -1206,7 +1189,7 @@ export function BuildYourOwn({
 
         {allowCustomPlaces && (
           <div className="border border-border p-3 space-y-2">
-            <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+            <div className="kj-eyebrow">
               Add your own place
             </div>
             <input
@@ -1426,7 +1409,7 @@ export function BuildYourOwn({
         <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
           <div className="flex items-center gap-3">
             <div className="min-w-0">
-              <div className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">Per person</div>
+              <div className="kj-eyebrow">Per person</div>
               <div className="font-marcellus text-lg text-foreground tabular-nums truncate">{formatNGN(perPerson)}</div>
             </div>
             <button
@@ -1661,26 +1644,27 @@ export default function Explore() {
       <main className="min-h-screen bg-background">
         <PageHeader />
 
-        <div className="mx-auto max-w-5xl px-6 pb-24">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-8 pb-24">
           {/* Section header */}
-          <div className="py-8 border-b border-border mb-8">
+          <div className="pt-12 pb-10 border-b-2 border-line mb-10">
             <div className="flex items-center gap-4 mb-5">
-              <span className="h-px w-8 bg-primary" />
-              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+              <span aria-hidden="true" className="kj-mark" />
+              <span className="kj-eyebrow">
                 Explore within a state
               </span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-              <h1 className="font-marcellus text-3xl md:text-4xl text-foreground">
-                Explore {city}
+              <h1 className="kj-title-sm">
+                Explore <span className="kj-hl px-3">{city}</span>
               </h1>
               {/* City picker */}
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-jost font-light text-muted-foreground">City:</span>
+                <span className="kj-label text-xs text-muted-foreground">City</span>
                 <select
                   value={city}
                   onChange={e => setCity(e.target.value)}
-                  className="border border-border bg-background px-3 py-1.5 text-sm font-jost font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 appearance-none pr-7 cursor-pointer"
+                  aria-label="City"
+                  className="border-2 border-signal bg-ink px-3 py-2.5 kj-label text-signal focus:outline-none appearance-none pr-8 cursor-pointer"
                   style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238E93AA' stroke-width='1.5' stroke-linecap='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center", backgroundSize: "14px" }}
                 >
                   {ALL_EXPLORE_CITIES.map(c => (
@@ -1694,17 +1678,18 @@ export default function Explore() {
             <div className="flex gap-2 mb-6 flex-wrap">
               {([
                 { id: "ours",      label: "Trips we run" },
-                { id: "nightlife", label: "🌙 Nightlife" },
-                { id: "events",    label: "🎟️ Events" },
+                { id: "nightlife", label: "Nightlife" },
+                { id: "events",    label: "Events" },
                 { id: "own",       label: "Build your own" },
               ] as const).map(({ id, label }) => (
                 <button
                   key={id}
                   onClick={() => setTab(id)}
-                  className={`px-5 py-2.5 rounded-full text-sm font-jost border-2 transition-all ${
+                  aria-pressed={tab === id}
+                  className={`font-display text-sm md:text-base px-5 py-3 border-2 transition-colors ${
                     tab === id
-                      ? " bg-signal text-ink font-bold shadow-[3px_3px_0_0_hsl(var(--paper))]"
-                      : "border-line-strong text-muted-foreground hover:border-signal hover:text-foreground"
+                      ? "bg-signal text-ink border-signal"
+                      : "border-signal text-signal hover:bg-signal/10"
                   }`}
                 >
                   {label}
@@ -1712,8 +1697,8 @@ export default function Explore() {
               ))}
             </div>
 
-            <p className={`font-jost text-sm leading-relaxed max-w-xl mb-6 ${
-              tab === "nightlife" ? "font-medium text-foreground" : "font-light text-muted-foreground"
+            <p className={`text-base md:text-lg leading-relaxed max-w-[640px] mb-7 ${
+              tab === "nightlife" ? "font-medium text-paper" : "text-muted-foreground"
             }`}>
               {tab === "ours" &&
                 "Trips we've picked, priced and will run for your squad. Pick one, choose your days and squad size, and we handle the rest."}
@@ -1728,18 +1713,19 @@ export default function Explore() {
             {/* Vibe filter — chips only appear for vibes this city actually has */}
             {tab === "ours" && availableVibes.length > 1 && (
               <div className="flex gap-2 flex-wrap">
-                {availableVibes.map(({ value, emoji, label }) => (
+                {availableVibes.map(({ value, label }) => (
                   <button
                     key={value}
                     onClick={() => setVibe(value)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border-2 text-sm font-jost transition-all ${
+                    aria-pressed={vibe === value}
+                    className={`kj-label px-4 py-2.5 border-2 flex items-center gap-2 transition-colors ${
                       vibe === value
-                        ? " bg-signal text-ink font-bold shadow-[3px_3px_0_0_hsl(var(--paper))]"
-                        : "border-line-strong text-muted-foreground font-light hover:border-signal hover:text-foreground"
+                        ? "bg-signal text-ink border-signal"
+                        : "bg-transparent text-paper border-line-strong hover:border-signal"
                     }`}
                   >
-                    <span>{emoji}</span>
-                    {label}
+                    {CATEGORY_ICON_PATHS[value] && <BrandIcon d={CATEGORY_ICON_PATHS[value]} />}
+                    {value === "all" ? "All" : label}
                   </button>
                 ))}
               </div>
@@ -1783,7 +1769,7 @@ export default function Explore() {
           )}
 
           {tab === "ours" && !loading && (shown.length > 0 || agencyTrips.length > 0) && (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-7">
               {shown.map((exp) => (
                 <ExperienceCard
                   key={exp.id}
@@ -1892,8 +1878,8 @@ export default function Explore() {
               {/* Why this one */}
               <div>
                 <div className="flex items-center gap-4 mb-4">
-                  <span className="h-px w-6 bg-primary" />
-                  <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                  <span aria-hidden="true" className="kj-mark" />
+                  <span className="kj-eyebrow">
                     Why this one
                   </span>
                 </div>
@@ -1910,8 +1896,8 @@ export default function Explore() {
               {/* What's included */}
               <div>
                 <div className="flex items-center gap-4 mb-4">
-                  <span className="h-px w-6 bg-primary" />
-                  <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                  <span aria-hidden="true" className="kj-mark" />
+                  <span className="kj-eyebrow">
                     What's included
                   </span>
                 </div>
@@ -1938,8 +1924,8 @@ export default function Explore() {
               {/* Day-by-day schedule */}
               <div>
                 <div className="flex items-center gap-4 mb-4">
-                  <span className="h-px w-6 bg-primary" />
-                  <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                  <span aria-hidden="true" className="kj-mark" />
+                  <span className="kj-eyebrow">
                     Day plan{days > 1 ? ` · ${days} days` : ""}
                   </span>
                 </div>
@@ -1993,8 +1979,8 @@ export default function Explore() {
             <div className="lg:sticky lg:top-8 self-start">
               <div className="border border-border p-6 space-y-6">
                 <div className="flex items-center gap-4">
-                  <span className="h-px w-6 bg-primary" />
-                  <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+                  <span aria-hidden="true" className="kj-mark" />
+                  <span className="kj-eyebrow">
                     Configure your trip
                   </span>
                 </div>
@@ -2131,8 +2117,8 @@ export default function Explore() {
         <div className="mx-auto max-w-2xl lg:max-w-5xl px-6 lg:px-8 pb-24">
           {/* Eyebrow */}
           <div className="flex items-center gap-4 mb-6">
-            <span className="h-px w-8 bg-primary" />
-            <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+            <span aria-hidden="true" className="kj-mark" />
+            <span className="kj-eyebrow">
               Trip ready
             </span>
           </div>
@@ -2250,8 +2236,8 @@ export default function Explore() {
           {/* Three ways to settle up — Karije is the organiser on curated trips */}
           <div className="border-t border-border pt-8 mb-10">
             <div className="flex items-center gap-4 mb-5">
-              <span className="h-px w-6 bg-primary" />
-              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+              <span aria-hidden="true" className="kj-mark" />
+              <span className="kj-eyebrow">
                 How your squad pays
               </span>
             </div>
@@ -2292,8 +2278,8 @@ export default function Explore() {
           {/* What happens next */}
           <div className="border-t border-border pt-8 mb-10">
             <div className="flex items-center gap-4 mb-5">
-              <span className="h-px w-6 bg-primary" />
-              <span className="text-[10px] font-jost font-light tracking-label text-muted-foreground uppercase">
+              <span aria-hidden="true" className="kj-mark" />
+              <span className="kj-eyebrow">
                 What happens next
               </span>
             </div>

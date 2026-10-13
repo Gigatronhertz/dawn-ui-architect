@@ -27,7 +27,7 @@
 
     --primary:              47 92% 53%;   /* #F5C518 */
     --primary-foreground:    0 0%  4%;    /* ink on yellow */
-    --primary-soft:         47 40% 12%;
+    --primary-soft:          0 0%  8%;
 
     --secondary:             0 0% 10%;    /* #1A1A1A */
     --secondary-foreground:  0 0% 100%;
@@ -88,6 +88,17 @@
   }
 }
 
+/* Print — itineraries go on white paper, so flip to ink lettering. */
+@media print {
+  :root, .dark {
+    --background: 0 0% 100%; --foreground: 0 0% 4%;
+    --card: 0 0% 100%; --card-foreground: 0 0% 4%;
+    --secondary: 0 0% 96%; --muted: 0 0% 96%; --muted-foreground: 0 0% 35%;
+    --border: 0 0% 85%; --line: 0 0% 85%; --line-strong: 0 0% 70%;
+    --paper: 0 0% 4%; --faint: 0 0% 45%;
+  }
+}
+
 @layer base {
   * { @apply border-border; }
   html { scroll-behavior: smooth; }
@@ -132,6 +143,9 @@
 
   /* Eyebrow label — 13px, 700, wide tracking, yellow. */
   .kj-eyebrow { font-family: 'Jost', system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: hsl(var(--signal)); }
+
+  /* The plane-A as a tiny yellow mark — sits before an eyebrow label. */
+  .kj-mark { display: inline-block; width: 14px; height: 20px; flex: none; background: hsl(var(--signal)); clip-path: polygon(50% 0, 100% 100%, 50% 78%, 0 100%); }
 
   /* Small caps label used on buttons, chips and table heads. */
   .kj-label { font-family: 'Jost', system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
@@ -233,6 +247,28 @@
   @media (max-width: 767px) {
     body.has-bottom-nav { padding-bottom: 4.5rem; }
   }
+}
+
+/* Brand slider — thick track, yellow fill to --pct, square yellow thumb
+   with a white offset. Set style={{ "--pct": "40%" }} on the input. */
+@layer components {
+  .kj-range { -webkit-appearance: none; appearance: none; width: 100%; height: 34px; background: transparent; cursor: pointer; }
+  .kj-range:focus { outline: none; }
+  .kj-range::-webkit-slider-runnable-track {
+    height: 10px;
+    background: linear-gradient(90deg, hsl(var(--signal)) 0 var(--pct, 0%), #1A1A1A var(--pct, 0%) 100%);
+  }
+  .kj-range::-moz-range-track { height: 10px; background: #1A1A1A; }
+  .kj-range::-moz-range-progress { height: 10px; background: hsl(var(--signal)); }
+  .kj-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 30px; height: 34px; margin-top: -12px;
+    background: hsl(var(--signal)); border: 2px solid hsl(var(--ink)); box-shadow: 3px 3px 0 hsl(var(--paper));
+  }
+  .kj-range::-moz-range-thumb {
+    width: 26px; height: 30px; border-radius: 0;
+    background: hsl(var(--signal)); border: 2px solid hsl(var(--ink)); box-shadow: 3px 3px 0 hsl(var(--paper));
+  }
+  .kj-range:focus-visible::-webkit-slider-thumb { outline: 2px solid hsl(var(--paper)); outline-offset: 2px; }
 }
 
 @layer utilities {
