@@ -65,12 +65,12 @@
     --gradient-hero:
       radial-gradient(60% 50% at 85% 15%, hsl(47 92% 53% / 0.10) 0%, transparent 65%),
       hsl(0 0% 4%);
-    --gradient-primary: linear-gradient(135deg, hsl(47 92% 56%), hsl(43 92% 48%));
+    --gradient-primary: linear-gradient(hsl(47 92% 53%), hsl(47 92% 53%)); /* flat — the brand has no gradients */
     --gradient-text:    linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(0 0% 74%) 100%);
 
     --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.40), 0 4px 16px hsl(0 0% 0% / 0.36);
     --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.44), 0 16px 40px hsl(0 0% 0% / 0.50);
-    --shadow-glow: 0 16px 48px -8px hsl(47 92% 53% / 0.30);
+    --shadow-glow: 4px 4px 0 hsl(0 0% 100%);  /* the template's white offset */
 
     --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-pop:    cubic-bezier(0.2, 0.9, 0.2, 1.2);

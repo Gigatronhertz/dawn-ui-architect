@@ -319,7 +319,7 @@ function PaymentSection({
           </button>
           <button
             onClick={() => setPayState("form")}
-            className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-2.5 text-sm font-medium shadow-glow hover:opacity-90 transition"
+            className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-2.5 text-sm shadow-glow hover:opacity-90 transition font-display uppercase tracking-[0.04em]"
           >
             Try payment again
           </button>
@@ -420,7 +420,7 @@ function PaymentSection({
           </div>
           <button
             onClick={() => handlePayNow(false)}
-            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
           >
             Pay this month — {fmtNGN(nextInstallmentAmount ?? 0)} →
           </button>
@@ -462,7 +462,7 @@ function PaymentSection({
             <button
               onClick={handleSubscribe}
               disabled={subscribing || belowMinAmount}
-              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition disabled:opacity-40"
+              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition disabled:opacity-40 font-display uppercase tracking-[0.04em]"
             >
               {subscribing ? "Starting…" : "Start this plan →"}
             </button>
@@ -480,7 +480,7 @@ function PaymentSection({
         <div className="space-y-2">
           <button
             onClick={() => handlePayNow(false)}
-            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
           >
             Pay in full — {fmtNGN(perPerson)} →
           </button>
@@ -506,7 +506,7 @@ function PaymentSection({
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
             <button type="submit"
-              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
             >
               Pay {fmtNGN(payInFull ? (remaining ?? perPerson) : (nextInstallmentAmount ?? perPerson))} →
             </button>
@@ -713,7 +713,7 @@ function JoinSection({
 
           <div className="flex gap-2">
             <button onClick={() => handleJoin(false)}
-              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
             >
               I'm in! 🎉
             </button>
@@ -741,7 +741,7 @@ function JoinSection({
         </div>
       ) : (
         <button onClick={() => setJoinState("name-input")}
-          className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-4 text-base font-medium shadow-glow hover:opacity-90 active:scale-[0.98] transition"
+          className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-4 text-base shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
         >
           I'm in! 🎉
         </button>

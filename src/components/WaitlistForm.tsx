@@ -59,7 +59,7 @@ export const WaitlistForm = ({
         <button
           type="submit"
           disabled={status === "loading" || !phone.trim()}
-          className="rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100 whitespace-nowrap"
+          className="rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100 whitespace-nowrap font-display uppercase tracking-[0.04em]"
         >
           {status === "loading" ? "Saving…" : buttonLabel}
         </button>

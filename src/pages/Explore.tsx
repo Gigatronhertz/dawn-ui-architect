@@ -1050,8 +1050,9 @@ export function BuildYourOwn({
         ))}
 
         {/* Total + save */}
+        {extraFields && <div className="kj-card p-5 space-y-3 text-sm">{extraFields}</div>}
+
         <div className="bg-signal text-ink p-6 space-y-4 kj-cut-panel">
-          {extraFields}
           <div className="flex items-end justify-between">
             <div>
               <div className="text-xs font-bold tracking-[0.24em] uppercase">Per person</div>

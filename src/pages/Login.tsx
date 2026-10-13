@@ -11,7 +11,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, session } from "@/lib/api";
-import { KarijeLogo } from "@/components/Nav";
+import { Nav } from "@/components/Nav";
 
 type AuthMode    = "signin" | "signup" | "magic";
 type SubmitState = "idle" | "busy" | "done" | "err";
@@ -125,12 +125,8 @@ export default function Login() {
     const isSignup = authMode === "signup";
     return (
       <main className="min-h-screen bg-background flex flex-col">
-        <header className="pt-8 pb-6">
-          <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
-            <KarijeLogo />
-            <Link to="/" className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
-          </div>
-        </header>
+        <Nav />
+        <div aria-hidden="true" className="h-[109px]" />
         <div className="mx-auto max-w-sm w-full px-6 pb-24 mt-8 flex-1 lg:flex lg:flex-col lg:justify-center lg:mt-0">
           <div className="border border-border p-8 text-center">
             <div className="text-4xl mb-4">{isSignup ? "📬" : "✉️"}</div>
@@ -158,12 +154,8 @@ export default function Login() {
   // ── Main login page ───────────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-background flex flex-col">
-      <header className="pt-8 pb-6">
-        <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
-          <KarijeLogo />
-          <Link to="/" className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
-        </div>
-      </header>
+      <Nav />
+      <div aria-hidden="true" className="h-[109px]" />
 
       <div className="mx-auto max-w-sm w-full px-6 pb-24 flex-1 lg:flex lg:flex-col lg:justify-center">
         {/* Eyebrow */}

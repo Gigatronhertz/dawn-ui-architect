@@ -67,12 +67,12 @@ export const BotPreview = () => (
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.from === "user" ? "justify-end" : ""}`}>
                 <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-line leading-snug ${
-                  m.from === "user"
-                    ? "bg-whatsapp/15 text-foreground rounded-br-md"
-                    : m.highlight
-                    ? "bg-gradient-primary text-primary-foreground rounded-bl-md shadow-glow"
-                    : "bg-secondary text-foreground rounded-bl-md"
-                }`}>
+ m.from === "user"
+ ? "bg-whatsapp/15 text-foreground rounded-br-md"
+ : m.highlight
+ ? "bg-gradient-primary text-primary-foreground rounded-bl-md shadow-glow"
+ : "bg-secondary text-foreground rounded-bl-md"
+ } font-display uppercase tracking-[0.04em]`}>
                   {m.who && <div className="text-[11px] font-semibold text-google-blue mb-0.5">{m.who}</div>}
                   {!m.who && m.from === "bot" && (
                     <div className="text-[11px] font-semibold text-foreground mb-0.5 flex items-center gap-1">🤖 Karije Bot</div>

@@ -71,12 +71,13 @@ export default function EventPage() {
           </Link>
 
           {/* Cover image */}
-          <div className="rounded-3xl overflow-hidden border-2 border-line h-64 md:h-80 relative mb-8" style={{ backgroundColor: event.colorFallback || "#1A1A1A" }}>
+          <div className="overflow-hidden h-56 md:h-80 relative mb-8 kj-cut" style={{ backgroundColor: event.colorFallback || "#1A1A1A" }}>
             {event.imageId && (
               <img
                 src={tripImageUrl(event.imageId, 900, 500)}
                 alt={event.name}
                 className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
               />
             )}
             {free && (

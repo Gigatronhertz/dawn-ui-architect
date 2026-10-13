@@ -167,16 +167,16 @@ const ProDemo = () => {
         eyebrow="What you get"
         title={<>Sell more trips. <span className="text-muted-foreground">Chase nobody.</span></>}
       >
-        <div className="grid sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-2 gap-3 md:gap-5">
           {[
             { t: "Pay monthly", d: "Travellers pay in 2–12 monthly instalments. More people say yes." },
             { t: "Listed on Karije", d: "Your trips go live on Karije Explore, under your agency name." },
             { t: "WhatsApp reminders", d: "Automatic nudges on WhatsApp and email. You never type one." },
             { t: "Chase-ups, handled", d: "Late payer? We escalate: nudge, overdue, final notice." },
           ].map((f) => (
-            <div key={f.t} className={`${cardClsSm} p-6`}>
-              <div className="font-marcellus text-2xl text-foreground">{f.t}</div>
-              <div className="mt-2 text-sm font-jost text-muted-foreground leading-relaxed">{f.d}</div>
+            <div key={f.t} className={`${cardClsSm} p-4 md:p-6`}>
+              <div className="font-marcellus text-lg md:text-2xl text-foreground leading-tight">{f.t}</div>
+              <div className="mt-1.5 md:mt-2 text-xs md:text-sm font-jost text-muted-foreground leading-relaxed">{f.d}</div>
             </div>
           ))}
         </div>

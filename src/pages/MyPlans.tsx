@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, type UserPlan, type SquadMember } from "@/lib/api";
-import { KarijeLogo } from "@/components/Nav";
+import { Nav } from "@/components/Nav";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const fmtNGN = (n: number) =>
@@ -148,12 +148,8 @@ export default function MyPlans() {
       const isSignup = authMode === "signup";
       return (
         <main className="min-h-screen bg-background">
-          <header className="pt-8 pb-6">
-            <div className="mx-auto max-w-3xl lg:max-w-5xl px-6 flex items-center justify-between">
-              <KarijeLogo />
-              <Link to="/" className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
-            </div>
-          </header>
+          <Nav />
+          <div aria-hidden="true" className="h-[109px]" />
           <div className="mx-auto max-w-sm px-6 pb-24">
             <div className="border border-border p-8 text-center mt-8">
               <div className="text-4xl mb-4">{isSignup ? "📬" : "✉️"}</div>
@@ -180,12 +176,8 @@ export default function MyPlans() {
 
     return (
       <main className="min-h-screen bg-background">
-        <header className="pt-8 pb-6">
-          <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
-            <KarijeLogo />
-            <Link to="/" className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
-          </div>
-        </header>
+        <Nav />
+        <div aria-hidden="true" className="h-[109px]" />
 
         <div className="mx-auto max-w-sm px-6 pb-24">
           {/* Eyebrow */}
@@ -396,24 +388,8 @@ export default function MyPlans() {
 
   return (
     <main className="min-h-screen bg-hero-mesh">
-      <header className="pt-8 pb-6">
-        <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
-          <KarijeLogo />
-
-          <div className="flex items-center gap-3">
-            {user.picture && (
-              <img src={user.picture} alt={user.name || "You"} className="w-8 h-8 rounded-full ring-hairline" referrerPolicy="no-referrer" />
-            )}
-            <span className="hidden sm:block text-xs text-muted-foreground truncate max-w-[160px]">{user.email}</span>
-            <button
-              onClick={() => { signOut(); navigate("/"); }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+      <Nav />
+      <div aria-hidden="true" className="h-[109px]" />
 
       <div className="mx-auto max-w-3xl lg:max-w-5xl px-6 pb-24 space-y-6">
         {/* Header */}
@@ -468,7 +444,7 @@ export default function MyPlans() {
         )}
 
         {!fetching && plans.length > 0 && (
-          <ol ref={cardsReveal.ref} className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <ol ref={cardsReveal.ref} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
             {plans.map((p, i) => {
               const s = STATUS_LABEL[p.status] ?? { label: p.status, color: "text-muted-foreground bg-secondary" };
               const perPerson = p.plan?.cost_breakdown?.per_person;
@@ -478,12 +454,12 @@ export default function MyPlans() {
               const revealCls = cardsReveal.visible ? "animate-rise" : "opacity-0";
               const revealStyle = { animationDelay: `${i * 0.06}s` };
               return (
-                <li key={p.tripId} className={isActive ? "col-span-2 lg:col-span-3" : ""}>
+                <li key={p.tripId} className={isActive ? "col-span-2 md:col-span-3 lg:col-span-4" : ""}>
                   {p.status === 'plan_review' ? (
                     <Link
                       to={`/start/trip?job=${p.tripId}`}
                       style={revealStyle}
-                      className={`${revealCls} group flex flex-col aspect-[4/5] rounded-2xl border-2 border-line p-4 hover:-translate-y-1 transition-transform overflow-hidden`}
+                      className={`${revealCls} group flex flex-col min-h-[190px] kj-card kj-card-hover p-4 md:p-5 hover:-translate-y-1 transition-transform overflow-hidden`}
                     >
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </Link>
@@ -549,12 +525,12 @@ export default function MyPlans() {
                     <Link
                       to={`/plan/${p.tripId}`}
                       style={revealStyle}
-                      className={`${revealCls} group flex flex-col aspect-[4/5] rounded-2xl border-2 border-line p-4 hover:-translate-y-1 transition-transform overflow-hidden`}
+                      className={`${revealCls} group flex flex-col min-h-[190px] kj-card kj-card-hover p-4 md:p-5 hover:-translate-y-1 transition-transform overflow-hidden`}
                     >
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </Link>
                   ) : (
-                    <div style={revealStyle} className={`${revealCls} flex flex-col aspect-[4/5] rounded-2xl border-2 border-line p-4 overflow-hidden`}>
+                    <div style={revealStyle} className={`${revealCls} flex flex-col min-h-[190px] kj-card kj-card-hover p-4 md:p-5 overflow-hidden`}>
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </div>
                   )}

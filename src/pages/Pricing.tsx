@@ -6,7 +6,6 @@ import { Footer } from "@/components/CTA";
 
 // ── Check / X icons — one shared shape (lucide), just recolored per surface ──
 const Check = () => <CheckIcon className="w-4 h-4 shrink-0 text-foreground mt-0.5" strokeWidth={2.5} />;
-const CheckWhite = () => <CheckIcon className="w-4 h-4 shrink-0 text-parchment/60 mt-0.5" strokeWidth={2.5} />;
 const Dash = () => <Minus className="w-4 h-4 shrink-0 text-muted-foreground/30 mt-0.5" />;
 
 // ── Eyebrow / section label ────────────────────────────────────────────────
@@ -40,8 +39,8 @@ const FAQ_ITEMS = [
     a: "All payments go through Paystack — Nigerian debit/credit cards, bank transfer, USSD, and Opay/PalmPay wallets. Pro subscriptions can be set to auto-renew or you can pay manually each month.",
   },
   {
-    q: "Do you offer a free trial for Pro?",
-    a: "Yes — new Pro accounts get 14 days free on the Starter plan. No card required to start. If you love it, your first billing runs at the end of the trial period.",
+    q: "Can I try Pro before paying?",
+    a: "You can set up your agency and build trips before you pay anything. Billing — ₦10,000/month — starts when you add your card, and you can cancel anytime.",
   },
 ];
 
@@ -70,17 +69,17 @@ export default function Pricing() {
       </section>
 
       {/* ── For Travelers ─────────────────────────────────────────────────── */}
-      <section className="py-20 px-6 border-t border-border">
+      <section className="py-14 md:py-20 px-5 md:px-6 border-t border-border">
         <div className="mx-auto max-w-6xl">
           <SectionEyebrow label="For Travelers" />
-          <h2 className="font-marcellus text-3xl md:text-4xl text-foreground mb-14 max-w-lg leading-snug">
+          <h2 className="font-marcellus text-3xl md:text-4xl text-foreground mb-8 md:mb-14 max-w-lg leading-snug">
             Plan trips that actually happen.
           </h2>
 
           <div className="grid md:grid-cols-3 gap-6">
 
             {/* ── Free ──────────────────────────────────────────────── */}
-            <div className="rounded-3xl border-2 border-line bg-card p-8 flex flex-col ">
+            <div className="rounded-3xl border-2 border-line bg-card p-6 md:p-8 flex flex-col ">
               <div className="mb-6">
                 <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 bg-secondary text-muted-foreground mb-4">
                   Free
@@ -111,7 +110,7 @@ export default function Pricing() {
             </div>
 
             {/* ── AI Curated (featured) ──────────────────────────── */}
-            <div className="rounded-3xl border-2 border-line bg-primary-soft p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--signal))] relative">
+            <div className="rounded-3xl border-2 border-line bg-primary-soft p-6 md:p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--signal))] relative">
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                 <span className="inline-block text-[10px] font-jost font-bold tracking-[0.12em] uppercase px-4 py-1.5 bg-signal text-ink whitespace-nowrap">
                   Most popular
@@ -149,7 +148,7 @@ export default function Pricing() {
             </div>
 
             {/* ── Ready-made Trips ───────────────────────────────── */}
-            <div className="rounded-3xl border-2 border-line bg-card p-8 flex flex-col ">
+            <div className="rounded-3xl border-2 border-line bg-card p-6 md:p-8 flex flex-col ">
               <div className="mb-6">
                 <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 bg-secondary text-muted-foreground mb-4">
                   Ready-made Trips
@@ -184,7 +183,7 @@ export default function Pricing() {
       </section>
 
       {/* ── For Agencies (dark) ────────────────────────────────────────────── */}
-      <section className="py-20 px-6 bg-forest">
+      <section className="py-14 md:py-20 px-5 md:px-6 bg-forest">
         <div className="mx-auto max-w-6xl">
           <SectionEyebrow label="For Travel Agencies" light />
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-14">
@@ -198,69 +197,42 @@ export default function Pricing() {
 
           <div className="max-w-lg mx-auto">
 
-            {/* ── Pro Starter ───────────────────────────────────── */}
-            <div className="rounded-3xl border-[3px] border-signal bg-parchment/5 p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--signal))]">
-              <div className="mb-6">
-                <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 border-2 border-signal text-parchment/80 mb-4">
-                  Pro Starter
-                </span>
-                <div className="font-marcellus text-5xl text-parchment leading-none mb-1">₦10,000</div>
-                <div className="text-sm font-jost font-light text-parchment/50">/ month · up to 5 active trips</div>
+            {/* ── Karije Pro ───────────────────────────────────── */}
+            <div className="bg-signal text-ink p-6 md:p-8 flex flex-col gap-5 kj-cut-panel">
+              <div>
+                <div className="kj-label text-xs tracking-[0.24em]">Karije Pro</div>
+                <div className="font-display text-5xl leading-none mt-1">₦10,000<span className="font-sans text-base font-semibold normal-case"> /month</span></div>
+                <p className="text-sm font-semibold mt-2">Unlimited trips. No cut of what you collect.</p>
               </div>
-
-              <p className="text-sm font-jost font-light text-parchment/60 leading-relaxed mb-7">
-                Perfect for solo agents managing a few trips at a time. Your clients never see Karije.
-              </p>
-
-              <ul className="space-y-3 text-sm font-jost font-light text-parchment/80 flex-1 mb-8">
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>White-label WhatsApp bot</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Agency dashboard &amp; custom branding</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>No cut of what you collect — you keep 100%</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Squad Paystack payment collection</span></li>
-                <li className="flex items-start gap-2.5"><CheckWhite /><span>Up to 5 active trips at once</span></li>
-                <li className="flex items-start gap-2.5">
-                  <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 text-parchment/20 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="8" x2="12" y2="8"/></svg>
-                  <span className="text-parchment/30">Trip analytics</span>
-                </li>
+              <ul className="space-y-2.5 text-sm font-medium">
+                {[
+                  "Your brand on every trip page",
+                  "Pay-monthly plans for your travellers",
+                  "Listed on Karije Explore",
+                  "WhatsApp + email reminders and chase-ups",
+                  "Bookkeeping built in — keep 100% of what you collect",
+                  "Free AI trip plans",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2.5"><span className="font-bold">✓</span><span>{f}</span></li>
+                ))}
               </ul>
-
-              <Link
-                to="/pro/login?mode=signup"
-                className="w-full text-center py-3 rounded-full bg-signal text-ink font-jost font-bold text-sm tracking-[0.06em] shadow-[4px_4px_0_0_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-transform"
-              >
-                Create your account →
-              </Link>
-              <p className="text-center text-[11px] font-jost font-light text-parchment/30 mt-3">
-                14 days free · no card required
-              </p>
+              <Link to="/pro/login?mode=signup" className="kj-btn-ink text-base py-3.5">Create your account →</Link>
+              <p className="text-center text-xs font-semibold">Set up free — billing starts when you add your card.</p>
             </div>
 
           </div>
 
           {/* Proof line */}
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
-            <span className="text-[11px] font-jost font-light text-parchment/30 flex items-center gap-2">
-              <span className="w-1 h-1 rounded-full bg-parchment/20 inline-block" />
-              Cancel anytime
-            </span>
-            <span className="text-[11px] font-jost font-light text-parchment/30 flex items-center gap-2">
-              <span className="w-1 h-1 rounded-full bg-parchment/20 inline-block" />
-              Paystack · NGN billing
-            </span>
-            <span className="text-[11px] font-jost font-light text-parchment/30 flex items-center gap-2">
-              <span className="w-1 h-1 rounded-full bg-parchment/20 inline-block" />
-              Your clients never see Karije
-            </span>
-            <span className="text-[11px] font-jost font-light text-parchment/30 flex items-center gap-2">
-              <span className="w-1 h-1 rounded-full bg-parchment/20 inline-block" />
-              14-day free trial
-            </span>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 kj-label text-[11px] text-muted-foreground">
+            <span>Cancel anytime</span>
+            <span>Paystack · NGN billing</span>
+            <span>Your clients see your brand</span>
           </div>
         </div>
       </section>
 
       {/* ── Comparison table ──────────────────────────────────────────────── */}
-      <section className="py-20 px-6 border-t border-border">
+      <section className="py-14 md:py-20 px-5 md:px-6 border-t border-border">
         <div className="mx-auto max-w-4xl">
           <SectionEyebrow label="What's included" />
           <h2 className="font-marcellus text-3xl text-foreground mb-12 leading-snug">
@@ -317,7 +289,7 @@ export default function Pricing() {
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
-      <section className="py-20 px-6 bg-secondary/30 border-t border-border">
+      <section className="py-14 md:py-20 px-5 md:px-6 bg-secondary/30 border-t border-border">
         <div className="mx-auto max-w-3xl">
           <SectionEyebrow label="Questions" />
           <h2 className="font-marcellus text-3xl text-foreground mb-10 leading-snug">
@@ -358,7 +330,7 @@ export default function Pricing() {
       </section>
 
       {/* ── Bottom CTA ────────────────────────────────────────────────────── */}
-      <section className="py-20 px-6 border-t border-border">
+      <section className="py-14 md:py-20 px-5 md:px-6 border-t border-border">
         <div className="mx-auto max-w-5xl">
           <div className="relative overflow-hidden rounded-[2.5rem] border-[3px] border-signal bg-foreground text-background p-12 md:p-20 text-center shadow-[8px_8px_0_0_hsl(var(--signal))]">
             <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/25 blur-3xl pointer-events-none" />

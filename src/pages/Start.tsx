@@ -1406,7 +1406,7 @@ function PlanStep({
             </div>
             <button
               onClick={() => setLibOpen(true)}
-              className="flex-1 py-3 rounded-lg bg-gradient-primary text-primary-foreground text-sm font-medium shadow-glow active:scale-[0.98] transition"
+              className="flex-1 py-3 rounded-lg bg-gradient-primary text-primary-foreground text-sm shadow-glow active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
             >
               ＋ Add a place
             </button>
@@ -1530,7 +1530,7 @@ function PlanStep({
         </div>
         <button
           onClick={() => onConfirm(finalPlan, selectedDate || undefined)}
-          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm font-medium shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform whitespace-nowrap w-full sm:w-auto justify-center"
+          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform whitespace-nowrap w-full sm:w-auto justify-center font-display uppercase tracking-[0.04em]"
         >
           Confirm & share with squad
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

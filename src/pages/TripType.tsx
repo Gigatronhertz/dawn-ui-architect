@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { KarijeLogo } from "@/components/Nav";
+import { Nav } from "@/components/Nav";
 
 export default function TripType() {
   useEffect(() => {
@@ -10,18 +10,8 @@ export default function TripType() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="relative pt-8 pb-6">
-        <div className="mx-auto max-w-3xl px-6 flex items-center justify-between">
-          <KarijeLogo />
-          <Link
-            to="/"
-            className="text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors"
-          >
-            ← Back home
-          </Link>
-        </div>
-      </header>
+      <Nav />
+      <div aria-hidden="true" className="h-[109px]" />
 
       <div className="mx-auto max-w-3xl px-6 pb-24">
         {/* Eyebrow */}
