@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Check as CheckIcon, Minus } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/CTA";
+import { PREMIUM_LOCKED, PremiumTag } from "@/lib/premium";
 
 // ── Check / X icons — one shared shape (lucide), just recolored per surface ──
 const Check = () => <CheckIcon className="w-4 h-4 shrink-0 text-foreground mt-0.5" strokeWidth={2.5} />;
@@ -63,7 +64,9 @@ export default function Pricing() {
             Pay for what you actually use.
           </h1>
           <p className="text-muted-foreground font-jost font-light text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            Your first AI trip plan is free, then ₦500 for 3. Book a curated Karije experience. Or power your travel agency on Pro — all priced for Nigeria.
+            {PREMIUM_LOCKED
+              ? "Everything's free while we're in beta. Premium features — AI planning, pay-monthly and bookkeeping — are on the way."
+              : "Your first AI trip plan is free, then ₦500 for 3. Book a curated Karije experience. Or power your travel agency on Pro — all priced for Nigeria."}
           </p>
         </div>
       </section>
@@ -122,6 +125,7 @@ export default function Pricing() {
                   AI Curated Trips
                 </span>
 
+                {PREMIUM_LOCKED && <PremiumTag className="mb-3" />}
                 <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦500</div>
                 <div className="text-sm font-jost font-light text-muted-foreground">for 3 AI plans · one-off, no subscription</div>
               </div>
@@ -200,7 +204,7 @@ export default function Pricing() {
             {/* ── Karije Pro ───────────────────────────────────── */}
             <div className="bg-signal text-ink p-6 md:p-8 flex flex-col gap-5 kj-cut-panel">
               <div>
-                <div className="kj-label text-xs tracking-[0.24em]">Karije Pro</div>
+                <div className="kj-label text-xs tracking-[0.24em] flex items-center gap-2">Karije Pro {PREMIUM_LOCKED && <PremiumTag className="!bg-ink !text-signal" />}</div>
                 <div className="font-display text-5xl leading-none mt-1">₦10,000<span className="font-sans text-base font-semibold normal-case"> /month</span></div>
                 <p className="text-sm font-semibold mt-2">Unlimited trips. No cut of what you collect.</p>
               </div>
@@ -217,7 +221,9 @@ export default function Pricing() {
                 ))}
               </ul>
               <Link to="/pro/login?mode=signup" className="kj-btn-ink text-base py-3.5">Create your account →</Link>
-              <p className="text-center text-xs font-semibold">Set up free — billing starts when you add your card.</p>
+              <p className="text-center text-xs font-semibold">
+                {PREMIUM_LOCKED ? "Free while we're in beta — no card needed." : "Set up free — billing starts when you add your card."}
+              </p>
             </div>
 
           </div>

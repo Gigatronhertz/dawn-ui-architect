@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/CTA";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { PREMIUM_LOCKED, PremiumTag } from "@/lib/premium";
 
 // Status/paid-state colors stay functional (green/amber) rather than brand
 // tokens — this dashboard mock needs "paid vs pending" to read at a glance,
@@ -169,13 +170,14 @@ const ProDemo = () => {
       >
         <div className="grid grid-cols-2 gap-3 md:gap-5">
           {[
-            { t: "Pay monthly", d: "Travellers pay in 2–12 monthly instalments. More people say yes." },
+            { t: "Pay monthly", d: "Travellers pay in 2–12 monthly instalments. More people say yes.", premium: true },
             { t: "Listed on Karije", d: "Your trips go live on Karije Explore, under your agency name." },
             { t: "WhatsApp reminders", d: "Automatic nudges on WhatsApp and email. You never type one." },
             { t: "Chase-ups, handled", d: "Late payer? We escalate: nudge, overdue, final notice." },
           ].map((f) => (
             <div key={f.t} className={`${cardClsSm} p-4 md:p-6`}>
               <div className="font-marcellus text-lg md:text-2xl text-foreground leading-tight">{f.t}</div>
+              {"premium" in f && f.premium && PREMIUM_LOCKED && <PremiumTag className="mt-2" />}
               <div className="mt-1.5 md:mt-2 text-xs md:text-sm font-jost text-muted-foreground leading-relaxed">{f.d}</div>
             </div>
           ))}
@@ -184,7 +186,10 @@ const ProDemo = () => {
         {/* Bookkeeping */}
         <div className="mt-8 rounded-3xl bg-ink text-paper border-2 border-line shadow-[6px_6px_0_0_hsl(var(--signal))] p-7 md:p-10 grid md:grid-cols-[1fr,1fr] gap-8 items-center">
           <div>
-            <div className="text-[10px] font-jost uppercase tracking-wider text-signal mb-3">Bookkeeping, built in</div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[10px] font-jost uppercase tracking-wider text-signal">Bookkeeping, built in</span>
+              {PREMIUM_LOCKED && <PremiumTag />}
+            </div>
             <h3 className="font-marcellus text-3xl md:text-4xl leading-tight">Your books, done.</h3>
             <p className="mt-3 font-jost text-sm opacity-80 max-w-sm">Every naira in, every naira out. No spreadsheets. No guesswork.</p>
           </div>
@@ -215,14 +220,16 @@ const ProDemo = () => {
                 "Unlimited trips",
                 "Monthly payment plans",
                 "Listed on Karije Explore",
-                "WhatsApp reminders + chase-ups",
+                "Reminders + chase-ups",
                 "Bookkeeping built in",
               ].map((f) => (
-                <li key={f} className="flex gap-2"><span className="text-signal">✓</span>{f}</li>
+                <li key={f} className="flex gap-2 items-center flex-wrap"><span className="text-signal">✓</span>{f}
+                  {PREMIUM_LOCKED && (f === "Monthly payment plans" || f === "Bookkeeping built in") && <PremiumTag />}
+                </li>
               ))}
             </ul>
             <Link to="/pro/login?mode=signup" className="mt-7 block text-center rounded-full bg-signal text-ink border-2 border-paper py-3 text-sm font-jost font-bold hover:-translate-y-0.5 transition-transform">Start Karije Pro</Link>
-            <div className="mt-3 text-center text-xs font-jost opacity-60">Cancel anytime.</div>
+            <div className="mt-3 text-center text-xs font-jost opacity-60">{PREMIUM_LOCKED ? "Free while we're in beta — no card needed." : "Cancel anytime."}</div>
           </div>
         </div>
       </Section>

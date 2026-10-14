@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { api, session, type TripTemplate } from "@/lib/api";
 import ProShell from "@/components/ProShell";
 import { BuildYourOwn } from "@/pages/Explore";
+import { Premium } from "@/lib/premium";
 
 /**
  * Where an agency authors a trip it owns.
@@ -316,22 +317,24 @@ export default function ProTripBuilder() {
               </span>
             </label>
 
-            <label className="flex items-start gap-3 pb-1 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={installmentsEnabled}
-                onChange={(e) => setInstallmentsEnabled(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-primary shrink-0"
-              />
-              <span className="text-xs font-jost font-light leading-relaxed">
-                <span className="text-foreground font-medium">Allow monthly payments</span>
-                <span className="text-muted-foreground">
-                  {" "}— travellers can subscribe and pay their share off over several months
-                  instead of all at once. Karije still holds every payment until the trip is
-                  fully paid up.
+            <Premium>
+              <label className="flex items-start gap-3 pb-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={installmentsEnabled}
+                  onChange={(e) => setInstallmentsEnabled(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-primary shrink-0"
+                />
+                <span className="text-xs font-jost font-light leading-relaxed">
+                  <span className="text-foreground font-medium">Allow monthly payments</span>
+                  <span className="text-muted-foreground">
+                    {" "}— travellers can subscribe and pay their share off over several months
+                    instead of all at once. Karije still holds every payment until the trip is
+                    fully paid up.
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+            </Premium>
             {installmentsEnabled && (
               <div className="grid grid-cols-3 gap-3 pl-7 -mt-1 pb-1">
                 <div>

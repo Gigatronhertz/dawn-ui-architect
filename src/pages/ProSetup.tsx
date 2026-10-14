@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, type ProBilling } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
+import { Premium, PREMIUM_LOCKED } from "@/lib/premium";
 
 
 // ── Colour swatches ───────────────────────────────────────────────────────────
@@ -465,71 +466,74 @@ const ProSetup = () => {
             </div>
           )}
 
-          {/* Billing — Karije's own ₦10k/month Pro subscription */}
+          {/* Billing — Karije's own ₦10k/month Pro subscription. Premium: shown
+              dimmed and locked while Karije is free in beta. */}
           {hasAgent && billing && (
+            <Premium>
             <div className="rounded-2xl border-2 border-line bg-card p-6 space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="font-semibold text-sm">Billing</div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 border ${
-                  billing.status === "active"    ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300" :
-                  billing.status === "past_due"  ? "bg-signal/20 text-ink border-signal" :
-                  billing.status === "suspended" ? "bg-destructive/10 text-destructive border-destructive/30" :
-                  "bg-secondary text-muted-foreground border-border"
-                }`}>
-                  {billing.status === "exempt" ? "Free pilot" : billing.status.replace("_", " ")}
-                </span>
-              </div>
-
-              {billing.status === "exempt" && (
-                <p className="text-xs text-muted-foreground -mt-1">
-                  You're on Karije's free pilot — nothing is being charged. We'll let you know before that ever changes.
-                </p>
-              )}
-              {billing.status === "active" && (
-                <p className="text-xs text-muted-foreground -mt-1">
-                  ₦{billing.amount.toLocaleString()}/month, unlimited trips.
-                  {billing.nextChargeAt && ` Next charge ${new Date(billing.nextChargeAt * 1000).toLocaleDateString()}.`}
-                </p>
-              )}
-              {billing.status === "past_due" && (
-                <p className="text-xs text-muted-foreground -mt-1">
-                  We couldn't charge your card this month — we'll keep retrying for a bit.
-                  Your trips are still fully live in the meantime; update your card to stop the retries.
-                </p>
-              )}
-              {billing.status === "suspended" && (
-                <p className="text-xs text-destructive -mt-1">
-                  Billing lapsed after a few failed attempts — your trips have come off the public catalog.
-                  Share links, payments and payouts are completely unaffected. Add a card to get relisted right away.
-                </p>
-              )}
-
-              {billing.status !== "exempt" && (
-                <button
-                  type="button"
-                  onClick={startBillingSetup}
-                  disabled={billingBusy}
-                  className="text-xs font-bold bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
-                >
-                  {billingBusy ? "Redirecting…" : billing.status === "active" ? "Update card" : "Add card"}
-                </button>
-              )}
-              {billingErr && <p className="text-xs text-destructive">{billingErr}</p>}
-
-              {billing.charges.length > 0 && (
-                <div className="pt-3 border-t border-border space-y-1.5">
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Charge history</div>
-                  {billing.charges.slice(0, 5).map((c) => (
-                    <div key={c.reference} className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">{new Date(c.createdAt * 1000).toLocaleDateString()}</span>
-                      <span className={c.status === "success" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}>
-                        ₦{c.amount.toLocaleString()} · {c.status}
-                      </span>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-semibold text-sm">Billing</div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 border ${
+                    billing.status === "active"    ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300" :
+                    billing.status === "past_due"  ? "bg-signal/20 text-ink border-signal" :
+                    billing.status === "suspended" ? "bg-destructive/10 text-destructive border-destructive/30" :
+                    "bg-secondary text-muted-foreground border-border"
+                  }`}>
+                    {billing.status === "exempt" ? "Free pilot" : billing.status.replace("_", " ")}
+                  </span>
                 </div>
-              )}
-            </div>
+  
+                {billing.status === "exempt" && (
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    You're on Karije's free pilot — nothing is being charged. We'll let you know before that ever changes.
+                  </p>
+                )}
+                {billing.status === "active" && (
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    ₦{billing.amount.toLocaleString()}/month, unlimited trips.
+                    {billing.nextChargeAt && ` Next charge ${new Date(billing.nextChargeAt * 1000).toLocaleDateString()}.`}
+                  </p>
+                )}
+                {billing.status === "past_due" && (
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    We couldn't charge your card this month — we'll keep retrying for a bit.
+                    Your trips are still fully live in the meantime; update your card to stop the retries.
+                  </p>
+                )}
+                {billing.status === "suspended" && (
+                  <p className="text-xs text-destructive -mt-1">
+                    Billing lapsed after a few failed attempts — your trips have come off the public catalog.
+                    Share links, payments and payouts are completely unaffected. Add a card to get relisted right away.
+                  </p>
+                )}
+  
+                {billing.status !== "exempt" && (
+                  <button
+                    type="button"
+                    onClick={startBillingSetup}
+                    disabled={billingBusy}
+                    className="text-xs font-bold bg-signal text-ink px-4 py-2 shadow-[2px_2px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_hsl(var(--paper))] transition-transform disabled:opacity-40 disabled:hover:translate-y-0"
+                  >
+                    {billingBusy ? "Redirecting…" : billing.status === "active" ? "Update card" : "Add card"}
+                  </button>
+                )}
+                {billingErr && <p className="text-xs text-destructive">{billingErr}</p>}
+  
+                {billing.charges.length > 0 && (
+                  <div className="pt-3 border-t border-border space-y-1.5">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Charge history</div>
+                    {billing.charges.slice(0, 5).map((c) => (
+                      <div key={c.reference} className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">{new Date(c.createdAt * 1000).toLocaleDateString()}</span>
+                        <span className={c.status === "success" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}>
+                          ₦{c.amount.toLocaleString()} · {c.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Premium>
           )}
 
           {/* Logo */}
@@ -631,7 +635,9 @@ const ProSetup = () => {
                   Unlimited trips · keep 100% of what you collect
                 </div>
               </div>
-              <div className="font-display text-2xl font-semibold tabular-nums">₦10,000<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
+              {PREMIUM_LOCKED
+                ? <div className="font-display text-2xl tabular-nums">Free<span className="text-sm font-sans normal-case text-muted-foreground"> in beta</span></div>
+                : <div className="font-display text-2xl font-semibold tabular-nums">₦10,000<span className="text-sm font-normal text-muted-foreground">/mo</span></div>}
             </div>
           </div>
 
@@ -646,7 +652,7 @@ const ProSetup = () => {
           </button>
 
           <p className="text-center text-xs text-muted-foreground pb-8">
-            No card charged today. Billed at the start of your first month.
+            {PREMIUM_LOCKED ? "Free while we're in beta — no card needed." : "No card charged today. Billed at the start of your first month."}
           </p>
         </form>
       </div>

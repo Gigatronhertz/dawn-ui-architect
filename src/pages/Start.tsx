@@ -5,6 +5,7 @@ import { api, ApiError, session, imageUrl, type AiCreditStatus, type TripPlan, t
 import { useAuth } from "@/contexts/AuthContext";
 import { KarijeLogo, KarijeMark } from "@/components/Nav";
 import { GIGM_CITIES, FLIGHT_CITIES } from "@/lib/cities";
+import { Premium, PREMIUM_LOCKED } from "@/lib/premium";
 
 /* ─── constants ────────────────────────────────────────────────────────────── */
 const VIBES = ["Chill & scenic", "Nightlife", "Foodie tour", "Adventure", "Cultural"];
@@ -1191,13 +1192,15 @@ function PlanStep({
               Your days are empty — open one and add places from {intake.destination}'s venue list
               below. Or let us sketch a first draft you can rip apart.
             </p>
-            <button
-              onClick={handleDraft}
-              disabled={drafting}
-              className="text-sm font-medium px-5 py-2.5 rounded-lg bg-foreground text-background hover:opacity-90 disabled:opacity-50 transition"
-            >
-              {drafting ? "Sketching…" : "✨ Give me a starting point"}
-            </button>
+            <Premium className="inline-block">
+              <button
+                onClick={handleDraft}
+                disabled={drafting}
+                className="text-sm font-medium px-5 py-2.5 rounded-lg bg-foreground text-background hover:opacity-90 disabled:opacity-50 transition"
+              >
+                {drafting ? "Sketching…" : "✨ Give me a starting point"}
+              </button>
+            </Premium>
             {draftErr && <p className="text-xs text-destructive">{draftErr}</p>}
           </div>
         )}
@@ -1301,13 +1304,15 @@ function PlanStep({
 
           {/* Ideas — additive only, never replaces what they picked */}
           <div className="border-t border-border pt-3">
-            <button
-              onClick={getIdeas}
-              disabled={thinking}
-              className="w-full text-[11px] font-semibold py-2 rounded-lg bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground transition disabled:opacity-50"
-            >
-              {thinking ? "Thinking…" : totalActivities === 0 ? "✨ What should we do?" : "✨ What else goes with this?"}
-            </button>
+            <Premium>
+              <button
+                onClick={getIdeas}
+                disabled={thinking}
+                className="w-full text-[11px] font-semibold py-2 rounded-lg bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground transition disabled:opacity-50"
+              >
+                {thinking ? "Thinking…" : totalActivities === 0 ? "✨ What should we do?" : "✨ What else goes with this?"}
+              </button>
+            </Premium>
 
             {ideas.length > 0 && (
               <ul className="mt-2 space-y-1.5">
@@ -2136,7 +2141,7 @@ export default function Start() {
           <div className="mb-5 rounded-2xl bg-primary/8 ring-1 ring-primary/15 px-5 py-3 flex items-center justify-between gap-4">
             <p className="text-sm text-foreground/80">
               Signed in as <span className="font-medium text-foreground">{user.email}</span>
-              {credits && (
+              {credits && !PREMIUM_LOCKED && (
                 <span className="text-muted-foreground">
                   {" · "}
                   {credits.isPro ? "Pro · unlimited plans"
@@ -2195,13 +2200,15 @@ export default function Start() {
               <>
                 <h2 className="font-marcellus text-2xl text-foreground">You're out of plans.</h2>
                 <p className="mt-2 text-sm text-muted-foreground">Get {credits?.packCredits ?? 3} more AI trip plans for ₦{(credits?.packPrice ?? 500).toLocaleString()}. One-off payment, no subscription.</p>
-                <button
-                  onClick={buyPlans}
-                  disabled={buying}
-                  className="mt-5 bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform disabled:opacity-60"
-                >
-                  {buying ? "Opening Paystack…" : `Get ${credits?.packCredits ?? 3} plans for ₦${(credits?.packPrice ?? 500).toLocaleString()}`}
-                </button>
+                <Premium className="inline-block">
+                  <button
+                    onClick={buyPlans}
+                    disabled={buying}
+                    className="mt-5 bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform disabled:opacity-60"
+                  >
+                    {buying ? "Opening Paystack…" : `Get ${credits?.packCredits ?? 3} plans for ₦${(credits?.packPrice ?? 500).toLocaleString()}`}
+                  </button>
+                </Premium>
               </>
             )}
           </div>

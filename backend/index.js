@@ -76,7 +76,9 @@ db.ready.then(() => {
     if (process.env.REMINDERS !== 'off') {
       require('./services/reminders').start();
       require('./services/installmentReminders').start();
-      require('./services/subscriptionBilling').start();
+      // Pro billing is a premium feature — no agency is charged while it's locked.
+      if (!require('./services/premium').LOCKED) require('./services/subscriptionBilling').start();
+      else console.log('[subscriptionBilling] premium locked — not charging anyone');
     }
   });
 });

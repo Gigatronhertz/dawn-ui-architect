@@ -11,6 +11,7 @@ import { tripImageUrl } from "@/lib/tripImage";
 import { toVenue, VENUE_VIBES, VIBE_EMOJI, type VenueItem } from "@/lib/attractions";
 import type { NightlifeVenue, EventItem } from "@/lib/experienceTypes";
 import { TRIP_CATEGORIES } from "@/lib/categories";
+import { Premium } from "@/lib/premium";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ExploreStep = "browse" | "detail" | "share";
@@ -1202,13 +1203,15 @@ export function BuildYourOwn({
         {/* Ideas — additive suggestions, never a replacement for their picks */}
         {venues.length > 0 && (
           <div className="border-t border-border pt-3">
-            <button
-              onClick={getIdeas}
-              disabled={thinking}
-              className="w-full kj-btn-outline py-2.5 disabled:opacity-50"
-            >
-              {thinking ? "Thinking…" : totalStops === 0 ? "✨ What should we do?" : "✨ What else goes with this?"}
-            </button>
+            <Premium>
+              <button
+                onClick={getIdeas}
+                disabled={thinking}
+                className="w-full kj-btn-outline py-2.5 disabled:opacity-50"
+              >
+                {thinking ? "Thinking…" : totalStops === 0 ? "✨ What should we do?" : "✨ What else goes with this?"}
+              </button>
+            </Premium>
 
             {ideas.length > 0 && (
               <ul className="mt-2 space-y-1.5">

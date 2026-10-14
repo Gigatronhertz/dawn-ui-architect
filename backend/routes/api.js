@@ -9,6 +9,7 @@ const GIGM = require('../services/gigm');
 const { getLines } = require('../utils/logger');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
 const aiCredits              = require('../services/aiCredits');
+const premium                = require('../services/premium');
 const { sendPlanReadyEmail, sendPlanConfirmedEmail } = require('../services/email');
 const { sendPlanReadyPush  } = require('../services/webPush');
 const whisper360              = require('../services/whisper360');
@@ -58,7 +59,12 @@ router.post('/plan', optionalAuth, async (req, res) => {
   if (!req.user && !cleanNotifyEmail) {
     return res.status(400).json({ error: 'Enter your email so we can send you the plan.' });
   }
-  const payer = await aiCredits.decide({ user: req.user, email: cleanNotifyEmail });
+  // While premium is locked, plans are free and unlimited — no credit check,
+  // nothing recorded. (A plan here prices the journey; the AI drafting is a
+  // separate, premium step.)
+  const payer = premium.LOCKED
+    ? { kind: 'beta' }
+    : await aiCredits.decide({ user: req.user, email: cleanNotifyEmail });
   if (payer.denied) {
     return res.status(402).json({
       code: payer.denied,
@@ -71,7 +77,7 @@ router.post('/plan', optionalAuth, async (req, res) => {
   }
 
   const tripId = uuid();
-  const reserved = await db.aiCredits.recordUsage({
+  const reserved = premium.LOCKED ? true : await db.aiCredits.recordUsage({
     tripId,
     userId: req.user?.uid || null,
     email:  (req.user?.email || cleanNotifyEmail || '').toLowerCase() || null,
@@ -118,7 +124,7 @@ router.post('/plan', optionalAuth, async (req, res) => {
       // The squad is the planner. We fetch what things cost either way, but the
       // days come back empty unless they explicitly asked for a draft — the
       // itinerary is theirs to write, not ours to hand over.
-      let { plan, scraped } = req.body.draftItinerary === true
+      let { plan, scraped } = (req.body.draftItinerary === true && !premium.LOCKED)
         ? await generateTripPlan(withMode)
         : await buildSkeletonPlan(withMode);
 
@@ -205,7 +211,7 @@ router.get('/ai-credits', optionalAuth, async (req, res) => {
 });
 
 // POST /api/ai-credits/checkout — start a ₦500 / 3-plan pack purchase.
-router.post('/ai-credits/checkout', requireAuth, async (req, res) => {
+router.post('/ai-credits/checkout', premium.premiumOnly, requireAuth, async (req, res) => {
   if (!paystack.available()) return res.status(503).json({ error: 'Payments are not available right now.' });
   if (!req.user.email) return res.status(400).json({ error: 'Your account needs an email address to pay.' });
   try {
@@ -668,7 +674,7 @@ router.get('/public/plan/:tripId', async (req, res) => {
     groupMin:         plan.curated?.groupMin ?? null,
     // Whether — and how — this specific trip can be paid off monthly. Only
     // ever true on an agency trip; the trip's own creator opts in.
-    installmentsEnabled:  !!trip.installments_enabled,
+    installmentsEnabled:  !!trip.installments_enabled && !premium.LOCKED,
     installmentMinMonths: Number(trip.installment_min_months) || 2,
     installmentMaxMonths: Number(trip.installment_max_months) || 12,
     installmentMinAmount: trip.installment_min_amount ? Number(trip.installment_min_amount) : null,
@@ -716,7 +722,7 @@ router.post('/public/plan/:tripId/join', async (req, res) => {
 // isn't part of this. First installment is due immediately; the pay routes
 // (below, and GET /pay/:id in webhook.js) already know to charge the next
 // slice instead of the full amount once a participant is on this plan.
-router.post('/public/plan/:tripId/subscribe', async (req, res) => {
+router.post('/public/plan/:tripId/subscribe', premium.premiumOnly, async (req, res) => {
   const trip = await db.trips.get(req.params.tripId);
   if (!trip) return res.status(404).json({ error: 'Plan not found.' });
   if (!trip.agent_id || !trip.installments_enabled) {
@@ -1208,7 +1214,7 @@ router.post(
 // actually records a payout; this is "where's my money", not a control panel.
 
 // GET /api/pro/money — every one of this agency's trips holding money.
-router.get('/pro/money', requireAuth, requireAgent, async (req, res) => {
+router.get('/pro/money', premium.premiumOnly, requireAuth, requireAgent, async (req, res) => {
   try {
     const trips = await ledger.outstandingTrips({ agentId: req.agent.id });
     const totals = trips.reduce((t, x) => ({
@@ -1225,7 +1231,7 @@ router.get('/pro/money', requireAuth, requireAgent, async (req, res) => {
 
 // GET /api/pro/money/:tripId — one trip's position + payout history, but
 // only if it's actually this agency's trip.
-router.get('/pro/money/:tripId', requireAuth, requireAgent, async (req, res) => {
+router.get('/pro/money/:tripId', premium.premiumOnly, requireAuth, requireAgent, async (req, res) => {
   try {
     const trip = await agentTripOr403(req, res);
     if (!trip) return;
@@ -1272,7 +1278,7 @@ const SUBSCRIPTION_FEE_NGN = Number(process.env.PRO_SUBSCRIPTION_FEE || 10000);
 // completes to start being billed. Card-only: the recurring charge the
 // monthly cron makes (services/subscriptionBilling.js) only works reliably
 // off a saved card, not bank transfer/USSD.
-router.post('/pro/billing/setup', requireAuth, requireAgent, async (req, res) => {
+router.post('/pro/billing/setup', premium.premiumOnly, requireAuth, requireAgent, async (req, res) => {
   if (!paystack.available()) {
     return res.status(503).json({ error: 'Payments are not enabled yet.' });
   }
@@ -1492,7 +1498,7 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
         req.agent.payout_bank_code    || null,
         req.agent.payout_account_no   || null,
         req.agent.payout_account_name || null,
-        installmentsEnabled ? 1 : 0,
+        installmentsEnabled && !premium.LOCKED ? 1 : 0,
         minMonths, maxMonths, minAmount,
         tripId,
       ]
@@ -1585,7 +1591,7 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
         perPerson,
         coverImageId: trip.cover_image_id || null,
         coverUrl:     trip.cover_image_id ? `/api/trip-image/${trip.cover_image_id}` : null,
-        installmentsEnabled:   !!trip.installments_enabled,
+        installmentsEnabled:   !!trip.installments_enabled && !premium.LOCKED,
         installmentMinMonths:  Number(trip.installment_min_months) || 2,
         installmentMaxMonths:  Number(trip.installment_max_months) || 12,
         installmentMinAmount:  trip.installment_min_amount ? Number(trip.installment_min_amount) : null,
@@ -1611,7 +1617,7 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
 // The traveller list as a file, for reconciliation and for anything the
 // dashboard does not do. Every field is quoted and embedded quotes doubled, so
 // a traveller called O'Brien, or "Ada, Jr." does not shift the columns.
-router.get('/pro/trips/:tripId/travellers.csv', requireAuth, requireAgent, async (req, res) => {
+router.get('/pro/trips/:tripId/travellers.csv', premium.premiumOnly, requireAuth, requireAgent, async (req, res) => {
   try {
     const trip = await agentTripOr403(req, res);
     if (!trip) return;
@@ -1672,7 +1678,7 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     if (typeof selectedDate === 'string')          { sets.push('selected_date=?'); args.push(selectedDate.slice(0, 40)); }
     if (typeof coverImageId === 'string')          { sets.push('cover_image_id=?'); args.push(coverImageId || null); }
 
-    if (installmentsEnabled !== undefined) { sets.push('installments_enabled=?'); args.push(installmentsEnabled ? 1 : 0); }
+    if (installmentsEnabled !== undefined) { sets.push('installments_enabled=?'); args.push(installmentsEnabled && !premium.LOCKED ? 1 : 0); }
     if (installmentMinMonths !== undefined || installmentMaxMonths !== undefined) {
       // Both move together so min never ends up above max — one can't be
       // posted without the other implicitly carrying the current value.
@@ -1969,7 +1975,7 @@ router.get('/listings', async (req, res) => {
          JOIN agents a ON a.id = t.agent_id
         WHERE t.listed = 1 AND t.status = 'custom'
           AND a.verification_status = 'verified'
-          AND a.subscription_status != 'suspended'
+          ${premium.LOCKED ? '' : "AND a.subscription_status != 'suspended'"}
           AND (? = '' OR t.destination = ?)
         ORDER BY t.created_at DESC`,
       [city, city]
@@ -2014,7 +2020,7 @@ router.get('/agencies', async (req, res) => {
          FROM agents a
          JOIN trips t ON t.agent_id = a.id AND t.listed = 1 AND t.status = 'custom'
         WHERE a.verification_status = 'verified'
-          AND a.subscription_status != 'suspended'
+          ${premium.LOCKED ? '' : "AND a.subscription_status != 'suspended'"}
         GROUP BY a.id
         ORDER BY trip_count DESC, a.agency_name ASC`
     );
@@ -2108,7 +2114,7 @@ router.get('/events/:id', async (req, res) => {
 // "Give me a starting point." Fills the day schedule from the AI, leaving the
 // squad's transport and hotel choices untouched — they only asked for ideas
 // about what to do, not to have their bookings overwritten.
-router.post('/plan/:tripId/draft-days', async (req, res) => {
+router.post('/plan/:tripId/draft-days', premium.premiumOnly, async (req, res) => {
   if (!process.env.GROQ_API_KEY) {
     return res.status(503).json({ error: 'Suggestions are not available right now.' });
   }
@@ -2138,7 +2144,7 @@ router.post('/plan/:tripId/draft-days', async (req, res) => {
 // suggestion can never carry an invented name or a made-up entry fee. With no
 // API key — or if the call fails — it falls back to unpicked venues in the
 // requested vibe, which is less clever but never wrong.
-router.post('/suggest-venues', async (req, res) => {
+router.post('/suggest-venues', premium.premiumOnly, async (req, res) => {
   try {
     const { city = 'Lagos', added = [], vibe = null } = req.body || {};
     const { cityToState } = require('../services/attractions');

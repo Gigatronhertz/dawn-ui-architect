@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { LayoutGrid, Compass, CheckCircle2, LayoutTemplate, Settings, Menu, LogOut, ArrowLeft, Wallet } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, session, type AgentProfile } from "@/lib/api";
+import { PREMIUM_LOCKED, PremiumTag } from "@/lib/premium";
 
 /**
  * The shell every signed-in Karije Pro page sits inside — sidebar, top bar,
@@ -87,6 +88,23 @@ function SidebarContent({
             id === "trips"     ? tripCount :
             id === "completed" ? completedCount :
             id === "templates" ? templateCount : undefined;
+          // Bookkeeping is premium — shown, dimmed and tagged, not clickable.
+          if (id === "money" && PREMIUM_LOCKED) {
+            return (
+              <div
+                key={id}
+                aria-disabled="true"
+                title="Premium — coming soon"
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground cursor-not-allowed"
+              >
+                <span className="flex items-center gap-3 flex-1 opacity-40">
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="flex-1 text-left">{label}</span>
+                </span>
+                <PremiumTag />
+              </div>
+            );
+          }
           return (
             <Link
               key={id}

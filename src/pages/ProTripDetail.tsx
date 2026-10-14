@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, session, type AgencySquadMember, type AgencyTripDetail } from "@/lib/api";
 import ProShell from "@/components/ProShell";
+import { Premium } from "@/lib/premium";
 
 /**
  * One agency trip: who joined, who paid, and who still needs chasing.
@@ -497,17 +498,19 @@ export default function ProTripDetail() {
                 Let travellers subscribe and pay their share off over several months instead of all at once.
               </p>
             </div>
-            <button
-              onClick={toggleInstallments}
-              disabled={instBusy}
-              className={`shrink-0 text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap disabled:opacity-40 ${
-                trip.installmentsEnabled
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border text-muted-foreground hover:border-signal hover:text-foreground"
-              }`}
-            >
-              {trip.installmentsEnabled ? "On" : "Off"}
-            </button>
+            <Premium className="shrink-0">
+              <button
+                onClick={toggleInstallments}
+                disabled={instBusy}
+                className={`shrink-0 text-xs font-medium rounded-lg px-3 py-2 border transition-colors whitespace-nowrap disabled:opacity-40 ${
+                  trip.installmentsEnabled
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border text-muted-foreground hover:border-signal hover:text-foreground"
+                }`}
+              >
+                {trip.installmentsEnabled ? "On" : "Off"}
+              </button>
+            </Premium>
           </div>
           {trip.installmentsEnabled && (
             <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-3 items-end">
@@ -610,13 +613,15 @@ export default function ProTripDetail() {
               ))}
             </div>
             <div className="flex-1" />
-            <button
-              onClick={exportCsv}
-              disabled={exporting || squad.length === 0}
-              className="text-xs rounded-lg border border-border px-3 py-2 hover:border-signal transition-colors disabled:opacity-40 whitespace-nowrap"
-            >
-              {exporting ? "Preparing…" : "↓ Export CSV"}
-            </button>
+            <Premium>
+              <button
+                onClick={exportCsv}
+                disabled={exporting || squad.length === 0}
+                className="text-xs rounded-lg border border-border px-3 py-2 hover:border-signal transition-colors disabled:opacity-40 whitespace-nowrap"
+              >
+                {exporting ? "Preparing…" : "↓ Export CSV"}
+              </button>
+            </Premium>
             {pending.length > 0 && (
               <button
                 onClick={() => remind()}

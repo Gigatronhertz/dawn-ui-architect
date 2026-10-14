@@ -9,12 +9,14 @@ import { TripCategories } from "@/components/TripCategories";
 import { ExploreCityTeaser } from "@/components/ExploreCityTeaser";
 import { UpcomingEvents } from "@/components/UpcomingEvents";
 import { BrandIcon } from "@/lib/brandIcons";
+import { PREMIUM_LOCKED, PremiumTag } from "@/lib/premium";
 
 // ── Trust — the yellow band ─────────────────────────────────────────────────
 const TRUST = [
   {
     icon: "M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4 M8 14h3",
     title: "Pay monthly",
+    premium: true,
     desc: "On trips that support it, split your share into monthly payments instead of one lump sum.",
   },
   {
@@ -40,7 +42,10 @@ const TrustBand = () => (
               <BrandIcon d={t.icon} className="w-7 h-7 md:w-8 md:h-8" />
               <span className="font-display text-base">0{i + 1}</span>
             </div>
-            <h3 className="font-display text-lg md:text-xl">{t.title}</h3>
+            <h3 className="font-display text-lg md:text-xl flex items-center gap-2 flex-wrap">
+              {t.title}
+              {"premium" in t && t.premium && PREMIUM_LOCKED && <PremiumTag className="!bg-ink !text-signal" />}
+            </h3>
             <p className="text-sm md:text-base leading-relaxed font-medium">{t.desc}</p>
           </div>
         ))}
@@ -53,7 +58,7 @@ const TrustBand = () => (
 const STEPS = [
   {
     title: "Plan it in minutes",
-    desc: "Tell us where the squad's headed. AI builds the itinerary with live hotel and transport prices — or pick a trip we already run.",
+    desc: "Tell us where the squad's headed. We pull live hotel and transport prices, you build the days — or pick a trip we already run.",
   },
   {
     title: "Send one link",
@@ -147,11 +152,11 @@ const AgenciesShowcase = () => {
 };
 
 // ── Agencies / Pro ────────────────────────────────────────────────────────────
-const PRO_POINTS = [
-  "Your brand on every trip page",
-  "Pay-monthly plans for your travellers",
-  "WhatsApp reminders and chase-ups, automatic",
-  "Bookkeeping built in — keep 100% of what you collect",
+const PRO_POINTS: { text: string; premium?: boolean }[] = [
+  { text: "Your brand on every trip page" },
+  { text: "Pay-monthly plans for your travellers", premium: true },
+  { text: "Reminders and chase-ups, automatic" },
+  { text: "Bookkeeping built in — keep 100% of what you collect", premium: true },
 ];
 
 const AgenciesSection = () => (
@@ -162,7 +167,10 @@ const AgenciesSection = () => (
         <h2 className="kj-title-sm">Running a<br /><span className="kj-hl px-4">travel business?</span></h2>
         <ul className="flex flex-col gap-3 mt-2">
           {PRO_POINTS.map((p) => (
-            <li key={p} className="flex gap-3 text-base md:text-lg"><span className="text-signal font-bold">✓</span>{p}</li>
+            <li key={p.text} className="flex gap-3 items-center flex-wrap text-base md:text-lg">
+              <span className="text-signal font-bold">✓</span>{p.text}
+              {p.premium && PREMIUM_LOCKED && <PremiumTag />}
+            </li>
           ))}
         </ul>
       </div>
@@ -172,7 +180,9 @@ const AgenciesSection = () => (
           <div className="kj-label text-xs tracking-[0.24em]">Karije Pro</div>
           <div className="font-display text-4xl md:text-5xl leading-none mt-1">₦10,000<span className="font-sans text-base font-semibold normal-case"> /month</span></div>
         </div>
-        <p className="text-base font-medium">Unlimited trips. No cut of what you collect. Live in 10 minutes.</p>
+        <p className="text-base font-medium">
+          {PREMIUM_LOCKED ? "Free while we're in beta — no card needed. Live in 10 minutes." : "Unlimited trips. No cut of what you collect. Live in 10 minutes."}
+        </p>
         <Link to="/pro/login?mode=signup" className="kj-btn-ink text-base py-3.5">Create your agency account →</Link>
         <Link to="/pro" className="kj-label text-xs underline underline-offset-4">See what Pro does</Link>
       </div>

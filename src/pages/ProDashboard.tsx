@@ -4,6 +4,7 @@ import { Wallet, Clock, Eye, Users, CreditCard, Trophy, RefreshCw, Plus, Check }
 import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, type DashboardData, type TripRow, type TripTemplate, type ProMoneyTrip, type ProPayout } from "@/lib/api";
 import ProShell, { IconOverview, IconTrips, IconCompleted, IconTemplates, IconMoney, type ProNav } from "@/components/ProShell";
+import { PREMIUM_LOCKED, PremiumTag } from "@/lib/premium";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
@@ -267,6 +268,17 @@ const TripRowItem = ({ trip, variant, pending, onToggleComplete }: {
  * admin-only action (backend enforces it too); this tab is the agency's
  * transparency window onto the same ledger, not a control panel.
  */
+/** Shown in place of the Money tab while bookkeeping is a locked premium feature. */
+const MoneyLocked = () => (
+  <div className="kj-card p-8 md:p-10 text-center max-w-xl mx-auto">
+    <PremiumTag />
+    <h2 className="font-display text-2xl md:text-3xl mt-4">Bookkeeping is coming</h2>
+    <p className="text-sm md:text-base text-muted-foreground mt-3 leading-relaxed">
+      Every naira in, every payout out, tracked and exportable — no spreadsheet. It's a Premium feature, and it's on the way.
+    </p>
+  </div>
+);
+
 const MoneyTab = () => {
   const { getIdToken } = useAuth();
   const [trips, setTrips] = useState<ProMoneyTrip[]>([]);
@@ -874,7 +886,7 @@ const ProDashboard = () => {
         </div>
       )}
 
-      {activeTab === "money" && <MoneyTab />}
+      {activeTab === "money" && (PREMIUM_LOCKED ? <MoneyLocked /> : <MoneyTab />)}
 
       {/* Templates tab */}
       {activeTab === "templates" && (
