@@ -1045,6 +1045,20 @@ async function upsertUser({ id, email, name, photo_url }) {
   });
 }
 
+/**
+ * The account id already registered to this email, if any. One person is one
+ * account whichever way they sign in — users.email is unique, so a second
+ * sign-in method has to reuse this id rather than mint its own.
+ */
+async function getUserIdByEmail(email) {
+  if (!email) return null;
+  const res = await client.execute({
+    sql: 'SELECT id FROM users WHERE lower(email) = lower(?) LIMIT 1',
+    args: [email],
+  });
+  return res.rows[0]?.id ?? null;
+}
+
 async function getUser(id) {
   const res = await client.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [id] });
   return res.rows[0] ?? null;
@@ -1060,6 +1074,20 @@ async function getUserPlans(userId) {
     args: [userId],
   });
   return res.rows;
+}
+
+/**
+ * Attach trips planned before signing in. The AI planner takes an email
+ * instead of an account, so those trips carry notify_email and no owner;
+ * every sign-in method verifies the email, so it is safe to hand them over.
+ */
+async function adoptUserPlansByEmail(userId, email) {
+  if (!userId || !email) return;
+  await client.execute({
+    sql: `UPDATE trips SET user_id = ? WHERE user_id IS NULL AND agent_id IS NULL
+            AND notify_email IS NOT NULL AND lower(notify_email) = lower(?)`,
+    args: [userId, email],
+  });
 }
 
 // ── Participant helpers ────────────────────────────────────────────────────
@@ -1678,7 +1706,7 @@ module.exports = {
   nightlifeVenues: { list: getNightlifeVenues, upsert: upsertNightlifeVenue, remove: deleteNightlifeVenue },
   events:          { list: getEvents, get: getEventById, upsert: upsertEvent, remove: deleteEvent },
   tripImages:   { insert: insertTripImage, get: getTripImage, remove: deleteTripImage },
-  users:        { upsert: upsertUser, get: getUser, plans: getUserPlans },
+  users:        { upsert: upsertUser, get: getUser, plans: getUserPlans, idForEmail: getUserIdByEmail, adoptPlans: adoptUserPlansByEmail },
   participants: {
     insert: insertParticipant,
     get: getParticipants,

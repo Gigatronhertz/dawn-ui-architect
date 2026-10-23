@@ -99,7 +99,9 @@ router.get('/google/callback', async (req, res) => {
     const { sub: googleId, email, name, picture } = infoRes.data;
 
     // 3. Upsert user in Turso — ID format matches Firebase UID shape (opaque string)
-    const uid = `g_${googleId}`;
+    // Reuse the account this email already has — users.email is unique, so a
+    // fresh g_ id for an existing email failed the insert and the sign-in.
+    const uid = (await db.users.idForEmail(email)) || `g_${googleId}`;
     await db.users.upsert({ id: uid, email, name: name || null, photo_url: picture || null });
 
     // 4. Link trip if one was provided (server-side — no client call needed)

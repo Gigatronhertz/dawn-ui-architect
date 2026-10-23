@@ -1705,7 +1705,8 @@ router.post('/auth/link-plan', requireAuth, async (req, res) => {
 // GET /api/auth/plans
 // Returns all saved plans belonging to the authenticated user, newest first.
 router.get('/auth/plans', requireAuth, async (req, res) => {
-  const { uid } = req.user;
+  const { uid, email } = req.user;
+  await db.users.adoptPlans(uid, email);
   const rows = await db.users.plans(uid);
   const plans = rows.map(t => ({
     tripId:           t.id,
@@ -1768,6 +1769,7 @@ router.get('/auth/plans/:tripId/squad', requireAuth, async (req, res) => {
 // Verifies the token and returns the user's profile + plan count.
 router.get('/auth/me', requireAuth, async (req, res) => {
   const { uid, email, name, picture } = req.user;
+  await db.users.adoptPlans(uid, email);
   const user = await db.users.get(uid);
   const rows = await db.users.plans(uid);
   return res.json({

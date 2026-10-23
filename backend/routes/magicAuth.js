@@ -88,7 +88,10 @@ router.get('/verify', async (req, res) => {
   await db.raw(`UPDATE magic_links SET used = 1 WHERE token = ?`, [token]);
 
   const { email, trip_id: tripId, redirect } = row;
-  const uid = `ml_${crypto.createHash('sha256').update(email).digest('hex').slice(0, 24)}`;
+  // Reuse the account this email already has (signed up with a password or
+  // Google); only a first-time email gets a magic-link id of its own.
+  const uid = (await db.users.idForEmail(email))
+    || `ml_${crypto.createHash('sha256').update(email).digest('hex').slice(0, 24)}`;
 
   // Upsert user
   await db.users.upsert({ id: uid, email, name: null, photo_url: null });
