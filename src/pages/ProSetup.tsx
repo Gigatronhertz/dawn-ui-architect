@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { api, imageUrl, type ProBilling } from "@/lib/api";
 import { KarijeLogo } from "@/components/Nav";
 import { Premium, PREMIUM_LOCKED } from "@/lib/premium";
+import { BankAccountForm } from "@/components/BankAccountForm";
 
 
 // ── Colour swatches ───────────────────────────────────────────────────────────
@@ -53,6 +54,11 @@ const ProSetup = () => {
   const [accountNo, setAccountNo]     = useState("");
   const [accountName, setAccountName] = useState("");
   const [payoutBusy, setPayoutBusy]   = useState(false);
+  // Escrow (Pandascrow) checks the account with the bank; Paystack doesn't.
+  const [escrowLive, setEscrowLive]   = useState(false);
+  useEffect(() => {
+    api.getPaymentsConfig().then((c) => setEscrowLive(c.provider === "pandascrow")).catch(() => {});
+  }, []);
   const [payoutErr, setPayoutErr]     = useState("");
   const [payoutNote, setPayoutNote]   = useState("");
 
@@ -413,6 +419,27 @@ const ProSetup = () => {
           {hasAgent && (
             <div className="rounded-2xl border border-line bg-card p-6 space-y-4">
               <div className="font-semibold text-sm">Payout account</div>
+              {escrowLive ? (
+                <>
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    Each traveller's payment is held in escrow and released to this account. We check it with your bank,
+                    so the name below is the one on the account.
+                  </p>
+                  <BankAccountForm
+                    initial={bankCode && accountNo ? { bankCode, accountNumber: accountNo, accountName } : null}
+                    onSave={async ({ bankCode: code, bankName, accountNumber }) => {
+                      const token = getIdToken();
+                      if (!token) throw new Error("Please sign in again.");
+                      const { agent } = await api.updatePayout({ bankCode: code, bankName, accountNo: accountNumber }, token);
+                      const a = agent as unknown as { payout_bank_code?: string; payout_account_no?: string; payout_account_name?: string };
+                      setBankCode(a.payout_bank_code || code);
+                      setAccountNo(a.payout_account_no || accountNumber);
+                      setAccountName(a.payout_account_name || "");
+                    }}
+                  />
+                </>
+              ) : (
+              <>
               <p className="text-xs text-muted-foreground -mt-1">
                 Karije holds what travellers pay until a trip's seats are all filled, then pays it out here in one go —
                 new trips you create use whatever's saved here at the time.
@@ -456,6 +483,8 @@ const ProSetup = () => {
               </button>
               {payoutNote && <p className="text-xs text-emerald-700 dark:text-emerald-400">{payoutNote}</p>}
               {payoutErr && <p className="text-xs text-destructive">{payoutErr}</p>}
+              </>
+              )}
             </div>
           )}
 

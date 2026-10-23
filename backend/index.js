@@ -13,6 +13,7 @@ const { router: authRouter }   = require('./routes/googleAuth');
 const { router: magicRouter }  = require('./routes/magicAuth');
 const { router: emailRouter }  = require('./routes/emailAuth');
 const { router: adminRouter }  = require('./routes/adminRoutes');
+const payments = require('./routes/payments');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,6 +51,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => res.json({ status: 'ok', service: 'Karije backend' }));
 
 // REST API (web form flow)
+app.use('/api', payments.api);
 app.use('/api', apiRouter);
 
 // Auth routes — Google OAuth + magic links + email/password
@@ -61,6 +63,7 @@ app.use('/auth', emailRouter);
 app.use('/admin', adminRouter);
 
 // Payment routes (Paystack webhook/confirm, the /pay redirect)
+app.use('/', payments.hooks);
 app.use('/', webhookRouter);
 
 // Unhandled errors don't crash the process

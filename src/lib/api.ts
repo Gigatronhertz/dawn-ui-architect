@@ -101,6 +101,8 @@ export type PublicPlanResponse = {
   paidCount:        number;
   totalCollected:   number;
   paymentsEnabled:  boolean;
+  /** Which rail collects: Pandascrow escrow once configured, else Paystack. */
+  paymentProvider?: 'pandascrow' | 'paystack';
   participants:     { name: string | null; paid: boolean; createdAt: number }[];
   /** Present only on curated trips — the Karije-run ones. */
   curated: {
@@ -317,6 +319,17 @@ async function patch<T>(path: string, body: unknown, headers?: Record<string, st
   return data as T;
 }
 
+async function put<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new ApiError(data.error || 'Request failed', res.status, data.code);
+  return data as T;
+}
+
 async function del<T>(path: string, headers?: Record<string, string>): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, { method: 'DELETE', headers });
   const data = await res.json();
@@ -345,6 +358,47 @@ export const session = {
     const qs = params.toString();
     return qs ? `${base}?${qs}` : base;
   },
+};
+
+// ── Escrow (Pandascrow) ──────────────────────────────────────────────────────
+
+/** One traveller's escrow: a bank account to transfer to, or a card link. */
+export type Escrow = {
+  escrowId: number;
+  status: 'awaiting' | 'paid' | 'expired' | 'replaced' | 'released' | 'paid_out' | 'disputed' | string;
+  gateway: 'virtual_account' | 'payment_link' | string;
+  /** The trip price for this place. */
+  amount: number;
+  /** What to transfer — the price plus Pandascrow's fee when the traveller pays it. */
+  amountToPay: number;
+  accountNumber: string | null;
+  accountName: string | null;
+  bankName: string | null;
+  /** "YYYY-MM-DD HH:MM:SS", Lagos time. */
+  expiresAt: string | null;
+  paymentUrl: string | null;
+};
+
+export type Bank = { name: string; code: string };
+
+export type CollectionTier = 'none' | 'notify' | 'escrow';
+
+/** A friend trip's chosen option, its pending fee and its payout account. */
+export type TripCollection = {
+  tier: CollectionTier;
+  feesWaived: boolean;
+  provider: 'pandascrow' | 'paystack';
+  payout: { bankCode: string; bankName: string | null; accountNumber: string; accountName: string } | null;
+  pendingFee: {
+    tier: CollectionTier; amount: number; reference: string;
+    accountNumber: string; accountName: string | null; bankName: string | null; expiresAt: string | null;
+  } | null;
+};
+
+export type PaymentsConfig = {
+  provider: 'pandascrow' | 'paystack';
+  feesWaived: boolean;
+  tiers: Record<CollectionTier, { amount: number; listAmount: number; label: string }>;
 };
 
 /** A trip shape an agency saved to run again. */
@@ -706,7 +760,7 @@ export const api = {
     get<ProMoneyTrip & { payouts: ProPayout[] }>(`/api/pro/money/${tripId}`, bearer(token)),
 
   /** The agency's own saved payout account — copied onto each new trip at creation time. */
-  updatePayout: (payload: { bankCode?: string; accountNo: string; accountName: string }, token: string) =>
+  updatePayout: (payload: { bankCode?: string; bankName?: string; accountNo: string; accountName?: string }, token: string) =>
     patch<{ ok: boolean; agent: AgentProfile }>('/api/pro/payout', payload, bearer(token)),
 
   /** This agency's ₦10k/month subscription status + charge history. */
@@ -816,6 +870,23 @@ export const api = {
     get<{ experiences: import('./experienceTypes').Experience[]; agencyTrips: AgencyListing[] }>(
       city ? `/api/listings?city=${encodeURIComponent(city)}` : '/api/listings',
     ),
+
+  // ── Escrow payments ──────────────────────────────────────────────────────
+  getPaymentsConfig: () => get<PaymentsConfig>('/api/payments/config'),
+  getBanks: () => get<{ banks: Bank[] }>('/api/banks'),
+  resolveBank: (payload: { bankCode: string; accountNumber: string }, token: string) =>
+    post<{ accountName: string; accountNumber: string }>('/api/banks/resolve', payload, bearer(token)),
+  /** Open (or reuse) this traveller's escrow. `fresh` asks for a new transfer account. */
+  openEscrow: (tripId: string, payload: { participantId: string; email?: string; gateway?: 'virtual_account' | 'payment_link'; fresh?: boolean }) =>
+    post<{ escrow: Escrow }>(`/api/public/plan/${tripId}/escrow`, payload),
+  getEscrowStatus: (tripId: string, participantId: string) =>
+    get<{ paid: boolean; escrow: Escrow | null }>(`/api/public/plan/${tripId}/escrow/${participantId}`),
+  getTripCollection: (tripId: string, token: string) =>
+    get<TripCollection>(`/api/auth/plans/${tripId}/collection`, bearer(token)),
+  setTripCollection: (tripId: string, tier: CollectionTier, token: string) =>
+    post<TripCollection>(`/api/auth/plans/${tripId}/collection`, { tier }, bearer(token)),
+  setTripPayout: (tripId: string, payload: { bankCode: string; bankName: string; accountNumber: string }, token: string) =>
+    put<TripCollection>(`/api/auth/plans/${tripId}/payout`, payload, bearer(token)),
 
   /** Verified agencies with at least one listed trip — the home page's
    *  "agencies we work with" showcase. */

@@ -9,6 +9,8 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Check } from "lucide-react";
 import { api, imageUrl, type PublicPlanResponse, type PlanDay } from "@/lib/api";
 import { tripImageUrl } from "@/lib/tripImage";
+import { EscrowPay } from "@/components/EscrowPay";
+import { TripCollectionPanel } from "@/components/TripCollectionPanel";
 import { HERO_PHOTO as PLAN_HERO_PHOTO } from "@/lib/photos";
 import { KarijeLogo } from "@/components/Nav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -539,7 +541,11 @@ function JoinSection({
   tripId, initialCount, initialPaidCount, initialTotalCollected, initialNames,
   perPerson, squadSize, groupMin, paymentsEnabled, justPaid, selectedDate,
   installmentsEnabled, installmentMinMonths, installmentMaxMonths, installmentMinAmount,
+  paymentProvider, payFor, autoPay,
 }: {
+  paymentProvider: 'pandascrow' | 'paystack';
+  /** A participant id from a reminder's pay link, and whether to open paying straight away. */
+  payFor: string | null; autoPay: boolean;
   tripId: string; initialCount: number; initialPaidCount: number; initialTotalCollected: number;
   initialNames: (string | null)[]; perPerson: number; squadSize: number | null;
   groupMin: number | null; paymentsEnabled: boolean; justPaid: boolean;
@@ -552,7 +558,11 @@ function JoinSection({
   const [paidCount, setPaidCount]     = useState(initialPaidCount);
   const [totalCollected, setTotal]    = useState(initialTotalCollected);
   const [names, setNames]             = useState<(string | null)[]>(initialNames);
-  const [participantId, setPid]       = useState<string | null>(() => localStorage.getItem(storageKey));
+  const [participantId, setPid]       = useState<string | null>(() => {
+    // A reminder's link names the traveller, so it works on a new phone too.
+    if (payFor) { try { localStorage.setItem(storageKey, payFor); } catch { /* private mode */ } return payFor; }
+    return localStorage.getItem(storageKey);
+  });
   const [joinState, setJoinState]     = useState<JoinState>(participantId ? "joined" : "idle");
   const [nameInput, setNameInput]     = useState("");
   const [emailInput, setEmailInput]   = useState("");
@@ -670,6 +680,15 @@ function JoinSection({
           <div className="rounded-2xl bg-google-green/10 ring-1 ring-google-green/20 px-4 py-3 text-center">
             <div className="flex items-center justify-center gap-1.5 text-google-green font-semibold text-sm"><Check className="w-4 h-4" /> You're in the squad!</div>
           </div>
+          {paymentProvider === "pandascrow" ? (
+            paymentsEnabled ? (
+              <EscrowPay tripId={tripId} participantId={participantId!} perPerson={perPerson} autoStart={autoPay} />
+            ) : (
+              <p className="text-sm text-muted-foreground text-center px-2">
+                The organiser is collecting payments directly for this trip — they'll send you the details.
+              </p>
+            )
+          ) : (
           <PaymentSection
             tripId={tripId} participantId={participantId!}
             perPerson={perPerson} justPaid={justPaid} paymentsEnabled={paymentsEnabled}
@@ -679,6 +698,7 @@ function JoinSection({
             installmentMaxMonths={installmentMaxMonths}
             installmentMinAmount={installmentMinAmount}
           />
+          )}
         </div>
       ) : joinState === "reminding" ? (
         <div className="rounded-2xl bg-secondary/60 ring-hairline px-4 py-4 text-center space-y-1">
@@ -1101,6 +1121,9 @@ export default function PlanView() {
             {/* Joining and paying. Sticky on desktop: on a long itinerary the
                 thing a squad member came to do shouldn't scroll away. */}
             <aside className="space-y-4 mt-4 lg:mt-0 lg:sticky lg:top-6 print:mt-0">
+            {/* The organiser's own controls — renders nothing for anyone else */}
+            {tripId && user && <TripCollectionPanel tripId={tripId} />}
+
             {/* Squad participation + payment */}
             {tripId && cb && (
               <JoinSection
@@ -1119,6 +1142,9 @@ export default function PlanView() {
                 installmentMinMonths={data.installmentMinMonths}
                 installmentMaxMonths={data.installmentMaxMonths}
                 installmentMinAmount={data.installmentMinAmount}
+                paymentProvider={data.paymentProvider === "pandascrow" ? "pandascrow" : "paystack"}
+                payFor={searchParams.get("p")}
+                autoPay={searchParams.get("pay") === "1"}
               />
             )}
 

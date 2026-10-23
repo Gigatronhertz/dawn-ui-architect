@@ -435,6 +435,56 @@ const MIGRATIONS = [
   `ALTER TABLE trips ADD COLUMN included_json    TEXT`,
   `ALTER TABLE trips ADD COLUMN pay_by           TEXT`,
   `ALTER TABLE trip_templates ADD COLUMN included_json TEXT`,
+  // Phase 25 — Pandascrow escrow. One row per escrow opened for a traveller
+  // (a fresh one each time an expired transfer account is replaced); the
+  // newest row is the traveller's current one.
+  `CREATE TABLE IF NOT EXISTS escrows (
+    escrow_id      INTEGER PRIMARY KEY,
+    participant_id TEXT NOT NULL,
+    trip_id        TEXT NOT NULL,
+    attempt        INTEGER NOT NULL DEFAULT 1,
+    amount         INTEGER NOT NULL,
+    amount_pay     INTEGER,
+    gateway        TEXT NOT NULL DEFAULT 'virtual_account',
+    status         TEXT NOT NULL DEFAULT 'awaiting',
+    account_number TEXT,
+    account_name   TEXT,
+    bank_name      TEXT,
+    expires_at     TEXT,
+    payment_url    TEXT,
+    reference      TEXT,
+    created_at     INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at     INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  `CREATE INDEX IF NOT EXISTS escrows_participant ON escrows (participant_id, created_at)`,
+  // Every webhook Pandascrow sends, keyed on a hash of its body so a retried
+  // delivery is recognised and skipped.
+  `CREATE TABLE IF NOT EXISTS pandascrow_events (
+    id          TEXT PRIMARY KEY,
+    event       TEXT,
+    escrow_id   INTEGER,
+    reference   TEXT,
+    payload     TEXT NOT NULL,
+    received_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  // A friend-trip organiser's fee for the reminders or escrow option.
+  `CREATE TABLE IF NOT EXISTS trip_fees (
+    reference      TEXT PRIMARY KEY,
+    trip_id        TEXT NOT NULL,
+    tier           TEXT NOT NULL,
+    amount         INTEGER NOT NULL,
+    account_number TEXT,
+    account_name   TEXT,
+    bank_name      TEXT,
+    expires_at     TEXT,
+    status         TEXT NOT NULL DEFAULT 'awaiting',
+    paid_at        INTEGER,
+    created_at     INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  // What a friend trip has switched on: none (free), notify or escrow.
+  `ALTER TABLE trips ADD COLUMN collection_tier TEXT NOT NULL DEFAULT 'none'`,
+  `ALTER TABLE trips ADD COLUMN payout_bank_name TEXT`,
+  `ALTER TABLE agents ADD COLUMN payout_bank_name TEXT`,
   // Existing agency trips keep the price they were already collecting at.
   `UPDATE trips SET price_per_person = CAST(json_extract(plan, '$.cost_breakdown.per_person') AS INTEGER)
      WHERE agent_id IS NOT NULL AND price_per_person IS NULL AND json_valid(plan)`,
@@ -577,6 +627,12 @@ const ready = (async () => {
 async function raw(sql, args) {
   const res = await client.execute(args !== undefined ? { sql, args } : sql);
   return res.rows?.[0] ?? null;
+}
+
+/** Runs a write and returns how many rows it touched. */
+async function exec(sql, args) {
+  const res = await client.execute(args !== undefined ? { sql, args } : sql);
+  return Number(res.rowsAffected || 0);
 }
 
 /** Returns all rows as an array. */
@@ -849,10 +905,10 @@ async function updateAgentSelfVerification({ id, nin, idDocumentImageId, busines
 
 /** An agency's own saved payout account — the default copied onto each new
  *  trip at creation time (see routes/api.js createAgencyTrip). */
-async function updateAgentPayout({ id, bankCode, accountNo, accountName }) {
+async function updateAgentPayout({ id, bankCode, bankName, accountNo, accountName }) {
   await client.execute({
-    sql: `UPDATE agents SET payout_bank_code = ?, payout_account_no = ?, payout_account_name = ? WHERE id = ?`,
-    args: [bankCode || null, accountNo || null, accountName || null, id],
+    sql: `UPDATE agents SET payout_bank_code = ?, payout_bank_name = ?, payout_account_no = ?, payout_account_name = ? WHERE id = ?`,
+    args: [bankCode || null, bankName || null, accountNo || null, accountName || null, id],
   });
 }
 
@@ -1671,6 +1727,7 @@ async function recordAiCreditPurchase({ userId, email, amount, credits, referenc
 module.exports = {
   ready,
   raw,
+  exec,
   rawAll,
   parseExpRow,
   trips:       { insert: insertTrip, get: getTrip, update: updateTrip },

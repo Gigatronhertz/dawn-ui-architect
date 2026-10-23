@@ -11,6 +11,7 @@
  * attempt, so the organiser's chase list shows who has been nudged and when.
  */
 const db = require('../db/client');
+const { remindersOn } = require('./collection');
 const { sendPaymentReminderEmail, available: emailAvailable } = require('./email');
 const whisper360 = require('./whisper360');
 
@@ -80,7 +81,7 @@ async function findDue(now = Math.floor(Date.now() / 1000)) {
   const rows = await db.rawAll(
     `SELECT p.id, p.trip_id, p.name, p.email, p.wa_number,
             p.reminders_sent, p.last_reminded_at, p.created_at,
-            t.plan, t.selected_date, t.status
+            t.plan, t.selected_date, t.status, t.agent_id, t.intake_json, t.collection_tier
        FROM participants p
        JOIN trips t ON t.id = p.trip_id
       WHERE p.paid = 0
@@ -90,6 +91,8 @@ async function findDue(now = Math.floor(Date.now() / 1000)) {
   );
 
   return rows.filter((r) => {
+    // A friend trip only gets chased on the reminders or escrow option.
+    if (!remindersOn(r)) return false;
     const step  = STEPS[Number(r.reminders_sent)];
     const since = Number(r.last_reminded_at || r.created_at);
     return now - since >= step.after;
@@ -190,7 +193,7 @@ async function remindNow(participantId) {
   const row = await db.raw(
     `SELECT p.id, p.trip_id, p.name, p.email, p.wa_number, p.paid,
             p.reminders_sent, p.last_reminded_at, p.created_at,
-            t.plan, t.selected_date, t.status
+            t.plan, t.selected_date, t.status, t.agent_id, t.intake_json, t.collection_tier
        FROM participants p
        JOIN trips t ON t.id = p.trip_id
       WHERE p.id = ?`,
@@ -199,6 +202,7 @@ async function remindNow(participantId) {
 
   if (!row)      return { ok: false, reason: 'not_found' };
   if (row.paid)  return { ok: false, reason: 'already_paid' };
+  if (!remindersOn(row)) return { ok: false, reason: 'reminders_off' };
 
   const last = Number(row.last_reminded_at || 0);
   const now  = Math.floor(Date.now() / 1000);

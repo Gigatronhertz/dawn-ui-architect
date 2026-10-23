@@ -12,6 +12,8 @@ const { sendPlanReadyEmail, sendPlanConfirmedEmail } = require('../services/emai
 const { sendPlanReadyPush  } = require('../services/webPush');
 const whisper360              = require('../services/whisper360');
 const paystack               = require('../services/paystack');
+const pandascrow             = require('../services/pandascrow');
+const collection             = require('../services/collection');
 // Crediting a payment lives with the webhook that normally does it; the
 // payment-status endpoint reuses it so a payer is never stranded waiting.
 const { processPayment }     = require('../webhook');
@@ -438,7 +440,10 @@ router.get('/public/plan/:tripId', async (req, res) => {
     paidCount:        stats.paidCount,
     totalCollected:   stats.totalCollected,
     participants:     participants.map(p => ({ name: p.name, paid: !!p.paid, createdAt: p.created_at })),
-    paymentsEnabled:  paystack.available(),
+    // Pandascrow, once configured, takes over from Paystack; a friend trip
+    // only collects through Karije on its escrow option.
+    paymentsEnabled:  pandascrow.available() ? collection.collects(trip) : paystack.available(),
+    paymentProvider:  pandascrow.available() ? 'pandascrow' : 'paystack',
     // Curated trips carry their own presentation (photo, blurb, what's included)
     // and a minimum headcount the squad has to clear for the trip to run.
     curated:          plan.curated || null,
@@ -637,6 +642,9 @@ router.get('/public/plan/:tripId/participants', async (req, res) => {
 // Squad member initiates Paystack payment for their share.
 // Returns { authorization_url } — frontend redirects the browser there.
 router.post('/public/plan/:tripId/pay', async (req, res) => {
+  if (pandascrow.available()) {
+    return res.status(409).json({ error: 'Payments now go through escrow — refresh the page to pay.' });
+  }
   if (!paystack.available()) {
     return res.status(503).json({ error: 'Payments are not enabled yet. Check back soon!' });
   }
@@ -1047,13 +1055,34 @@ router.get('/pro/money/:tripId', premium.premiumOnly, requireAuth, requireAgent,
 // collecting — see the comment there for why.
 router.patch('/pro/payout', requireAuth, requireAgent, async (req, res) => {
   try {
-    const { bankCode, accountNo, accountName } = req.body || {};
+    const { bankCode, bankName, accountNo, accountName } = req.body || {};
+    // With Pandascrow live the account is checked with the bank and the name
+    // comes from the bank, never from what was typed — escrow pays out here.
+    if (pandascrow.available()) {
+      const code = typeof bankCode === 'string' ? bankCode.trim() : '';
+      const number = String(accountNo || '').replace(/\D/g, '');
+      if (!code || number.length !== 10) {
+        return res.status(400).json({ error: 'Pick your bank and enter the 10-digit account number.' });
+      }
+      let resolved;
+      try {
+        resolved = await pandascrow.resolveAccount({ bankCode: code, accountNumber: number });
+      } catch (err) {
+        return res.status(400).json({ error: 'We could not find that account. Check the bank and number.' });
+      }
+      await db.agents.updatePayout({
+        id: req.agent.id, bankCode: code, bankName: typeof bankName === 'string' ? bankName.trim() : null,
+        accountNo: number, accountName: resolved.accountName,
+      });
+      return res.json({ ok: true, agent: await db.agents.getById(req.agent.id) });
+    }
     if (!accountNo || !accountName) {
       return res.status(400).json({ error: 'Account number and account name are required.' });
     }
     await db.agents.updatePayout({
       id: req.agent.id,
       bankCode:    typeof bankCode === 'string' ? bankCode.trim() : null,
+      bankName:    typeof bankName === 'string' ? bankName.trim() : null,
       accountNo:   String(accountNo).trim(),
       accountName: String(accountName).trim(),
     });
@@ -1270,7 +1299,7 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
       `UPDATE trips SET user_id=?, agent_id=?, origin=?, destination=?, days=?,
          squad_size=?, status=?, plan=?, intake_json=?, service_fee_per_person=?,
          title=?, summary=?, listed=?, selected_date=?,
-         payout_bank_code=?, payout_account_no=?, payout_account_name=?,
+         payout_bank_code=?, payout_bank_name=?, payout_account_no=?, payout_account_name=?,
          installments_enabled=?, installment_min_months=?, installment_max_months=?, installment_min_amount=?,
          price_per_person=?, included_json=?, pay_by=?
        WHERE id=?`,
@@ -1296,6 +1325,7 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
         // detail changed later should never retroactively move where an
         // in-flight trip's money goes.
         req.agent.payout_bank_code    || null,
+        req.agent.payout_bank_name    || null,
         req.agent.payout_account_no   || null,
         req.agent.payout_account_name || null,
         installmentsEnabled && !premium.LOCKED ? 1 : 0,

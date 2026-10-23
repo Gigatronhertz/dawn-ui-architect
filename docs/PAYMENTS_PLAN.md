@@ -1,7 +1,9 @@
 # Payments plan: moving Karije to Pandascrow escrow
 
-Status: agreed direction, not built yet. Paystack stays live until the
-Pandascrow build replaces it.
+Status: steps 1, 2, 5 and 6 are built and tested against a stand-in for the
+Pandascrow sandbox. They switch on when `PANDASCROW_API_KEY` and
+`PANDASCROW_UUID` are set (see `backend/.env.example`); until then Paystack
+works exactly as before.
 
 ## Principles
 
@@ -60,24 +62,29 @@ for any webhook that goes missing.
 
 ## Build sections
 
-1. **Pandascrow client.** Sandbox and live via env vars; replaces
-   `backend/services/paystack.js` for trip payments.
-2. **Seller bank details.** Bank dropdown from Pandascrow's bank list, the
-   account number checked, the account name filled in automatically. Used by
-   Pro agencies and by friend-trip organisers who choose escrow. Replaces the
-   free-text bank field in `ProSetup`.
+1. **Pandascrow client.** Done: `backend/services/pandascrow.js` (escrow,
+   banks, account check, fee accounts, webhook signature) and
+   `backend/routes/payments.js` (traveller escrow, status check, friend-trip
+   options, organiser payout, `POST /pandascrow/webhook`).
+2. **Seller bank details.** Done: `BankAccountForm` — bank dropdown from
+   Pandascrow, account checked with the bank, name filled in from the bank.
+   Used in Pro settings and in the friend-trip organiser panel.
 3. **Agency verification.** NIN, CAC and BVN lookups through Pandascrow KYC
    feed the admin review.
 4. **Trip pricing.** Done: agency trips carry a price per person set by the
    agency (`trips.price_per_person`), a "what's included" list and a "pay by"
    date. Stop costs are the agency's own notes and are hidden from travellers.
    The price locks once anyone has paid.
-5. **Friend-trip fees.** A ₦1,000 notifications option and a ₦3,000 escrow
-   option on a friend trip, paid by the organiser through Pandascrow (payment
-   link or virtual account into Karije's wallet). Reminders and collection
-   stay off until the fee is paid.
-6. **Traveller pay screen.** Account number, bank, exact amount, expiry
-   countdown, "new account number" button, card fallback.
+5. **Friend-trip fees.** Done: the organiser picks Free, Reminders (₦1,000)
+   or Escrow (₦3,000) on their plan page; an upgrade from Reminders pays the
+   ₦2,000 difference. The fee is a transfer to a one-off account into Karije's
+   wallet, confirmed by `wallet.deposit.success`. Free while the beta lock is
+   on. Once Pandascrow is live, a friend trip only collects on Escrow and is
+   only chased on Reminders or Escrow.
+6. **Traveller pay screen.** Done: `EscrowPay` — account number, bank,
+   exact amount (with the escrow fee shown), 24-hour countdown, "I've sent
+   it" check, "new account number", and card. Reminder emails' Pay now link
+   opens it directly.
 7. **Database.** Per traveller: `escrow_id`, `escrow_status` (awaiting / paid /
    released / refunded / disputed), virtual account number and expiry. Per
    trip: the friend-trip tier and fee payment reference. A webhook event log.
@@ -87,6 +94,17 @@ for any webhook that goes missing.
    manual "record payout" form.
 9. **Karije billing.** Pro subscription and AI packs move to Pandascrow
    invoices or payment links later; they are Premium-locked meanwhile.
+
+## Still to confirm with the real sandbox
+
+- The exact field names for `/dva/create` beyond `order.amount` and
+  `customer.account.name` (amount type and expiry are sent inside `order`).
+- Which escrow statuses `/escrow/single` reports once funded (we treat
+  funded, paid, in_progress, delivered, completed and released as paid).
+- Who pays Pandascrow's fee: `PANDASCROW_FEES_PAID_BY` defaults to `buyer`,
+  so travellers see the fee added to their transfer.
+- Pandascrow requires a phone number for buyer and seller; travellers who
+  didn't give a WhatsApp number are sent with it blank.
 
 ## Open questions for Pandascrow
 

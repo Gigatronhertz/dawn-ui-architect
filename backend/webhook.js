@@ -3,6 +3,7 @@ const { Router } = require('express');
 const { verifyPayment, initializeWebPayment } = require('./services/paystack');
 const { sendPaymentReceiptEmail } = require('./services/email');
 const db = require('./db/client');
+const pandascrow = require('./services/pandascrow');
 
 const router = Router();
 
@@ -25,6 +26,10 @@ router.get('/pay/:participantId', async (req, res) => {
 
     // Never send someone to pay for something they've already paid for.
     if (participant.paid) return res.redirect(`${planUrl}?paid=1`);
+
+    // With escrow, paying means a bank account shown on the plan page, not a
+    // checkout to redirect to — open the plan with the pay panel up.
+    if (pandascrow.available()) return res.redirect(`${planUrl}?pay=1&p=${encodeURIComponent(participant.id)}`);
 
     // Paystack can't raise a transaction without an email address, and the
     // amount comes off the plan (or, for an installment payer, off their own
