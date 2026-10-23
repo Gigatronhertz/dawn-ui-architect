@@ -428,6 +428,16 @@ const MIGRATIONS = [
   // Both idempotent, so safe on every boot.
   `UPDATE trips SET service_fee_per_person = 0 WHERE service_fee_per_person IS NULL OR service_fee_per_person <> 0`,
   `UPDATE trips SET platform_fee_pct = 0 WHERE platform_fee_pct <> 0`,
+  // Phase 24 — agency trips carry a price the agency sets, instead of one
+  // added up from stop costs (which stay on the stops as the agency's own
+  // notes). Plus what the price includes and a date payment closes.
+  `ALTER TABLE trips ADD COLUMN price_per_person INTEGER`,
+  `ALTER TABLE trips ADD COLUMN included_json    TEXT`,
+  `ALTER TABLE trips ADD COLUMN pay_by           TEXT`,
+  `ALTER TABLE trip_templates ADD COLUMN included_json TEXT`,
+  // Existing agency trips keep the price they were already collecting at.
+  `UPDATE trips SET price_per_person = CAST(json_extract(plan, '$.cost_breakdown.per_person') AS INTEGER)
+     WHERE agent_id IS NOT NULL AND price_per_person IS NULL AND json_valid(plan)`,
 ];
 
 const ready = (async () => {

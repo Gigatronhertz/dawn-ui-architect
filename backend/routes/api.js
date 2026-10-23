@@ -423,7 +423,15 @@ router.get('/public/plan/:tripId', async (req, res) => {
     hotel:            plan.hotel,
     transport:        plan.transport,
     highlights:       plan.highlights || [],
-    days_plan:        plan.days || [],
+    // On an agency trip the stop costs are the agency's own notes; travellers
+    // see the trip's price, not what each part costs the agency.
+    days_plan:        trip.agent_id
+      ? (plan.days || []).map(d => ({ ...d, activities: (d.activities || []).map(a => ({ ...a, cost_per_person: 0 })) }))
+      : (plan.days || []),
+    included:         trip.agent_id
+      ? (() => { try { return JSON.parse(trip.included_json || '[]'); } catch (_) { return []; } })()
+      : (plan.curated?.included || []),
+    payBy:            trip.pay_by || null,
     cost_breakdown:   plan.cost_breakdown,
     selectedDate:     trip.selected_date || null,
     participantCount: participants.length,
@@ -794,11 +802,11 @@ async function requireAgent(req, res, next) {
 }
 
 /**
- * Rebuild a plan from posted days, pricing it from the activities themselves.
- * A tampered total cannot stick, because nothing in the request is trusted for
- * money — the same rule /custom-trip already follows.
+ * Rebuild a plan from posted days. The per-person price is the one the agency
+ * set for the trip; stop costs are kept on the stops as the agency's own notes
+ * (`stopCosts`) and are never shown to travellers.
  */
-function buildAgencyPlan(days, squad) {
+function buildAgencyPlan(days, squad, pricePerPerson) {
   const planDays = (Array.isArray(days) ? days : []).map((d, i) => ({
     day: i + 1,
     activities: (Array.isArray(d.activities) ? d.activities : []).map(a => ({
@@ -808,14 +816,16 @@ function buildAgencyPlan(days, squad) {
     })),
   }));
 
-  const perPerson = planDays.reduce(
+  const stopCosts = planDays.reduce(
     (sum, d) => sum + d.activities.reduce((s, a) => s + a.cost_per_person, 0), 0
   );
+  const perPerson = cleanPrice(pricePerPerson) ?? stopCosts;
   const total = perPerson * squad;
 
   return {
     planDays,
     perPerson,
+    stopCosts,
     total,
     plan: {
       hotel: null,
@@ -830,6 +840,29 @@ function buildAgencyPlan(days, squad) {
       offline_note: '',
     },
   };
+}
+
+/** A whole-naira price above zero, or null. */
+function cleanPrice(v) {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** "What's included" lines: trimmed, non-empty, capped. */
+function cleanIncluded(v) {
+  if (!Array.isArray(v)) return [];
+  return v.map(x => String(x || '').trim().slice(0, 120)).filter(Boolean).slice(0, 20);
+}
+
+/** A YYYY-MM-DD date, or null. */
+function cleanDate(v) {
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
+
+/** Has anyone paid anything towards this trip? Once they have, the price is fixed. */
+async function priceLocked(tripId) {
+  const r = await db.raw('SELECT COUNT(*) AS n FROM participant_payments WHERE trip_id = ?', [tripId]);
+  return Number(r?.n || 0) > 0;
 }
 
 /** Load a trip only if the caller owns it — as its agency, or as its organiser. */
@@ -1131,6 +1164,7 @@ function templateRow(r) {
     squadSize: Number(r.squad_size) || 1,
     dayCount:  Number(r.day_count) || 1,
     perPerson: Number(r.per_person) || 0,
+    included:  (() => { try { return JSON.parse(r.included_json || '[]'); } catch (_) { return []; } })(),
     days,
     createdAt: Number(r.created_at),
   };
@@ -1154,24 +1188,25 @@ router.get('/pro/templates', requireAuth, requireAgent, async (req, res) => {
 // Body: { name, city?, squadSize?, days[] }
 router.post('/pro/templates', requireAuth, requireAgent, async (req, res) => {
   try {
-    const { name, city, squadSize, days } = req.body || {};
+    const { name, city, squadSize, days, pricePerPerson, included } = req.body || {};
     if (!name || !String(name).trim()) return res.status(400).json({ error: 'Give the template a name.' });
     if (!Array.isArray(days) || days.length === 0) {
       return res.status(400).json({ error: 'A template needs at least one stop.' });
     }
 
     const squad = Math.max(1, Number(squadSize) || 1);
-    const built = buildAgencyPlan(days, squad);
+    const built = buildAgencyPlan(days, squad, pricePerPerson);
     const id = `tpl_${uuid().replace(/-/g, '')}`;
 
     await db.raw(
-      `INSERT INTO trip_templates (id, agent_id, name, city, squad_size, day_count, per_person, days_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO trip_templates (id, agent_id, name, city, squad_size, day_count, per_person, days_json, included_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id, req.agent.id, String(name).trim().slice(0, 120),
         typeof city === 'string' ? city.trim().slice(0, 80) : null,
         squad, built.planDays.length, built.perPerson,
         JSON.stringify(built.planDays.map(d => ({ activities: d.activities }))),
+        JSON.stringify(cleanIncluded(included)),
       ]
     );
 
@@ -1207,6 +1242,7 @@ router.delete('/pro/templates/:templateId', requireAuth, requireAgent, async (re
 router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
   try {
     const { title, summary, city, squadSize, days, listed, selectedDate,
+            pricePerPerson, included, payBy,
             saveAsTemplate, templateName,
             installmentsEnabled, installmentMinMonths, installmentMaxMonths, installmentMinAmount } = req.body || {};
 
@@ -1215,9 +1251,12 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
     if (!Array.isArray(days) || days.length === 0) {
       return res.status(400).json({ error: 'Add at least one stop before saving.' });
     }
+    const price = cleanPrice(pricePerPerson);
+    if (!price) return res.status(400).json({ error: 'Set a price per person.' });
+    const includedList = cleanIncluded(included);
 
     const squad = Math.max(1, Number(squadSize) || 1);
-    const built = buildAgencyPlan(days, squad);
+    const built = buildAgencyPlan(days, squad, price);
     const tripId = uuid();
 
     // One month can't be split into monthly payments, so the floor is 2
@@ -1232,7 +1271,8 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
          squad_size=?, status=?, plan=?, intake_json=?, service_fee_per_person=?,
          title=?, summary=?, listed=?, selected_date=?,
          payout_bank_code=?, payout_account_no=?, payout_account_name=?,
-         installments_enabled=?, installment_min_months=?, installment_max_months=?, installment_min_amount=?
+         installments_enabled=?, installment_min_months=?, installment_max_months=?, installment_min_amount=?,
+         price_per_person=?, included_json=?, pay_by=?
        WHERE id=?`,
       [
         req.user.uid,
@@ -1260,6 +1300,7 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
         req.agent.payout_account_name || null,
         installmentsEnabled && !premium.LOCKED ? 1 : 0,
         minMonths, maxMonths, minAmount,
+        price, JSON.stringify(includedList), cleanDate(payBy),
         tripId,
       ]
     );
@@ -1270,14 +1311,15 @@ router.post('/pro/trips', requireAuth, requireAgent, async (req, res) => {
     if (saveAsTemplate) {
       templateId = `tpl_${uuid().replace(/-/g, '')}`;
       await db.raw(
-        `INSERT INTO trip_templates (id, agent_id, name, city, squad_size, day_count, per_person, days_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO trip_templates (id, agent_id, name, city, squad_size, day_count, per_person, days_json, included_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           templateId, req.agent.id,
           String(templateName || title).trim().slice(0, 120),
           String(city).trim().slice(0, 80),
           squad, built.planDays.length, built.perPerson,
           JSON.stringify(built.planDays.map(d => ({ activities: d.activities }))),
+          JSON.stringify(includedList),
         ]
       );
     }
@@ -1349,6 +1391,14 @@ router.get('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) => 
         completedAt:  trip.completed_at ? Number(trip.completed_at) : null,
         viewCount:    Number(trip.view_count || 0),
         perPerson,
+        // What the agency set; perPerson above is the same number as it sits
+        // in the plan. stopCosts is the agency's own running cost, never shown
+        // to travellers.
+        pricePerPerson: trip.price_per_person ? Number(trip.price_per_person) : perPerson,
+        stopCosts:      (plan?.days || []).reduce((s, d) => s + (d.activities || []).reduce((t, a) => t + (Number(a.cost_per_person) || 0), 0), 0),
+        priceLocked:    await priceLocked(trip.id),
+        included:       (() => { try { return JSON.parse(trip.included_json || '[]'); } catch (_) { return []; } })(),
+        payBy:          trip.pay_by || null,
         coverImageId: trip.cover_image_id || null,
         coverUrl:     trip.cover_image_id ? `/api/trip-image/${trip.cover_image_id}` : null,
         installmentsEnabled:   !!trip.installments_enabled && !premium.LOCKED,
@@ -1428,6 +1478,7 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     const {
       title, summary, listed, squadSize, days, selectedDate, completed, coverImageId,
       installmentsEnabled, installmentMinMonths, installmentMaxMonths, installmentMinAmount,
+      pricePerPerson, included, payBy,
     } = req.body || {};
     const sets = [];
     const args = [];
@@ -1437,6 +1488,8 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
     if (listed !== undefined)                      { sets.push('listed=?');        args.push(listed ? 1 : 0); }
     if (typeof selectedDate === 'string')          { sets.push('selected_date=?'); args.push(selectedDate.slice(0, 40)); }
     if (typeof coverImageId === 'string')          { sets.push('cover_image_id=?'); args.push(coverImageId || null); }
+    if (included !== undefined)                    { sets.push('included_json=?'); args.push(JSON.stringify(cleanIncluded(included))); }
+    if (payBy !== undefined)                       { sets.push('pay_by=?');        args.push(cleanDate(payBy)); }
 
     if (installmentsEnabled !== undefined) { sets.push('installments_enabled=?'); args.push(installmentsEnabled && !premium.LOCKED ? 1 : 0); }
     if (installmentMinMonths !== undefined || installmentMaxMonths !== undefined) {
@@ -1459,16 +1512,35 @@ router.patch('/pro/trips/:tripId', requireAuth, requireAgent, async (req, res) =
       args.push(completed ? Math.floor(Date.now() / 1000) : null);
     }
 
-    // Re-price whenever the itinerary or headcount moves, so the stored plan
-    // and the per-person cost can never drift apart.
-    if (Array.isArray(days) && days.length) {
+    // The price the trip is sold at. Once anyone has paid it is fixed — the
+    // agency can still edit the itinerary, but not what existing payers owe.
+    const oldPlan  = trip.plan ? JSON.parse(trip.plan) : null;
+    const curPrice = Number(trip.price_per_person) || Number(oldPlan?.cost_breakdown?.per_person) || 0;
+    let price = curPrice;
+    if (pricePerPerson !== undefined) {
+      if (!trip.agent_id) return res.status(400).json({ error: 'Only agency trips have a set price.' });
+      const p = cleanPrice(pricePerPerson);
+      if (!p) return res.status(400).json({ error: 'Set a price per person above zero.' });
+      if (p !== curPrice && await priceLocked(trip.id)) {
+        return res.status(409).json({ error: 'Someone has already paid, so the price is locked.', priceLocked: true });
+      }
+      price = p;
+      sets.push('price_per_person=?');
+      args.push(price);
+    }
+
+    // Rebuild the stored plan whenever the itinerary, headcount or price
+    // moves, so the plan's per-person figure always matches the trip's price.
+    const newDays = Array.isArray(days) && days.length ? days : null;
+    if (!trip.agent_id && !newDays) {
+      // An older trip an agency organised before agency trips existed: its
+      // plan (hotel, transport) isn't ours to rebuild — only move the count.
+      if (squadSize !== undefined) { sets.push('squad_size=?'); args.push(Math.max(1, Number(squadSize) || 1)); }
+    } else if (newDays || squadSize !== undefined || price !== curPrice) {
       const squad = Math.max(1, Number(squadSize) || Number(trip.squad_size) || 1);
-      const built = buildAgencyPlan(days, squad);
+      const built = buildAgencyPlan(newDays || oldPlan?.days || [], squad, price);
       sets.push('plan=?', 'days=?', 'squad_size=?');
       args.push(JSON.stringify(built.plan), built.planDays.length, squad);
-    } else if (squadSize !== undefined) {
-      sets.push('squad_size=?');
-      args.push(Math.max(1, Number(squadSize) || 1));
     }
 
     if (!sets.length) return res.status(400).json({ error: 'Nothing to update.' });

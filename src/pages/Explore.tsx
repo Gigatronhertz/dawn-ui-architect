@@ -654,6 +654,7 @@ export function BuildYourOwn({
   allowCustomPlaces = false,
   seed = null,
   presetVenueName,
+  agencyPrice,
 }: {
   city: string;
   /** Take over saving. Receives the built days and headcount. */
@@ -682,6 +683,12 @@ export function BuildYourOwn({
    * since that's what the search box carries across the navigate() call.
    */
   presetVenueName?: string;
+  /**
+   * Agency trips are sold at a price the agency sets. When given, the panel
+   * shows that price, and the stop costs become the agency's own running cost
+   * beside it instead of being the price.
+   */
+  agencyPrice?: number;
 }) {
   const { user, getIdToken } = useAuth();
   const navigate = useNavigate();
@@ -971,7 +978,7 @@ export function BuildYourOwn({
               </button>
             ))}
           </div>
-          <label className="kj-label text-muted-foreground ml-2">Squad</label>
+          <label className="kj-label text-muted-foreground ml-2">{agencyPrice !== undefined ? "Seats" : "Squad"}</label>
           <div className="flex items-stretch border-2 border-signal">
             <button
               type="button"
@@ -1054,16 +1061,34 @@ export function BuildYourOwn({
         {extraFields && <div className="kj-card p-5 space-y-3 text-sm">{extraFields}</div>}
 
         <div className="bg-signal text-ink p-6 space-y-4 kj-cut-panel">
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="text-xs font-bold tracking-[0.24em] uppercase">Per person</div>
-              <div className="font-display text-4xl md:text-[52px] leading-none">{formatNGN(perPerson)}</div>
+          {agencyPrice !== undefined ? (
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <div className="text-xs font-bold tracking-[0.24em] uppercase">Price per person</div>
+                <div className="font-display text-4xl md:text-[52px] leading-none">{agencyPrice > 0 ? formatNGN(agencyPrice) : "—"}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-bold tracking-[0.24em] uppercase">Your costs</div>
+                <div className="font-display text-2xl md:text-[30px] leading-none">{formatNGN(perPerson)}</div>
+                {agencyPrice > 0 && perPerson > 0 && (
+                  <div className="text-xs font-semibold mt-1">
+                    {agencyPrice >= perPerson ? `${formatNGN(agencyPrice - perPerson)} margin` : `${formatNGN(perPerson - agencyPrice)} under cost`}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-xs font-bold tracking-[0.24em] uppercase">Squad total</div>
-              <div className="font-display text-2xl md:text-[30px] leading-none">{formatNGN(perPerson * squadSize)}</div>
+          ) : (
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="text-xs font-bold tracking-[0.24em] uppercase">Per person</div>
+                <div className="font-display text-4xl md:text-[52px] leading-none">{formatNGN(perPerson)}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-bold tracking-[0.24em] uppercase">Squad total</div>
+                <div className="font-display text-2xl md:text-[30px] leading-none">{formatNGN(perPerson * squadSize)}</div>
+              </div>
             </div>
-          </div>
+          )}
 
           {user || !requireSignIn ? (
             <button
@@ -1084,8 +1109,9 @@ export function BuildYourOwn({
 
           {err && <p className="text-sm font-semibold text-red-700">{err}</p>}
           <p className="text-[13px] font-medium leading-relaxed">
-            Entry fees only — food, transport between stops and anything you book yourself aren't
-            included. You can edit all of this before sharing.
+            {agencyPrice !== undefined
+              ? "Your costs come from the stops and are only for you — travellers see the price and what's included."
+              : "Entry fees only — food, transport between stops and anything you book yourself aren't included. You can edit all of this before sharing."}
           </p>
         </div>
 
@@ -1360,8 +1386,8 @@ export function BuildYourOwn({
         <div className="lg:hidden fixed inset-x-0 bottom-[4.5rem] md:bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
           <div className="flex items-center gap-3">
             <div className="min-w-0">
-              <div className="kj-eyebrow">Per person</div>
-              <div className="font-marcellus text-lg text-foreground tabular-nums truncate">{formatNGN(perPerson)}</div>
+              <div className="kj-eyebrow">{agencyPrice !== undefined ? "Price per person" : "Per person"}</div>
+              <div className="font-marcellus text-lg text-foreground tabular-nums truncate">{formatNGN(agencyPrice !== undefined ? agencyPrice : perPerson)}</div>
             </div>
             <button
               onClick={() => setLibOpen(true)}

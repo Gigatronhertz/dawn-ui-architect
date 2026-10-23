@@ -11,7 +11,8 @@ import { Premium } from "@/lib/premium";
  *
  * The day/stop builder is the same component the squad flow uses — only the
  * save is different. An agency trip carries a name, an optional catalog blurb,
- * and a choice: list it on Karije, or keep it to the share link.
+ * the price the agency sells it at, and a choice: list it on Karije, or keep
+ * it to the share link. Stop costs are the agency's own notes, not the price.
  */
 
 // Suggestions, not a whitelist. An agency runs trips wherever it runs them, so
@@ -31,6 +32,10 @@ export default function ProTripBuilder() {
   const [summary, setSummary]   = useState("");
   const [date, setDate]         = useState("");
   const [listed, setListed]     = useState(true);
+  const [price, setPrice]       = useState("");
+  // One line per item — easier to type than a list editor.
+  const [included, setIncluded] = useState("");
+  const [payBy, setPayBy]       = useState("");
   const [err, setErr]           = useState("");
 
   // Monthly-payment settings — off by default; an agency opts a specific
@@ -90,8 +95,20 @@ export default function ProTripBuilder() {
   }) {
     setErr("");
     if (!title.trim()) {
-      setErr("Give the trip a name — it's what travellers see on the link.");
-      throw new Error("missing title");
+      const msg = "Give the trip a name — it's what travellers see on the link.";
+      setErr(msg);
+      throw new Error(msg);
+    }
+    const pricePerPerson = Math.round(Number(price));
+    if (!Number.isFinite(pricePerPerson) || pricePerPerson <= 0) {
+      const msg = "Set the price per person — it's what each traveller pays.";
+      setErr(msg);
+      throw new Error(msg);
+    }
+    if (payBy && date && payBy > date) {
+      const msg = "The pay-by date should be on or before the start date.";
+      setErr(msg);
+      throw new Error(msg);
     }
     const token = await getIdToken();
     if (!token) throw new Error("Please sign in again.");
@@ -107,6 +124,9 @@ export default function ProTripBuilder() {
       days: payload.days,
       listed,
       selectedDate: date || null,
+      pricePerPerson,
+      included: included.split("\n").map(l => l.trim()).filter(Boolean),
+      payBy: payBy || null,
       saveAsTemplate,
       templateName: saveAsTemplate ? (templateName.trim() || title.trim()) : undefined,
       installmentsEnabled,
@@ -121,6 +141,8 @@ export default function ProTripBuilder() {
   /** Load a saved shape into the builder. */
   function applyTemplate(t: TripTemplate) {
     if (t.city) setCity(t.city);
+    if (t.perPerson > 0) setPrice(String(t.perPerson));
+    if (t.included?.length) setIncluded(t.included.join("\n"));
     // A new object each time, so re-picking the same template reloads it.
     setSeed({ days: t.days, squadSize: t.squadSize });
     setUsedTemplate(t.id);
@@ -153,7 +175,7 @@ export default function ProTripBuilder() {
       active="trips"
       backTo="/pro/dashboard?tab=trips"
       title="New trip"
-      subtitle="Add your days and stops — the per-person price comes from the stops themselves."
+      subtitle="Set your price, then add the days and stops travellers will see."
     >
         {/* ── Start from a template ─────────────────────────────────────── */}
         {templates.length > 0 && (
@@ -264,6 +286,64 @@ export default function ProTripBuilder() {
           </div>
         </div>
 
+        {/* ── Price ─────────────────────────────────────────────────────── */}
+        <div className="rounded-2xl bg-card ring-hairline p-5 mb-6">
+          <div className="text-[11px] font-medium text-muted-foreground mb-4">
+            Price
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="trip-price" className="text-xs text-muted-foreground block mb-1.5">
+                Price per person (₦) *
+              </label>
+              <input
+                id="trip-price"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={price}
+                onChange={(e) => { setPrice(e.target.value); setErr(""); }}
+                placeholder="650000"
+                className={inputCls}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                What each traveller pays. It's fixed once anyone has paid.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="trip-payby" className="text-xs text-muted-foreground block mb-1.5">
+                Pay by
+              </label>
+              <input
+                id="trip-payby"
+                type="date"
+                value={payBy}
+                onChange={(e) => { setPayBy(e.target.value); setErr(""); }}
+                className={inputCls}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                The last day travellers can pay. Optional.
+              </p>
+            </div>
+            <div className="md:col-span-2">
+              <label htmlFor="trip-included" className="text-xs text-muted-foreground block mb-1.5">
+                What's included
+              </label>
+              <textarea
+                id="trip-included"
+                value={included}
+                onChange={(e) => setIncluded(e.target.value)}
+                rows={4}
+                placeholder={"Return flights Lagos – Calabar\n3 nights hotel\nCarnival tickets"}
+                className={inputCls}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                One item per line. Travellers see this list; they don't see your stop costs.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {err && (
           <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2 mb-6">{err}</p>
         )}
@@ -276,6 +356,7 @@ export default function ProTripBuilder() {
           allowCustomPlaces
           saveLabel="Create the trip →"
           seed={seed}
+          agencyPrice={Math.max(0, Math.round(Number(price)) || 0)}
           extraFields={
             <>
               <label className="flex items-start gap-3 pb-1 cursor-pointer">

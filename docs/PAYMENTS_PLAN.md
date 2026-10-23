@@ -68,8 +68,10 @@ for any webhook that goes missing.
    free-text bank field in `ProSetup`.
 3. **Agency verification.** NIN, CAC and BVN lookups through Pandascrow KYC
    feed the admin review.
-4. **Trip pricing.** Agency trips get one price-per-person field (pending
-   sign-off), plus a "pay by" date.
+4. **Trip pricing.** Done: agency trips carry a price per person set by the
+   agency (`trips.price_per_person`), a "what's included" list and a "pay by"
+   date. Stop costs are the agency's own notes and are hidden from travellers.
+   The price locks once anyone has paid.
 5. **Friend-trip fees.** A ₦1,000 notifications option and a ₦3,000 escrow
    option on a friend trip, paid by the organiser through Pandascrow (payment
    link or virtual account into Karije's wallet). Reminders and collection

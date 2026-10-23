@@ -180,6 +180,11 @@ export default function ProTripDetail() {
   const [coverErr, setCoverErr]   = useState("");
 
   const [instBusy, setInstBusy]         = useState(false);
+  // Price, what it includes, and when payment closes.
+  const [priceInput, setPriceInput]       = useState("");
+  const [includedInput, setIncludedInput] = useState("");
+  const [payByInput, setPayByInput]       = useState("");
+  const [priceBusy, setPriceBusy]         = useState(false);
   const [instMinMonths, setInstMinMonths] = useState("2");
   const [instMaxMonths, setInstMaxMonths] = useState("12");
   const [instMinAmount, setInstMinAmount] = useState("");
@@ -235,7 +240,33 @@ export default function ProTripDetail() {
     setInstMinMonths(String(data.trip.installmentMinMonths));
     setInstMaxMonths(String(data.trip.installmentMaxMonths));
     setInstMinAmount(data.trip.installmentMinAmount ? String(data.trip.installmentMinAmount) : "");
+    setPriceInput(String(data.trip.pricePerPerson || ""));
+    setIncludedInput((data.trip.included || []).join("\n"));
+    setPayByInput(data.trip.payBy || "");
   }, [data]);
+
+  async function savePrice() {
+    if (!data) return;
+    const price = Math.round(Number(priceInput));
+    if (!Number.isFinite(price) || price <= 0) { setNote("Set a price per person above zero."); return; }
+    setPriceBusy(true);
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("Please sign in again.");
+      await api.updateAgencyTrip(tripId!, {
+        // Leave the price out once it's locked, so the rest still saves.
+        ...(data.trip.priceLocked ? {} : { pricePerPerson: price }),
+        included: includedInput.split("\n").map(l => l.trim()).filter(Boolean),
+        payBy: payByInput || null,
+      }, token);
+      setNote("Price and details saved.");
+      await load();
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "Could not save the price.");
+    } finally {
+      setPriceBusy(false);
+    }
+  }
 
   async function toggleInstallments() {
     if (!data) return;
@@ -486,6 +517,55 @@ export default function ProTripDetail() {
               />
             </label>
             {coverErr && <p className="text-xs text-destructive mt-1.5">{coverErr}</p>}
+          </div>
+        </div>
+
+        {/* ── Price ─────────────────────────────────────────────────────── */}
+        <div className="rounded-2xl bg-card ring-hairline p-5 mb-6">
+          <div className="text-[11px] font-medium text-muted-foreground mb-3">Price</div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="edit-price" className="text-xs text-muted-foreground block mb-1.5">Price per person (₦)</label>
+              <input
+                id="edit-price" type="number" inputMode="numeric" min={1}
+                value={priceInput} onChange={(e) => setPriceInput(e.target.value)}
+                disabled={trip.priceLocked}
+                className="w-full rounded-lg bg-secondary/60 ring-hairline px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                {trip.priceLocked
+                  ? "Locked — someone has already paid at this price."
+                  : trip.stopCosts > 0
+                    ? `Your stop costs come to ${fmtNGN(trip.stopCosts)} per person.`
+                    : "What each traveller pays."}
+              </p>
+            </div>
+            <div>
+              <label htmlFor="edit-payby" className="text-xs text-muted-foreground block mb-1.5">Pay by</label>
+              <input
+                id="edit-payby" type="date"
+                value={payByInput} onChange={(e) => setPayByInput(e.target.value)}
+                className="w-full rounded-lg bg-secondary/60 ring-hairline px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5">The last day travellers can pay. Optional.</p>
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="edit-included" className="text-xs text-muted-foreground block mb-1.5">What's included</label>
+              <textarea
+                id="edit-included" rows={4}
+                value={includedInput} onChange={(e) => setIncludedInput(e.target.value)}
+                placeholder={"Return flights\n3 nights hotel\nCarnival tickets"}
+                className="w-full rounded-lg bg-secondary/60 ring-hairline px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground/50"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">One item per line. Travellers see this on the trip page.</p>
+            </div>
+            <button
+              onClick={savePrice}
+              disabled={priceBusy}
+              className="sm:col-span-2 rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+            >
+              {priceBusy ? "Saving…" : "Save price and details"}
+            </button>
           </div>
         </div>
 

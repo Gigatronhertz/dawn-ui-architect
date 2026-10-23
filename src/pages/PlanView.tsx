@@ -995,6 +995,22 @@ export default function PlanView() {
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 print:hidden">Your share</div>
                 <div className="font-display text-4xl font-semibold text-foreground mb-1 print:text-2xl print:text-center">{fmtNGN(cb.per_person)}</div>
                 <div className="text-sm text-muted-foreground print:hidden text-center">per person</div>
+                {data.payBy && (
+                  <div className="text-xs text-muted-foreground text-center mt-1">Pay by {fmtDate(data.payBy)}</div>
+                )}
+                {data.included?.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">What's included</div>
+                    <ul className="space-y-1 text-sm">
+                      {data.included.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2"><span aria-hidden="true">✓</span><span>{item}</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {/* An agency sells the trip at one price — the AI plan's
+                    transport/lodging split and squad total don't apply. */}
+                {!data.agency && (<>
                 <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <div className="text-muted-foreground text-[11px] uppercase tracking-wider mb-0.5">Transport</div>
@@ -1010,6 +1026,7 @@ export default function PlanView() {
                     Full squad total: <span className="font-display font-semibold text-foreground">{fmtNGN(cb.total)}</span>
                   </div>
                 )}
+                </>)}
               </Card>
             )}
 

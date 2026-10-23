@@ -121,6 +121,10 @@ export type PublicPlanResponse = {
   installmentMinMonths: number;
   installmentMaxMonths: number;
   installmentMinAmount: number | null;
+  /** What the price covers — set by the agency, or a curated trip's own list. */
+  included: string[];
+  /** YYYY-MM-DD date payment closes, when the agency set one. */
+  payBy: string | null;
 };
 
 export type SquadMember = {
@@ -351,6 +355,7 @@ export type TripTemplate = {
   squadSize: number;
   dayCount: number;
   perPerson: number;
+  included: string[];
   days: { activities: AgencyStop[] }[];
   createdAt: number;
 };
@@ -407,6 +412,14 @@ export type AgencyTripDetail = {
     installmentMinMonths: number;
     installmentMaxMonths: number;
     installmentMinAmount: number | null;
+    /** The price the agency set; the same figure as perPerson. */
+    pricePerPerson: number;
+    /** The agency's own running cost from stop notes. Never shown to travellers. */
+    stopCosts: number;
+    /** True once anyone has paid — the price can't change after that. */
+    priceLocked: boolean;
+    included: string[];
+    payBy: string | null;
   };
   plan: TripPlan | null;
   squad: AgencySquadMember[];
@@ -731,11 +744,12 @@ export const api = {
   },
 
   // ── Agency-owned trips ───────────────────────────────────────────────────
-  /** Create a trip the agency owns. Costs are re-derived server-side. */
+  /** Create a trip the agency owns, at the price the agency sets. */
   createAgencyTrip: (
     payload: {
       title: string; summary?: string; city: string; squadSize: number;
       listed?: boolean; selectedDate?: string | null;
+      pricePerPerson: number; included?: string[]; payBy?: string | null;
       days: { activities: AgencyStop[] }[];
       /** Also keep this trip's shape as a reusable template. */
       saveAsTemplate?: boolean;
@@ -776,6 +790,7 @@ export const api = {
     payload: {
       title?: string; summary?: string; listed?: boolean; squadSize?: number;
       selectedDate?: string; days?: { activities: AgencyStop[] }[]; completed?: boolean;
+      pricePerPerson?: number; included?: string[]; payBy?: string | null;
       installmentsEnabled?: boolean;
       installmentMinMonths?: number;
       installmentMaxMonths?: number;
