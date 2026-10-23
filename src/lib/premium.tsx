@@ -26,9 +26,26 @@ export const PremiumTag = ({ className = "" }: { className?: string }) => (
  * Wraps a premium control. While locked it renders dimmed, can't be clicked,
  * tabbed to or read as interactive, and carries a Premium tag in its corner.
  * Unlocked, it renders the children untouched.
+ *
+ * `inline` puts the tag beside the control instead of over its corner — for
+ * small buttons the corner tag would cover.
  */
-export function Premium({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Premium({ children, className = "", inline = false }: { children: ReactNode; className?: string; inline?: boolean }) {
   if (!PREMIUM_LOCKED) return <>{children}</>;
+  if (inline) {
+    return (
+      <div className={`inline-flex items-center gap-2 ${className}`} title="Premium — coming soon">
+        <div
+          aria-disabled="true"
+          className="opacity-40 pointer-events-none select-none grayscale-[30%]"
+          {...({ inert: "" } as Record<string, string>)}
+        >
+          {children}
+        </div>
+        <PremiumTag />
+      </div>
+    );
+  }
   return (
     <div className={`relative ${className}`} title="Premium — coming soon">
       <div

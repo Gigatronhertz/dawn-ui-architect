@@ -693,7 +693,7 @@ export default function ProTripDetail() {
               ))}
             </div>
             <div className="flex-1" />
-            <Premium>
+            <Premium inline>
               <button
                 onClick={exportCsv}
                 disabled={exporting || squad.length === 0}
