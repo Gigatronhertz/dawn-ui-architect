@@ -679,7 +679,7 @@ export function BuildYourOwn({
    */
   seed?: { days: { activities: { time: string; title: string; cost_per_person: number }[] }[]; squadSize?: number } | null;
   /**
-   * A place picked from a search elsewhere (passed in the URL) — added to
+   * A place picked from the Hero search bar (see HeroSearch.tsx) — added to
    * Day 1 as soon as this city's venue library has loaded. Matched by name
    * since that's what the search box carries across the navigate() call.
    */
@@ -1384,7 +1384,7 @@ export function BuildYourOwn({
 
       {/* Phone-only bar — the library is one tap away, not a scroll away */}
       {!libOpen && (
-        <div className="lg:hidden fixed inset-x-0 bottom-[4.5rem] md:bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
+        <div className="lg:hidden fixed inset-x-0 bottom-[5.75rem] md:bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
           <div className="flex items-center gap-3">
             <div className="min-w-0">
               <div className="kj-eyebrow">{agencyPrice !== undefined ? "Price per person" : "Per person"}</div>

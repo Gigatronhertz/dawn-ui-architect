@@ -236,7 +236,7 @@
 
   /* Reserves space so MobileBottomNav never covers page content. */
   @media (max-width: 767px) {
-    body.has-bottom-nav { padding-bottom: 4.5rem; }
+    body.has-bottom-nav { padding-bottom: 6rem; }
   }
 }
 

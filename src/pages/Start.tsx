@@ -462,7 +462,7 @@ function IntakeStep({
       </div>
 
       {/* Summary bar — always in reach */}
-      <div className="fixed inset-x-0 bottom-[4.5rem] md:bottom-0 z-30 bg-signal text-ink">
+      <div className="fixed inset-x-0 bottom-[5.75rem] md:bottom-0 z-30 bg-signal text-ink">
         <div className="max-w-3xl mx-auto px-5 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4">
           <div className="min-w-0 hidden sm:block">
             <div className="font-display text-lg md:text-2xl leading-tight truncate">

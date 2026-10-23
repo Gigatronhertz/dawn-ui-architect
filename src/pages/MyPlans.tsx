@@ -6,9 +6,7 @@ import { api, type UserPlan, type SquadMember } from "@/lib/api";
 import { Nav } from "@/components/Nav";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { tripImageUrl } from "@/lib/tripImage";
-
-const HERO_PHOTO =
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&h=1000&q=80";
+import { OBUDU_PHOTO } from "@/lib/photos";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
@@ -66,7 +64,7 @@ export default function MyPlans() {
 
       {/* Hero */}
       <section className="kj-dark relative bg-ink overflow-hidden">
-        <img src={HERO_PHOTO} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={OBUDU_PHOTO} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
         <div aria-hidden="true" className="absolute inset-0 kj-scrim" />
         <div aria-hidden="true" className="absolute inset-0 kj-scrim-left" />
         <div className="relative mx-auto max-w-5xl px-6 pt-32 md:pt-40 pb-12 md:pb-16 flex flex-col gap-4">

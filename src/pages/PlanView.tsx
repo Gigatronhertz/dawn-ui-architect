@@ -9,8 +9,7 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Check } from "lucide-react";
 import { api, imageUrl, type PublicPlanResponse, type PlanDay } from "@/lib/api";
 import { tripImageUrl } from "@/lib/tripImage";
-
-const PLAN_HERO_PHOTO = "1507525428034-b723cf961d3e";
+import { HERO_PHOTO as PLAN_HERO_PHOTO } from "@/lib/photos";
 import { KarijeLogo } from "@/components/Nav";
 import { useAuth } from "@/contexts/AuthContext";
 

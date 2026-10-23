@@ -39,16 +39,16 @@ export const MobileBottomNav = () => {
   return (
     <nav
       aria-label="Quick links"
-      className="kj-dark md:hidden fixed bottom-0 inset-x-0 z-40 bg-ink pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pointer-events-none"
     >
-      <div className="grid grid-cols-5 items-center px-2 pt-2 pb-2">
+      <div className="kj-dark bg-ink rounded-[1.6rem] shadow-card grid grid-cols-5 items-center px-2 py-2 pointer-events-auto">
         {ITEMS.map(({ to, label, icon: Icon, primary }) => {
           const active = isActive(pathname, to);
           if (primary) {
             return (
               <Link key={to} to={to} aria-label={label} className="flex flex-col items-center justify-center py-1">
-                <span className="w-11 h-11 rounded-xl bg-signal text-ink grid place-items-center active:scale-95 transition-transform">
-                  <Icon className="w-5 h-5" strokeWidth={2.5} />
+                <span className="w-14 h-14 -mt-1 rounded-full bg-signal text-ink grid place-items-center active:scale-95 transition-transform">
+                  <Icon className="w-6 h-6" strokeWidth={2.5} />
                 </span>
               </Link>
             );
@@ -63,6 +63,7 @@ export const MobileBottomNav = () => {
             >
               <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
               <span className={`text-[11px] font-jost ${active ? "font-semibold" : "font-medium"}`}>{label}</span>
+              <span aria-hidden="true" className={`h-1 w-1 rounded-full ${active ? "bg-signal" : "bg-transparent"}`} />
             </Link>
           );
         })}

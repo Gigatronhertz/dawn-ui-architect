@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Instagram } from "lucide-react";
 import { api, imageUrl, type PublicAgency } from "@/lib/api";
-import { Nav } from "@/components/Nav";
+import { Nav, KarijeMark } from "@/components/Nav";
+import { CARNIVAL_PHOTO } from "@/lib/photos";
 import { Footer } from "@/components/CTA";
 import { Hero } from "@/components/Hero";
 import { TripCategories } from "@/components/TripCategories";
@@ -11,48 +12,46 @@ import { UpcomingEvents } from "@/components/UpcomingEvents";
 import { BrandIcon } from "@/lib/brandIcons";
 import { PREMIUM_LOCKED, PremiumTag } from "@/lib/premium";
 
-// ── Trust ───────────────────────────────────────────────────────────────────
-const TRUST = [
-  {
-    icon: "M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4 M8 14h3",
-    title: "Pay monthly",
-    premium: true,
-    desc: "On trips that support it, split your share into monthly payments instead of one lump sum.",
-  },
-  {
-    icon: "M5 11h14v10H5z M8 11V7a4 4 0 018 0v4 M12 15v2",
-    title: "Your money, held safe",
-    desc: "Every payment is held until it's released to whoever is running the trip.",
-  },
-  {
-    icon: "M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z M9 12l2 2 4-4",
-    title: "Verified agencies only",
-    desc: "Every agency running trips on Karije is ID- and business-checked before they go live.",
-  },
-];
-
-const TrustBand = () => (
-  <section className="max-w-[1280px] mx-auto px-6 md:px-8 pt-20 md:pt-28">
-    <div className="kj-dark bg-ink rounded-3xl px-6 py-10 md:px-12 md:py-14 flex flex-col gap-8 md:gap-10">
-      <div className="flex flex-col gap-3">
-        <p className="kj-eyebrow">Peace of mind</p>
-        <h2 className="kj-title-sm text-white">Your money, <span className="kj-hl">held safe.</span></h2>
-      </div>
-      <div className="grid sm:grid-cols-3 gap-8 md:gap-10">
-        {TRUST.map((t) => (
-          <div key={t.title} className="flex flex-col gap-3">
-            <span className="w-11 h-11 rounded-xl bg-signal text-ink grid place-items-center">
-              <BrandIcon d={t.icon} className="w-5 h-5" />
-            </span>
-            <h3 className="text-xl md:text-2xl text-white flex items-center gap-2 flex-wrap">
-              {t.title}
-              {"premium" in t && t.premium && PREMIUM_LOCKED && <PremiumTag />}
-            </h3>
-            <p className="text-sm md:text-base leading-relaxed text-white/75">{t.desc}</p>
-          </div>
-        ))}
+// ── More than just a trip — the banner ──────────────────────────────────────
+const MoreThanATrip = () => (
+  <section className="pt-14 md:pt-24 md:px-8">
+    <div className="kj-dark relative overflow-hidden bg-ink md:rounded-3xl max-w-[1216px] mx-auto">
+      <img src={CARNIVAL_PHOTO} alt="Dancers at the Calabar Carnival" className="absolute inset-0 w-full h-full object-cover object-[30%_center]" loading="lazy" />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-ink via-ink/50 to-transparent md:bg-gradient-to-l md:from-ink/90 md:via-ink/55 md:to-ink/10" />
+      <span aria-hidden="true" className="absolute top-6 right-6 md:top-10 md:right-10 text-signal opacity-90"><KarijeMark size={48} /></span>
+      <div className="relative min-h-[520px] md:min-h-[460px] flex items-end md:items-center justify-end px-6 md:px-14 py-10 md:py-12">
+        <div className="max-w-[420px] flex flex-col gap-4">
+          <p className="kj-eyebrow">The Karije experience</p>
+          <h2 className="kj-title text-white">More than just a trip.</h2>
+          <p className="text-base md:text-lg text-white/85 leading-relaxed">
+            New cities, good food, great people and the kind of weekend the group chat talks about for years.
+          </p>
+          <a href="#how" className="kj-btn rounded-full self-start px-5 py-2.5 text-sm">How it works →</a>
+        </div>
       </div>
     </div>
+  </section>
+);
+
+// ── What you can count on — the features row ────────────────────────────────
+const FEATURES = [
+  { icon: "M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z M9 12l2 2 4-4", title: "Money held safe", desc: "Paid in, held till release" },
+  { icon: "M8 11a3 3 0 100-6 3 3 0 000 6z M16 11a3 3 0 100-6 3 3 0 000 6z M2 20c0-3 3-5 6-5s6 2 6 5 M14 15c3 0 8 1 8 5", title: "Verified agencies", desc: "ID- and business-checked" },
+  { icon: "M4 6h16v12H4z M4 10h16 M8 15h3", title: "Pay your own share", desc: "In full, or monthly" },
+  { icon: "M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 01-3.4 0", title: "We do the chasing", desc: "Reminders go out for you" },
+];
+
+const FeaturesRow = () => (
+  <section className="max-w-[1280px] mx-auto px-6 md:px-8 pt-10 md:pt-14">
+    <ul className="grid grid-cols-2 md:grid-cols-4 gap-y-8">
+      {FEATURES.map((f, i) => (
+        <li key={f.title} className={`flex flex-col items-center text-center gap-2 px-3 ${i % 2 === 1 ? "border-l border-line" : ""} ${i === 2 ? "md:border-l md:border-line" : ""}`}>
+          <BrandIcon d={f.icon} className="w-7 h-7" />
+          <span className="text-sm md:text-base font-semibold">{f.title}</span>
+          <span className="text-xs md:text-sm text-muted-foreground">{f.desc}</span>
+        </li>
+      ))}
+    </ul>
   </section>
 );
 
@@ -76,7 +75,7 @@ const STEPS = [
 ];
 
 const HowItWorks = () => (
-  <section className="max-w-[1280px] mx-auto px-6 md:px-8 pt-20 md:pt-28 flex flex-col gap-10 md:gap-12">
+  <section id="how" className="scroll-mt-24 max-w-[1280px] mx-auto px-6 md:px-8 pt-20 md:pt-28 flex flex-col gap-10 md:gap-12">
     <div className="flex flex-col gap-3 max-w-2xl">
       <p className="kj-eyebrow">How Karije works</p>
       <h2 className="kj-title">Simple steps. <span className="kj-hl">Big trips.</span></h2>
@@ -230,10 +229,11 @@ const Index = () => {
       <Nav />
       <Hero />
       <ExploreCityTeaser />
+      <MoreThanATrip />
+      <FeaturesRow />
       <HowItWorks />
       <UpcomingEvents />
       <TripCategories />
-      <TrustBand />
       <AgenciesShowcase />
       <AgenciesSection />
       <Footer />

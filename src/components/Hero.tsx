@@ -1,80 +1,82 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-import { api } from "@/lib/api";
+import { HeroSearch } from "@/components/HeroSearch";
+import { TRIP_CATEGORIES } from "@/lib/categories";
+import { BrandIcon, CATEGORY_ICON_PATHS } from "@/lib/brandIcons";
+import { HERO_PHOTO } from "@/lib/photos";
 
-const HERO_PHOTO =
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&h=1400&q=80";
-
-/** Live counts for the strip under the hero. Real numbers only — a figure
- *  that hasn't loaded, or is zero, is simply left out. */
-function useCounts() {
-  const [counts, setCounts] = useState<{ trips: number; events: number; agencies: number } | null>(null);
-  useEffect(() => {
-    let live = true;
-    Promise.allSettled([api.getListings(), api.getEvents("Lagos"), api.getAgencies()]).then(([l, e, a]) => {
-      if (!live) return;
-      setCounts({
-        trips:    l.status === "fulfilled" ? l.value.experiences.length + l.value.agencyTrips.length : 0,
-        events:   e.status === "fulfilled" ? (e.value.events ?? []).length : 0,
-        agencies: a.status === "fulfilled" ? a.value.agencies.length : 0,
-      });
-    });
-    return () => { live = false; };
-  }, []);
-  return counts;
-}
+// ── Headline — "where are we going?" in four languages ─────────────────────
+// Pidgin is the confirmed line. Yoruba, Igbo and Hausa are draft translations
+// — UNVERIFIED by a native speaker. Confirm them before treating as final.
+// Each splits into two lines: the first in white, the second in yellow.
+const HEADLINES: { lang: string; l1: string; l2: string }[] = [
+  { lang: "Pidgin", l1: "Where we",  l2: "dey go?" },
+  { lang: "Yoruba", l1: "Nibo la",   l2: "n lo?" },        // UNVERIFIED
+  { lang: "Igbo",   l1: "Ebee ka",   l2: "anyị na-aga?" }, // UNVERIFIED
+  { lang: "Hausa",  l1: "Ina za",    l2: "mu je?" },       // UNVERIFIED
+];
+const ROTATE_MS = 3200;
 
 export const Hero = () => {
-  const counts = useCounts();
-  const stats = counts
-    ? [
-        { n: counts.trips,    label: counts.trips === 1 ? "Trip to join" : "Trips to join" },
-        { n: counts.events,   label: counts.events === 1 ? "Event on" : "Events on" },
-        { n: counts.agencies, label: counts.agencies === 1 ? "Verified agency" : "Verified agencies" },
-      ].filter((s) => s.n > 0)
-    : [];
+  const [i, setI] = useState(0);
+
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => setI((n) => (n + 1) % HEADLINES.length), ROTATE_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const h = HEADLINES[i];
 
   return (
-    <section className="kj-dark relative min-h-[calc(100svh-4.5rem)] md:min-h-[760px] flex flex-col overflow-hidden bg-ink">
+    <section className="kj-dark relative overflow-hidden bg-ink">
       <img
         src={HERO_PHOTO}
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+        className="absolute inset-0 w-full h-full object-cover object-[65%_center] select-none pointer-events-none"
       />
       <div aria-hidden="true" className="absolute inset-0 kj-scrim pointer-events-none" />
-      <div aria-hidden="true" className="absolute inset-0 kj-scrim-left pointer-events-none md:block hidden" />
+      <div aria-hidden="true" className="absolute inset-0 kj-scrim-left pointer-events-none" />
 
-      <div className="relative flex-1 w-full max-w-[1280px] mx-auto px-6 md:px-8 pt-28 md:pt-44 pb-8 md:pb-12 flex flex-col">
-        <div className="flex flex-col gap-5 max-w-[620px] animate-rise">
-          <p className="kj-eyebrow !text-white">Trips&ensp;/&ensp;Events&ensp;/&ensp;Group payments</p>
-          <h1 className="text-[clamp(2.9rem,8vw,5.75rem)] leading-[0.98] text-white">
-            Good people.<br />Great <span className="kj-hl">places.</span>
+      <div className="relative w-full max-w-[1280px] mx-auto px-6 md:px-8 pt-28 md:pt-40 pb-8 md:pb-14 flex flex-col gap-6 md:gap-8">
+        <div className="flex flex-col gap-4 md:gap-5 max-w-[640px]">
+          <p className="kj-eyebrow">Group trips&ensp;/&ensp;Experiences&ensp;/&ensp;Community</p>
+
+          {/* Rotating headline — keyed so each language replays the rise */}
+          <h1
+            aria-live="polite"
+            className="text-[clamp(3rem,9vw,6.25rem)] leading-[0.98] min-h-[2em] flex flex-col"
+          >
+            <span key={`a${i}`} lang={h.lang.slice(0, 2).toLowerCase()} className="text-white animate-rise">{h.l1}</span>
+            <span key={`b${i}`} className="text-signal animate-rise [animation-delay:90ms]">{h.l2}</span>
           </h1>
-          <p className="text-base md:text-lg leading-relaxed text-white/85 max-w-[440px]">
-            Curated trips, real experiences, and one link that gets the whole squad paid up and moving together.
+
+          <p className="text-base md:text-lg leading-relaxed text-white/85 max-w-[460px]">
+            We handle the boring part — itinerary, hotels, chasing everyone for their share.{" "}
+            <strong className="text-white font-semibold">Your squad just shows up.</strong>
           </p>
         </div>
 
-        <div className="mt-auto pt-12 flex flex-col gap-10">
-          <Link to="/start/explore" className="group inline-flex items-center gap-4 self-start">
-            <span className="kj-arrow w-12 h-12"><ArrowRight className="w-5 h-5" strokeWidth={2.4} /></span>
-            <span className="kj-label text-[13px] text-signal">Explore trips</span>
-          </Link>
+        <HeroSearch />
 
-          {stats.length > 0 && (
-            <dl className="grid grid-cols-3 max-w-[520px] border-t border-white/20 pt-5">
-              {stats.map((s, i) => (
-                <div key={s.label} className={`flex flex-col gap-1 ${i > 0 ? "pl-4 md:pl-6 border-l border-white/20" : ""}`}>
-                  <dt className="sr-only">{s.label}</dt>
-                  <dd className="font-display text-3xl md:text-4xl text-white leading-none">{s.n}</dd>
-                  <dd className="text-xs md:text-sm text-white/75">{s.label}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
+        {/* Kinds of trip — straight into Explore, filtered */}
+        <nav aria-label="Kinds of trip" className="flex gap-2.5 overflow-x-auto -mx-6 px-6 md:mx-0 md:px-0 pb-1 [scrollbar-width:none]">
+          {TRIP_CATEGORIES.map((c) => (
+            <Link
+              key={c.value}
+              to={c.value === "all" ? "/start/explore" : `/start/explore?category=${c.value}`}
+              className={`shrink-0 w-[84px] md:w-[104px] h-[72px] md:h-[80px] rounded-[1.4rem] border flex flex-col items-center justify-center gap-1.5 text-[12px] md:text-[13px] font-medium transition-colors ${
+                c.value === "all"
+                  ? "border-signal text-white"
+                  : "border-white/30 text-white/90 hover:border-signal"
+              }`}
+            >
+              <BrandIcon d={CATEGORY_ICON_PATHS[c.value]} className="w-5 h-5 md:w-6 md:h-6 text-signal" strokeWidth={2} />
+              {c.value === "all" ? "All" : c.label}
+            </Link>
+          ))}
+        </nav>
       </div>
     </section>
   );

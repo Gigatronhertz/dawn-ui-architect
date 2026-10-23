@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { KarijeLogo } from "@/components/Nav";
 import { TRIP_CATEGORIES } from "@/lib/categories";
+import { PHOTO_CREDITS } from "@/lib/photos";
 
 export const Footer = () => (
-  <footer className="kj-dark bg-ink max-md:-mb-[4.5rem] max-md:pb-[4.5rem]">
+  <footer className="kj-dark bg-ink max-md:-mb-[6rem] max-md:pb-[7rem]">
     <div className="mx-auto max-w-[1280px] px-5 md:px-8 py-14 flex flex-col gap-10">
       <div className="flex flex-wrap items-center justify-between gap-7">
         <KarijeLogo size="lg" className="text-logo [&_svg]:!h-24 md:[&_svg]:!h-[120px]" />
@@ -27,7 +28,19 @@ export const Footer = () => (
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm text-faint">
-        <p>© 2026 Karije. Made for West African squads.</p>
+        <div className="flex flex-col gap-1">
+          <p>© 2026 Karije. Made for West African squads.</p>
+          <p className="text-xs">
+            Photos:{" "}
+            {PHOTO_CREDITS.map((c, i) => (
+              <span key={c.page}>
+                {i > 0 && " · "}
+                <a href={c.page} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">{c.title}</a> by {c.artist}, {c.license}
+              </span>
+            ))}
+            , via Wikimedia Commons.
+          </p>
+        </div>
         <div className="flex gap-6 text-sm">
           <Link to="/privacy" className="hover:text-signal transition-colors">Privacy</Link>
           <Link to="/terms"   className="hover:text-signal transition-colors">Terms</Link>
