@@ -1,69 +1,80 @@
 import { useEffect, useState } from "react";
-import { HeroSearch } from "@/components/HeroSearch";
-
-// ── Headline — "where are we going?" in four languages ─────────────────────
-// Pidgin is the confirmed line. Yoruba, Igbo and Hausa are draft translations
-// — UNVERIFIED by a native speaker. Confirm them before treating as final.
-// Each splits into two lines: the first in yellow, the second on a yellow slab.
-const HEADLINES: { lang: string; l1: string; l2: string }[] = [
-  { lang: "Pidgin", l1: "Where we",  l2: "dey go?" },
-  { lang: "Yoruba", l1: "Nibo la",   l2: "n lo?" },        // UNVERIFIED
-  { lang: "Igbo",   l1: "Ebee ka",   l2: "anyị na-aga?" }, // UNVERIFIED
-  { lang: "Hausa",  l1: "Ina za",    l2: "mu je?" },       // UNVERIFIED
-];
-const ROTATE_MS = 3200;
+import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
 
 const HERO_PHOTO =
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&h=1100&q=80";
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&h=1400&q=80";
+
+/** Live counts for the strip under the hero. Real numbers only — a figure
+ *  that hasn't loaded, or is zero, is simply left out. */
+function useCounts() {
+  const [counts, setCounts] = useState<{ trips: number; events: number; agencies: number } | null>(null);
+  useEffect(() => {
+    let live = true;
+    Promise.allSettled([api.getListings(), api.getEvents("Lagos"), api.getAgencies()]).then(([l, e, a]) => {
+      if (!live) return;
+      setCounts({
+        trips:    l.status === "fulfilled" ? l.value.experiences.length + l.value.agencyTrips.length : 0,
+        events:   e.status === "fulfilled" ? (e.value.events ?? []).length : 0,
+        agencies: a.status === "fulfilled" ? a.value.agencies.length : 0,
+      });
+    });
+    return () => { live = false; };
+  }, []);
+  return counts;
+}
 
 export const Hero = () => {
-  const [i, setI] = useState(0);
-
-  useEffect(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const id = setInterval(() => setI((n) => (n + 1) % HEADLINES.length), ROTATE_MS);
-    return () => clearInterval(id);
-  }, []);
-
-  const h = HEADLINES[i];
-  const big = "font-display leading-[0.95] text-[clamp(2.6rem,7.5vw,6.5rem)] origin-left";
+  const counts = useCounts();
+  const stats = counts
+    ? [
+        { n: counts.trips,    label: counts.trips === 1 ? "Trip to join" : "Trips to join" },
+        { n: counts.events,   label: counts.events === 1 ? "Event on" : "Events on" },
+        { n: counts.agencies, label: counts.agencies === 1 ? "Verified agency" : "Verified agencies" },
+      ].filter((s) => s.n > 0)
+    : [];
 
   return (
-    <section className="relative min-h-[520px] md:min-h-[680px] flex items-center overflow-hidden">
-      {/* Photo — a beach at dusk — under a left-heavy ink gradient */}
+    <section className="kj-dark relative min-h-[calc(100svh-4.5rem)] md:min-h-[760px] flex flex-col overflow-hidden bg-ink">
       <img
         src={HERO_PHOTO}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
       />
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(90deg, rgba(11,11,11,0.94) 0%, rgba(11,11,11,0.75) 55%, rgba(11,11,11,0.35) 100%)" }}
-      />
+      <div aria-hidden="true" className="absolute inset-0 kj-scrim pointer-events-none" />
+      <div aria-hidden="true" className="absolute inset-0 kj-scrim-left pointer-events-none md:block hidden" />
 
-      <div className="relative w-full max-w-[1280px] mx-auto px-5 md:px-8 pt-24 pb-14 md:pt-32 md:pb-24 flex flex-col gap-6 md:gap-8">
-        {/* Rotating headline — keyed so each language replays the drop-in */}
-        <h1 aria-live="polite" className="min-h-[clamp(110px,15vw,220px)] flex flex-col items-start gap-1.5 normal-case">
-          <span key={`a${i}`} lang={h.lang.slice(0, 2).toLowerCase()} className={`${big} text-signal -rotate-2 kj-in-1`}>
-            {h.l1}
-          </span>
-          <span
-            key={`b${i}`}
-            className={`${big} text-ink bg-signal px-[0.15em] pt-1 pb-2.5 rotate-1 kj-in-2`}
-            style={{ clipPath: "polygon(0 6%,2% 0,98% 3%,100% 92%,97% 100%,1% 96%)" }}
-          >
-            {h.l2}
-          </span>
-        </h1>
+      <div className="relative flex-1 w-full max-w-[1280px] mx-auto px-6 md:px-8 pt-28 md:pt-44 pb-8 md:pb-12 flex flex-col">
+        <div className="flex flex-col gap-5 max-w-[620px] animate-rise">
+          <p className="kj-eyebrow !text-white">Trips&ensp;/&ensp;Events&ensp;/&ensp;Group payments</p>
+          <h1 className="text-[clamp(2.9rem,8vw,5.75rem)] leading-[0.98] text-white">
+            Good people.<br />Great <span className="kj-hl">places.</span>
+          </h1>
+          <p className="text-base md:text-lg leading-relaxed text-white/85 max-w-[440px]">
+            Curated trips, real experiences, and one link that gets the whole squad paid up and moving together.
+          </p>
+        </div>
 
-        <p className="text-base md:text-xl leading-relaxed text-[#E6E6E6] max-w-[520px]">
-          We handle the boring part — itinerary, hotels, chasing everyone for their share.{" "}
-          <strong className="text-signal font-bold">Your squad just shows up.</strong>
-        </p>
+        <div className="mt-auto pt-12 flex flex-col gap-10">
+          <Link to="/start/explore" className="group inline-flex items-center gap-4 self-start">
+            <span className="kj-arrow w-12 h-12"><ArrowRight className="w-5 h-5" strokeWidth={2.4} /></span>
+            <span className="kj-label text-[13px] text-signal">Explore trips</span>
+          </Link>
 
-        <HeroSearch />
+          {stats.length > 0 && (
+            <dl className="grid grid-cols-3 max-w-[520px] border-t border-white/20 pt-5">
+              {stats.map((s, i) => (
+                <div key={s.label} className={`flex flex-col gap-1 ${i > 0 ? "pl-4 md:pl-6 border-l border-white/20" : ""}`}>
+                  <dt className="sr-only">{s.label}</dt>
+                  <dd className="font-display text-3xl md:text-4xl text-white leading-none">{s.n}</dd>
+                  <dd className="text-xs md:text-sm text-white/75">{s.label}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
       </div>
     </section>
   );

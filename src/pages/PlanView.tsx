@@ -8,6 +8,9 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Check } from "lucide-react";
 import { api, imageUrl, type PublicPlanResponse, type PlanDay } from "@/lib/api";
+import { tripImageUrl } from "@/lib/tripImage";
+
+const PLAN_HERO_PHOTO = "1507525428034-b723cf961d3e";
 import { KarijeLogo } from "@/components/Nav";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -319,7 +322,7 @@ function PaymentSection({
           </button>
           <button
             onClick={() => setPayState("form")}
-            className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-2.5 text-sm shadow-glow hover:opacity-90 transition font-display uppercase tracking-[0.04em]"
+            className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-2.5 text-sm shadow-glow hover:opacity-90 transition font-semibold"
           >
             Try payment again
           </button>
@@ -420,7 +423,7 @@ function PaymentSection({
           </div>
           <button
             onClick={() => handlePayNow(false)}
-            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
+            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-semibold"
           >
             Pay this month — {fmtNGN(nextInstallmentAmount ?? 0)} →
           </button>
@@ -462,7 +465,7 @@ function PaymentSection({
             <button
               onClick={handleSubscribe}
               disabled={subscribing || belowMinAmount}
-              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition disabled:opacity-40 font-display uppercase tracking-[0.04em]"
+              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition disabled:opacity-40 font-semibold"
             >
               {subscribing ? "Starting…" : "Start this plan →"}
             </button>
@@ -480,7 +483,7 @@ function PaymentSection({
         <div className="space-y-2">
           <button
             onClick={() => handlePayNow(false)}
-            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
+            className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-semibold"
           >
             Pay in full — {fmtNGN(perPerson)} →
           </button>
@@ -506,7 +509,7 @@ function PaymentSection({
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
             <button type="submit"
-              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
+              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-semibold"
             >
               Pay {fmtNGN(payInFull ? (remaining ?? perPerson) : (nextInstallmentAmount ?? perPerson))} →
             </button>
@@ -713,7 +716,7 @@ function JoinSection({
 
           <div className="flex gap-2">
             <button onClick={() => handleJoin(false)}
-              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
+              className="flex-1 rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:opacity-90 active:scale-[0.98] transition font-semibold"
             >
               I'm in! 🎉
             </button>
@@ -741,7 +744,7 @@ function JoinSection({
         </div>
       ) : (
         <button onClick={() => setJoinState("name-input")}
-          className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-4 text-base shadow-glow hover:opacity-90 active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
+          className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-4 text-base shadow-glow hover:opacity-90 active:scale-[0.98] transition font-semibold"
         >
           I'm in! 🎉
         </button>
@@ -849,7 +852,7 @@ export default function PlanView() {
   const cb = data?.cost_breakdown;
 
   return (
-    <main className="min-h-screen bg-hero-mesh print:bg-white print:min-h-0">
+    <main className="min-h-screen bg-background print:bg-white print:min-h-0">
       {/* Print-only header */}
       <div className="hidden print:flex items-center gap-3 px-8 pt-6 pb-4 border-b border-border mb-4">
         <div className="font-display font-bold text-lg">Karije</div>
@@ -862,14 +865,72 @@ export default function PlanView() {
         )}
       </div>
 
-      {/* Screen header */}
-      <header className="pt-6 pb-2 print:hidden">
-        <div className="mx-auto max-w-lg lg:max-w-6xl px-4 lg:px-8">
+      {/* Screen header — the trip's photo, its name, and who runs it */}
+      <header className="kj-dark relative bg-ink overflow-hidden print:hidden">
+        <img
+          src={tripImageUrl(data?.curated?.imageId || PLAN_HERO_PHOTO, 1600, 1000)}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
+        />
+        <div aria-hidden="true" className="absolute inset-0 kj-scrim" />
+        <div className="relative mx-auto max-w-lg lg:max-w-6xl px-5 lg:px-8 pt-5 pb-10 md:pb-14 flex flex-col gap-4">
           <KarijeLogo size="sm" />
+          {data && (
+            <div className="flex flex-col gap-3 mt-16 md:mt-28">
+              {data.agency && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  {imageUrl(data.agency.logoUrl) && (
+                    <img
+                      src={imageUrl(data.agency.logoUrl)!}
+                      alt={data.agency.name}
+                      className="h-9 w-auto max-w-[7rem] object-contain rounded-md bg-white p-1"
+                    />
+                  )}
+                  <div className="text-left">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/70">Presented by</div>
+                    <div className="font-semibold text-sm leading-tight text-white">{data.agency.name}</div>
+                  </div>
+                  {data.agency.waNumber && (
+                      <a
+                        href={`https://wa.me/${data.agency.waNumber.replace(/[^\d]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="print:hidden inline-flex items-center gap-1.5 text-xs font-medium bg-[#25D366] text-white px-3.5 py-2 hover:opacity-90 transition-opacity shrink-0"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor" aria-hidden="true">
+                          <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.02h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.35c0-4.54 3.7-8.24 8.25-8.24a8.2 8.2 0 0 1 5.83 2.42 8.18 8.18 0 0 1 2.41 5.82c0 4.55-3.7 8.21-8.25 8.21zm4.52-6.16c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.24-.64.81-.78.97-.14.17-.29.19-.53.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.24-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.15.16-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.42-.14-.01-.31-.01-.48-.01a.93.93 0 0 0-.67.31c-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.02 2.57.12.17 1.74 2.66 4.22 3.73.59.25 1.05.4 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.23-.16-.48-.28z"/>
+                        </svg>
+                        WhatsApp
+                      </a>
+                    )}
+                </div>
+              )}
+              <span className="self-start kj-label text-[10px] rounded-full bg-signal text-ink px-2.5 py-1">
+                {data.curated ? "Featured" : data.agency ? "Group trip" : "Squad trip"}
+              </span>
+              <h1 className="text-[clamp(2.4rem,7vw,4.5rem)] leading-[1] text-white">
+                {data.curated?.name || (data.agency ? data.destination : null) || data.destination || "Squad Trip"}
+              </h1>
+              <p className="text-base text-white/85">
+                {data.curated
+                  ? data.curated.location
+                  : data.origin && data.destination && data.origin !== data.destination
+                    ? `${data.origin} → ${data.destination}`
+                    : data.destination}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {data.days && <span className="kj-chip !text-white !border-white/30">{data.days} day{data.days === 1 ? "" : "s"}</span>}
+                {data.squadSize && <span className="kj-chip !text-white !border-white/30">{data.squadSize} people</span>}
+                {data.selectedDate && <span className="kj-chip !text-white !border-white/30">{fmtDate(data.selectedDate)}</span>}
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
-      <div className="mx-auto max-w-lg lg:max-w-6xl px-4 lg:px-8 pb-24 space-y-4 print:max-w-full print:px-8 print:pb-8 print:space-y-3">
+      <div className="mx-auto max-w-lg lg:max-w-6xl px-4 lg:px-8 pt-6 pb-24 space-y-4 print:max-w-full print:px-8 print:pb-8 print:space-y-3">
         {/* Adopted on arrival from sign-up — say so, or it looks like nothing happened */}
         {claimed && (
           <div className="rounded-lg bg-primary/10 ring-1 ring-primary/20 px-5 py-4 flex items-center gap-3 print:hidden">
@@ -921,80 +982,12 @@ export default function PlanView() {
               </div>
             )}
 
-            {/* Hero */}
-            <div className="text-center py-6 print:py-3 print:text-left">
-              {/* Who is actually running this trip. Only agency-owned trips
-                  carry this, so a squad's own plan looks exactly as before. */}
-              {data.agency && (
-                <div className="flex items-center justify-center gap-3 mb-5 print:justify-start">
-                  {imageUrl(data.agency.logoUrl) && (
-                    <img
-                      src={imageUrl(data.agency.logoUrl)!}
-                      alt={data.agency.name}
-                      className="h-10 w-auto max-w-[8rem] object-contain"
-                    />
-                  )}
-                  <div className="text-left">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      Presented by
-                    </div>
-                    <div className="font-display font-semibold text-sm leading-tight">
-                      {data.agency.name}
-                    </div>
-                  </div>
-                  {/* The one thing this hero was missing: a way to actually
-                      reach the agency before paying, not just see their name. */}
-                  {data.agency.waNumber && (
-                    <a
-                      href={`https://wa.me/${data.agency.waNumber.replace(/[^\d]/g, '')}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="print:hidden inline-flex items-center gap-1.5 text-xs font-medium bg-[#25D366] text-white px-3.5 py-2 hover:opacity-90 transition-opacity shrink-0"
-                    >
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor" aria-hidden="true">
-                        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.02h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.35c0-4.54 3.7-8.24 8.25-8.24a8.2 8.2 0 0 1 5.83 2.42 8.18 8.18 0 0 1 2.41 5.82c0 4.55-3.7 8.21-8.25 8.21zm4.52-6.16c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.24-.64.81-.78.97-.14.17-.29.19-.53.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.24-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.15.16-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.42-.14-.01-.31-.01-.48-.01a.93.93 0 0 0-.67.31c-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.02 2.57.12.17 1.74 2.66 4.22 3.73.59.25 1.05.4 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.23-.16-.48-.28z"/>
-                      </svg>
-                      WhatsApp
-                    </a>
-                  )}
-                </div>
-              )}
-              {/* On a curated trip origin and destination are both the state, so
-                  the old heading read "LAGOS → LAGOS" over a title of "Lagos".
-                  These trips have a name and a place — use them. */}
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2 print:hidden">
-                {data.curated
-                  ? data.curated.location
-                  : `${data.origin || "Your city"} → ${data.destination || "Destination"}`}
-              </div>
-              <h1 className="font-display text-4xl md:text-5xl font-semibold tracking-tight mb-3 print:text-2xl">
-                {data.curated?.name || data.destination || "Squad Trip"}
-              </h1>
-              <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground flex-wrap print:justify-start">
-                {data.days && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary/80 text-xs font-medium print:bg-transparent print:px-0 print:text-foreground">
-                    📅 {data.days} day{data.days === 1 ? "" : "s"}
-                  </span>
-                )}
-                {data.squadSize && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary/80 text-xs font-medium print:bg-transparent print:px-0 print:text-foreground">
-                    👥 {data.squadSize} people
-                  </span>
-                )}
-                {data.selectedDate && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary/80 text-xs font-medium print:bg-transparent print:px-0 print:text-foreground">
-                    🗓 {fmtDate(data.selectedDate)}
-                  </span>
-                )}
-              </div>
-            </div>
-
             {/* Cost at a glance */}
             {cb && (
               <Card>
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 print:hidden">Your share</div>
                 <div className="font-display text-4xl font-semibold text-foreground mb-1 print:text-2xl print:text-center">{fmtNGN(cb.per_person)}</div>
-                <div className="text-sm text-muted-foreground print:hidden text-center">per person</div>
+                <div className="text-sm text-muted-foreground print:hidden">per person</div>
                 {data.payBy && (
                   <div className="text-xs text-muted-foreground text-center mt-1">Pay by {fmtDate(data.payBy)}</div>
                 )}
@@ -1010,7 +1003,7 @@ export default function PlanView() {
                 )}
                 {/* An agency sells the trip at one price — the AI plan's
                     transport/lodging split and squad total don't apply. */}
-                {!data.agency && (<>
+                {!data.agency && (cb.transport_total > 0 || cb.lodging_total > 0) && (<>
                 <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <div className="text-muted-foreground text-[11px] uppercase tracking-wider mb-0.5">Transport</div>

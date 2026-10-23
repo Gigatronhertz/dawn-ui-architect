@@ -21,5 +21,3 @@ export const BrandIcon = ({ d, className = "w-[18px] h-[18px]", strokeWidth = 2.
   </svg>
 );
 
-/** The cut-edge shapes, cycled across a grid so neighbouring cards differ. */
-export const CUTS = ["kj-cut", "kj-cut-2", "kj-cut-3", "kj-cut-4", "kj-cut-5", "kj-cut-6"];

@@ -106,7 +106,7 @@ const PrimaryBtn = ({ children, onClick, disabled, fullWidth }: { children: Reac
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`group inline-flex items-center gap-1.5 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-xs shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100${fullWidth ? " w-full justify-center sm:w-auto" : ""} font-display uppercase tracking-[0.04em]`}
+    className={`group inline-flex items-center gap-1.5 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-xs shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:hover:scale-100${fullWidth ? " w-full justify-center sm:w-auto" : ""} font-semibold`}
   >
     {children}
     <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
@@ -662,7 +662,7 @@ function PlanView({ intake, onNext, onBack }: { intake: Intake; onNext: (plan: T
                     <div className="w-2 h-2 rounded-full bg-foreground mt-1 ring-4 ring-background" />
                   </div>
                   <div className="absolute left-[66%] top-[26%] flex flex-col items-center">
-                    <div className="px-2.5 py-1 bg-gradient-primary text-primary-foreground text-[10px] shadow-glow whitespace-nowrap font-display uppercase tracking-[0.04em]">📍 {intake.destination}</div>
+                    <div className="px-2.5 py-1 bg-gradient-primary text-primary-foreground text-[10px] shadow-glow whitespace-nowrap font-semibold">📍 {intake.destination}</div>
                     <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1 ring-4 ring-background animate-pulse" />
                   </div>
                   <div className="absolute left-[60%] top-[38%]">
@@ -1562,7 +1562,7 @@ const Demo = () => {
                 <span className="w-1.5 h-1.5 rounded-full bg-google-green animate-pulse" /> Auto-playing · pause
               </button>
             ) : (
-              <button onClick={startAuto} className="text-xs px-3 py-1.5 rounded-lg bg-gradient-primary text-primary-foreground shadow-glow inline-flex items-center gap-1.5 font-display uppercase tracking-[0.04em]">
+              <button onClick={startAuto} className="text-xs px-3 py-1.5 rounded-lg bg-gradient-primary text-primary-foreground shadow-glow inline-flex items-center gap-1.5 font-semibold">
                 ▶ Show me the demo
               </button>
             )}

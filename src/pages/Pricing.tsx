@@ -82,7 +82,7 @@ export default function Pricing() {
           <div className="grid md:grid-cols-3 gap-6">
 
             {/* ── Free ──────────────────────────────────────────────── */}
-            <div className="rounded-3xl border-2 border-line bg-card p-6 md:p-8 flex flex-col ">
+            <div className="rounded-3xl border border-line bg-card p-6 md:p-8 flex flex-col ">
               <div className="mb-6">
                 <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 bg-secondary text-muted-foreground mb-4">
                   Free
@@ -106,14 +106,14 @@ export default function Pricing() {
 
               <Link
                 to="/start"
-                className="w-full text-center py-3 rounded-full border-2 border-line font-jost font-bold text-sm tracking-[0.06em] text-foreground hover:-translate-y-0.5 transition-transform"
+                className="w-full text-center py-3 rounded-full border border-line font-jost font-bold text-sm tracking-[0.06em] text-foreground hover:-translate-y-0.5 transition-transform"
               >
                 Start planning free →
               </Link>
             </div>
 
             {/* ── AI Curated (featured) ──────────────────────────── */}
-            <div className="rounded-3xl border-2 border-line bg-primary-soft p-6 md:p-8 flex flex-col shadow-[6px_6px_0_0_hsl(var(--signal))] relative">
+            <div className="rounded-3xl border border-line bg-primary-soft p-6 md:p-8 flex flex-col  relative">
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                 <span className="inline-block text-[10px] font-jost font-bold tracking-[0.12em] uppercase px-4 py-1.5 bg-signal text-ink whitespace-nowrap">
                   Most popular
@@ -145,14 +145,14 @@ export default function Pricing() {
 
               <Link
                 to="/start/trip"
-                className="w-full text-center py-3 rounded-full bg-signal text-ink font-jost font-bold text-sm tracking-[0.06em] shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--paper))] transition-transform"
+                className="w-full text-center py-3 rounded-full bg-signal text-ink font-jost font-bold text-sm tracking-[0.06em]  hover:-translate-y-0.5  transition-transform"
               >
                 Generate your first plan →
               </Link>
             </div>
 
             {/* ── Ready-made Trips ───────────────────────────────── */}
-            <div className="rounded-3xl border-2 border-line bg-card p-6 md:p-8 flex flex-col ">
+            <div className="rounded-3xl border border-line bg-card p-6 md:p-8 flex flex-col ">
               <div className="mb-6">
                 <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 bg-secondary text-muted-foreground mb-4">
                   Ready-made Trips
@@ -176,7 +176,7 @@ export default function Pricing() {
 
               <Link
                 to="/start/explore"
-                className="w-full text-center py-3 rounded-full border-2 border-line font-jost font-bold text-sm tracking-[0.06em] text-foreground hover:-translate-y-0.5 transition-transform"
+                className="w-full text-center py-3 rounded-full border border-line font-jost font-bold text-sm tracking-[0.06em] text-foreground hover:-translate-y-0.5 transition-transform"
               >
                 Browse ready-made trips →
               </Link>
@@ -245,7 +245,7 @@ export default function Pricing() {
             Everything at a glance.
           </h2>
 
-          <div className="overflow-x-auto rounded-2xl border-2 border-line p-4">
+          <div className="overflow-x-auto rounded-2xl border border-line p-4">
             <table className="w-full min-w-[560px] text-sm font-jost font-light">
               <thead>
                 <tr className="border-b border-border">
@@ -338,7 +338,7 @@ export default function Pricing() {
       {/* ── Bottom CTA ────────────────────────────────────────────────────── */}
       <section className="py-14 md:py-20 px-5 md:px-6 border-t border-border">
         <div className="mx-auto max-w-5xl">
-          <div className="relative overflow-hidden rounded-[2.5rem] border-[3px] border-signal bg-foreground text-background p-12 md:p-20 text-center shadow-[8px_8px_0_0_hsl(var(--signal))]">
+          <div className="relative overflow-hidden rounded-[2.5rem] border-[3px] border-signal bg-foreground text-background p-12 md:p-20 text-center ">
             <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/25 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-signal/40 blur-3xl pointer-events-none" />
 

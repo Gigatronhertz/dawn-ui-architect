@@ -97,7 +97,7 @@ function attractionCategory(name: string): string {
 
 /* ─── shared UI ─────────────────────────────────────────────────────────────── */
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-3xl bg-card border-2 border-line p-6 md:p-8 animate-rise ${className}`}>{children}</div>
+  <div className={`rounded-3xl bg-card border border-line p-6 md:p-8 animate-rise ${className}`}>{children}</div>
 );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -125,7 +125,7 @@ const Field = ({ n, label, value, children }: { n: number; label: string; value?
         <span className="text-lg font-bold">{label}</span>
       </div>
       {value !== undefined && (
-        <span className="font-display text-xl md:text-[26px] leading-none bg-signal text-ink px-3.5 py-2 -rotate-2 shadow-[3px_3px_0_hsl(var(--paper))] whitespace-nowrap">
+        <span className="font-semibold rounded-[0.65rem] text-xl md:text-[26px] leading-none bg-signal text-ink px-3.5 py-2   whitespace-nowrap">
           {value}
         </span>
       )}
@@ -228,7 +228,7 @@ function IntakeStep({
     }));
   };
 
-  const inputCls = "w-full bg-card border-2 border-line-strong px-4 py-3.5 text-base font-semibold focus:outline-none focus:border-signal transition-colors";
+  const inputCls = "w-full bg-card border border-line-strong px-4 py-3.5 text-base font-semibold focus:outline-none focus:border-signal transition-colors";
   const selectCls = `${inputCls} cursor-pointer appearance-none pl-12`;
 
   // Progress — how many of the ten questions have an answer.
@@ -251,9 +251,9 @@ function IntakeStep({
         type="button"
         onClick={() => switchMode(mode)}
         aria-pressed={on}
-        className={`flex-1 flex items-center justify-between gap-4 px-6 md:px-7 py-6 font-display text-2xl md:text-[28px] transition-colors ${
+        className={`flex-1 flex items-center justify-between gap-4 px-6 md:px-7 py-6 font-semibold rounded-[0.65rem] text-2xl md:text-[28px] transition-colors ${
           on
-            ? "bg-signal text-ink shadow-[5px_5px_0_hsl(var(--paper))] -rotate-1 kj-cut-5"
+            ? "bg-signal text-ink   kj-cut-5"
             : "border-2 border-signal text-signal hover:bg-signal/10"
         }`}
       >
@@ -274,7 +274,7 @@ function IntakeStep({
       </div>
       <h1 className="font-display text-[clamp(2.6rem,8vw,5rem)] leading-[0.95]">
         Tell us about<br />
-        <span className="inline-block bg-signal text-ink px-[0.18em] pt-1 pb-2 mt-1 -rotate-1 kj-cut-5">the trip.</span>
+        <span className="inline-block bg-signal text-ink px-[0.18em] pt-1 pb-2 mt-1  kj-cut-5">the trip.</span>
       </h1>
       <p className="mt-5 text-base md:text-lg text-muted-foreground leading-relaxed max-w-xl">
         10 quick questions. AI builds the full itinerary with live prices. You edit before it goes to the squad.
@@ -476,7 +476,7 @@ function IntakeStep({
             onClick={() => onSubmit(form, email, waNumber)}
             disabled={!canSubmit}
             title={canSubmit ? undefined : "Add your email (question 10) first"}
-            className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2.5 bg-ink text-signal font-display text-base md:text-lg px-4 md:px-6 py-3 md:py-3.5 shadow-[4px_4px_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:translate-y-0"
+            className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2.5 bg-ink text-signal font-display text-base md:text-lg px-4 md:px-6 py-3 md:py-3.5  hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:translate-y-0"
           >
             {canSubmit ? "Build my itinerary" : "Add your email"}
             <Ico d={ICON.arrow} className="w-4 h-4 md:w-5 md:h-5" />
@@ -1411,7 +1411,7 @@ function PlanStep({
             </div>
             <button
               onClick={() => setLibOpen(true)}
-              className="flex-1 py-3 rounded-lg bg-gradient-primary text-primary-foreground text-sm shadow-glow active:scale-[0.98] transition font-display uppercase tracking-[0.04em]"
+              className="flex-1 py-3 rounded-lg bg-gradient-primary text-primary-foreground text-sm shadow-glow active:scale-[0.98] transition font-semibold"
             >
               ＋ Add a place
             </button>
@@ -1535,7 +1535,7 @@ function PlanStep({
         </div>
         <button
           onClick={() => onConfirm(finalPlan, selectedDate || undefined)}
-          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform whitespace-nowrap w-full sm:w-auto justify-center font-display uppercase tracking-[0.04em]"
+          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-6 py-3.5 text-sm shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform whitespace-nowrap w-full sm:w-auto justify-center font-semibold"
         >
           Confirm & share with squad
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -2183,7 +2183,7 @@ export default function Start() {
 
         {/* Paywall — out of free plan / credits */}
         {paywall && step === "intake" && (
-          <div className="mb-6 rounded-3xl bg-card border-2 border-line p-6 md:p-7">
+          <div className="mb-6 rounded-3xl bg-card border border-line p-6 md:p-7">
             {paywall === "SIGN_IN_REQUIRED" ? (
               <>
                 <h2 className="font-marcellus text-2xl text-foreground">You've used your free plan.</h2>
@@ -2191,7 +2191,7 @@ export default function Start() {
                 <Link
                   to={`/login?next=${encodeURIComponent("/start/trip?resume=1")}`}
                   onClick={() => { if (intake) savePending({ intake, email, waNumber }); }}
-                  className="mt-5 inline-block bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform"
+                  className="mt-5 inline-block bg-signal text-ink px-6 py-3 text-sm font-bold  hover:-translate-y-0.5 transition-transform"
                 >
                   Sign in to continue
                 </Link>
@@ -2204,7 +2204,7 @@ export default function Start() {
                   <button
                     onClick={buyPlans}
                     disabled={buying}
-                    className="mt-5 bg-signal text-ink px-6 py-3 text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 transition-transform disabled:opacity-60"
+                    className="mt-5 bg-signal text-ink px-6 py-3 text-sm font-bold  hover:-translate-y-0.5 transition-transform disabled:opacity-60"
                   >
                     {buying ? "Opening Paystack…" : `Get ${credits?.packCredits ?? 3} plans for ₦${(credits?.packPrice ?? 500).toLocaleString()}`}
                   </button>

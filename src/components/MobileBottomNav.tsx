@@ -39,18 +39,17 @@ export const MobileBottomNav = () => {
   return (
     <nav
       aria-label="Quick links"
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t-[3px] border-signal bg-ink pb-[env(safe-area-inset-bottom)]"
+      className="kj-dark md:hidden fixed bottom-0 inset-x-0 z-40 bg-ink pb-[env(safe-area-inset-bottom)]"
     >
-      <div className="grid grid-cols-5 items-end px-2 pt-2 pb-1.5">
+      <div className="grid grid-cols-5 items-center px-2 pt-2 pb-2">
         {ITEMS.map(({ to, label, icon: Icon, primary }) => {
           const active = isActive(pathname, to);
           if (primary) {
             return (
-              <Link key={to} to={to} className="flex flex-col items-center gap-1 -mt-6">
-                <span className="w-12 h-12 bg-signal text-ink shadow-[3px_3px_0_0_hsl(var(--paper))] -rotate-3 grid place-items-center">
+              <Link key={to} to={to} aria-label={label} className="flex flex-col items-center justify-center py-1">
+                <span className="w-11 h-11 rounded-xl bg-signal text-ink grid place-items-center active:scale-95 transition-transform">
                   <Icon className="w-5 h-5" strokeWidth={2.5} />
                 </span>
-                <span className="text-[10px] font-jost font-bold uppercase tracking-[0.12em] text-signal">{label}</span>
               </Link>
             );
           }
@@ -63,8 +62,7 @@ export const MobileBottomNav = () => {
               }`}
             >
               <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
-              <span className={`text-[10px] font-jost uppercase tracking-[0.12em] ${active ? "font-bold" : "font-medium"}`}>{label}</span>
-              <span className={`h-1 w-1 rounded-full ${active ? "bg-signal" : "bg-transparent"}`} />
+              <span className={`text-[11px] font-jost ${active ? "font-semibold" : "font-medium"}`}>{label}</span>
             </Link>
           );
         })}

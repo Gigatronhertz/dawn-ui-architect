@@ -35,7 +35,7 @@ export default function TripType() {
           {/* ── Intrastate ── */}
           <Link
             to="/start/explore"
-            className="group bg-background border-2 border-line rounded-2xl p-8 flex flex-col gap-6 hover:-translate-y-1 transition-transform"
+            className="group bg-background border border-line rounded-2xl p-8 flex flex-col gap-6 hover:-translate-y-1 transition-transform"
           >
             {/* Icon */}
             <div className="w-12 h-12 rounded-lg bg-signal text-ink grid place-items-center shrink-0">
@@ -71,7 +71,7 @@ export default function TripType() {
               {["Beach camping", "Water park", "Canopy walk", "Street art tour"].map((eg) => (
                 <span
                   key={eg}
-                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-line-strong px-2.5 py-1 text-foreground"
+                  className="text-[10px] font-jost font-semibold tracking-wide border border-line-strong rounded-full px-2.5 py-1 text-foreground"
                 >
                   {eg}
                 </span>
@@ -98,7 +98,7 @@ export default function TripType() {
           {/* ── Interstate ── */}
           <Link
             to="/start/trip"
-            className="group bg-background border-2 border-line rounded-2xl p-8 flex flex-col gap-6 hover:-translate-y-1 transition-transform"
+            className="group bg-background border border-line rounded-2xl p-8 flex flex-col gap-6 hover:-translate-y-1 transition-transform"
           >
             {/* Icon */}
             <div className="w-12 h-12 rounded-lg bg-signal text-ink grid place-items-center shrink-0">
@@ -132,7 +132,7 @@ export default function TripType() {
               {["Lagos → Calabar", "Abuja → Enugu", "Ibadan → Port Harcourt"].map((eg) => (
                 <span
                   key={eg}
-                  className="text-[10px] font-jost font-semibold tracking-wide border-2 border-line-strong px-2.5 py-1 text-foreground"
+                  className="text-[10px] font-jost font-semibold tracking-wide border border-line-strong rounded-full px-2.5 py-1 text-foreground"
                 >
                   {eg}
                 </span>

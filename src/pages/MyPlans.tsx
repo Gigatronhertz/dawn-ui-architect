@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { CheckCircle2 } from "lucide-react";
+import { Link, Navigate } from "react-router-dom";
+import { ArrowRight, MessageCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, type UserPlan, type SquadMember } from "@/lib/api";
 import { Nav } from "@/components/Nav";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { tripImageUrl } from "@/lib/tripImage";
+
+const HERO_PHOTO =
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&h=1000&q=80";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
@@ -21,32 +25,13 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 /** Statuses whose plan has a public page a squad can open and pay on. */
 const SHAREABLE_STATUS = ["curated", "custom", "awaiting_group"];
 
-type AuthMode = "signin" | "signup" | "magic";
-type SubmitState = "idle" | "busy" | "done" | "err";
-
 export default function MyPlans() {
-  const { user, loading, signOut, getIdToken } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const { user, loading, getIdToken } = useAuth();
 
   const [plans, setPlans]     = useState<UserPlan[]>([]);
   const [fetching, setFetching] = useState(false);
   const [error, setError]     = useState<string | null>(null);
   const cardsReveal = useScrollReveal<HTMLOListElement>();
-
-  // ── Auth form state ───────────────────────────────────────────────────────
-  const [authMode, setAuthMode]       = useState<AuthMode>("signin");
-  const [email, setEmail]             = useState("");
-  const [password, setPassword]       = useState("");
-  const [confirm, setConfirm]         = useState("");
-  const [showPass, setShowPass]       = useState(false);
-  const [submitState, setSubmitState] = useState<SubmitState>("idle");
-  const [submitErr, setSubmitErr]     = useState("");
-  const [sentTo, setSentTo]           = useState("");
-
-  // URL params passed back from /auth/verify-email or on auth_error
-  const verified  = searchParams.get("verified") === "1";
-  const authError = searchParams.get("auth_error");
 
   useEffect(() => {
     document.title = "My Plans · Karije";
@@ -63,70 +48,6 @@ export default function MyPlans() {
       .finally(() => setFetching(false));
   }, [user, getIdToken]);
 
-  function resetForm(mode: AuthMode) {
-    setAuthMode(mode);
-    setPassword("");
-    setConfirm("");
-    setSubmitState("idle");
-    setSubmitErr("");
-    setSentTo("");
-  }
-
-  // ── Sign-in handler ───────────────────────────────────────────────────────
-  async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim() || !password) return;
-    setSubmitState("busy");
-    setSubmitErr("");
-    try {
-      const { token } = await api.login({ email: email.trim(), password });
-      // Hand the JWT to AuthContext via the URL param it already reads on mount
-      navigate(`/my-plans?token=${encodeURIComponent(token)}`, { replace: true });
-    } catch (err) {
-      setSubmitErr(err instanceof Error ? err.message : "Sign in failed.");
-      setSubmitState("err");
-    }
-  }
-
-  // ── Sign-up handler ───────────────────────────────────────────────────────
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim() || !password) return;
-    if (password !== confirm) {
-      setSubmitErr("Passwords don't match.");
-      setSubmitState("err");
-      return;
-    }
-    setSubmitState("busy");
-    setSubmitErr("");
-    try {
-      const res = await api.signup({ email: email.trim(), password });
-      setSentTo(email.trim());
-      setSubmitState("done");
-      // Dev mode — show preview link in console for local testing
-      if (res.preview) console.info("[signup] verify link:", res.preview);
-    } catch (err) {
-      setSubmitErr(err instanceof Error ? err.message : "Sign up failed.");
-      setSubmitState("err");
-    }
-  }
-
-  // ── Magic-link handler ────────────────────────────────────────────────────
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setSubmitState("busy");
-    setSubmitErr("");
-    try {
-      await api.sendMagicLink({ email: email.trim(), redirect: "/my-plans" });
-      setSentTo(email.trim());
-      setSubmitState("done");
-    } catch (err) {
-      setSubmitErr(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-      setSubmitState("err");
-    }
-  }
-
   // ── Loading spinner (auth check still running) ────────────────────────────
   if (loading) {
     return (
@@ -139,288 +60,33 @@ export default function MyPlans() {
   // ── Not logged in — redirect to dedicated login page ─────────────────────
   if (!user) return <Navigate to="/login?next=/my-plans" replace />;
 
-  // (dead code below — kept for safety until we confirm the redirect works)
-  if (false) {
-    const isBusy = submitState === "busy";
-
-    // "Check your inbox" state — shown after successful signup or magic-link send
-    if (submitState === "done") {
-      const isSignup = authMode === "signup";
-      return (
-        <main className="min-h-screen bg-background">
-          <Nav />
-          <div aria-hidden="true" className="h-[109px]" />
-          <div className="mx-auto max-w-sm px-6 pb-24">
-            <div className="border border-border p-8 text-center mt-8">
-              <div className="text-4xl mb-4">{isSignup ? "📬" : "✉️"}</div>
-              <div className="font-marcellus text-xl text-foreground mb-3">
-                {isSignup ? "Verify your email" : "Check your inbox"}
-              </div>
-              <p className="font-jost font-light text-sm text-muted-foreground leading-relaxed">
-                {isSignup
-                  ? <>We sent a verification link to <strong className="text-foreground">{sentTo}</strong>. Click it to activate your account, then sign in.</>
-                  : <>We sent a sign-in link to <strong className="text-foreground">{sentTo}</strong>. Tap it to access your plans.</>
-                }
-              </p>
-              <button
-                onClick={() => { setSubmitState("idle"); setSentTo(""); }}
-                className="mt-6 text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Use a different email
-              </button>
-            </div>
-          </div>
-        </main>
-      );
-    }
-
-    return (
-      <main className="min-h-screen bg-background">
-        <Nav />
-        <div aria-hidden="true" className="h-[109px]" />
-
-        <div className="mx-auto max-w-sm px-6 pb-24">
-          {/* Eyebrow */}
-          <div className="flex items-center gap-4 mb-6">
-            <span aria-hidden="true" className="kj-mark" />
-            <span className="kj-eyebrow">Your account</span>
-          </div>
-
-          {/* Verified banner */}
-          {verified && (
-            <div className="mb-6 border border-primary/30 bg-primary/5 px-4 py-3 flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
-              <p className="font-jost font-light text-sm text-foreground">Email verified! Sign in below to access your plans.</p>
-            </div>
-          )}
-
-          {/* Auth error banner */}
-          {authError && (
-            <div className="mb-6 border border-destructive/30 bg-destructive/5 px-4 py-3">
-              <p className="font-jost font-light text-sm text-destructive">
-                {authError === "token_expired" ? "That link has expired. Request a new one below." :
-                 authError === "token_used"    ? "That link has already been used. Request a fresh one." :
-                                                 "Something went wrong with the sign-in link. Try again."}
-              </p>
-            </div>
-          )}
-
-          {/* Mode heading */}
-          <h1 className="font-marcellus text-3xl text-foreground mb-1">
-            {authMode === "signin" ? "Sign in" : authMode === "signup" ? "Create account" : "Email link"}
-          </h1>
-          <p className="font-jost font-light text-sm text-muted-foreground mb-7 leading-relaxed">
-            {authMode === "signin"
-              ? "Use your email and password to access your plans."
-              : authMode === "signup"
-              ? "Set up your Karije account. We'll send a verification email."
-              : "We'll send a sign-in link — no password needed."}
-          </p>
-
-          {/* Tab switcher */}
-          <div className="flex gap-1 mb-7 border-b border-border">
-            {(["signin", "signup"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => resetForm(mode)}
-                className={`pb-2.5 text-xs font-jost font-medium mr-4 border-b-2 transition-colors ${
-                  authMode === mode
-                    ? "border-line text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {mode === "signin" ? "Sign in" : "Create account"}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Sign-in form ── */}
-          {authMode === "signin" && (
-            <form onSubmit={handleSignIn} className="space-y-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                disabled={isBusy}
-                className="w-full border border-border px-4 py-3 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
-              />
-              <div className="relative">
-                <input
-                  type={showPass ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  required
-                  disabled={isBusy}
-                  className="w-full border border-border px-4 py-3 pr-12 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-jost font-light"
-                >
-                  {showPass ? "Hide" : "Show"}
-                </button>
-              </div>
-
-              {submitErr && (
-                <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>
-              )}
-
-              <button
-                type="submit"
-                disabled={isBusy || !email.trim() || !password}
-                className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isBusy ? "Signing in…" : "Sign in"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => resetForm("magic")}
-                className="w-full py-2 text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors text-center"
-              >
-                Forgot password? Use email link instead →
-              </button>
-            </form>
-          )}
-
-          {/* ── Sign-up form ── */}
-          {authMode === "signup" && (
-            <form onSubmit={handleSignUp} className="space-y-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                disabled={isBusy}
-                className="w-full border border-border px-4 py-3 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
-              />
-              <div className="relative">
-                <input
-                  type={showPass ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password (min. 8 characters)"
-                  required
-                  minLength={8}
-                  disabled={isBusy}
-                  className="w-full border border-border px-4 py-3 pr-12 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-jost font-light"
-                >
-                  {showPass ? "Hide" : "Show"}
-                </button>
-              </div>
-              <input
-                type={showPass ? "text" : "password"}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder="Confirm password"
-                required
-                disabled={isBusy}
-                className="w-full border border-border px-4 py-3 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
-              />
-
-              {submitErr && (
-                <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>
-              )}
-
-              <button
-                type="submit"
-                disabled={isBusy || !email.trim() || password.length < 8 || !confirm}
-                className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isBusy ? "Creating account…" : "Create account"}
-              </button>
-            </form>
-          )}
-
-          {/* ── Magic-link form ── */}
-          {authMode === "magic" && (
-            <form onSubmit={handleMagicLink} className="space-y-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                disabled={isBusy}
-                className="w-full border border-border px-4 py-3 text-sm font-jost font-light placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background disabled:opacity-50"
-              />
-
-              {submitErr && (
-                <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>
-              )}
-
-              <button
-                type="submit"
-                disabled={isBusy || !email.trim()}
-                className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isBusy ? "Sending…" : "Send sign-in link"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => resetForm("signin")}
-                className="w-full py-2 text-xs font-jost font-light text-muted-foreground hover:text-foreground transition-colors text-center"
-              >
-                ← Back to sign in
-              </button>
-            </form>
-          )}
-
-          <p className="mt-8 text-center text-xs font-jost font-light text-muted-foreground">
-            Want to plan first?{" "}
-            <Link to="/start" className="text-foreground hover:underline">Plan a trip →</Link>
-          </p>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-hero-mesh">
+    <main className="min-h-screen bg-background">
       <Nav />
-      <div aria-hidden="true" className="h-[109px]" />
 
-      <div className="mx-auto max-w-3xl lg:max-w-5xl px-6 pb-24 space-y-6">
-        {/* Header */}
-        <div>
-          <div className="flex items-center gap-4 mb-3">
-            <span aria-hidden="true" className="kj-mark" />
-            <span className="kj-eyebrow">Your account</span>
-          </div>
-          <h1 className="font-marcellus font-bold text-4xl md:text-5xl text-foreground leading-none">My Plans</h1>
-          <p className="text-muted-foreground mt-3 text-sm font-jost">
-            {user.name ? `Welcome back, ${user.name.split(" ")[0]}.` : "Welcome back."} All your saved squad plans are here.
+      {/* Hero */}
+      <section className="kj-dark relative bg-ink overflow-hidden">
+        <img src={HERO_PHOTO} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+        <div aria-hidden="true" className="absolute inset-0 kj-scrim" />
+        <div aria-hidden="true" className="absolute inset-0 kj-scrim-left" />
+        <div className="relative mx-auto max-w-5xl px-6 pt-32 md:pt-40 pb-12 md:pb-16 flex flex-col gap-4">
+          <p className="kj-eyebrow">My plans</p>
+          <h1 className="text-[clamp(2.5rem,6.5vw,4.5rem)] leading-[1] text-white max-w-[14ch]">Your next adventure awaits.</h1>
+          <p className="text-base md:text-lg text-white/85 max-w-md">
+            {user.name ? `Welcome back, ${user.name.split(" ")[0]}. ` : ""}Keep track of your trips, see who's paid, and plan the next one.
           </p>
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            <a href="#trips" className="kj-btn rounded-full px-6">View my trips <ArrowRight className="w-4 h-4" /></a>
+            <Link to="/start" className="kj-btn-outline !text-white !border-white/40 hover:!border-signal py-3 px-5">Plan a new trip</Link>
+          </div>
         </div>
+      </section>
 
-        {/* Plan a new trip CTA */}
-        <Link
-          to="/start"
-          className="group flex items-center justify-between rounded-2xl border-2 border-line p-6 hover:-translate-y-1 transition-transform"
-        >
-          <div>
-            <div className="font-marcellus text-xl text-foreground">Plan a new trip</div>
-            <div className="font-jost font-light text-sm text-muted-foreground mt-0.5">
-              Interstate or local experience — you pick the type first
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-signal text-ink grid place-items-center shrink-0">
-            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M13 5l7 7-7 7" />
-            </svg>
-          </div>
-        </Link>
+      <div id="trips" className="mx-auto max-w-5xl px-6 pt-12 md:pt-16 pb-24 space-y-6 scroll-mt-20">
+        <div className="flex items-end justify-between gap-4">
+          <h2 className="kj-title-sm">Your trips</h2>
+          {plans.length > 0 && <span className="text-sm text-muted-foreground">{plans.length} saved</span>}
+        </div>
 
         {/* Plans list */}
         {fetching && (
@@ -436,10 +102,10 @@ export default function MyPlans() {
         )}
 
         {!fetching && plans.length === 0 && !error && (
-          <div className="rounded-3xl border-2 border-line p-10 text-center">
-            <div className="text-4xl mb-3">🗺️</div>
-            <div className="font-marcellus text-lg">No saved plans yet</div>
-            <p className="text-sm font-jost text-muted-foreground mt-1">Generate a plan and lock it in to save it here.</p>
+          <div className="kj-card p-10 text-center flex flex-col items-center gap-3">
+            <div className="font-display text-2xl">No saved plans yet</div>
+            <p className="text-sm text-muted-foreground">Pick a trip on Explore or plan your own, and it'll be saved here.</p>
+            <Link to="/start/explore" className="kj-btn rounded-full mt-2">Explore trips <ArrowRight className="w-4 h-4" /></Link>
           </div>
         )}
 
@@ -459,12 +125,12 @@ export default function MyPlans() {
                     <Link
                       to={`/start/trip?job=${p.tripId}`}
                       style={revealStyle}
-                      className={`${revealCls} group flex flex-col min-h-[190px] kj-card kj-card-hover p-4 md:p-5 hover:-translate-y-1 transition-transform overflow-hidden`}
+                      className={`${revealCls} group flex flex-col h-full kj-card kj-card-hover overflow-hidden`}
                     >
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </Link>
                   ) : p.status === 'awaiting_group' ? (
-                    <div style={revealStyle} className={`${revealCls} rounded-2xl border-2 border-line p-5 space-y-4`}>
+                    <div style={revealStyle} className={`${revealCls} kj-card p-5 space-y-4`}>
                       {/* Compact trip header */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -496,7 +162,7 @@ export default function MyPlans() {
                           </div>
                           <Link
                             to={`/plan/${p.tripId}`}
-                            className="inline-flex items-center gap-1.5 bg-signal text-ink px-4 py-2 text-xs font-jost font-bold hover:-translate-y-0.5 transition-transform"
+                            className="kj-btn rounded-full text-xs px-4 py-2"
                           >
                             View squad page →
                           </Link>
@@ -525,12 +191,12 @@ export default function MyPlans() {
                     <Link
                       to={`/plan/${p.tripId}`}
                       style={revealStyle}
-                      className={`${revealCls} group flex flex-col min-h-[190px] kj-card kj-card-hover p-4 md:p-5 hover:-translate-y-1 transition-transform overflow-hidden`}
+                      className={`${revealCls} group flex flex-col h-full kj-card kj-card-hover overflow-hidden`}
                     >
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </Link>
                   ) : (
-                    <div style={revealStyle} className={`${revealCls} flex flex-col min-h-[190px] kj-card kj-card-hover p-4 md:p-5 overflow-hidden`}>
+                    <div style={revealStyle} className={`${revealCls} flex flex-col h-full kj-card overflow-hidden`}>
                       <PlanCardSquare p={p} s={s} date={date} perPerson={perPerson} />
                     </div>
                   )}
@@ -539,6 +205,15 @@ export default function MyPlans() {
             })}
           </ol>
         )}
+
+        <a href="mailto:hello@karije.com?subject=Help%20with%20my%20trip" className="group kj-card kj-card-hover flex items-center gap-4 p-5 mt-4">
+          <span className="w-12 h-12 shrink-0 rounded-full bg-signal text-ink grid place-items-center"><MessageCircle className="w-5 h-5" /></span>
+          <span className="flex-1">
+            <span className="block font-semibold">Need help?</span>
+            <span className="block text-sm text-muted-foreground">Get in touch with our team.</span>
+          </span>
+          <span className="text-xl transition-transform group-hover:translate-x-1" aria-hidden="true">›</span>
+        </a>
       </div>
     </main>
   );
@@ -666,56 +341,54 @@ function PlanCardSquare({ p, s, date, perPerson }: {
   date: string;
   perPerson?: number;
 }) {
+  const image = p.plan?.curated?.imageId ? tripImageUrl(p.plan.curated.imageId, 600, 400) : null;
+  const [day, mon] = date.split(" ");
   return (
     <div className="flex flex-col h-full">
-      {/* Status + date */}
-      <div className="flex items-center gap-1.5 flex-wrap mb-2">
-        <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 ${s.color} ${p.status === 'generating' ? 'animate-pulse' : ''}`}>
+      <div className="relative h-[110px] md:h-[140px] bg-ink shrink-0 overflow-hidden">
+        {image && <img src={image} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
+        <div className="absolute top-2.5 left-2.5 rounded-lg bg-signal text-ink w-11 py-1 flex flex-col items-center leading-none">
+          <span className="font-display text-xl leading-[1.05]">{day}</span>
+          <span className="text-[9px] font-bold tracking-[0.12em] uppercase">{mon}</span>
+        </div>
+        <span className={`absolute top-2.5 right-2.5 text-[10px] font-semibold rounded-full bg-white text-ink px-2 py-0.5 ${p.status === 'generating' ? 'animate-pulse' : ''}`}>
           {s.label}
         </span>
-        <span className="text-[10px] text-muted-foreground">{date}</span>
       </div>
 
-      {/* Title. A trip inside one city has no route to show — "Lagos → Lagos"
-          tells you nothing — so name it instead. */}
-      <div className="font-marcellus text-base leading-snug">
-        {p.plan?.curated?.name ? (
-          <span className="text-foreground line-clamp-2">{p.plan.curated.name}</span>
-        ) : p.origin && p.destination && p.origin === p.destination ? (
-          <span className="text-foreground">A day out in {p.destination}</span>
-        ) : (
-          <>
-            <span className="text-foreground">{p.origin || "—"}</span>
-            <span className="text-muted-foreground/60 mx-1 text-sm">→</span>
-            <span className="text-foreground">{p.destination || "—"}</span>
-          </>
-        )}
+      <div className="p-3 md:p-4 flex flex-col flex-1 gap-1">
+        {/* Title. A trip inside one city has no route to show — "Lagos → Lagos"
+            tells you nothing — so name it instead. */}
+        <div className="font-display text-base md:text-lg leading-snug">
+          {p.plan?.curated?.name ? (
+            <span className="line-clamp-2">{p.plan.curated.name}</span>
+          ) : p.origin && p.destination && p.origin === p.destination ? (
+            <span>A day out in {p.destination}</span>
+          ) : (
+            <>
+              <span>{p.origin || "—"}</span>
+              <span className="text-muted-foreground mx-1 text-sm">→</span>
+              <span>{p.destination || "—"}</span>
+            </>
+          )}
+        </div>
+
+        <div className="text-[11px] md:text-xs text-muted-foreground">
+          {p.days ? `${p.days} ${p.days === 1 ? "day" : "days"}` : "—"}{p.squadSize ? ` · ${p.squadSize} going` : ""}
+        </div>
+
+        <div className="mt-auto pt-2 flex items-end justify-between gap-2">
+          {perPerson ? (
+            <div>
+              <div className="font-semibold text-sm md:text-base tabular-nums leading-none">{fmtNGN(perPerson)}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">/person</div>
+            </div>
+          ) : <span />}
+          {p.status !== 'generating' && p.status !== 'error' && (
+            <span className="kj-arrow w-7 h-7 md:w-8 md:h-8 text-sm" aria-hidden="true">→</span>
+          )}
+        </div>
       </div>
-
-      {/* Meta */}
-      <div className="text-[11px] text-muted-foreground mt-1.5">
-        {p.days ? `${p.days}d` : "—"}{p.squadSize ? ` · ${p.squadSize} pax` : ""}
-      </div>
-      {p.plan?.hotel && (
-        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
-          🏨 {p.plan.hotel.name.split(" ").slice(0, 2).join(" ")}
-        </div>
-      )}
-
-      {/* Price at bottom */}
-      {perPerson && (
-        <div className="mt-auto pt-2.5 border-t border-border/60">
-          <div className="font-marcellus text-lg text-foreground tabular-nums leading-none">{fmtNGN(perPerson)}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">/person</div>
-        </div>
-      )}
-
-      {/* Tap hint for plan_review */}
-      {p.status === 'plan_review' && (
-        <div className="mt-1 text-[10px] text-foreground font-jost font-medium group-hover:underline">
-          Review plan →
-        </div>
-      )}
     </div>
   );
 }

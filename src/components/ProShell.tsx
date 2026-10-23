@@ -67,7 +67,7 @@ function SidebarContent({
     <div className="flex flex-col h-full">
       <div className="px-5 h-16 flex items-center gap-3 border-b border-border shrink-0">
         <div
-          className="w-9 h-9 rounded-xl border-2 border-line-strong grid place-items-center text-white font-display font-bold text-xs shrink-0 overflow-hidden"
+          className="w-9 h-9 rounded-xl border border-line-strong grid place-items-center text-white font-display font-bold text-xs shrink-0 overflow-hidden"
           style={agencyLogo ? undefined : { backgroundColor: agentColor }}
         >
           {agencyLogo

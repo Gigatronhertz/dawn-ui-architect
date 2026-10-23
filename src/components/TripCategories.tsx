@@ -2,8 +2,7 @@ import { Link } from "react-router-dom";
 import { TRIP_CATEGORIES } from "@/lib/categories";
 import { LAGOS_EXPERIENCES } from "@/data/experiences";
 import { tripImageUrl } from "@/lib/tripImage";
-import { Eyebrow } from "@/components/Nav";
-import { BrandIcon, CATEGORY_ICON_PATHS, CUTS } from "@/lib/brandIcons";
+import { BrandIcon, CATEGORY_ICON_PATHS } from "@/lib/brandIcons";
 
 // One photo per vibe — the first curated Lagos trip in that category, with a
 // fallback for categories that don't have one yet.
@@ -13,34 +12,35 @@ const FALLBACK_PHOTO: Record<string, string> = {
 const photoFor = (category: string) =>
   LAGOS_EXPERIENCES.find((e) => e.category === category)?.imageId ?? FALLBACK_PHOTO[category] ?? null;
 
-const TILTS = ["-rotate-3", "rotate-2", "-rotate-[1.5deg]", "rotate-[2.5deg]", "-rotate-2", "rotate-[1.5deg]"];
-
 export const TripCategories = () => {
   const cards = TRIP_CATEGORIES.filter((c) => c.value !== "all");
 
   return (
-    <section className="max-w-[1280px] mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-6 flex flex-col gap-7 md:gap-10">
-      <div className="flex flex-col gap-4">
-        <Eyebrow>Pick your kind of trip</Eyebrow>
-        <h2 className="kj-title"><span className="text-signal">Six vibes.</span><br />Same city.</h2>
+    <section className="max-w-[1280px] mx-auto px-6 md:px-8 pt-20 md:pt-28 flex flex-col gap-8 md:gap-10">
+      <div className="flex flex-col gap-3">
+        <p className="kj-eyebrow">Pick your kind of trip</p>
+        <h2 className="kj-title">Six vibes. <span className="kj-hl">One city.</span></h2>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-5">
-        {cards.map((c, i) => {
+        {cards.map((c) => {
           const photo = photoFor(c.value);
           return (
             <Link
               key={c.value}
               to={`/start/explore?category=${c.value}`}
-              className={`relative h-[130px] sm:h-[180px] md:h-[230px] bg-[#1A1A1A] ${CUTS[i % CUTS.length]} transition-transform duration-300 hover:-translate-y-1.5 hover:-rotate-[0.6deg]`}
+              className="group relative h-[150px] sm:h-[190px] md:h-[240px] rounded-2xl overflow-hidden bg-ink"
             >
               {photo && (
-                <img src={tripImageUrl(photo, 720, 600)} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                <img src={tripImageUrl(photo, 720, 600)} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-ink/85 to-transparent to-60%" />
-              <div className={`absolute left-3 bottom-3 md:left-5 md:bottom-5 flex items-center gap-2 md:gap-2.5 font-display text-base sm:text-xl md:text-[28px] leading-none text-ink bg-signal px-2.5 py-1.5 md:px-3.5 md:py-2 ${TILTS[i % TILTS.length]}`}>
-                <BrandIcon d={CATEGORY_ICON_PATHS[c.value]} className="w-4 h-4 md:w-6 md:h-6" strokeWidth={2.4} />
-                <span>{c.label}</span>
+              <div className="absolute inset-0 kj-scrim" />
+              <div className="absolute inset-x-3 bottom-3 md:inset-x-5 md:bottom-5 flex items-end justify-between gap-2">
+                <span className="flex items-center gap-2 text-white font-display text-xl sm:text-2xl md:text-3xl leading-none">
+                  <BrandIcon d={CATEGORY_ICON_PATHS[c.value]} className="w-4 h-4 md:w-6 md:h-6 text-signal shrink-0" strokeWidth={2.2} />
+                  {c.label}
+                </span>
+                <span className="kj-arrow hidden sm:inline-grid" aria-hidden="true">→</span>
               </div>
             </Link>
           );

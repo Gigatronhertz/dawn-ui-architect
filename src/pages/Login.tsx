@@ -237,7 +237,7 @@ export default function Login() {
             {submitErr && <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>}
 
             <button type="submit" disabled={isBusy || !email.trim() || !password}
-              className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full bg-signal text-ink py-3.5 font-semibold rounded-[0.65rem] text-base hover:brightness-105 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {isBusy ? "Signing in…" : "Sign in"}
             </button>
 
@@ -279,7 +279,7 @@ export default function Login() {
             {submitErr && <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>}
 
             <button type="submit" disabled={isBusy || !email.trim() || !password || !confirm}
-              className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full bg-signal text-ink py-3.5 font-semibold rounded-[0.65rem] text-base hover:brightness-105 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {isBusy ? "Creating account…" : "Create account"}
             </button>
           </form>
@@ -298,7 +298,7 @@ export default function Login() {
             {submitErr && <p className="text-xs text-destructive font-jost font-light">{submitErr}</p>}
 
             <button type="submit" disabled={isBusy || !email.trim()}
-              className="w-full bg-signal text-ink py-3.5 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full bg-signal text-ink py-3.5 font-semibold rounded-[0.65rem] text-base hover:brightness-105 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {isBusy ? "Sending…" : "Send sign-in link"}
             </button>
             <p className="text-center text-xs font-jost font-light text-muted-foreground pt-0.5">

@@ -240,7 +240,7 @@ export default function ProLogin() {
               <button
                 type="submit"
                 disabled={st === "busy" || !email.trim() || !password}
-                className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-50 disabled:scale-100 font-display uppercase tracking-[0.04em]"
+                className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-50 disabled:scale-100 font-semibold"
               >
                 {st === "busy" ? "Signing in…" : "Sign in →"}
               </button>
@@ -296,7 +296,7 @@ export default function ProLogin() {
               <button
                 type="submit"
                 disabled={st === "busy" || !email.trim() || password.length < 8}
-                className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-50 disabled:scale-100 font-display uppercase tracking-[0.04em]"
+                className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-50 disabled:scale-100 font-semibold"
               >
                 {st === "busy" ? "Creating your account…" : "Create account →"}
               </button>
@@ -333,7 +333,7 @@ export default function ProLogin() {
               <button
                 type="submit"
                 disabled={st === "busy" || !email.trim()}
-                className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-50 disabled:scale-100 font-display uppercase tracking-[0.04em]"
+                className="w-full rounded-lg bg-gradient-primary text-primary-foreground py-3 text-sm shadow-glow hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-50 disabled:scale-100 font-semibold"
               >
                 {st === "busy" ? "Sending…" : "Send sign-in link →"}
               </button>

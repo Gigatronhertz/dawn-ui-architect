@@ -125,7 +125,7 @@ const navLinks = [
   { label: "For agencies",   href: "/pro" },
 ];
 
-const linkCls = "text-[13px] font-semibold tracking-[0.14em] uppercase text-paper hover:text-signal transition-colors";
+const linkCls = "text-[15px] font-medium text-white/85 hover:text-signal transition-colors";
 
 // ── Main Nav ───────────────────────────────────────────────────────────────
 export const Nav = () => {
@@ -142,7 +142,7 @@ export const Nav = () => {
   return (
     <>
       {/* ── Top bar ─────────────────────────────────────────────────── */}
-      <header className="fixed top-0 inset-x-0 z-50 bg-ink border-b-[3px] border-signal">
+      <header className="kj-dark fixed top-0 inset-x-0 z-50 bg-ink">
         <div className="mx-auto max-w-[1280px] px-5 md:px-8 py-3.5 flex items-center gap-8">
           <KarijeLogo onClick={close} />
 
@@ -164,15 +164,22 @@ export const Nav = () => {
               <Link to="/login" className={`hidden lg:inline ${linkCls} text-muted-foreground`}>Log in</Link>
             )}
 
-            <Link to="/start" onClick={close} className="kj-btn text-[15px] px-5 py-3 hidden sm:inline-flex">
+            <Link to="/start" onClick={close} className="kj-btn text-[15px] px-5 py-2.5 hidden sm:inline-flex">
               Plan a trip →
+            </Link>
+
+            {/* Search — straight to Explore, which has the search box */}
+            <Link to="/start/explore" onClick={close} aria-label="Search trips" className="lg:hidden w-10 h-10 grid place-items-center text-white hover:text-signal transition-colors">
+              <svg viewBox="0 0 24 24" className="w-[22px] h-[22px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+              </svg>
             </Link>
 
             {/* Hamburger — below lg */}
             <button
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
-              className="lg:hidden w-10 h-10 flex items-center justify-center text-signal border-2 border-signal"
+              className="lg:hidden w-10 h-10 flex items-center justify-center text-white hover:text-signal transition-colors"
             >
               {open ? (
                 <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -190,7 +197,7 @@ export const Nav = () => {
 
       {/* ── Mobile full-screen menu ──────────────────────────────────── */}
       <div
-        className={`fixed inset-0 z-40 lg:hidden flex flex-col bg-ink pt-[77px] transition-opacity duration-300 ${
+        className={`kj-dark fixed inset-0 z-40 lg:hidden flex flex-col bg-ink pt-[77px] transition-opacity duration-300 ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
@@ -200,7 +207,7 @@ export const Nav = () => {
               key={l.href}
               to={l.href}
               onClick={close}
-              className="flex items-center justify-between py-5 border-b-2 border-line font-display text-3xl text-paper hover:text-signal transition-colors"
+              className="flex items-center justify-between py-5 border-b border-line font-display text-3xl text-paper hover:text-signal transition-colors"
             >
               {l.label}
               <span className="text-signal text-xl">→</span>
@@ -211,7 +218,7 @@ export const Nav = () => {
               <Link
                 to="/my-plans"
                 onClick={close}
-                className="flex items-center justify-between py-5 border-b-2 border-line font-display text-3xl text-paper hover:text-signal transition-colors"
+                className="flex items-center justify-between py-5 border-b border-line font-display text-3xl text-paper hover:text-signal transition-colors"
               >
                 My plans
                 <span className="text-signal text-xl">→</span>
@@ -227,7 +234,7 @@ export const Nav = () => {
             <Link
               to="/login"
               onClick={close}
-              className="flex items-center justify-between py-5 border-b-2 border-line font-display text-3xl text-paper hover:text-signal transition-colors"
+              className="flex items-center justify-between py-5 border-b border-line font-display text-3xl text-paper hover:text-signal transition-colors"
             >
               Log in
               <span className="text-signal text-xl">→</span>
@@ -239,7 +246,7 @@ export const Nav = () => {
           <Link to="/start" onClick={close} className="kj-btn w-full text-lg py-4">
             Plan a trip →
           </Link>
-          <p className="text-center kj-label text-[11px] text-signal mt-5">
+          <p className="text-center kj-eyebrow text-[11px] mt-5">
             We connect · We travel · We make memories
           </p>
         </div>

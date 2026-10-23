@@ -89,23 +89,20 @@ export default {
           ring:                 "hsl(var(--sidebar-ring))",
         },
       },
-      /* The brand is cut, not rounded: every radius is square except
-         `full`, which stays round for dots, avatars and spinners. */
       borderRadius: {
-        none:    "0px",
-        sm:      "0px",
-        DEFAULT: "0px",
-        md:      "0px",
-        lg:      "0px",
-        xl:      "0px",
-        "2xl":   "0px",
-        "3xl":   "0px",
+        sm:      "calc(var(--radius) - 4px)",
+        DEFAULT: "calc(var(--radius) - 2px)",
+        md:      "calc(var(--radius) - 2px)",
+        lg:      "var(--radius)",
+        xl:      "calc(var(--radius) + 4px)",
+        "2xl":   "calc(var(--radius) + 8px)",
+        "3xl":   "calc(var(--radius) + 14px)",
       },
       fontFamily: {
         /* Karije brand fonts */
-        display:    ['"Anton"', 'Impact', 'sans-serif'],
-        /* Legacy name — every heading that used Marcellus now sets in Anton */
-        marcellus:  ['"Anton"', 'Impact', 'sans-serif'],
+        display:    ['"DM Serif Display"', 'Georgia', 'serif'],
+        /* Legacy name — every heading that used Marcellus sets in the display serif */
+        marcellus:  ['"DM Serif Display"', 'Georgia', 'serif'],
         sans:       ['"Jost"', 'system-ui', 'sans-serif'],
         jost:       ['"Jost"', 'system-ui', 'sans-serif'],
       },

@@ -16,7 +16,7 @@ export const PREMIUM_LOCKED = import.meta.env.VITE_PREMIUM_LOCKED !== "false";
 
 export const PremiumTag = ({ className = "" }: { className?: string }) => (
   <span
-    className={`inline-flex items-center gap-1 kj-label text-[10px] tracking-[0.14em] bg-signal text-ink px-1.5 py-0.5 whitespace-nowrap ${className}`}
+    className={`inline-flex items-center gap-1 align-middle kj-label text-[10px] tracking-[0.1em] rounded-full bg-signal text-ink px-2 py-0.5 whitespace-nowrap ${className}`}
   >
     <span aria-hidden="true">★</span> Premium
   </span>

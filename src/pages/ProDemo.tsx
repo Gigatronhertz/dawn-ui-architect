@@ -40,8 +40,8 @@ const Section = ({ id, eyebrow, title, sub, children }: { id?: string; eyebrow?:
 
 // Bold card shell used throughout — matches the rest of the site's
 // border-[3px] + hard offset shadow treatment.
-const cardCls = "rounded-3xl bg-card border-2 border-line ";
-const cardClsSm = "rounded-2xl bg-card border-2 border-line ";
+const cardCls = "rounded-3xl bg-card border border-line ";
+const cardClsSm = "rounded-2xl bg-card border border-line ";
 const avatarCls = "grid place-items-center bg-signal text-ink font-marcellus font-bold";
 
 const trips = [
@@ -51,7 +51,7 @@ const trips = [
   { name: "Cape Coast Weekend", date: "Jan 10 — 12", paid: 2, total: 6, status: "Collecting", tone: "default" as const },
 ];
 
-const ctaCls = " bg-signal text-ink px-7 py-3.5 text-sm font-jost font-bold shadow-[4px_4px_0_0_hsl(var(--paper))] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_hsl(var(--paper))] transition-transform";
+const ctaCls = " bg-signal text-ink px-7 py-3.5 text-sm font-jost font-bold  hover:-translate-y-0.5  transition-transform";
 
 const ProDemo = () => {
   useEffect(() => {
@@ -117,7 +117,7 @@ const ProDemo = () => {
            entrance — animate-rise and animate-float both set the CSS
            `animation` property, so they can't stack on the same element. */}
         <div ref={dashReveal.ref} className={dashReveal.visible ? "animate-float" : ""}>
-        <div className={`${dashReveal.visible ? "animate-rise" : "opacity-0"} rounded-3xl bg-ink text-paper border-2 border-line shadow-[6px_6px_0_0_hsl(var(--signal))] p-2 overflow-hidden`}>
+        <div className={`${dashReveal.visible ? "animate-rise" : "opacity-0"} rounded-3xl bg-ink text-paper border border-line  p-2 overflow-hidden`}>
           {/* fake browser */}
           <div className="flex items-center gap-1.5 px-3 py-2">
             <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
@@ -137,7 +137,7 @@ const ProDemo = () => {
               </div>
             </div>
 
-            <div className="rounded-xl border-2 border-line-strong overflow-hidden">
+            <div className="rounded-xl border border-line-strong overflow-hidden">
               {trips.map((t) => {
                 const pct = Math.round((t.paid / t.total) * 100);
                 return (
@@ -184,7 +184,7 @@ const ProDemo = () => {
         </div>
 
         {/* Bookkeeping */}
-        <div className="mt-8 rounded-3xl bg-ink text-paper border-2 border-line shadow-[6px_6px_0_0_hsl(var(--signal))] p-7 md:p-10 grid md:grid-cols-[1fr,1fr] gap-8 items-center">
+        <div className="mt-8 rounded-3xl bg-ink text-paper border border-line  p-7 md:p-10 grid md:grid-cols-[1fr,1fr] gap-8 items-center">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <span className="text-[10px] font-jost uppercase tracking-wider text-signal">Bookkeeping, built in</span>
@@ -209,7 +209,7 @@ const ProDemo = () => {
       {/* Pricing */}
       <Section id="pricing" eyebrow="Pricing" title={<>₦10,000 a month.<br /><span className="text-muted-foreground">One trip pays for it.</span></>}>
         <div className="max-w-md">
-          <div className="rounded-3xl bg-ink text-paper border-[3px] border-signal shadow-[6px_6px_0_0_hsl(var(--signal))] p-7">
+          <div className="rounded-3xl bg-ink text-paper border-[3px] border-signal  p-7">
             <div className="font-marcellus text-lg">Karije Pro</div>
             <div className="mt-4 flex items-baseline gap-1">
               <span className="font-marcellus text-5xl tabular-nums">₦10,000</span>

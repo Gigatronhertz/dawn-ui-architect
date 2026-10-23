@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { MapPin, Check } from "lucide-react";
+import { MapPin, Check, ArrowLeft, ArrowRight, CalendarDays, Users } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { BrandIcon, CATEGORY_ICON_PATHS } from "@/lib/brandIcons";
 import { LAGOS_EXPERIENCES, type Experience, type DaySchedule } from "@/data/experiences";
@@ -100,9 +100,9 @@ function AgencyTripCard({ trip }: { trip: AgencyListing }) {
   return (
     <Link
       to={trip.href}
-      className="group relative aspect-square overflow-hidden text-left flex flex-col justify-end p-4 rounded-2xl border-2 border-line hover:-translate-y-1 transition-transform"
+      className="group relative aspect-square overflow-hidden text-left flex flex-col justify-end p-4 kj-card kj-card-hover"
     >
-      <span className="absolute top-3 left-3 text-[9px] font-jost font-medium tracking-[0.14em] uppercase bg-signal text-ink px-2 py-0.5">
+      <span className="absolute top-3 left-3 kj-label text-[10px] rounded-full bg-signal text-ink px-2.5 py-1">
         {trip.agency}
       </span>
       <div className="font-marcellus text-lg text-foreground leading-tight">{trip.name}</div>
@@ -127,39 +127,40 @@ function TileCard({ image, fallbackColor, tag, corner, title, sub, price, onSele
   title: string; sub?: string | null; price?: string | null; onSelect: () => void;
 }) {
   return (
-    <button onClick={onSelect} className="group kj-card kj-card-hover flex flex-col text-left min-w-0">
-      <div className="relative h-[120px] sm:h-[170px] md:h-[220px] shrink-0 overflow-hidden" style={{ backgroundColor: fallbackColor || "#1A1A1A" }}>
+    <button onClick={onSelect} className="group kj-card kj-card-hover overflow-hidden flex flex-col text-left min-w-0">
+      <div className="relative h-[120px] sm:h-[170px] md:h-[210px] shrink-0 overflow-hidden" style={{ backgroundColor: fallbackColor || "#1B1A17" }}>
         {image && (
           <img
             src={image}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         )}
         {tag && (
-          <span className="absolute top-2 left-2 md:top-3 md:left-3 kj-label text-[9px] md:text-[11px] tracking-[0.14em] bg-ink text-signal px-1.5 py-1 md:px-2.5 md:py-1.5 max-w-[calc(100%-1rem)] truncate">
+          <span className="absolute top-2 left-2 md:top-3 md:left-3 kj-label text-[9px] md:text-[10px] rounded-full bg-signal text-ink px-2 py-0.5 md:px-2.5 md:py-1 max-w-[calc(100%-1rem)] truncate">
             {tag}
           </span>
         )}
         {corner && (
-          <span className="absolute bottom-2 left-2 md:bottom-3 md:left-3 kj-label text-[9px] md:text-[11px] tracking-[0.1em] bg-signal text-ink max-w-[calc(100%-1rem)] truncate px-1.5 py-1 md:px-2.5 md:py-1.5">
+          <span className="absolute bottom-2 left-2 md:bottom-3 md:left-3 text-[10px] md:text-xs font-semibold rounded-full bg-white text-ink max-w-[calc(100%-1rem)] truncate px-2 py-0.5 md:px-2.5 md:py-1">
             {corner}
           </span>
         )}
       </div>
-      <div className="p-3 md:p-5 flex flex-col gap-1 md:gap-1.5 flex-1 min-w-0">
-        <h3 className="font-display text-base sm:text-lg md:text-2xl leading-[1.1] line-clamp-2 group-hover:text-signal transition-colors">{title}</h3>
+      <div className="p-3 md:p-4 flex flex-col gap-1 md:gap-1.5 flex-1 min-w-0">
+        <h3 className="text-base sm:text-lg md:text-xl leading-[1.15] line-clamp-2">{title}</h3>
         {sub && (
           <p className="flex items-center gap-1 text-[11px] md:text-sm text-muted-foreground min-w-0">
-            <MapPin className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0 text-signal" />
+            <MapPin className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
             <span className="truncate">{sub}</span>
           </p>
         )}
-        {price && (
-          <p className="mt-auto pt-1.5 md:pt-2 text-xs md:text-base font-bold text-signal line-clamp-2">{price}</p>
-        )}
+        <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+          {price ? <p className="text-xs md:text-base font-semibold text-foreground line-clamp-2">{price}</p> : <span />}
+          <span className="kj-arrow w-7 h-7 md:w-8 md:h-8 text-sm" aria-hidden="true">→</span>
+        </div>
       </div>
     </button>
   );
@@ -606,7 +607,7 @@ function RangeSlider({
     <div>
       <div className="flex items-end justify-between gap-4 mb-3">
         <span className="text-lg font-bold">{label}</span>
-        <span className="font-display text-xl leading-none bg-signal text-ink px-3 py-1.5 -rotate-2 shadow-[3px_3px_0_hsl(var(--paper))]">{format(value)}</span>
+        <span className="font-semibold rounded-[0.65rem] text-xl leading-none bg-signal text-ink px-3 py-1.5  ">{format(value)}</span>
       </div>
       <input
         type="range"
@@ -678,7 +679,7 @@ export function BuildYourOwn({
    */
   seed?: { days: { activities: { time: string; title: string; cost_per_person: number }[] }[]; squadSize?: number } | null;
   /**
-   * A place picked from the Hero search bar (see HeroSearch.tsx) — added to
+   * A place picked from a search elsewhere (passed in the URL) — added to
    * Day 1 as soon as this city's venue library has loaded. Matched by name
    * since that's what the search box carries across the navigate() call.
    */
@@ -1017,7 +1018,7 @@ export function BuildYourOwn({
 
         {days.map(d => (
           <div key={d} className="kj-card">
-            <div className="px-5 py-4 border-b-2 border-line flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-line flex items-center justify-between">
               <span className="font-display text-xl">Day {d + 1}</span>
               <span className="text-sm text-muted-foreground">
                 {(stops[d] ?? []).length} stop{(stops[d] ?? []).length === 1 ? "" : "s"}
@@ -1159,7 +1160,7 @@ export function BuildYourOwn({
           type="text" value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={`Search ${city}…`}
-          className="w-full border-2 border-line-strong bg-ink px-3.5 py-2.5 text-[15px] focus:outline-none focus:border-signal"
+          className="w-full border border-line-strong bg-ink px-3.5 py-2.5 text-[15px] focus:outline-none focus:border-signal"
         />
 
         {allowCustomPlaces && (
@@ -1391,7 +1392,7 @@ export function BuildYourOwn({
             </div>
             <button
               onClick={() => setLibOpen(true)}
-              className="flex-1 bg-signal text-ink py-3 font-display text-base tracking-[0.04em] active:opacity-90 transition"
+              className="flex-1 bg-signal text-ink py-3 font-semibold rounded-[0.65rem] text-base active:opacity-90 transition"
             >
               ＋ Add a place
             </button>
@@ -1426,6 +1427,7 @@ export default function Explore() {
   // Trips an agency built and chose to list. They sit in the same catalog as
   // Karije's own, but say who is running them.
   const [agencyTrips, setAgencyTrips] = useState<AgencyListing[]>([]);
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   // Pre-select a category chip when arriving from a landing-page link like
   // /start/explore?category=food — falls back to "all" for anything unknown.
@@ -1598,7 +1600,12 @@ export default function Explore() {
     }
   }
 
-  const shown = vibe === "all" ? experiences : experiences.filter(e => e.category === vibe);
+  // The search box narrows whatever the vibe chips already chose.
+  const q = query.trim().toLowerCase();
+  const matches = (...fields: (string | null | undefined)[]) => !q || fields.some(f => f?.toLowerCase().includes(q));
+  const shown = (vibe === "all" ? experiences : experiences.filter(e => e.category === vibe))
+    .filter(e => matches(e.name, e.tagline, e.location));
+  const shownAgencyTrips = agencyTrips.filter(t => matches(t.name, t.tagline, t.location, t.agency));
 
   // Only offer a vibe chip when something in this city actually carries it.
   const availableVibes = VIBE_FILTERS.filter(
@@ -1621,52 +1628,56 @@ export default function Explore() {
       <main className="min-h-screen bg-background">
         <PageHeader />
 
-        <div className="mx-auto max-w-[1280px] px-5 md:px-8 pb-24">
+        <div className="mx-auto max-w-[1280px] px-6 md:px-8 pb-24">
           {/* Section header */}
-          <div className="pt-12 pb-10 border-b-2 border-line mb-10">
-            <div className="flex items-center gap-4 mb-5">
-              <span aria-hidden="true" className="kj-mark" />
-              <span className="kj-eyebrow">
-                Explore within a state
-              </span>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-              <h1 className="kj-title-sm">
-                Explore <span className="kj-hl px-3">{city}</span>
-              </h1>
+          <div className="pt-10 md:pt-14 pb-8 md:pb-10">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-6">
+              <div className="flex flex-col gap-3 max-w-[640px]">
+                <p className="kj-eyebrow">Explore · {city}</p>
+                <h1 className="kj-title">Find your next adventure</h1>
+                <p className="text-base md:text-lg leading-relaxed text-muted-foreground">
+                  {tab === "ours" &&
+                    "From beach getaways to mountain climbs — trips we've picked, priced and will run for your squad."}
+                  {tab === "nightlife" &&
+                    `Just some fun spots we found in ${city}'s nightlife scene — no strings attached. Tap one, copy the location into your maps app, and go have fun.`}
+                  {tab === "events" &&
+                    `Concerts, festivals and pop-ups happening in ${city} that your squad can plan a trip around.`}
+                  {tab === "own" &&
+                    `Plan your own day out in ${city}. Add the places you want, we'll tell you what they cost, then share it with your squad to collect everyone's share.`}
+                </p>
+              </div>
               {/* City picker */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="kj-label text-xs text-muted-foreground">City</span>
+              <label className="flex items-center gap-2 shrink-0">
+                <span className="text-sm text-muted-foreground">City</span>
                 <select
                   value={city}
                   onChange={e => setCity(e.target.value)}
                   aria-label="City"
-                  className="border-2 border-signal bg-ink px-3 py-2.5 kj-label text-signal focus:outline-none appearance-none pr-8 cursor-pointer"
-                  style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238E93AA' stroke-width='1.5' stroke-linecap='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center", backgroundSize: "14px" }}
+                  className="rounded-full border border-line-strong bg-card pl-4 pr-9 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-signal appearance-none cursor-pointer"
+                  style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23625D56' stroke-width='1.5' stroke-linecap='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", backgroundSize: "14px" }}
                 >
                   {ALL_EXPLORE_CITIES.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-              </div>
+              </label>
             </div>
 
             {/* Four ways into this city: our trips, nightlife, events, or build your own */}
-            <div className="flex gap-2 mb-6 flex-wrap">
+            <div className="inline-flex max-w-full overflow-x-auto gap-1 p-1 rounded-full bg-secondary mb-5" role="tablist">
               {([
-                { id: "ours",      label: "Trips we run" },
+                { id: "ours",      label: "Trips" },
                 { id: "nightlife", label: "Nightlife" },
                 { id: "events",    label: "Events" },
                 { id: "own",       label: "Build your own" },
               ] as const).map(({ id, label }) => (
                 <button
                   key={id}
+                  role="tab"
                   onClick={() => setTab(id)}
-                  aria-pressed={tab === id}
-                  className={`font-display text-sm md:text-base px-5 py-3 border-2 transition-colors ${
-                    tab === id
-                      ? "bg-signal text-ink border-signal"
-                      : "border-signal text-signal hover:bg-signal/10"
+                  aria-selected={tab === id}
+                  className={`whitespace-nowrap rounded-full px-4 md:px-5 py-2 text-sm font-semibold transition-colors ${
+                    tab === id ? "bg-ink text-white" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {label}
@@ -1674,34 +1685,31 @@ export default function Explore() {
               ))}
             </div>
 
-            <p className={`text-base md:text-lg leading-relaxed max-w-[640px] mb-7 ${
-              tab === "nightlife" ? "font-medium text-paper" : "text-muted-foreground"
-            }`}>
-              {tab === "ours" &&
-                "Trips we've picked, priced and will run for your squad. Pick one, choose your days and squad size, and we handle the rest."}
-              {tab === "nightlife" &&
-                `Just some fun spots we found in ${city}'s nightlife scene — no strings attached. Tap one, copy the location into your maps app, and go have fun. No hassle. You're welcome.`}
-              {tab === "events" &&
-                `Concerts, festivals and pop-ups happening in ${city} that your squad can plan a trip around.`}
-              {tab === "own" &&
-                `Plan your own day out in ${city}. Add the places you want, we'll tell you what they cost, then share it with your squad to collect everyone's share.`}
-            </p>
+            {tab === "ours" && (
+              <div className="relative mb-4 max-w-[640px]">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="Search destinations or experiences…"
+                  aria-label="Search trips"
+                  className="w-full rounded-xl border border-line bg-card pl-12 pr-4 py-3.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-signal"
+                />
+              </div>
+            )}
 
             {/* Vibe filter — chips only appear for vibes this city actually has */}
             {tab === "ours" && availableVibes.length > 1 && (
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 overflow-x-auto -mx-6 px-6 md:mx-0 md:px-0 md:flex-wrap pb-1">
                 {availableVibes.map(({ value, label }) => (
                   <button
                     key={value}
                     onClick={() => setVibe(value)}
                     aria-pressed={vibe === value}
-                    className={`kj-label px-4 py-2.5 border-2 flex items-center gap-2 transition-colors ${
-                      vibe === value
-                        ? "bg-signal text-ink border-signal"
-                        : "bg-transparent text-paper border-line-strong hover:border-signal"
-                    }`}
+                    className={`kj-chip ${vibe === value ? "is-active" : ""}`}
                   >
-                    {CATEGORY_ICON_PATHS[value] && <BrandIcon d={CATEGORY_ICON_PATHS[value]} />}
+                    {CATEGORY_ICON_PATHS[value] && <BrandIcon d={CATEGORY_ICON_PATHS[value]} className="w-3.5 h-3.5" />}
                     {value === "all" ? "All" : label}
                   </button>
                 ))}
@@ -1745,7 +1753,7 @@ export default function Explore() {
             </div>
           )}
 
-          {tab === "ours" && !loading && (shown.length > 0 || agencyTrips.length > 0) && (
+          {tab === "ours" && !loading && (shown.length > 0 || shownAgencyTrips.length > 0) && (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
               {shown.map((exp) => (
                 <ExperienceCard
@@ -1757,14 +1765,14 @@ export default function Explore() {
               {/* Vibe filters describe Karije's own categories, so agency trips
                   are only shown on the unfiltered view rather than silently
                   dropped by a filter that does not apply to them. */}
-              {vibe === "all" && agencyTrips.map((t) => (
+              {vibe === "all" && shownAgencyTrips.map((t) => (
                 <AgencyTripCard key={t.id} trip={t} />
               ))}
             </div>
           )}
 
           {/* Nothing for this city yet, or nothing under the chosen vibe */}
-          {tab === "ours" && !loading && shown.length === 0 && agencyTrips.length === 0 && (
+          {tab === "ours" && !loading && shown.length === 0 && shownAgencyTrips.length === 0 && (
             <div className="border border-border p-10 text-center">
               <div className="text-4xl mb-4">🗺️</div>
               <h2 className="font-marcellus text-2xl text-foreground mb-3">
@@ -1780,7 +1788,7 @@ export default function Explore() {
               {experiences.length === 0 ? (
                 <Link
                   to="/start/trip"
-                  className="inline-flex items-center gap-2 bg-signal text-ink px-6 py-3 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors"
+                  className="inline-flex items-center gap-2 bg-signal text-ink px-6 py-3 font-semibold rounded-[0.65rem] text-base hover:brightness-105 transition-colors"
                 >
                   Plan a trip between cities
                   <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1790,7 +1798,7 @@ export default function Explore() {
               ) : (
                 <button
                   onClick={() => setVibe("all")}
-                  className="inline-flex items-center gap-2 bg-signal text-ink px-6 py-3 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors"
+                  className="inline-flex items-center gap-2 bg-signal text-ink px-6 py-3 font-semibold rounded-[0.65rem] text-base hover:brightness-105 transition-colors"
                 >
                   Show everything in {city}
                 </button>
@@ -1813,36 +1821,61 @@ export default function Explore() {
 
     return (
       <main className="min-h-screen bg-background">
-        <PageHeader onBack={() => setStep("browse")} />
+        <Nav />
 
-        <div className="mx-auto max-w-5xl px-6 pb-24">
-          {/* Hero photo */}
-          <div
-            className="relative h-56 md:h-72 overflow-hidden mb-8"
-            style={{ backgroundColor: selected.colorFallback }}
-          >
-            <img
-              src={cdnImg(selected.imageId, 1200, 580)}
-              alt={selected.name}
-              className="w-full h-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
-            <div className="absolute bottom-6 left-6 text-white">
-              <span
-                className={`text-[10px] font-jost font-medium tracking-wide px-2 py-1 mb-3 inline-block ${CAT_COLOR[selected.category]}`}
-              >
+        {/* Hero — the trip's own photo, full width, everything you need to decide */}
+        <section className="kj-dark relative bg-ink overflow-hidden" style={{ backgroundColor: selected.colorFallback }}>
+          <img
+            src={cdnImg(selected.imageId, 1600, 1100)}
+            alt={selected.name}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+          <div aria-hidden="true" className="absolute inset-0 kj-scrim" />
+          <div className="relative mx-auto max-w-5xl px-6 pt-28 md:pt-36 pb-10 md:pb-14 flex flex-col gap-5">
+            <button onClick={() => setStep("browse")} className="self-start inline-flex items-center gap-2 text-sm text-white/85 hover:text-signal transition-colors">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <div className="flex flex-col gap-3 mt-10 md:mt-20">
+              <span className="self-start kj-label text-[10px] rounded-full bg-signal text-ink px-2.5 py-1">
                 {CAT_LABEL[selected.category]}
               </span>
-              <h2 className="font-marcellus text-3xl md:text-4xl leading-snug">
-                {selected.name}
-              </h2>
-              <p className="flex items-center gap-1.5 font-jost font-light text-sm opacity-75 mt-1">
-                <MapPin className="w-3.5 h-3.5 shrink-0" /> {selected.location}
+              <h1 className="text-[clamp(2.5rem,7vw,4.5rem)] leading-[1] text-white max-w-[14ch]">{selected.name}</h1>
+              <p className="flex items-center gap-1.5 text-base text-white/85">
+                <MapPin className="w-4 h-4 shrink-0 text-signal" /> {selected.location}
               </p>
             </div>
+            {selected.highlights.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selected.highlights.slice(0, 4).map(h => (
+                  <span key={h} className="kj-chip !text-white !border-white/30 max-w-full truncate">{h}</span>
+                ))}
+              </div>
+            )}
+            <dl className="grid grid-cols-3 gap-4 border-t border-white/20 pt-5 max-w-xl">
+              <div className="flex flex-col gap-1.5">
+                <dt className="sr-only">Length</dt>
+                <CalendarDays className="w-6 h-6 text-signal" />
+                <dd className="text-sm text-white/85">{selected.maxDays === 1 ? "1 day" : `1–${selected.maxDays} days`}</dd>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <dt className="sr-only">Group size</dt>
+                <Users className="w-6 h-6 text-signal" />
+                <dd className="text-sm text-white/85">{selected.groupMin}–{selected.groupMax} people</dd>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="sr-only">Price</dt>
+                <dd className="font-display text-2xl md:text-3xl text-signal leading-none">{formatNGN(selected.pricePerPersonPerDay)}</dd>
+                <dd className="text-sm text-signal/85">/person · day</dd>
+              </div>
+            </dl>
+            <a href="#configure" className="kj-btn justify-between w-full sm:w-auto sm:self-start sm:min-w-[320px] text-base py-4">
+              Plan this trip <ArrowRight className="w-5 h-5" />
+            </a>
           </div>
+        </section>
 
+        <div className="mx-auto max-w-5xl px-6 pt-12 md:pt-16 pb-24">
           {/* Two-column layout */}
           <div className="grid lg:grid-cols-[1fr,340px] gap-10">
             {/* ── Left: info & schedule ────── */}
@@ -1854,16 +1887,11 @@ export default function Explore() {
 
               {/* Why this one */}
               <div>
-                <div className="flex items-center gap-4 mb-4">
-                  <span aria-hidden="true" className="kj-mark" />
-                  <span className="kj-eyebrow">
-                    Why this one
-                  </span>
-                </div>
+                <h2 className="text-3xl mb-4">Trip highlights</h2>
                 <ul className="space-y-2.5">
                   {selected.highlights.map((h) => (
                     <li key={h} className="flex items-start gap-3">
-                      <span className="text-foreground mt-0.5 text-[8px] shrink-0">◆</span>
+                      <span className="w-5 h-5 rounded-full bg-signal text-ink grid place-items-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></span>
                       <span className="font-jost font-light text-sm text-foreground">{h}</span>
                     </li>
                   ))}
@@ -1872,17 +1900,12 @@ export default function Explore() {
 
               {/* What's included */}
               <div>
-                <div className="flex items-center gap-4 mb-4">
-                  <span aria-hidden="true" className="kj-mark" />
-                  <span className="kj-eyebrow">
-                    What's included
-                  </span>
-                </div>
+                <h2 className="text-3xl mb-4">What's included</h2>
                 <div className="grid sm:grid-cols-2 gap-y-2.5 gap-x-6">
                   {selected.included.map((item) => (
                     <div key={item} className="flex items-start gap-2.5">
                       <svg
-                        className="w-4 h-4 text-signal mt-0.5 shrink-0"
+                        className="w-4 h-4 text-foreground mt-0.5 shrink-0"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -1900,17 +1923,12 @@ export default function Explore() {
 
               {/* Day-by-day schedule */}
               <div>
-                <div className="flex items-center gap-4 mb-4">
-                  <span aria-hidden="true" className="kj-mark" />
-                  <span className="kj-eyebrow">
-                    Day plan{days > 1 ? ` · ${days} days` : ""}
-                  </span>
-                </div>
+                <h2 className="text-3xl mb-4">Day plan{days > 1 ? ` · ${days} days` : ""}</h2>
 
                 {daySchedules.map((sched, dayIdx) => (
                   <div key={dayIdx} className={dayIdx > 0 ? "mt-8" : ""}>
                     {days > 1 && (
-                      <div className="font-marcellus text-sm text-signal mb-4 flex items-center gap-3">
+                      <div className="font-display text-lg text-foreground mb-4 flex items-center gap-3">
                         <span>Day {dayIdx + 1}</span>
                         <span className="flex-1 h-px bg-border" />
                       </div>
@@ -1953,14 +1971,9 @@ export default function Explore() {
             </div>
 
             {/* ── Right: sticky config panel ────── */}
-            <div className="lg:sticky lg:top-8 self-start">
-              <div className="border border-border p-6 space-y-6">
-                <div className="flex items-center gap-4">
-                  <span aria-hidden="true" className="kj-mark" />
-                  <span className="kj-eyebrow">
-                    Configure your trip
-                  </span>
-                </div>
+            <div id="configure" className="lg:sticky lg:top-24 self-start scroll-mt-24">
+              <div className="kj-card p-6 space-y-6 shadow-soft">
+                <h2 className="text-2xl">Plan your trip</h2>
 
                 {/* Days slider */}
                 <div>
@@ -2012,7 +2025,7 @@ export default function Explore() {
                 {/* CTA */}
                 <button
                   onClick={openShare}
-                  className="w-full bg-signal text-ink py-4 font-display text-base tracking-[0.04em] hover:bg-paper transition-colors"
+                  className="kj-btn w-full py-4 text-base"
                 >
                   Share with squad →
                 </button>
@@ -2021,7 +2034,7 @@ export default function Explore() {
                 {savedId ? (
                   <Link
                     to="/my-plans"
-                    className="w-full flex items-center justify-center gap-2 border border-signal text-signal py-3.5 font-jost font-medium text-sm tracking-[0.06em] hover:bg-signal/10 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 rounded-[0.65rem] border border-line-strong text-foreground py-3.5 font-medium text-sm hover:border-signal transition-colors"
                   >
                     <Check className="w-4 h-4" /> Saved — view in My Plans
                   </Link>
@@ -2029,7 +2042,7 @@ export default function Explore() {
                   <button
                     onClick={handleAddToPlan}
                     disabled={saving}
-                    className="w-full border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-signal hover:text-signal transition-colors disabled:opacity-50"
+                    className="w-full rounded-[0.65rem] border border-line-strong text-foreground py-3.5 font-medium text-sm hover:border-signal transition-colors disabled:opacity-50"
                   >
                     {saving ? "Saving…" : "+ Add to my plans"}
                   </button>
@@ -2037,7 +2050,7 @@ export default function Explore() {
                   <button
                     onClick={signInToSave}
                     disabled={sharePrep}
-                    className="w-full flex items-center justify-center border border-border text-foreground py-3.5 font-jost font-light text-sm tracking-[0.06em] hover:border-signal hover:text-signal transition-colors disabled:opacity-60"
+                    className="w-full flex items-center justify-center rounded-[0.65rem] border border-line-strong text-foreground py-3.5 font-medium text-sm hover:border-signal transition-colors disabled:opacity-60"
                   >
                     {sharePrep ? "Holding your trip…" : "Sign in to save this trip"}
                   </button>
