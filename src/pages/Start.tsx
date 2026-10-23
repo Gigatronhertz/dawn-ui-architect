@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { MapPin, Check, Mail, Bell, MessageCircle } from "lucide-react";
 import { api, ApiError, session, imageUrl, type AiCreditStatus, type TripPlan, type IntakeData, type PlanDay, type ScrapedData, type GIGMTrip, type GTHotel, type Attraction } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { KarijeLogo, KarijeMark } from "@/components/Nav";
+import { KarijeLogo } from "@/components/Nav";
 import { GIGM_CITIES, FLIGHT_CITIES } from "@/lib/cities";
 import { Premium, PREMIUM_LOCKED } from "@/lib/premium";
 
@@ -268,13 +268,10 @@ function IntakeStep({
   return (
     <div className="animate-rise pb-32">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
-        <span className="text-signal"><KarijeMark size={22} /></span>
-        <span className="kj-eyebrow">Plan your trip</span>
-      </div>
-      <h1 className="font-display text-[clamp(2.6rem,8vw,5rem)] leading-[0.95]">
+      <p className="kj-eyebrow mb-4">Plan your trip</p>
+      <h1 className="text-[clamp(2.6rem,8vw,5rem)] leading-[0.98]">
         Tell us about<br />
-        <span className="inline-block bg-signal text-ink px-[0.18em] pt-1 pb-2 mt-1  kj-cut-5">the trip.</span>
+        <span className="kj-hl">the trip.</span>
       </h1>
       <p className="mt-5 text-base md:text-lg text-muted-foreground leading-relaxed max-w-xl">
         10 quick questions. AI builds the full itinerary with live prices. You edit before it goes to the squad.
@@ -282,7 +279,7 @@ function IntakeStep({
 
       {/* Progress */}
       <div className="mt-7 flex items-center gap-4">
-        <div className="flex-1 h-2.5 bg-[#1A1A1A]" role="progressbar" aria-valuemin={0} aria-valuemax={10} aria-valuenow={answered}>
+        <div className="flex-1 h-2.5 rounded-full overflow-hidden bg-secondary" role="progressbar" aria-valuemin={0} aria-valuemax={10} aria-valuenow={answered}>
           <div className="h-full bg-signal transition-[width] duration-500" style={{ width: `${answered * 10}%` }} />
         </div>
         <span className="font-display text-lg text-signal tabular-nums">{answered}/10</span>
@@ -462,7 +459,7 @@ function IntakeStep({
       </div>
 
       {/* Summary bar — always in reach */}
-      <div className="fixed inset-x-0 bottom-[5.75rem] md:bottom-0 z-30 bg-signal text-ink">
+      <div className="fixed inset-x-0 bottom-0 kj-above-nav z-30 bg-signal text-ink">
         <div className="max-w-3xl mx-auto px-5 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4">
           <div className="min-w-0 hidden sm:block">
             <div className="font-display text-lg md:text-2xl leading-tight truncate">

@@ -964,28 +964,29 @@ export function BuildYourOwn({
       <div className="space-y-5 min-w-0">
         <div className="flex items-center gap-3 flex-wrap">
           <label className="kj-label text-muted-foreground">Days</label>
-          <div className="flex">
+          <div className="flex gap-1.5">
             {[1, 2, 3, 4, 5].map(n => (
               <button
                 key={n}
                 onClick={() => setDayCount(n)}
-                className={`w-11 h-11 font-display text-lg border-2 border-signal transition-colors ${
+                aria-pressed={dayCount === n}
+                className={`w-10 h-10 !rounded-full text-sm font-semibold border transition-colors ${
                   dayCount === n
-                    ? "bg-signal text-ink"
-                    : "text-signal hover:bg-signal/10"
-                } ${n > 1 ? "-ml-0.5" : ""}`}
+                    ? "bg-ink text-white border-ink"
+                    : "border-line-strong text-foreground hover:border-foreground/50"
+                }`}
               >
                 {n}
               </button>
             ))}
           </div>
           <label className="kj-label text-muted-foreground ml-2">{agencyPrice !== undefined ? "Seats" : "Squad"}</label>
-          <div className="flex items-stretch border-2 border-signal">
+          <div className="flex items-stretch rounded-full border border-line-strong overflow-hidden">
             <button
               type="button"
               onClick={() => setSquad(s => Math.max(1, s - 1))}
               aria-label="Fewer people"
-              className="w-11 h-11 grid place-items-center text-signal text-xl hover:bg-signal/10 transition-colors"
+              className="w-10 h-10 !rounded-none grid place-items-center text-foreground text-xl hover:bg-secondary transition-colors"
             >
               −
             </button>
@@ -1009,7 +1010,7 @@ export function BuildYourOwn({
               type="button"
               onClick={() => setSquad(s => Math.min(60, s + 1))}
               aria-label="More people"
-              className="w-11 h-11 grid place-items-center text-signal text-xl hover:bg-signal/10 transition-colors"
+              className="w-10 h-10 !rounded-none grid place-items-center text-foreground text-xl hover:bg-secondary transition-colors"
             >
               +
             </button>
@@ -1384,7 +1385,7 @@ export function BuildYourOwn({
 
       {/* Phone-only bar — the library is one tap away, not a scroll away */}
       {!libOpen && (
-        <div className="lg:hidden fixed inset-x-0 bottom-[5.75rem] md:bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
+        <div className="lg:hidden fixed inset-x-0 bottom-0 kj-above-nav z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-background/95 backdrop-blur border-t border-border">
           <div className="flex items-center gap-3">
             <div className="min-w-0">
               <div className="kj-eyebrow">{agencyPrice !== undefined ? "Price per person" : "Per person"}</div>

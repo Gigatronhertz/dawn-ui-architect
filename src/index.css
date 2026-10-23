@@ -152,6 +152,10 @@
      a rounded-* utility on the element still wins. */
   button.bg-signal, a.bg-signal, button.bg-ink, a.bg-ink,
   button.bg-foreground, a.bg-foreground, button.bg-primary, a.bg-primary { border-radius: 0.65rem; }
+
+  /* Fields and bordered buttons share the same soft corner. */
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]), select, textarea,
+  button[class*="border"] { border-radius: 0.65rem; }
 }
 
 @layer utilities {
@@ -237,6 +241,8 @@
   /* Reserves space so MobileBottomNav never covers page content. */
   @media (max-width: 767px) {
     body.has-bottom-nav { padding-bottom: 6rem; }
+    /* Fixed bars that must sit above the floating bottom nav when it shows. */
+    body.has-bottom-nav .kj-above-nav { bottom: 5.75rem; }
   }
 }
 

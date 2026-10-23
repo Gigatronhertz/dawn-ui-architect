@@ -14,7 +14,7 @@ const NotFound = () => {
       <Nav />
       <div aria-hidden="true" className="h-[77px]" />
       <div className="max-w-[1280px] mx-auto px-5 md:px-8 py-24 md:py-32 flex flex-col items-start gap-6">
-        <div className="kj-title">Wrong <span className="kj-hl px-3">turn.</span></div>
+        <div className="kj-title">Wrong <span className="kj-hl">turn.</span></div>
         <p className="text-base md:text-lg text-muted-foreground max-w-md">
           This page doesn't exist — but plenty of trips do.
         </p>
