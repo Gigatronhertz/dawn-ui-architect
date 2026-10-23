@@ -51,14 +51,6 @@ const SCHEMA = [
     created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
     UNIQUE(phone, source)
   )`,
-  `CREATE TABLE IF NOT EXISTS conversations (
-    phone       TEXT PRIMARY KEY,
-    name        TEXT,
-    state       TEXT NOT NULL DEFAULT 'idle',
-    trip_id     TEXT,
-    temp        TEXT NOT NULL DEFAULT '{}',
-    updated_at  INTEGER NOT NULL DEFAULT (unixepoch())
-  )`,
   `CREATE TABLE IF NOT EXISTS trips (
     id                TEXT PRIMARY KEY,
     organiser_phone   TEXT NOT NULL,
@@ -147,19 +139,8 @@ const SCHEMA = [
   // NOTE: `curated_trips` was merged into `experiences` — see curatedTripsSeed.js.
   // The table is no longer created or read; existing databases keep their rows
   // untouched so the old data is recoverable until it is deliberately dropped.
-  `CREATE TABLE IF NOT EXISTS members (
-    id            TEXT PRIMARY KEY,
-    trip_id       TEXT NOT NULL,
-    phone         TEXT NOT NULL,
-    name          TEXT,
-    paid          INTEGER NOT NULL DEFAULT 0,
-    amount        INTEGER,
-    paystack_ref  TEXT,
-    paystack_url  TEXT,
-    paid_at       INTEGER,
-    added_at      INTEGER NOT NULL DEFAULT (unixepoch()),
-    UNIQUE(trip_id, phone)
-  )`,
+  // `members` and `conversations` belonged to the retired WhatsApp group bot.
+  // They are no longer created or read; existing rows are left untouched.
   `CREATE TABLE IF NOT EXISTS participants (
     id         TEXT PRIMARY KEY,
     trip_id    TEXT NOT NULL,
@@ -439,17 +420,14 @@ const MIGRATIONS = [
   `ALTER TABLE agents ADD COLUMN subscription_authorization_code TEXT`,
   `ALTER TABLE agents ADD COLUMN subscription_next_charge_at INTEGER`,
   `ALTER TABLE agents ADD COLUMN subscription_failed_attempts INTEGER NOT NULL DEFAULT 0`,
-  // Phase 23 — fees reworked (Sept 2026). Karije no longer takes a flat
-  // per-person service fee on any trip; agencies pay the monthly subscription
-  // instead. Karije's own curated trips carry a percentage margin (10%) of
-  // what's collected, snapshotted per trip here.
+  // Phase 23 — fees reworked (Sept 2026). Karije takes no per-person fee and
+  // no percentage on any trip: agencies pay the monthly subscription, and
+  // Karije's own curated trips are Karije's to run. platform_fee_pct briefly
+  // held a 10% margin on curated trips; it is zeroed and no longer read.
   `ALTER TABLE trips ADD COLUMN platform_fee_pct INTEGER NOT NULL DEFAULT 0`,
-  // Both idempotent, so safe on every boot: clear the old per-person fee off
-  // every trip, and give curated trips created before this their 10%.
+  // Both idempotent, so safe on every boot.
   `UPDATE trips SET service_fee_per_person = 0 WHERE service_fee_per_person IS NULL OR service_fee_per_person <> 0`,
-  `UPDATE trips SET platform_fee_pct = 10
-     WHERE platform_fee_pct = 0 AND agent_id IS NULL
-       AND (CASE WHEN json_valid(intake_json) THEN json_extract(intake_json, '$.curatedId') END) IS NOT NULL`,
+  `UPDATE trips SET platform_fee_pct = 0 WHERE platform_fee_pct <> 0`,
 ];
 
 const ready = (async () => {
@@ -597,37 +575,6 @@ async function rawAll(sql, args) {
   return res.rows ?? [];
 }
 
-// ── Conversation helpers ───────────────────────────────────────────────────
-
-async function getConv(phone) {
-  const res = await client.execute({
-    sql: 'SELECT * FROM conversations WHERE phone = ?',
-    args: [phone],
-  });
-  return res.rows[0] ?? null;
-}
-
-async function upsertConv({ phone, name, state, trip_id, temp }) {
-  await client.execute({
-    sql: `INSERT INTO conversations (phone, name, state, trip_id, temp)
-          VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(phone) DO UPDATE SET
-            name       = COALESCE(?, name),
-            state      = ?,
-            trip_id    = ?,
-            temp       = ?,
-            updated_at = unixepoch()`,
-    args: [phone, name, state, trip_id, temp, name, state, trip_id, temp],
-  });
-}
-
-async function resetConv(phone) {
-  await client.execute({
-    sql: `UPDATE conversations SET state = 'idle', trip_id = NULL, temp = '{}', updated_at = unixepoch() WHERE phone = ?`,
-    args: [phone],
-  });
-}
-
 // ── Trip helpers ───────────────────────────────────────────────────────────
 
 async function insertTrip({ id, organiser_phone }) {
@@ -641,22 +588,6 @@ async function getTrip(id) {
   const res = await client.execute({
     sql: 'SELECT * FROM trips WHERE id = ?',
     args: [id],
-  });
-  return res.rows[0] ?? null;
-}
-
-async function getTripByOrganiser(phone) {
-  const res = await client.execute({
-    sql: 'SELECT * FROM trips WHERE organiser_phone = ? ORDER BY created_at DESC LIMIT 1',
-    args: [phone],
-  });
-  return res.rows[0] ?? null;
-}
-
-async function getTripByGroup(groupId) {
-  const res = await client.execute({
-    sql: 'SELECT * FROM trips WHERE group_id = ? ORDER BY created_at DESC LIMIT 1',
-    args: [groupId],
   });
   return res.rows[0] ?? null;
 }
@@ -689,45 +620,6 @@ async function updateTrip({
       selected_date, selected_hotel, group_id, status,
       id,
     ],
-  });
-}
-
-// ── Member helpers ─────────────────────────────────────────────────────────
-
-async function insertMember({ id, trip_id, phone, name, amount }) {
-  await client.execute({
-    sql: 'INSERT OR IGNORE INTO members (id, trip_id, phone, name, amount) VALUES (?, ?, ?, ?, ?)',
-    args: [id, trip_id, phone, name, amount],
-  });
-}
-
-async function getMember(tripId, phone) {
-  const res = await client.execute({
-    sql: 'SELECT * FROM members WHERE trip_id = ? AND phone = ?',
-    args: [tripId, phone],
-  });
-  return res.rows[0] ?? null;
-}
-
-async function getMembersByTrip(tripId) {
-  const res = await client.execute({
-    sql: 'SELECT * FROM members WHERE trip_id = ?',
-    args: [tripId],
-  });
-  return res.rows;
-}
-
-async function markPaid({ ref, trip_id, phone }) {
-  await client.execute({
-    sql: 'UPDATE members SET paid = 1, paid_at = unixepoch(), paystack_ref = ? WHERE trip_id = ? AND phone = ?',
-    args: [ref, trip_id, phone],
-  });
-}
-
-async function updatePaystackUrl({ ref, url, trip_id, phone }) {
-  await client.execute({
-    sql: 'UPDATE members SET paystack_ref = ?, paystack_url = ? WHERE trip_id = ? AND phone = ?',
-    args: [ref, url, trip_id, phone],
   });
 }
 
@@ -865,20 +757,20 @@ async function deleteAttraction(id) {
 
 // ── Agent helpers ──────────────────────────────────────────────────────────
 
-async function upsertAgent({ id, phone, agency_name, wa_number, service_fee, color, plan_type, tagline }) {
+// The old service_fee and plan_type columns stay on the table for existing
+// rows but are no longer written: agencies pay one subscription, no per-head fee.
+async function upsertAgent({ id, phone, agency_name, wa_number, color, tagline }) {
   await client.execute({
-    sql: `INSERT INTO agents (id, phone, agency_name, wa_number, service_fee, color, plan_type, tagline)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO agents (id, phone, agency_name, wa_number, service_fee, color, tagline)
+          VALUES (?, ?, ?, ?, 0, ?, ?)
           ON CONFLICT(phone) DO UPDATE SET
             agency_name = ?,
             wa_number   = ?,
-            service_fee = ?,
             color       = ?,
-            plan_type   = ?,
             tagline     = ?`,
     args: [
-      id, phone, agency_name, wa_number, service_fee, color, plan_type, tagline,
-      agency_name, wa_number, service_fee, color, plan_type, tagline,
+      id, phone, agency_name, wa_number, color, tagline,
+      agency_name, wa_number, color, tagline,
     ],
   });
 }
@@ -889,23 +781,6 @@ async function getAgent(phone) {
     args: [phone],
   });
   return res.rows[0] ?? null;
-}
-
-async function getAgentDashboard(phone) {
-  const res = await client.execute({
-    sql: `SELECT
-      t.id, t.origin, t.destination, t.days, t.squad_size, t.status, t.created_at,
-      COUNT(m.id)                                                AS total_members,
-      COALESCE(SUM(CASE WHEN m.paid = 1 THEN 1 ELSE 0 END), 0) AS paid_count,
-      COALESCE(SUM(CASE WHEN m.paid = 1 THEN m.amount ELSE 0 END), 0) AS total_collected
-    FROM trips t
-    LEFT JOIN members m ON m.trip_id = t.id
-    WHERE t.organiser_phone = ?
-    GROUP BY t.id
-    ORDER BY t.created_at DESC`,
-    args: [phone],
-  });
-  return res.rows;
 }
 
 /** Link an existing agent record to a JWT user (by phone as key). */
@@ -1760,9 +1635,7 @@ module.exports = {
   raw,
   rawAll,
   parseExpRow,
-  conv:        { get: getConv, upsert: upsertConv, reset: resetConv },
-  trips:       { insert: insertTrip, get: getTrip, byOrganiser: getTripByOrganiser, byGroup: getTripByGroup, update: updateTrip },
-  members:     { insert: insertMember, get: getMember, byTrip: getMembersByTrip, markPaid, updateUrl: updatePaystackUrl },
+  trips:       { insert: insertTrip, get: getTrip, update: updateTrip },
   waitlist:    { insert: insertWaitlist, list: listWaitlist },
   agencyLeads: { insert: insertAgencyLead, list: listAgencyLeads },
   agents:      {
@@ -1770,7 +1643,6 @@ module.exports = {
     get:           getAgent,
     getById:       getAgentById,
     list:          listAgents,
-    dashboard:     getAgentDashboard,
     linkToUser:    linkAgentToUser,
     getByUser:     getAgentByUser,
     getByEmail:    getAgentByEmail,

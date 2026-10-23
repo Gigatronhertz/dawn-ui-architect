@@ -1,8 +1,7 @@
 /**
- * Karije's own income, for the admin Revenue tab. Three streams:
+ * Karije's own income, for the admin Revenue tab. Two streams:
  *
  *   subscriptions — Pro agencies' ₦10,000/month (subscription_charges)
- *   curated       — 10% of what's collected on Karije's own curated trips
  *   aiPlans       — ₦500 packs of AI trip plans (ai_credit_purchases)
  *
  * Everything is derived from the payment rows themselves, same as ledger.js,
@@ -43,36 +42,6 @@ async function subscriptions() {
   };
 }
 
-async function curated() {
-  const rows = await db.rawAll(
-    `SELECT t.id, t.title, t.destination, t.plan, t.squad_size, t.platform_fee_pct AS pct, t.created_at,
-            (SELECT COALESCE(SUM(pp.amount), 0) FROM participant_payments pp WHERE pp.trip_id = t.id) AS collected,
-            (SELECT COUNT(*) FROM participants p WHERE p.trip_id = t.id AND p.paid = 1) AS paid_count
-       FROM trips t
-      WHERE t.platform_fee_pct > 0
-      ORDER BY t.created_at DESC`
-  );
-  const trips = rows.map((r) => {
-    let plan = null;
-    try { plan = r.plan ? JSON.parse(r.plan) : null; } catch { /* bad row */ }
-    const pct       = num(r.pct);
-    const collected = num(r.collected);
-    const expected  = Math.max(collected, num(plan?.cost_breakdown?.per_person) * num(r.squad_size));
-    return {
-      tripId:    r.id,
-      name:      r.title || plan?.curated?.name || r.destination || 'Trip',
-      pct,
-      squadSize: num(r.squad_size),
-      paidCount: num(r.paid_count),
-      expected,
-      collected,
-      earned:    Math.round(collected * pct / 100),
-      pending:   Math.round((expected - collected) * pct / 100),
-    };
-  });
-  return { trips: trips.filter((t) => t.collected > 0 || t.expected > 0) };
-}
-
 async function aiPlans() {
   const [p] = await db.rawAll(
     `SELECT COUNT(*) AS packs, COALESCE(SUM(amount), 0) AS revenue, COALESCE(SUM(credits), 0) AS credits_sold
@@ -99,11 +68,6 @@ async function monthly() {
     `SELECT ${month('created_at')} AS m, SUM(amount) AS v FROM subscription_charges
       WHERE status = 'success' GROUP BY m`
   );
-  const cur = await db.rawAll(
-    `SELECT ${month('pp.created_at')} AS m, SUM(pp.amount * t.platform_fee_pct / 100.0) AS v
-       FROM participant_payments pp JOIN trips t ON t.id = pp.trip_id
-      WHERE t.platform_fee_pct > 0 GROUP BY m`
-  );
   const ai = await db.rawAll(`SELECT ${month('created_at')} AS m, SUM(amount) AS v FROM ai_credit_purchases GROUP BY m`);
 
   const months = [];
@@ -115,27 +79,24 @@ async function monthly() {
   }
   const pick = (rows, m) => Math.round(num(rows.find((r) => r.m === m)?.v));
   return months.map((m) => {
-    const row = { month: m, subscriptions: pick(subs, m), curated: pick(cur, m), aiPlans: pick(ai, m) };
-    return { ...row, total: row.subscriptions + row.curated + row.aiPlans };
+    const row = { month: m, subscriptions: pick(subs, m), aiPlans: pick(ai, m) };
+    return { ...row, total: row.subscriptions + row.aiPlans };
   });
 }
 
 async function report() {
-  const [s, c, a, m] = await Promise.all([subscriptions(), curated(), aiPlans(), monthly()]);
+  const [s, a, m] = await Promise.all([subscriptions(), aiPlans(), monthly()]);
   const now = thisMonth();
-  const current = m.find((x) => x.month === now) || { subscriptions: 0, curated: 0, aiPlans: 0, total: 0 };
+  const current = m.find((x) => x.month === now) || { subscriptions: 0, aiPlans: 0, total: 0 };
   const allTime = {
     subscriptions: s.agencies.reduce((t, x) => t + x.total_paid, 0),
-    curated:       c.trips.reduce((t, x) => t + x.earned, 0),
     aiPlans:       a.revenue,
   };
-  allTime.total = allTime.subscriptions + allTime.curated + allTime.aiPlans;
+  allTime.total = allTime.subscriptions + allTime.aiPlans;
   return {
     thisMonth: current,
     allTime,
-    curatedPending: c.trips.reduce((t, x) => t + x.pending, 0),
     subscriptions: s,
-    curated: c,
     aiPlans: a,
     monthly: m,
   };

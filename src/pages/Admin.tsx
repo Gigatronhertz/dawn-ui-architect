@@ -29,7 +29,7 @@ type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "a
 
 type MoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
-  paidCount: number; squadSize: number; collected: number; karijeShare: number; feePct: number;
+  paidCount: number; squadSize: number; collected: number;
   dueToOrganiser: number; paidOut: number; outstanding: number;
   /** All seats filled and paid — the signal for "safe to release the full balance now". */
   readyToDisburse: boolean;
@@ -1102,7 +1102,7 @@ function EventsSection({ adminKey }: { adminKey: string }) {
  */
 function MoneySection({ adminKey }: { adminKey: string }) {
   const [trips, setTrips]   = useState<MoneyTrip[]>([]);
-  const [totals, setTotals] = useState({ collected: 0, karijeShare: 0, paidOut: 0, outstanding: 0 });
+  const [totals, setTotals] = useState({ collected: 0, paidOut: 0, outstanding: 0 });
   const [loading, setLoad]  = useState(true);
   const [err, setErr]       = useState("");
   const [openTrip, setOpen] = useState<string | null>(null);
@@ -1120,10 +1120,9 @@ function MoneySection({ adminKey }: { adminKey: string }) {
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       {/* Position at a glance */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
         {[
           { label: "Collected",       value: totals.collected,   hint: "from squad members" },
-          { label: "Karije share",    value: totals.karijeShare, hint: "10% of curated trips" },
           { label: "Paid out",        value: totals.paidOut,     hint: "released to organisers" },
           { label: "Still to pay",    value: totals.outstanding, hint: "owed right now", accent: true },
         ].map(s => (
@@ -1194,9 +1193,8 @@ function MoneySection({ adminKey }: { adminKey: string }) {
 
 type SubStatus = "exempt" | "active" | "past_due" | "suspended";
 type RevenueReport = {
-  thisMonth: { subscriptions: number; curated: number; aiPlans: number; total: number };
-  allTime:   { subscriptions: number; curated: number; aiPlans: number; total: number };
-  curatedPending: number;
+  thisMonth: { subscriptions: number; aiPlans: number; total: number };
+  allTime:   { subscriptions: number; aiPlans: number; total: number };
   subscriptions: {
     counts: Record<SubStatus, number>;
     agencies: {
@@ -1205,16 +1203,12 @@ type RevenueReport = {
     }[];
     charges: { id: string; agency_name: string | null; amount: number; reference: string; status: string; created_at: number }[];
   };
-  curated: {
-    trips: { tripId: string; name: string; pct: number; squadSize: number; paidCount: number;
-             expected: number; collected: number; earned: number; pending: number }[];
-  };
   aiPlans: {
     packs: number; revenue: number; creditsSold: number;
     plansGenerated: { free: number; credit: number; pro: number };
     purchases: { id: string; email: string | null; amount: number; credits: number; reference: string; created_at: number }[];
   };
-  monthly: { month: string; subscriptions: number; curated: number; aiPlans: number; total: number }[];
+  monthly: { month: string; subscriptions: number; aiPlans: number; total: number }[];
 };
 
 const SUB_BADGE: Record<SubStatus, string> = {
@@ -1269,11 +1263,10 @@ function RevenueSection({ adminKey }: { adminKey: string }) {
   return (
     <div className="mx-auto max-w-6xl px-6 py-8 space-y-6">
       {/* This month, by stream */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {[
           { label: "This month",        value: data.thisMonth.total,         hint: `${naira(data.allTime.total)} all time`, accent: true },
           { label: "Pro subscriptions", value: data.thisMonth.subscriptions, hint: `${naira(data.allTime.subscriptions)} all time` },
-          { label: "Curated trips (10%)", value: data.thisMonth.curated,     hint: `${naira(data.allTime.curated)} all time · ${naira(data.curatedPending)} still to come` },
           { label: "AI plan packs",     value: data.thisMonth.aiPlans,       hint: `${naira(data.allTime.aiPlans)} all time` },
         ].map(s => (
           <div key={s.label} className={`rounded-xl border p-4 ${s.accent ? "border-green-300 bg-green-50" : "border-gray-200 bg-white"}`}>
@@ -1289,14 +1282,13 @@ function RevenueSection({ adminKey }: { adminKey: string }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px]">
             <thead className="bg-gray-50/60">
-              <tr><th className={th}>Month</th><th className={th}>Subscriptions</th><th className={th}>Curated 10%</th><th className={th}>AI packs</th><th className={th}>Total</th></tr>
+              <tr><th className={th}>Month</th><th className={th}>Subscriptions</th><th className={th}>AI packs</th><th className={th}>Total</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {[...data.monthly].reverse().map(m => (
                 <tr key={m.month}>
                   <td className={td}>{fmtMonth(m.month)}</td>
                   <td className={`${td} tabular-nums`}>{naira(m.subscriptions)}</td>
-                  <td className={`${td} tabular-nums`}>{naira(m.curated)}</td>
                   <td className={`${td} tabular-nums`}>{naira(m.aiPlans)}</td>
                   <td className={`${td} tabular-nums font-semibold`}>{naira(m.total)}</td>
                 </tr>
@@ -1382,33 +1374,6 @@ function RevenueSection({ adminKey }: { adminKey: string }) {
         </div>
       </RevenueCard>
 
-      {/* Curated trips */}
-      <RevenueCard title="Curated trips — Karije's 10%" right={<span className="text-xs text-gray-500">{naira(data.curatedPending)} still to come</span>}>
-        {data.curated.trips.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-gray-400">No curated trips booked yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px]">
-              <thead className="bg-gray-50/60">
-                <tr><th className={th}>Trip</th><th className={th}>Paid</th><th className={th}>Collected</th><th className={th}>Trip total</th><th className={th}>Our share</th><th className={th}>Still to come</th></tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {data.curated.trips.map(t => (
-                  <tr key={t.tripId}>
-                    <td className={td}><div className="font-medium text-gray-900">{t.name}</div><div className="text-xs text-gray-400">{t.pct}%</div></td>
-                    <td className={`${td} tabular-nums`}>{t.paidCount}/{t.squadSize || "?"}</td>
-                    <td className={`${td} tabular-nums`}>{naira(t.collected)}</td>
-                    <td className={`${td} tabular-nums`}>{naira(t.expected)}</td>
-                    <td className={`${td} tabular-nums font-semibold text-green-700`}>{naira(t.earned)}</td>
-                    <td className={`${td} tabular-nums text-gray-500`}>{naira(t.pending)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </RevenueCard>
-
       {/* AI plans */}
       <RevenueCard title="AI plan packs — ₦500 for 3">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
@@ -1483,10 +1448,9 @@ function TripMoneyDetail({ tripId, adminKey, onChange }: {
 
   return (
     <div className="border-t border-gray-100 p-4 space-y-4 bg-gray-50/60">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
         {[
           ["Collected", data.collected],
-          [data.feePct > 0 ? `Karije share (${data.feePct}%)` : "Karije share", data.karijeShare],
           ["Due to organiser", data.dueToOrganiser],
           ["Already paid out", data.paidOut],
         ].map(([label, value]) => (
@@ -2321,7 +2285,7 @@ export default function Admin() {
     { id: "experiences", label: "Trips",       hint: "Curated trips on /start/explore" },
     { id: "nightlife",   label: "Nightlife",   hint: "Venues on Explore's Nightlife section" },
     { id: "events",      label: "Events",      hint: "Events on Explore's What's on section" },
-    { id: "revenue",     label: "Revenue",     hint: "Subscriptions, curated 10%, AI plan packs" },
+    { id: "revenue",     label: "Revenue",     hint: "Subscriptions, AI plan packs" },
     { id: "money",       label: "Money",       hint: "Collected, owed, and paid out" },
     { id: "attractions", label: "Attractions", hint: "Prices the planner quotes" },
     { id: "agents",      label: "Agencies",    hint: "Create logins, verify KYC documents" },

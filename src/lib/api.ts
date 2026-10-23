@@ -193,7 +193,6 @@ export type AgentProfile = {
   agencyName: string;
   waNumber?: string;
   color: string;
-  planType: 'starter' | 'growth';
   tagline?: string;
   /** Points into the image store; run it through imageUrl() before rendering. */
   logo_image_id?: string | null;
@@ -268,7 +267,7 @@ export type DashboardSummary = {
 export type DashboardData = {
   // wa_number is the raw agents column, snake_case as the row comes back —
   // the dashboard reads it, and leaving it off the type made that a build error.
-  agent: AgentProfile & { agency_name: string; plan_type: string; service_fee: number; wa_number?: string };
+  agent: AgentProfile & { agency_name: string; wa_number?: string };
   trips: TripRow[];
   summary: DashboardSummary;
 };
@@ -384,7 +383,7 @@ export type AgencySquadMember = {
 /** One trip's money position — returned by both /api/pro/money and the admin equivalent. */
 export type ProMoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
-  paidCount: number; squadSize: number; collected: number; karijeShare: number;
+  paidCount: number; squadSize: number; collected: number;
   dueToOrganiser: number; paidOut: number; outstanding: number;
   readyToDisburse: boolean;
   payoutAccountName: string | null;
@@ -413,7 +412,7 @@ export type AgencyTripDetail = {
   squad: AgencySquadMember[];
   /** The trip's money position, from the ledger. */
   money: {
-    collected: number; karijeShare: number; dueToOrganiser: number;
+    collected: number; dueToOrganiser: number;
     paidOut: number; outstanding: number;
   } | null;
   summary: { joined: number; paid: number; pending: number; collected: number };
@@ -477,7 +476,7 @@ export const api = {
   generatePlan: (intake: IntakeData) => post<PlanResponse>('/api/plan', intake),
   getGigmBuses: (from: string, to: string, date?: string) =>
     get<{ from: string; to: string; count: number; trips: GIGMTrip[] }>(
-      `/api/gigm-test?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${date ? `&date=${date}` : ''}`
+      `/api/buses?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${date ? `&date=${date}` : ''}`
     ),
   confirmPlan: (tripId: string, plan: TripPlan, email?: string, selectedDate?: string) =>
     post<ConfirmResponse>('/api/confirm', { tripId, plan, email, selectedDate: selectedDate || null }),
@@ -654,13 +653,13 @@ export const api = {
 
   /** Create or update the agency profile tied to the authenticated user. */
   setupPro: (
-    payload: { agencyName: string; tagline?: string; phone: string; waNumber?: string; color?: string; planType?: string },
+    payload: { agencyName: string; tagline?: string; phone: string; waNumber?: string; color?: string },
     token: string,
   ) => post<{ ok: boolean; agent: AgentProfile }>('/api/pro/setup', payload, bearer(token)),
 
   /** Get the agency profile for the authenticated user (404 if not set up). */
   getProMe: (token: string) =>
-    get<{ agent: AgentProfile & { agency_name: string; plan_type: string; wa_number?: string } }>('/api/pro/me', bearer(token)),
+    get<{ agent: AgentProfile & { agency_name: string; wa_number?: string } }>('/api/pro/me', bearer(token)),
 
   /** Get the full agency dashboard (agent + trips + summary) for the authenticated user. */
   getProDashboard: (token: string) =>
@@ -668,9 +667,6 @@ export const api = {
 
   joinWaitlist: (payload: { phone: string; source: string }) => post<{ ok: boolean }>('/api/waitlist', payload),
 
-  /** Submit an agency / pro plan lead. */
-  submitAgencyLead: (payload: { name: string; agencyName: string; phone: string; email: string }) =>
-    post<{ ok: boolean }>('/api/agency-leads', payload),
   // ── Agency branding ──────────────────────────────────────────────────────
   /** Upload the agency logo. Send the raw File — the mime comes from its type. */
   uploadAgencyLogo: async (file: File, token: string) => {
@@ -809,8 +805,4 @@ export const api = {
   /** Verified agencies with at least one listed trip — the home page's
    *  "agencies we work with" showcase. */
   getAgencies: () => get<{ agencies: PublicAgency[] }>('/api/agencies'),
-
-  registerAgent: (payload: AgentProfile) => post<{ ok: boolean; agent: AgentProfile }>('/api/agents', payload),
-  getAgent: (phone: string) => get<{ agent: AgentProfile }>(`/api/agents/${encodeURIComponent(phone)}`),
-  getDashboard: (phone: string) => get<DashboardData>(`/api/dashboard/${encodeURIComponent(phone)}`),
 };

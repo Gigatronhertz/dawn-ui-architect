@@ -28,7 +28,6 @@ const ProSetup = () => {
     phone: "",
     waNumber: "",
     color: "#6366f1",
-    plan: "starter" as "starter" | "growth",
   });
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
@@ -62,11 +61,7 @@ const ProSetup = () => {
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingErr, setBillingErr]   = useState("");
 
-  // Pre-fill plan from URL (?plan=growth) and any existing saved form
   useEffect(() => {
-    const urlPlan = searchParams.get("plan") === "growth" ? "growth" : null;
-    if (urlPlan) setForm((f) => ({ ...f, plan: urlPlan }));
-
     // Load any existing agency profile for this user
     if (!user) return;
     const token = getIdToken();
@@ -79,7 +74,6 @@ const ProSetup = () => {
           phone:      agent.phone                           || "",
           waNumber:   agent.waNumber    || agent.wa_number  || "",
           color:      agent.color                           || "#6366f1",
-          plan:       (urlPlan ?? agent.planType ?? agent.plan_type ?? "starter") as "starter" | "growth",
         });
         if (agent.logo_image_id) {
           setLogoPreview(imageUrl(`/api/trip-image/${agent.logo_image_id}`));
@@ -192,7 +186,6 @@ const ProSetup = () => {
           phone:       form.phone.trim().replace(/\s+/g, ""),
           waNumber:    form.waNumber.trim().replace(/\s+/g, "") || undefined,
           color:       form.color,
-          planType:    form.plan,
         },
         token,
       );

@@ -34,7 +34,6 @@ export type ProNav = "overview" | "trips" | "completed" | "money" | "templates" 
 /** The agent shape both /api/pro/me and /api/pro/dashboard return. */
 export type ProAgent = AgentProfile & {
   agency_name: string;
-  plan_type: string;
   wa_number?: string;
 };
 
@@ -62,7 +61,6 @@ function SidebarContent({
   const agencyName = agent?.agency_name || "";
   const agencyLogo = imageUrl(agent?.logo_image_id ? `/api/trip-image/${agent.logo_image_id}` : null);
   const agentColor = agent?.color || "#0B0B0B";
-  const planType   = agent?.plan_type || "starter";
   const initials   = agencyName.trim().split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "??";
 
   return (
@@ -78,7 +76,7 @@ function SidebarContent({
         </div>
         <div className="min-w-0">
           <div className="font-display font-semibold text-sm leading-tight truncate">{agencyName || "Your agency"}</div>
-          <div className="text-[10px] text-muted-foreground capitalize">Karije Pro · {planType}</div>
+          <div className="text-[10px] text-muted-foreground ">Karije Pro</div>
         </div>
       </div>
 

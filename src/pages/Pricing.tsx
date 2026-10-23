@@ -24,8 +24,8 @@ const FAQ_ITEMS = [
     a: "Every time you generate a new itinerary through the AI planner — new destination, different dates, or a fresh squad size — that's one plan. Editing an existing itinerary (changing activities, swapping venues) is free and doesn't count.",
   },
   {
-    q: "How does the 10% commission work on Ready-made Trips?",
-    a: "There's no upfront fee. When your squad books a Karije Ready-made Trip and pays via Paystack, Karije keeps 10% of the total collected. The remaining 90% goes into running the trip itself. You see the full breakdown before you confirm the booking.",
+    q: "Are there extra fees on Ready-made Trips?",
+    a: "No. Karije runs these trips itself, so you pay the per-person price on the trip page and nothing on top. You see the full price before anyone pays.",
   },
   {
     q: "Is there a monthly fee for AI plans?",
@@ -157,8 +157,8 @@ export default function Pricing() {
                 <span className="inline-block text-[10px] font-jost font-semibold tracking-[0.12em] uppercase px-3 py-1 bg-secondary text-muted-foreground mb-4">
                   Ready-made Trips
                 </span>
-                <div className="font-marcellus text-5xl text-foreground leading-none mb-1">10%</div>
-                <div className="text-sm font-jost font-light text-muted-foreground">of total booking value</div>
+                <div className="font-marcellus text-5xl text-foreground leading-none mb-1">₦0</div>
+                <div className="text-sm font-jost font-light text-muted-foreground">on top · pay the trip price, nothing else</div>
               </div>
 
               <p className="text-sm font-jost font-light text-muted-foreground leading-relaxed mb-7">

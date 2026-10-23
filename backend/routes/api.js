@@ -4,9 +4,7 @@ const { v4: uuid } = require('uuid');
 const Groq = require('groq-sdk');
 const db = require('../db/client');
 const { generateTripPlan, buildSkeletonPlan } = require('../services/planGenerator');
-const GT   = require('../services/googleTravel');
 const GIGM = require('../services/gigm');
-const { getLines } = require('../utils/logger');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
 const aiCredits              = require('../services/aiCredits');
 const premium                = require('../services/premium');
@@ -322,231 +320,20 @@ router.get('/plan/:tripId', async (req, res) => {
   return res.json(resp);
 });
 
-// POST /api/agents
-// Upsert a Pro agent profile. Phone is the unique identifier.
-router.post('/agents', async (req, res) => {
-  const { phone, agencyName, waNumber, color, planType, tagline } = req.body;
-  if (!phone || typeof phone !== 'string' || phone.trim().length < 5)
-    return res.status(400).json({ error: 'A valid phone number is required.' });
-  if (!agencyName || typeof agencyName !== 'string' || !agencyName.trim())
-    return res.status(400).json({ error: 'Agency name is required.' });
-
-  const sanitisedPhone = phone.trim().replace(/\s+/g, '');
-  const id = uuid();
-
-  await db.agents.upsert({
-    id,
-    phone: sanitisedPhone,
-    agency_name: agencyName.trim(),
-    wa_number: (waNumber || sanitisedPhone).trim(),
-    // Agencies build their margin into the trip price — no separate fee.
-    service_fee: 0,
-    color: color || '#6366f1',
-    plan_type: planType || 'starter',
-    tagline: tagline?.trim() || null,
-  });
-
-  const agent = await db.agents.get(sanitisedPhone);
-  return res.json({ ok: true, agent });
-});
-
-// GET /api/agents/:phone
-router.get('/agents/:phone', async (req, res) => {
-  const agent = await db.agents.get(req.params.phone.replace(/\s+/g, ''));
-  if (!agent) return res.status(404).json({ error: 'Agent not found.' });
-  return res.json({ agent });
-});
-
-// GET /api/dashboard/:phone
-// Returns all trips for an agent with payment summaries.
-router.get('/dashboard/:phone', async (req, res) => {
-  const phone = req.params.phone.replace(/\s+/g, '');
-  const agent = await db.agents.get(phone);
-  if (!agent) return res.status(404).json({ error: 'Agent not found.' });
-
-  const trips = await db.agents.dashboard(phone);
-
-  const activeStatuses = new Set(['awaiting_group', 'custom', 'payment']);
-  const monthStart = Math.floor(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000);
-
-  const summary = {
-    active_trips: trips.filter(t => activeStatuses.has(t.status)).length,
-    trips_completed: trips.filter(t => t.status === 'active').length,
-    total_collected: trips.reduce((s, t) => s + (t.total_collected || 0), 0),
-    // People who actually joined an active trip and have not paid. The old
-    // version measured against the planned squad size on payment-status trips
-    // only, so it counted seats nobody had claimed and read zero for the
-    // agency trips that carry status custom.
-    pending_payments: trips
-      .filter(t => activeStatuses.has(t.status))
-      .reduce((s, t) => s + Math.max(0, Number(t.total_members || 0) - Number(t.paid_count || 0)), 0),
-    revenue_mtd: trips.filter(t => t.created_at >= monthStart).reduce((s, t) => s + (t.total_collected || 0), 0),
-  };
-
-  return res.json({ agent, trips, summary });
-});
-
-// GET /api/scraper-test?from=Lagos&to=Ibadan
-// Quick diagnostic: runs the three scrapers and returns raw results.
-// Hit this in the browser to see what Google Travel actually returns.
-router.get('/scraper-test', async (req, res) => {
-  const from = req.query.from || 'Lagos';
-  const to   = req.query.to   || 'Ibadan';
-  console.log(`[scraper-test] Testing scrapers sequentially: ${from} → ${to}`);
-  const t0 = Date.now();
-
-  let hotels, rentals, flights;
-  try { hotels  = await GT.scrapeHotels(to); }            catch(e) { hotels  = { error: e.message }; }
-  try { rentals = await GT.scrapeVacationRentals(to); }   catch(e) { rentals = { error: e.message }; }
-  try { flights = await GT.scrapeFlights(from, to); }     catch(e) { flights = { error: e.message }; }
-
-  res.json({
-    chromeAvailable: GT.available,
-    elapsedMs: Date.now() - t0,
-    hotels,
-    rentals,
-    flights,
-  });
-});
-
-// GET /api/scraper-debug?url=...
-// Returns the raw innerText of a URL loaded by headless Chrome — used to diagnose what
-// Google actually serves to our scraper (consent wall, CAPTCHA, real listings, etc.).
-router.get('/scraper-debug', async (req, res) => {
-  const url = req.query.url || 'https://www.google.com/travel/hotels?q=hotels+in+Ibadan+Nigeria&hl=en&curr=NGN';
-  console.log(`[scraper-debug] Fetching: ${url}`);
-  const puppeteer = require('puppeteer-extra');
-  const Stealth   = require('puppeteer-extra-plugin-stealth');
-  puppeteer.use(Stealth());
-  const fs   = require('fs');
-  const path = require('path');
-  let browser, page;
-  try {
-    const chromePath = (() => {
-      try { return fs.readFileSync(path.join(__dirname, '../.chrome-path'), 'utf8').trim(); } catch { return null; }
-    })() || process.env.PUPPETEER_EXECUTABLE_PATH;
-    if (!chromePath) return res.status(503).json({ error: 'No Chrome found' });
-    browser = await puppeteer.launch({
-      executablePath: chromePath, headless: true, protocolTimeout: 120000,
-      args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu'],
-    });
-    page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 7000));
-    const text = await page.evaluate(() => document.body.innerText);
-    res.json({ url, textLength: text.length, preview: text.slice(0, 5000) });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  } finally {
-    if (page) await page.close().catch(() => {});
-    if (browser) await browser.close().catch(() => {});
-  }
-});
-
-// GET /api/gigm-debug — loads gigm.com and returns DOM structure so we can find real selectors
-router.get('/gigm-debug', async (req, res) => {
-  const puppeteer = require('puppeteer-extra');
-  const Stealth   = require('puppeteer-extra-plugin-stealth');
-  puppeteer.use(Stealth());
-  let browser, page;
-  try {
-    const ws = process.env.BROWSERLESS_WS_ENDPOINT;
-    if (ws) {
-      browser = await puppeteer.connect({ browserWSEndpoint: ws, defaultViewport: null });
-    } else {
-      const fs = require('fs'), path = require('path');
-      const chrome = fs.readFileSync(path.join(__dirname, '../.chrome-path'), 'utf8').trim();
-      browser = await puppeteer.launch({ executablePath: chrome, headless: true, protocolTimeout: 120000, args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu'] });
-    }
-    page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-    await page.goto('https://www.gigm.com/book-a-seat', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 3000));
-
-    // Accept cookie consent
-    await page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('button'));
-      const accept = btns.find(b => /accept/i.test(b.innerText));
-      if (accept) accept.click();
-    });
-    await new Promise(r => setTimeout(r, 2500));
-
-    // Click "Continue as a guest" via evaluateHandle + native Puppeteer click
-    const guestTarget = await page.evaluateHandle(() => {
-      const h2 = Array.from(document.querySelectorAll('h2'))
-        .find(e => /continue as a guest/i.test(e.textContent));
-      if (!h2) return null;
-      let node = h2.parentElement;
-      while (node && node !== document.body) {
-        if (node.className?.includes('cursor-pointer') || node.tagName === 'BUTTON') return node;
-        node = node.parentElement;
-      }
-      return h2;
-    });
-    const guestEl = guestTarget.asElement();
-    if (guestEl) await guestEl.click();
-    await new Promise(r => setTimeout(r, 3000));
-
-    const info = await page.evaluate(() => {
-      const inputs = Array.from(document.querySelectorAll('input, select, textarea')).map(el => ({
-        tag: el.tagName, type: el.type, id: el.id, name: el.name,
-        placeholder: el.placeholder, class: el.className?.slice(0, 60),
-        value: el.value?.slice(0, 40),
-      }));
-      const buttons = Array.from(document.querySelectorAll('button, [role="button"]')).map(el => ({
-        tag: el.tagName, type: el.type, id: el.id, class: el.className?.slice(0, 60),
-        text: el.innerText?.trim().slice(0, 40),
-      }));
-      const htmlSnippet = document.body.innerHTML.slice(0, 6000);
-      const text = document.body.innerText.slice(0, 2000);
-      return { inputs, buttons, htmlSnippet, text };
-    });
-
-    res.json({ url: 'https://www.gigm.com/book-a-seat', ...info });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  } finally {
-    if (page) await page.close().catch(() => {});
-    if (browser) await browser.close().catch(() => {});
-  }
-});
-
-// GET /api/gigm-test?from=Lagos&to=Abuja&date=2026-07-25
-// Runs the GIGM scraper and returns raw results for inspection.
-router.get('/gigm-test', async (req, res) => {
-  const from = req.query.from || 'Lagos';
-  const to   = req.query.to   || 'Abuja';
-  const date = req.query.date || null;
-  console.log(`[gigm-test] ${from} → ${to} on ${date || 'next week'}`);
-  const t0 = Date.now();
+// GET /api/buses?from=Lagos&to=Abuja&date=2026-07-25
+// GIGM departures for the planner's bus option.
+router.get('/buses', async (req, res) => {
+  const from = String(req.query.from || '').slice(0, 60);
+  const to   = String(req.query.to   || '').slice(0, 60);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : null;
+  if (!from || !to) return res.status(400).json({ error: 'from and to are required.' });
   try {
     const trips = await GIGM.scrapeGIGM(from, to, date);
-    res.json({ from, to, date, elapsedMs: Date.now() - t0, count: trips.length, trips });
+    res.json({ from, to, date, count: trips.length, trips });
   } catch (e) {
-    res.status(500).json({ error: e.message, elapsedMs: Date.now() - t0 });
+    console.error('[api/buses]', e.message);
+    res.status(500).json({ error: 'Could not load buses right now.' });
   }
-});
-
-// GET /api/logs?n=200&level=ERROR
-// Returns the last N log lines captured since the process started.
-// Optional ?level=ERROR|WARN filters to that level and above.
-router.get('/logs', (req, res) => {
-  const n     = Math.min(parseInt(req.query.n) || 200, 600);
-  const level = (req.query.level || '').toUpperCase();
-  const LEVELS = { LOG: 0, INFO: 0, WARN: 1, ERROR: 2 };
-  const minLevel = LEVELS[level] ?? 0;
-  const all = getLines();
-  const filtered = level
-    ? all.filter(l => (LEVELS[l.level] ?? 0) >= minLevel)
-    : all;
-  const slice = filtered.slice(-n);
-  res.json({
-    total: all.length,
-    returned: slice.length,
-    filter: level || 'ALL',
-    lines: slice,
-  });
 });
 
 // POST /api/waitlist
@@ -576,30 +363,6 @@ router.post('/waitlist', async (req, res) => {
       .catch((err) => console.warn('[api/waitlist] whatsapp confirm error:', err.message));
   }
 
-  return res.json({ ok: true });
-});
-
-// POST /api/agency-leads
-// Captures an agency / Pro plan early-access enquiry.
-// Upserts on email — re-submitting updates the record.
-router.post('/agency-leads', async (req, res) => {
-  const { name, agencyName, phone, email } = req.body;
-  if (!name || typeof name !== 'string' || name.trim().length < 2) {
-    return res.status(400).json({ error: 'Name is required.' });
-  }
-  if (!phone || typeof phone !== 'string' || phone.trim().length < 5) {
-    return res.status(400).json({ error: 'A valid phone number is required.' });
-  }
-  if (!email || typeof email !== 'string' || !email.includes('@')) {
-    return res.status(400).json({ error: 'A valid email address is required.' });
-  }
-  await db.agencyLeads.insert({
-    name:        name.trim(),
-    agency_name: typeof agencyName === 'string' ? agencyName.trim() : null,
-    phone:       phone.trim().replace(/\s+/g, ''),
-    email:       email.trim().toLowerCase(),
-    source:      'web',
-  });
   return res.json({ ok: true });
 });
 
@@ -967,10 +730,10 @@ router.post('/notify/subscribe', async (req, res) => {
 
 // POST /api/pro/setup
 // Create or update the agency profile tied to the authenticated user.
-// Body: { agencyName, tagline?, phone, waNumber?, color?, planType? }
+// Body: { agencyName, tagline?, phone, waNumber?, color? }
 router.post('/pro/setup', requireAuth, async (req, res) => {
   const { uid, email, name } = req.user;
-  const { agencyName, tagline, phone, waNumber, color, planType } = req.body;
+  const { agencyName, tagline, phone, waNumber, color } = req.body;
 
   if (!agencyName || typeof agencyName !== 'string' || !agencyName.trim()) {
     return res.status(400).json({ error: 'agencyName is required.' });
@@ -988,10 +751,7 @@ router.post('/pro/setup', requireAuth, async (req, res) => {
     phone:       cleanPhone,
     agency_name: agencyName.trim(),
     wa_number:   cleanWaNumber,
-    // Agencies build their margin into the trip price — no separate fee.
-    service_fee: 0,
     color:       typeof color === 'string' ? color : '#6366f1',
-    plan_type:   planType === 'growth' ? 'growth' : 'starter',
     tagline:     typeof tagline === 'string' ? tagline.trim() : '',
   });
 
@@ -2387,7 +2147,7 @@ async function createCuratedTrip({ experienceId, days, squadSize, userId }) {
   await db.trips.insert({ id: tripId, organiser_phone: process.env.WA_DISPLAY_NUMBER || 'karije' });
   await db.raw(
     `UPDATE trips SET user_id=?, origin=?, destination=?, days=?, squad_size=?,
-       status=?, plan=?, intake_json=?, service_fee_per_person=?, platform_fee_pct=? WHERE id=?`,
+       status=?, plan=?, intake_json=?, service_fee_per_person=? WHERE id=?`,
     [
       userId, exp.state, exp.state, cappedDays, squadSize,
       'curated',
@@ -2416,10 +2176,8 @@ async function createCuratedTrip({ experienceId, days, squadSize, userId }) {
         },
       }),
       JSON.stringify({ curatedId: exp.id, days: cappedDays, squadSize }),
-      // Karije runs curated trips itself: no per-person fee, and 10% of what's
-      // collected is Karije's margin — the other 90% is the trip's budget.
+      // Karije runs curated trips itself, so there is no fee on top.
       0,
-      ledger.CURATED_FEE_PCT,
       tripId,
     ]
   );

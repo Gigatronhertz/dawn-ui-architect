@@ -38,7 +38,7 @@ export default function Terms() {
           <section>
             <h2 className="font-marcellus text-xl text-foreground mb-3">Payments</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              All payments are processed by Paystack. Karije charges a platform fee on AI plans and a 10% commission on Ready-made Trips. Fees are shown clearly before any payment is made. Refunds are subject to the cancellation policy shown on your trip confirmation — typically 48 hours before travel for full refunds.
+              All payments are processed by Paystack. Karije charges for AI plan packs and Pro subscriptions, and takes no cut of what travellers pay for a trip. Fees are shown clearly before any payment is made. Refunds are subject to the cancellation policy shown on your trip confirmation — typically 48 hours before travel for full refunds.
             </p>
           </section>
 

@@ -159,33 +159,8 @@ async function processPayment(reference) {
     return credited;
   }
 
-  // ── Legacy WhatsApp-group member payment flow ─────────────────────────────
-  // The group bot that sent these notifications is retired (its outbound
-  // channel, Zavu, was removed). Crediting the payment still happens — money
-  // is never dropped on the floor — but there is no one left to notify.
-  const { tripId, phone } = result;
-  if (!tripId || !phone) return false;
-
-  // Idempotency: bail if already marked paid
-  const member = await db.members.get(tripId, phone);
-  if (!member || member.paid) return false;
-
-  await db.members.markPaid({ ref: reference, trip_id: tripId, phone });
-
-  const trip = await db.trips.get(tripId);
-  const members = await db.members.byTrip(tripId);
-  const paidCount = members.filter((m) => m.paid).length;
-
-  if (trip?.group_id && paidCount >= trip.squad_size) {
-    await db.trips.update({
-      id: tripId, status: 'active',
-      origin: null, destination: null, budget: null, days: null, squad_size: null,
-      accommodation: null, date_flexibility: null, specific_dates: null,
-      dealbreakers: null, plan: null, selected_date: null, selected_hotel: null, group_id: null,
-    });
-  }
-
-  return true;
+  console.warn('[processPayment] unrecognised reference', reference);
+  return false;
 }
 
 // ── Paystack server-to-server webhook (POST) ──────────────────────────────────
@@ -209,20 +184,6 @@ router.post('/payment/webhook', async (req, res) => {
     await processPayment(data.reference);
   } catch (err) {
     console.error('[payment/webhook]', err.message);
-  }
-});
-
-// ── Paystack browser redirect callback (GET) ───────────────────────────────────
-router.get('/payment/confirm', async (req, res) => {
-  const { reference } = req.query;
-  if (!reference) return res.redirect('/');
-
-  try {
-    await processPayment(reference);
-    res.redirect(`/?paid=1`);
-  } catch (err) {
-    console.error('[payment/confirm]', err.message);
-    res.status(500).send('Something went wrong verifying your payment. Please contact support.');
   }
 });
 

@@ -110,7 +110,7 @@ router.post(
 );
 
 // ── GET /admin/revenue ─────────────────────────────────────────────────────────
-// Karije's own income: Pro subscriptions, 10% of curated trips, AI plan packs.
+// Karije's own income: Pro subscriptions and AI plan packs.
 router.get('/revenue', requireAdmin, async (req, res) => {
   try {
     res.json(await revenue.report());
@@ -121,18 +121,17 @@ router.get('/revenue', requireAdmin, async (req, res) => {
 });
 
 // ── GET /admin/money ───────────────────────────────────────────────────────────
-// Every trip holding money: what came in, Karije's fee, what's owed to whoever
+// Every trip holding money: what came in, what's owed to whoever
 // is running it, and what's already been released.
 router.get('/money', requireAdmin, async (req, res) => {
   try {
     const trips = await ledger.outstandingTrips();
     const totals = trips.reduce((t, x) => ({
       collected:   t.collected   + x.collected,
-      karijeShare: t.karijeShare + x.karijeShare,
       paidOut:     t.paidOut     + x.paidOut,
       outstanding: t.outstanding + x.outstanding,
-    }), { collected: 0, karijeShare: 0, paidOut: 0, outstanding: 0 });
-    res.json({ trips, totals, curatedFeePct: ledger.CURATED_FEE_PCT });
+    }), { collected: 0, paidOut: 0, outstanding: 0 });
+    res.json({ trips, totals });
   } catch (err) {
     console.error('[admin] GET money failed:', err.message);
     res.status(500).json({ error: err.message });
@@ -307,9 +306,7 @@ router.post('/agents', requireAdmin, async (req, res) => {
       phone:       cleanPhone,
       agency_name: agencyName.trim(),
       wa_number:   waNumber?.trim()?.replace(/\s+/g, '') || cleanPhone,
-      service_fee: 0,
       color:       typeof color === 'string' && color ? color : '#0B0B0B',
-      plan_type:   'starter',
       tagline:     typeof tagline === 'string' ? tagline.trim() : '',
     });
     await db.agents.linkToUser({ phone: cleanPhone, user_id: uid, email: emailNorm });
