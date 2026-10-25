@@ -9,6 +9,7 @@
 const { Router } = require('express');
 const crypto     = require('crypto');
 const util       = require('util');
+const { linkTrip } = require('../services/ownership');
 const db         = require('../db/client');
 const jwt        = require('../services/jwt');
 
@@ -41,7 +42,7 @@ async function checkPassword(password, stored) {
 
 // ── POST /auth/signup ──────────────────────────────────────────────────────
 router.post('/signup', async (req, res) => {
-  const { email, password, tripId } = req.body || {};
+  const { email, password, tripId, ownerKey } = req.body || {};
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'A valid email address is required.' });
@@ -82,10 +83,8 @@ router.post('/signup', async (req, res) => {
 
   // Optimistically link a trip if the user just planned one before signing up
   if (tripId) {
-    await db.raw(
-      `UPDATE trips SET user_id = ? WHERE id = ? AND (user_id IS NULL OR user_id = ?)`,
-      [uid, tripId, uid]
-    ).catch(err => console.warn('[auth/signup] trip link failed:', err.message));
+    await linkTrip({ tripId, uid, ownerKey })
+      .catch(err => console.warn('[auth/signup] trip link failed:', err.message));
   }
 
   // Create a 24-hour email-verification token (reuses magic_links table)

@@ -339,6 +339,27 @@ async function del<T>(path: string, headers?: Record<string, string>): Promise<T
 
 function bearer(token: string) { return { Authorization: `Bearer ${token}` }; }
 
+// ── Trip owner keys ────────────────────────────────────────────────────────
+// A trip planned before signing in comes back with a private owner key. Only
+// this browser has it, and the server asks for it before letting anyone
+// claim, confirm or attach that trip — the trip id alone is in every share link.
+const OWNER_KEY_PREFIX = 'karije_owner_';
+
+export const ownerKeys = {
+  get: (tripId: string): string | undefined => {
+    try { return localStorage.getItem(OWNER_KEY_PREFIX + tripId) || undefined; } catch { return undefined; }
+  },
+  save: (tripId: string, key?: string | null) => {
+    if (!key) return;
+    try { localStorage.setItem(OWNER_KEY_PREFIX + tripId, key); } catch { /* private mode */ }
+  },
+};
+
+/** Remember the owner key a create call hands back, then pass the result on. */
+function keepOwnerKey<T extends { tripId: string; ownerKey?: string | null }>(p: Promise<T>): Promise<T> {
+  return p.then((r) => { ownerKeys.save(r.tripId, r.ownerKey); return r; });
+}
+
 // ── Session token helpers ──────────────────────────────────────────────────
 const TOKEN_KEY = 'msgo_token';
 
@@ -354,6 +375,8 @@ export const session = {
     const base = `${API_URL}/auth/google`;
     const params = new URLSearchParams();
     if (opts?.tripId)   params.set('tripId',   opts.tripId);
+    const key = opts?.tripId ? ownerKeys.get(opts.tripId) : undefined;
+    if (key)            params.set('ownerKey', key);
     if (opts?.redirect) params.set('redirect', opts.redirect);
     const qs = params.toString();
     return qs ? `${base}?${qs}` : base;
@@ -520,11 +543,11 @@ export type PlanAgency = {
 export const api = {
   /** Fire-and-forget: creates the job, returns tripId immediately. */
   createPlan:   (intake: IntakeData, email?: string, waNumber?: string, token?: string | null) =>
-    post<CreatePlanResponse>(
+    keepOwnerKey(post<CreatePlanResponse & { ownerKey?: string | null }>(
       '/api/plan',
       { ...intake, ...(email ? { email } : {}), ...(waNumber ? { waNumber } : {}) },
       token ? bearer(token) : undefined,
-    ),
+    )),
 
   /** How the next AI plan gets paid for: free plan left, pack credits, or Pro. */
   getAiCredits: (token?: string | null) =>
@@ -546,14 +569,16 @@ export const api = {
       `/api/buses?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${date ? `&date=${date}` : ''}`
     ),
   confirmPlan: (tripId: string, plan: TripPlan, email?: string, selectedDate?: string) =>
-    post<ConfirmResponse>('/api/confirm', { tripId, plan, email, selectedDate: selectedDate || null }),
+    post<ConfirmResponse>('/api/confirm', { tripId, plan, email, selectedDate: selectedDate || null, ownerKey: ownerKeys.get(tripId) },
+      session.get() ? bearer(session.get()!) : undefined),
   /** Save a push subscription, email and/or WhatsApp number to notify when the plan is ready. */
   subscribeNotify: (tripId: string, opts: { subscription?: object; email?: string; waNumber?: string }) =>
-    post<{ ok: boolean }>('/api/notify/subscribe', { tripId, ...opts }),
+    post<{ ok: boolean }>('/api/notify/subscribe', { tripId, ...opts, ownerKey: ownerKeys.get(tripId) },
+      session.get() ? bearer(session.get()!) : undefined),
 
   /** Link a completed trip to the signed-in user's account. */
   linkPlan:   (tripId: string, token: string) =>
-    post<{ ok: boolean }>('/api/auth/link-plan', { tripId }, bearer(token)),
+    post<{ ok: boolean }>('/api/auth/link-plan', { tripId, ownerKey: ownerKeys.get(tripId) }, bearer(token)),
 
   /** Save a curated trip to the signed-in user's plans. */
   addCuratedToPlan: (
@@ -571,9 +596,9 @@ export const api = {
    * a sign-in first is what left the share message with no link in it.
    */
   createShareTrip: (id: string, opts: { days: number; squadSize: number }) =>
-    post<{ ok: boolean; tripId: string; perPerson: number; total: number; days: number }>(
+    keepOwnerKey(post<{ ok: boolean; tripId: string; perPerson: number; total: number; days: number; ownerKey?: string | null }>(
       `/api/experiences/${encodeURIComponent(id)}/share-trip`, opts
-    ),
+    )),
 
   /**
    * Adopt a trip that nobody owns yet — how a plan made before signing up ends
@@ -581,7 +606,7 @@ export const api = {
    */
   claimTrip: (tripId: string, token: string) =>
     post<{ ok: boolean; tripId: string; claimed: boolean }>(
-      `/api/plan/${encodeURIComponent(tripId)}/claim`, {}, bearer(token)
+      `/api/plan/${encodeURIComponent(tripId)}/claim`, { ownerKey: ownerKeys.get(tripId) }, bearer(token)
     ),
 
   /** Ask the AI to fill the day schedule. Leaves transport and hotel alone. */
@@ -692,11 +717,11 @@ export const api = {
 
   /** Send a magic sign-in link to the given email. Returns preview URL if Resend not configured. */
   sendMagicLink: (opts: { email: string; tripId?: string; redirect?: string }) =>
-    post<{ ok: boolean; preview?: string }>('/auth/magic', opts),
+    post<{ ok: boolean; preview?: string }>('/auth/magic', { ...opts, ownerKey: opts.tripId ? ownerKeys.get(opts.tripId) : undefined }),
 
   /** Create a new Karije account (email + password). Sends a verification email. */
   signup: (opts: { email: string; password: string; tripId?: string }) =>
-    post<{ ok: boolean; preview?: string }>('/auth/signup', opts),
+    post<{ ok: boolean; preview?: string }>('/auth/signup', { ...opts, ownerKey: opts.tripId ? ownerKeys.get(opts.tripId) : undefined }),
 
   /** Sign in with email + password. Returns a JWT on success. */
   login: (opts: { email: string; password: string }) =>

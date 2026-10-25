@@ -13,6 +13,7 @@
 const { Router } = require('express');
 const crypto     = require('crypto');
 const { Resend } = require('resend');
+const { linkTrip, safeRedirect } = require('../services/ownership');
 const db         = require('../db/client');
 const jwt        = require('../services/jwt');
 
@@ -25,7 +26,7 @@ const TTL_MS   = 15 * 60 * 1000; // 15 minutes
 
 // ── POST /auth/magic ───────────────────────────────────────────────────────
 router.post('/magic', async (req, res) => {
-  const { email, tripId, redirect } = req.body || {};
+  const { email, tripId, redirect, ownerKey } = req.body || {};
   if (!email || !email.includes('@')) {
     return res.status(400).json({ error: 'A valid email address is required.' });
   }
@@ -35,10 +36,13 @@ router.post('/magic', async (req, res) => {
 
   // Store token in DB
   await db.raw(
-    `INSERT INTO magic_links (token, email, trip_id, redirect, expires_at)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO magic_links (token, email, trip_id, redirect, expires_at, owner_key)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(token) DO NOTHING`,
-    [token, email.trim().toLowerCase(), tripId || null, redirect || null, expiresAt]
+    // The redirect is checked here and again when it's used: the session
+    // token is appended to it, so it may only ever point at Karije itself.
+    [token, email.trim().toLowerCase(), tripId || null, safeRedirect(redirect, FRONTEND()), expiresAt,
+     typeof ownerKey === 'string' ? ownerKey : null]
   );
 
   const verifyUrl = `${BACKEND()}/auth/verify?token=${token}`;
@@ -96,19 +100,17 @@ router.get('/verify', async (req, res) => {
   // Upsert user
   await db.users.upsert({ id: uid, email, name: null, photo_url: null });
 
-  // Link trip server-side (if provided)
+  // Link the trip — only for the holder of its owner key.
   if (tripId) {
-    await db.raw(
-      `UPDATE trips SET user_id = ? WHERE id = ? AND (user_id IS NULL OR user_id = ?)`,
-      [uid, tripId, uid]
-    ).catch(err => console.warn('[auth/verify] linkPlan failed:', err.message));
+    await linkTrip({ tripId, uid, ownerKey: row.owner_key })
+      .catch(err => console.warn('[auth/verify] linkPlan failed:', err.message));
   }
 
   // Issue JWT
   const jwtToken = jwt.sign({ uid, email, name: null, picture: null });
 
   // Redirect to frontend
-  const dest = redirect || `${fe}/my-plans`;
+  const dest = safeRedirect(redirect, fe);
   const sep  = dest.includes('?') ? '&' : '?';
   const linked = tripId ? `&linked=1` : '';
   res.redirect(`${dest}${sep}token=${encodeURIComponent(jwtToken)}${linked}`);

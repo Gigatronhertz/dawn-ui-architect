@@ -24,6 +24,13 @@ services:
       - key: ADMIN_KEY
         sync: false
 
+      # ── Sessions ───────────────────────────────────────────────────────────
+      # Required in production. Signs every sign-in token; without it sign-in
+      # is disabled (the dev fallback in services/jwt.js is public). Use a long
+      # random value and never commit it.
+      - key: JWT_SECRET
+        sync: false
+
       # ── AI plan generation (Groq) ──────────────────────────────────────────
       - key: GROQ_API_KEY
         sync: false

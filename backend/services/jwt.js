@@ -4,7 +4,18 @@
  */
 const crypto = require('crypto');
 
-const SECRET = () => process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const DEV_SECRET = 'dev-secret-change-in-production';
+
+/**
+ * The signing key. The dev fallback is public (it's in this file), so in
+ * production a missing JWT_SECRET disables sessions entirely — sign() throws
+ * and verify() rejects everything — rather than letting anyone mint a token.
+ */
+function SECRET() {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === 'production') return null;
+  return DEV_SECRET;
+}
 const TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 function b64url(str) {
@@ -13,6 +24,7 @@ function b64url(str) {
 
 /** Sign a payload and return a JWT string. */
 function sign(payload) {
+  if (!SECRET()) throw new Error('JWT_SECRET is not set — sign-in is disabled until it is.');
   const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const now    = Math.floor(Date.now() / 1000);
   const body   = b64url(JSON.stringify({ ...payload, iat: now, exp: now + TTL_SECONDS }));
@@ -27,6 +39,7 @@ function sign(payload) {
  */
 function verify(token) {
   try {
+    if (!SECRET()) return null;
     const parts = (token || '').split('.');
     if (parts.length !== 3) return null;
     const [header, body, sig] = parts;

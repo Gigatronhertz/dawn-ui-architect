@@ -485,6 +485,10 @@ const MIGRATIONS = [
   `ALTER TABLE trips ADD COLUMN collection_tier TEXT NOT NULL DEFAULT 'none'`,
   `ALTER TABLE trips ADD COLUMN payout_bank_name TEXT`,
   `ALTER TABLE agents ADD COLUMN payout_bank_name TEXT`,
+  // A trip planned before signing in gets a private owner key; only its holder
+  // can attach the trip to an account or change it.
+  `ALTER TABLE trips ADD COLUMN owner_key TEXT`,
+  `ALTER TABLE magic_links ADD COLUMN owner_key TEXT`,
   // Existing agency trips keep the price they were already collecting at.
   `UPDATE trips SET price_per_person = CAST(json_extract(plan, '$.cost_breakdown.per_person') AS INTEGER)
      WHERE agent_id IS NOT NULL AND price_per_person IS NULL AND json_valid(plan)`,

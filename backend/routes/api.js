@@ -14,6 +14,7 @@ const whisper360              = require('../services/whisper360');
 const paystack               = require('../services/paystack');
 const pandascrow             = require('../services/pandascrow');
 const collection             = require('../services/collection');
+const ownership              = require('../services/ownership');
 // Crediting a payment lives with the webhook that normally does it; the
 // payment-status endpoint reuses it so a payer is never stranded waiting.
 const { processPayment }     = require('../webhook');
@@ -89,11 +90,12 @@ router.post('/plan', optionalAuth, async (req, res) => {
   }
 
   await db.trips.insert({ id: tripId, organiser_phone: `web_${tripId}` });
+  const ownerKey = req.user ? null : ownership.newOwnerKey();
   await db.raw(
     `UPDATE trips SET
        origin=?, destination=?, budget=?, hotel_budget_per_night=?, days=?, squad_size=?,
        accommodation=?, date_flexibility=?, specific_dates=?, dealbreakers=?,
-       status=?, intake_json=?, notify_email=?, notify_wa=?, user_id=COALESCE(user_id, ?)
+       status=?, intake_json=?, notify_email=?, notify_wa=?, user_id=COALESCE(user_id, ?), owner_key=?
      WHERE id=?`,
     [
       origin, destination, budget ? Number(budget) : null, hotelNightly,
@@ -102,12 +104,14 @@ router.post('/plan', optionalAuth, async (req, res) => {
       specificDates || null, dealbreakers || null,
       'generating', JSON.stringify(req.body), cleanNotifyEmail, cleanNotifyWa,
       req.user?.uid || null,
+      ownerKey,
       tripId,
     ]
   );
 
-  // Return the job ID immediately — the client will poll for completion
-  res.json({ tripId, status: 'generating' });
+  // Return the job ID immediately — the client will poll for completion. The
+  // owner key goes only to the creator; it's what lets them claim this trip.
+  res.json({ tripId, status: 'generating', ownerKey });
 
   // ── Background work (response already sent — no await) ──────────────────────
   const roundTrip = req.body.roundTrip === true;
@@ -250,12 +254,19 @@ router.post('/ai-credits/verify', requireAuth, async (req, res) => {
 // Organiser has reviewed/edited the plan and confirmed it. Saves the final
 // plan and emails the organiser their share link — that link is the whole
 // hand-off now, so there's nothing further for them to do to activate it.
-router.post('/confirm', async (req, res) => {
+router.post('/confirm', optionalAuth, async (req, res) => {
   const { tripId, plan, email, selectedDate } = req.body;
   if (!tripId || !plan) return res.status(400).json({ error: 'Missing tripId or plan.' });
 
   const trip = await db.trips.get(tripId);
   if (!trip) return res.status(404).json({ error: 'Trip not found.' });
+  // Only the person who planned it can confirm or rewrite a plan — the trip
+  // id alone is in every share link. Agency and Karije trips are never
+  // rewritten here; their price is set elsewhere.
+  if (collection.tripKind(trip) !== 'friend') return res.status(403).json({ error: 'This trip can’t be changed here.' });
+  if (!ownership.isCreator(trip, { user: req.user, ownerKey: req.body?.ownerKey })) {
+    return res.status(403).json({ error: 'Only the person who planned this trip can confirm it.' });
+  }
 
   // A valid YYYY-MM-DD date string; silently ignored if malformed
   const tripDate = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate || '') ? selectedDate : null;
@@ -711,9 +722,16 @@ router.post('/public/plan/:tripId/pay', async (req, res) => {
 // POST /api/notify/subscribe
 // Stores a push subscription and/or email address for a trip.
 // Called from the generating screen — unauthenticated (tripId is the secret).
-router.post('/notify/subscribe', async (req, res) => {
-  const { tripId, subscription, email, waNumber } = req.body;
+router.post('/notify/subscribe', optionalAuth, async (req, res) => {
+  const { tripId, subscription, email, waNumber, ownerKey } = req.body;
   if (!tripId) return res.status(400).json({ error: 'tripId required.' });
+  // The notify email decides whose account a trip is attached to (see
+  // db.users.adoptPlans), so only the trip's creator may set it.
+  const trip = await db.trips.get(tripId);
+  if (!trip) return res.status(404).json({ error: 'Trip not found.' });
+  if (!ownership.isCreator(trip, { user: req.user, ownerKey })) {
+    return res.status(403).json({ error: 'Only the person who planned this trip can change its notifications.' });
+  }
 
   // Store push subscription
   if (subscription && typeof subscription === 'object') {
@@ -1715,20 +1733,17 @@ router.get('/pro/dashboard', requireAuth, async (req, res) => {
 // Associates a trip with the authenticated Google user.
 // Creates the user record on first sign-in; idempotent on subsequent calls.
 router.post('/auth/link-plan', requireAuth, async (req, res) => {
-  const { tripId } = req.body;
+  const { tripId, ownerKey } = req.body || {};
   if (!tripId) return res.status(400).json({ error: 'tripId required.' });
 
   const { uid, email, name, picture } = req.user;
 
   // Upsert user row
-  await db.users.upsert({ id: uid, email, name: name || null, photo_url: picture || null });
+  await db.users.upsert({ id: uid, email, name: name || null, photo_url: picture || null }).catch(() => {});
 
-  // Link the trip — only if it isn't already owned by a different user
-  await db.raw(
-    `UPDATE trips SET user_id = ? WHERE id = ? AND (user_id IS NULL OR user_id = ?)`,
-    [uid, tripId, uid]
-  );
-
+  // Only the trip's creator (holder of its owner key) can attach it.
+  const r = await ownership.linkTrip({ tripId, uid, ownerKey });
+  if (!r.ok) return res.status(r.reason === 'not_found' ? 404 : 403).json({ error: 'This plan can’t be added to your account.' });
   return res.json({ ok: true });
 });
 
@@ -2286,7 +2301,10 @@ async function createCuratedTrip({ experienceId, days, squadSize, userId }) {
     ]
   );
 
-  return { tripId, perPerson, total, days: cappedDays };
+  // Shared without an account: the creator gets the key that lets them claim it.
+  const ownerKey = userId ? null : ownership.newOwnerKey();
+  if (ownerKey) await db.raw('UPDATE trips SET owner_key = ? WHERE id = ?', [ownerKey, tripId]);
+  return { tripId, perPerson, total, days: cappedDays, ownerKey };
 }
 
 // ── POST /api/experiences/:id/add-to-plan ───────────────────────────────────
@@ -2329,18 +2347,12 @@ router.post('/plan/:tripId/claim', requireAuth, async (req, res) => {
       return res.status(409).json({ error: 'This trip already belongs to someone else.' });
     }
 
-    // Read before writing — deciding afterwards would depend on whether the
-    // row object was mutated underneath us.
-    const wasUnowned = !trip.user_id;
+    // Knowing the trip id isn't enough — it's in every share link. Only the
+    // creator's owner key can claim an ownerless trip.
+    const r = await ownership.linkTrip({ tripId: trip.id, uid: req.user.uid, ownerKey: req.body?.ownerKey });
+    if (!r.ok) return res.status(403).json({ error: 'Only the person who planned this trip can save it to their account.' });
 
-    // Guarded in SQL as well as above: two tabs claiming at once must not let
-    // the second overwrite the first.
-    if (wasUnowned) {
-      await db.raw('UPDATE trips SET user_id = ? WHERE id = ? AND user_id IS NULL',
-        [req.user.uid, trip.id]);
-    }
-
-    res.json({ ok: true, tripId: trip.id, claimed: wasUnowned });
+    res.json({ ok: true, tripId: trip.id, claimed: r.claimed });
   } catch (err) {
     console.error('[api/claim]', err.message);
     res.status(500).json({ error: err.message });

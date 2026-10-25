@@ -13,6 +13,7 @@
  */
 const { Router } = require('express');
 const axios      = require('axios');
+const { linkTrip, safeRedirect } = require('../services/ownership');
 const db         = require('../db/client');
 const jwt        = require('../services/jwt');
 
@@ -45,6 +46,7 @@ router.get('/google', (req, res) => {
 
   const state = Buffer.from(JSON.stringify({
     tripId:   req.query.tripId   || null,
+    ownerKey: typeof req.query.ownerKey === 'string' ? req.query.ownerKey : null,
     redirect: req.query.redirect || null,
     ts:       Date.now(),
   })).toString('base64url');
@@ -104,19 +106,18 @@ router.get('/google/callback', async (req, res) => {
     const uid = (await db.users.idForEmail(email)) || `g_${googleId}`;
     await db.users.upsert({ id: uid, email, name: name || null, photo_url: picture || null });
 
-    // 4. Link trip if one was provided (server-side — no client call needed)
+    // 4. Link the trip if one was provided — only for the holder of its owner key.
     if (stateData.tripId) {
-      await db.raw(
-        `UPDATE trips SET user_id = ? WHERE id = ? AND (user_id IS NULL OR user_id = ?)`,
-        [uid, stateData.tripId, uid]
-      ).catch(err => console.warn('[auth/google] linkPlan failed:', err.message));
+      await linkTrip({ tripId: stateData.tripId, uid, ownerKey: stateData.ownerKey })
+        .catch(err => console.warn('[auth/google] linkPlan failed:', err.message));
     }
 
     // 5. Issue our own JWT
     const token = jwt.sign({ uid, email, name: name || null, picture: picture || null });
 
     // 6. Redirect to frontend with token in URL
-    const dest = stateData.redirect || `${fe}/my-plans`;
+    // The session token is appended to this URL, so it may only point at Karije.
+    const dest = safeRedirect(stateData.redirect, fe);
     const sep  = dest.includes('?') ? '&' : '?';
     const linked = stateData.tripId ? `&linked=1` : '';
     res.redirect(`${dest}${sep}token=${encodeURIComponent(token)}${linked}`);

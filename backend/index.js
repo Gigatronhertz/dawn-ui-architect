@@ -15,6 +15,10 @@ const { router: emailRouter }  = require('./routes/emailAuth');
 const { router: adminRouter }  = require('./routes/adminRoutes');
 const payments = require('./routes/payments');
 
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('[startup] JWT_SECRET is not set — sign-in is DISABLED until it is. Add it in the host\'s environment settings.');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
