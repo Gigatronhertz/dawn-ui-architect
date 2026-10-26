@@ -85,6 +85,12 @@ for any webhook that goes missing.
    exact amount (with the escrow fee shown), 24-hour countdown, "I've sent
    it" check, "new account number", and card. Reminder emails' Pay now link
    opens it directly.
+6a. **Phone numbers.** Done: Pandascrow needs a phone for the payer and the
+   person paid, so on escrow trips a phone is required to join, travellers
+   who joined earlier give it on the pay screen, and the friend-trip organiser
+   gives theirs with their bank account. Agencies already give one at sign-up;
+   Karije's own trips use `KARIJE_SELLER_PHONE`. Free and reminder trips keep
+   it optional. Numbers are stored as +234….
 7. **Database.** Per traveller: `escrow_id`, `escrow_status` (awaiting / paid /
    released / refunded / disputed), virtual account number and expiry. Per
    trip: the friend-trip tier and fee payment reference. A webhook event log.
@@ -103,8 +109,6 @@ for any webhook that goes missing.
   funded, paid, in_progress, delivered, completed and released as paid).
 - Who pays Pandascrow's fee: `PANDASCROW_FEES_PAID_BY` defaults to `buyer`,
   so travellers see the fee added to their transfer.
-- Pandascrow requires a phone number for buyer and seller; travellers who
-  didn't give a WhatsApp number are sent with it blank.
 
 ## Open questions for Pandascrow
 

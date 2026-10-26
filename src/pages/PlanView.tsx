@@ -10,6 +10,7 @@ import { CheckCircle2, Check } from "lucide-react";
 import { api, imageUrl, type PublicPlanResponse, type PlanDay } from "@/lib/api";
 import { tripImageUrl } from "@/lib/tripImage";
 import { EscrowPay } from "@/components/EscrowPay";
+import { normalisePhone } from "@/lib/phone";
 import { TripCollectionPanel } from "@/components/TripCollectionPanel";
 import { HERO_PHOTO as PLAN_HERO_PHOTO } from "@/lib/photos";
 import { KarijeLogo } from "@/components/Nav";
@@ -541,9 +542,11 @@ function JoinSection({
   tripId, initialCount, initialPaidCount, initialTotalCollected, initialNames,
   perPerson, squadSize, groupMin, paymentsEnabled, justPaid, selectedDate,
   installmentsEnabled, installmentMinMonths, installmentMaxMonths, installmentMinAmount,
-  paymentProvider, payFor, autoPay,
+  paymentProvider, payFor, autoPay, phoneRequired,
 }: {
   paymentProvider: 'pandascrow' | 'paystack';
+  /** Escrow trips need a phone number from everyone who joins. */
+  phoneRequired: boolean;
   /** A participant id from a reminder's pay link, and whether to open paying straight away. */
   payFor: string | null; autoPay: boolean;
   tripId: string; initialCount: number; initialPaidCount: number; initialTotalCollected: number;
@@ -566,6 +569,7 @@ function JoinSection({
   const [joinState, setJoinState]     = useState<JoinState>(participantId ? "joined" : "idle");
   const [nameInput, setNameInput]     = useState("");
   const [emailInput, setEmailInput]   = useState("");
+  const [phoneInput, setPhoneInput]   = useState("");
   const [error, setError]             = useState("");
   const pollRef                        = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -591,12 +595,16 @@ function JoinSection({
    * contact details so they get chased rather than quietly lost.
    */
   async function handleJoin(remindMe = false) {
+    const phone = phoneInput.trim() ? normalisePhone(phoneInput) : null;
+    if (phoneInput.trim() && !phone) { setError("That phone number doesn't look right."); return; }
+    if (phoneRequired && !phone) { setError("Add your phone number — it's needed to pay into escrow."); return; }
     setJoinState("loading");
     setError("");
     try {
       const { count: newCount, participantId: pid } = await api.joinPlan(tripId, {
         name:     nameInput.trim()  || undefined,
         email:    emailInput.trim() || undefined,
+        waNumber: phone || undefined,
         remindMe,
       });
       setCount(newCount);
@@ -729,8 +737,18 @@ function JoinSection({
             placeholder="Email — for your receipt"
             className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition placeholder:text-muted-foreground/60"
           />
+          <input
+            type="tel" inputMode="tel" autoComplete="tel" value={phoneInput}
+            onChange={e => { setPhoneInput(e.target.value); setError(""); }}
+            onKeyDown={e => { if (e.key === "Enter") handleJoin(false); }}
+            placeholder={phoneRequired ? "Phone number (WhatsApp)" : "Phone number (WhatsApp) — optional"}
+            required={phoneRequired}
+            aria-required={phoneRequired}
+            className="w-full rounded-xl bg-secondary/60 ring-hairline px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary/40 transition placeholder:text-muted-foreground/60"
+          />
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             We use this to send your receipt and let you know if anything about the trip changes.
+            {phoneRequired && " Your money is held in escrow, which needs a phone number for everyone paying."}
           </p>
 
           <div className="flex gap-2">
@@ -1145,6 +1163,7 @@ export default function PlanView() {
                 paymentProvider={data.paymentProvider === "pandascrow" ? "pandascrow" : "paystack"}
                 payFor={searchParams.get("p")}
                 autoPay={searchParams.get("pay") === "1"}
+                phoneRequired={!!data.phoneRequired}
               />
             )}
 

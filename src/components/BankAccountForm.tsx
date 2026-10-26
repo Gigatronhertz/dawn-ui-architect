@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { api, type Bank } from "@/lib/api";
 import { session } from "@/lib/api";
@@ -14,12 +14,19 @@ export function BankAccountForm({
   onSave,
   saveLabel = "Save payout account",
   locked = false,
+  extra,
+  extraChanged = false,
+  extraReady = true,
 }: {
   initial?: { bankCode: string; accountNumber: string; accountName: string } | null;
   onSave: (payload: { bankCode: string; bankName: string; accountNumber: string }) => Promise<void>;
   saveLabel?: string;
   /** Payments are already running against the saved account. */
   locked?: boolean;
+  /** Another field saved with the account (the organiser's phone). */
+  extra?: ReactNode;
+  extraChanged?: boolean;
+  extraReady?: boolean;
 }) {
   const [banks, setBanks]       = useState<Bank[] | null>(null);
   const [bankErr, setBankErr]   = useState("");
@@ -119,11 +126,13 @@ export function BankAccountForm({
         )}
       </div>
 
+      {extra}
+
       {locked ? (
         <p className="text-xs text-muted-foreground">Payments are already running against this account, so it can't change now.</p>
       ) : (
         <div className="flex items-center gap-3">
-          <button type="button" onClick={save} disabled={!name || saving || unchanged} className="kj-btn text-sm py-2.5 px-5">
+          <button type="button" onClick={save} disabled={!name || saving || !extraReady || (unchanged && !extraChanged)} className="kj-btn text-sm py-2.5 px-5">
             {saving ? "Saving…" : saveLabel}
           </button>
           {note && <span className="text-xs text-emerald-700">{note}</span>}

@@ -31,10 +31,18 @@ function collects(trip) {
   return tripKind(trip) !== 'friend' || trip.collection_tier === 'escrow';
 }
 
+/**
+ * Is money for this trip held in Pandascrow escrow? Pandascrow needs a phone
+ * number for everyone on an escrow — each traveller paying and whoever is paid.
+ */
+function escrowed(trip) {
+  return pandascrow.available() && collects(trip);
+}
+
 /** Does Karije chase this trip's travellers? */
 function remindersOn(trip) {
   if (!pandascrow.available() || tripKind(trip) !== 'friend') return true;
   return trip.collection_tier === 'notify' || trip.collection_tier === 'escrow';
 }
 
-module.exports = { TIERS, tripKind, collects, remindersOn, parseJson };
+module.exports = { TIERS, tripKind, collects, escrowed, remindersOn, parseJson };

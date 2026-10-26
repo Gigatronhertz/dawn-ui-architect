@@ -14,6 +14,7 @@ const whisper360              = require('../services/whisper360');
 const paystack               = require('../services/paystack');
 const pandascrow             = require('../services/pandascrow');
 const collection             = require('../services/collection');
+const { normalisePhone }     = require('../services/phone');
 const ownership              = require('../services/ownership');
 const { limit }              = require('../services/rateLimit');
 // Crediting a payment lives with the webhook that normally does it; the
@@ -458,6 +459,8 @@ router.get('/public/plan/:tripId', async (req, res) => {
     // Pandascrow, once configured, takes over from Paystack; a friend trip
     // only collects through Karije on its escrow option.
     paymentsEnabled:  pandascrow.available() ? collection.collects(trip) : paystack.available(),
+    // Escrow needs a phone number from every traveller.
+    phoneRequired:    collection.escrowed(trip),
     paymentProvider:  pandascrow.available() ? 'pandascrow' : 'paystack',
     // Curated trips carry their own presentation (photo, blurb, what's included)
     // and a minimum headcount the squad has to clear for the trip to run.
@@ -489,9 +492,15 @@ router.post('/public/plan/:tripId/join', limit({ name: 'join', max: 30, windowMs
   if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
     return res.status(400).json({ error: 'That email address does not look right.' });
   }
-  // Nigerian numbers get typed every possible way — keep the digits and let the
-  // sender normalise, rather than rejecting someone over a leading zero.
-  const cleanWa = typeof waNumber === 'string' ? waNumber.replace(/[^\d+]/g, '') : '';
+  // Numbers arrive as 0803…, 803…, +234803… — store one form. On escrow trips
+  // it's required: Pandascrow needs a phone number for every payer.
+  const cleanWa = normalisePhone(waNumber);
+  if (waNumber && !cleanWa) {
+    return res.status(400).json({ error: 'That phone number doesn’t look right.', code: 'PHONE_INVALID' });
+  }
+  if (!cleanWa && collection.escrowed(trip)) {
+    return res.status(400).json({ error: 'Add your phone number — it’s needed to pay into escrow.', code: 'PHONE_REQUIRED' });
+  }
 
   const participantId = uuid();
   await db.participants.insert({
@@ -584,7 +593,7 @@ router.post('/public/plan/:tripId/subscribe', premium.premiumOnly, async (req, r
 router.get('/public/plan/:tripId/participant/:participantId', async (req, res) => {
   try {
     const rows = await db.rawAll(
-      `SELECT id, paid, amount, paid_at, paystack_ref, email, payment_plan, installment_months, next_due_at
+      `SELECT id, paid, amount, paid_at, paystack_ref, email, wa_number, payment_plan, installment_months, next_due_at
          FROM participants WHERE id = ? AND trip_id = ?`,
       [req.params.participantId, req.params.tripId]
     );
@@ -625,6 +634,9 @@ router.get('/public/plan/:tripId/participant/:participantId', async (req, res) =
       // same thing. The address itself stays server-side — the pay route reads
       // it there, so it never needs to travel to the browser and back.
       hasEmail: !!row.email,
+      // Escrow needs a phone too; travellers who joined before it was asked
+      // for give it on the pay screen.
+      hasPhone: !!row.wa_number,
       paymentPlan:       row.payment_plan || 'full',
       installmentMonths: row.installment_months ? Number(row.installment_months) : null,
       paidAmount:        paidTotal,

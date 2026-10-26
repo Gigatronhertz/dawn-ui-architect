@@ -22,6 +22,7 @@ const pandascrow = require('../services/pandascrow');
 const premium = require('../services/premium');
 const { requireAuth } = require('../middleware/auth');
 const { limit } = require('../services/rateLimit');
+const { normalisePhone } = require('../services/phone');
 const { sendPaymentReceiptEmail } = require('../services/email');
 
 const api = Router();      // mounted at /api
@@ -43,7 +44,7 @@ async function sellerFor(trip) {
     const e = process.env;
     if (!e.KARIJE_PAYOUT_BANK_CODE || !e.KARIJE_PAYOUT_ACCOUNT_NO) return null;
     return {
-      seller: { name: 'Karije', email: e.KARIJE_SELLER_EMAIL || 'hello@karije.com', phone: e.KARIJE_SELLER_PHONE || '' },
+      seller: { name: 'Karije', email: e.KARIJE_SELLER_EMAIL || 'hello@karije.com', phone: normalisePhone(e.KARIJE_SELLER_PHONE) || '' },
       payout: {
         bankCode: e.KARIJE_PAYOUT_BANK_CODE, bankName: e.KARIJE_PAYOUT_BANK_NAME || '',
         accountNumber: e.KARIJE_PAYOUT_ACCOUNT_NO, accountName: e.KARIJE_PAYOUT_ACCOUNT_NAME || 'Karije',
@@ -58,18 +59,18 @@ async function sellerFor(trip) {
     const no   = trip.payout_account_no || agent?.payout_account_no;
     if (!agent || !code || !no) return null;
     return {
-      seller: { name: agent.agency_name, email: agent.email || 'hello@karije.com', phone: agent.wa_number || agent.phone || '' },
+      seller: { name: agent.agency_name, email: agent.email || 'hello@karije.com', phone: normalisePhone(agent.wa_number) || normalisePhone(agent.phone) || '' },
       payout: {
         bankCode: code, bankName: trip.payout_bank_name || agent.payout_bank_name || '',
         accountNumber: no, accountName: trip.payout_account_name || agent.payout_account_name || agent.agency_name,
       },
     };
   }
-  // Friend trip — the organiser's own account, saved through PUT .../payout.
-  if (!trip.payout_bank_code || !trip.payout_account_no || !trip.user_id) return null;
+  // Friend trip — the organiser's own account and phone, saved through PUT .../payout.
+  if (!trip.payout_bank_code || !trip.payout_account_no || !trip.user_id || !normalisePhone(trip.notify_wa)) return null;
   const user = await db.users.get(trip.user_id);
   return {
-    seller: { name: trip.payout_account_name || user?.name || 'Trip organiser', email: user?.email || trip.notify_email || 'hello@karije.com', phone: trip.notify_wa || '' },
+    seller: { name: trip.payout_account_name || user?.name || 'Trip organiser', email: user?.email || trip.notify_email || 'hello@karije.com', phone: normalisePhone(trip.notify_wa) },
     payout: {
       bankCode: trip.payout_bank_code, bankName: trip.payout_bank_name || '',
       accountNumber: trip.payout_account_no, accountName: trip.payout_account_name || '',
@@ -184,7 +185,7 @@ api.post('/banks/resolve', limit({ name: 'bank-resolve', max: 30, windowMs: 15 *
 
 /**
  * Open the traveller's escrow, or hand back the one they already have.
- * Body: { participantId, email?, gateway?: "virtual_account" | "payment_link", fresh?: boolean }
+ * Body: { participantId, email?, phone?, gateway?: "virtual_account" | "payment_link", fresh?: boolean }
  * `fresh` asks for a new transfer account even if the current one is live.
  */
 api.post('/public/plan/:tripId/escrow', limit({ name: 'escrow', max: 20, windowMs: 15 * 60 * 1000 }), async (req, res) => {
@@ -195,7 +196,7 @@ api.post('/public/plan/:tripId/escrow', limit({ name: 'escrow', max: 20, windowM
     if (!SHAREABLE.includes(trip.status)) return res.status(403).json({ error: 'Plan is not yet confirmed.' });
     if (!collects(trip)) return res.status(403).json({ error: "The organiser isn't collecting payments on Karije for this trip." });
 
-    const { participantId, email, gateway, fresh } = req.body || {};
+    const { participantId, email, phone, gateway, fresh } = req.body || {};
     const participant = participantId ? await db.participants.getById(participantId) : null;
     if (!participant || participant.trip_id !== trip.id) return res.status(404).json({ error: 'Participant not found.' });
     if (participant.paid) return res.status(400).json({ error: "You've already paid for your place." });
@@ -203,6 +204,13 @@ api.post('/public/plan/:tripId/escrow', limit({ name: 'escrow', max: 20, windowM
     const cleanEmail = String(email || participant.email || '').trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return res.status(400).json({ error: 'A valid email address is required to pay.' });
+    }
+
+    // Pandascrow needs the payer's phone. Travellers who joined before it was
+    // asked for give it here.
+    const cleanPhone = normalisePhone(phone) || normalisePhone(participant.wa_number);
+    if (!cleanPhone) {
+      return res.status(400).json({ error: 'Add your phone number to pay — escrow needs one for every traveller.', code: 'PHONE_REQUIRED' });
     }
 
     const wantGateway = gateway === 'payment_link' ? 'payment_link' : 'virtual_account';
@@ -214,7 +222,7 @@ api.post('/public/plan/:tripId/escrow', limit({ name: 'escrow', max: 20, windowM
 
     const seller = await sellerFor(trip);
     if (!seller) {
-      return res.status(409).json({ error: "This trip can't take payments yet — the organiser still needs to add their bank account." });
+      return res.status(409).json({ error: "This trip can't take payments yet — the organiser still needs to add their bank account and phone number." });
     }
 
     const plan = parseJson(trip.plan);
@@ -228,7 +236,7 @@ api.post('/public/plan/:tripId/escrow', limit({ name: 'escrow', max: 20, windowM
       title: `${tripName(trip)} — ${participant.name || 'traveller'}`,
       description: `One place on ${tripName(trip)} for ${participant.name || cleanEmail}.`,
       deliveryDate: deliveryDate(trip),
-      buyer: { name: participant.name, email: cleanEmail, phone: participant.wa_number || '' },
+      buyer: { name: participant.name, email: cleanEmail, phone: cleanPhone },
       seller: seller.seller, payout: seller.payout,
       callbackUrl: `${frontend()}/plan/${trip.id}?paid=1`,
       gateway: wantGateway,
@@ -249,7 +257,7 @@ api.post('/public/plan/:tripId/escrow', limit({ name: 'escrow', max: 20, windowM
         opened.account?.expiresAt || null, opened.paymentUrl, opened.reference,
       ]
     );
-    await db.raw(`UPDATE participants SET email = COALESCE(email, ?), amount = ? WHERE id = ?`, [cleanEmail, targetAmount, participant.id]);
+    await db.raw(`UPDATE participants SET email = COALESCE(email, ?), wa_number = ?, amount = ? WHERE id = ?`, [cleanEmail, cleanPhone, targetAmount, participant.id]);
 
     res.json({ escrow: shapeEscrow(await currentEscrow(participant.id)) });
   } catch (err) {
@@ -300,6 +308,7 @@ async function collectionState(trip) {
   const fee = await db.raw(`SELECT * FROM trip_fees WHERE trip_id = ? ORDER BY created_at DESC LIMIT 1`, [trip.id]);
   return {
     tier: trip.collection_tier || 'none',
+    phone: trip.notify_wa || null,
     feesWaived: premium.LOCKED,
     provider: pandascrow.available() ? 'pandascrow' : 'paystack',
     payout: trip.payout_account_no ? {
@@ -360,6 +369,9 @@ api.put('/auth/plans/:tripId/payout', requireAuth, async (req, res) => {
   const bankName = String(req.body?.bankName || '').trim();
   const accountNumber = String(req.body?.accountNumber || '').replace(/\D/g, '');
   if (!bankCode || accountNumber.length !== 10) return res.status(400).json({ error: 'Pick your bank and enter the 10-digit account number.' });
+  // Escrow needs the organiser's phone as well as their account.
+  const phone = normalisePhone(req.body?.phone) || normalisePhone(trip.notify_wa);
+  if (!phone) return res.status(400).json({ error: 'Add your phone number — escrow needs one for whoever is paid.', code: 'PHONE_REQUIRED' });
   // Once a friend has paid, the account their money is going to stays put.
   const paidIn = await db.raw(`SELECT COUNT(*) AS n FROM escrows WHERE trip_id = ? AND status <> 'replaced' AND status <> 'expired'`, [trip.id]);
   if (Number(paidIn?.n || 0) > 0 && trip.payout_account_no) {
@@ -368,8 +380,8 @@ api.put('/auth/plans/:tripId/payout', requireAuth, async (req, res) => {
   try {
     const { accountName } = await pandascrow.resolveAccount({ bankCode, accountNumber });
     await db.raw(
-      'UPDATE trips SET payout_bank_code = ?, payout_bank_name = ?, payout_account_no = ?, payout_account_name = ? WHERE id = ?',
-      [bankCode, bankName || null, accountNumber, accountName, trip.id]
+      'UPDATE trips SET payout_bank_code = ?, payout_bank_name = ?, payout_account_no = ?, payout_account_name = ?, notify_wa = ? WHERE id = ?',
+      [bankCode, bankName || null, accountNumber, accountName, phone, trip.id]
     );
     res.json(await collectionState(await db.trips.get(trip.id)));
   } catch (err) {

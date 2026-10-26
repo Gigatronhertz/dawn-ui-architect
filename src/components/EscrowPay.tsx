@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Copy, CreditCard, Landmark, ShieldCheck } from "lucide-react";
 import { api, type Escrow } from "@/lib/api";
+import { normalisePhone } from "@/lib/phone";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
@@ -64,6 +65,8 @@ export function EscrowPay({
   const [loaded, setLoaded]   = useState(false);
   const [hasEmail, setHasEmail] = useState(true);
   const [email, setEmail]     = useState("");
+  const [hasPhone, setHasPhone] = useState(true);
+  const [phone, setPhone]     = useState("");
   const [busy, setBusy]       = useState<"" | "bank" | "card" | "fresh">("");
   const [checking, setChecking] = useState(false);
   const [notYet, setNotYet]   = useState(false);
@@ -78,7 +81,7 @@ export function EscrowPay({
   }, [tripId, participantId]);
 
   useEffect(() => {
-    Promise.all([refresh(), api.getMyPaymentStatus(tripId, participantId).then((s) => setHasEmail(s.hasEmail)).catch(() => {})])
+    Promise.all([refresh(), api.getMyPaymentStatus(tripId, participantId).then((s) => { setHasEmail(s.hasEmail); setHasPhone(s.hasPhone !== false); }).catch(() => {})])
       .catch(() => {})
       .finally(() => setLoaded(true));
   }, [refresh, tripId, participantId]);
@@ -88,14 +91,20 @@ export function EscrowPay({
       setError("Add your email first — it's where your receipt goes.");
       return;
     }
+    const cleanPhone = hasPhone ? undefined : normalisePhone(phone);
+    if (!hasPhone && !cleanPhone) {
+      setError("Add your phone number — escrow needs one for everyone paying.");
+      return;
+    }
     setBusy(fresh ? "fresh" : gateway === "payment_link" ? "card" : "bank");
     setError("");
     setNotYet(false);
     try {
-      const { escrow: e } = await api.openEscrow(tripId, { participantId, gateway, fresh, email: email.trim() || undefined });
+      const { escrow: e } = await api.openEscrow(tripId, { participantId, gateway, fresh, email: email.trim() || undefined, phone: cleanPhone || undefined });
       if (gateway === "payment_link" && e.paymentUrl) { window.location.href = e.paymentUrl; return; }
       setEscrow(e);
       setHasEmail(true);
+      setHasPhone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't set up your payment.");
     } finally {
@@ -105,12 +114,12 @@ export function EscrowPay({
 
   // Arriving from a reminder's "Pay now": go straight to the account.
   useEffect(() => {
-    if (!autoStart || !loaded || started.current || paid || !hasEmail) return;
+    if (!autoStart || !loaded || started.current || paid || !hasEmail || !hasPhone) return;
     if (escrow && escrow.status === "awaiting") return;
     started.current = true;
     open("virtual_account");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, loaded, paid, hasEmail, escrow]);
+  }, [autoStart, loaded, paid, hasEmail, hasPhone, escrow]);
 
   // After "I've sent it", keep asking for two minutes; transfers usually land in seconds.
   async function confirmSent() {
@@ -214,6 +223,17 @@ export function EscrowPay({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Your email, for the receipt"
+              className="w-full bg-card border border-line-strong px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-signal"
+            />
+          )}
+          {!hasPhone && (
+            <input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Your phone number — escrow needs one"
               className="w-full bg-card border border-line-strong px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-signal"
             />
           )}

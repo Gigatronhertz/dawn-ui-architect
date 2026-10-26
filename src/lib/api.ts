@@ -103,6 +103,8 @@ export type PublicPlanResponse = {
   paymentsEnabled:  boolean;
   /** Which rail collects: Pandascrow escrow once configured, else Paystack. */
   paymentProvider?: 'pandascrow' | 'paystack';
+  /** Escrow trips need every traveller's phone number. */
+  phoneRequired?:   boolean;
   participants:     { name: string | null; paid: boolean; createdAt: number }[];
   /** Present only on curated trips — the Karije-run ones. */
   curated: {
@@ -409,6 +411,8 @@ export type CollectionTier = 'none' | 'notify' | 'escrow';
 /** A friend trip's chosen option, its pending fee and its payout account. */
 export type TripCollection = {
   tier: CollectionTier;
+  /** The organiser's phone — escrow needs one for whoever is paid. */
+  phone: string | null;
   feesWaived: boolean;
   provider: 'pandascrow' | 'paystack';
   payout: { bankCode: string; bankName: string | null; accountNumber: string; accountName: string } | null;
@@ -661,13 +665,14 @@ export const api = {
    */
   joinPlan: (
     tripId: string,
-    opts: { name?: string; email?: string; remindMe?: boolean } = {},
+    opts: { name?: string; email?: string; waNumber?: string; remindMe?: boolean } = {},
   ) =>
     post<{ ok: boolean; count: number; participantId: string }>(
       `/api/public/plan/${tripId}/join`,
       {
         name:     opts.name     || null,
         email:    opts.email    || null,
+        waNumber: opts.waNumber || null,
         remindMe: !!opts.remindMe,
       },
     ),
@@ -678,7 +683,7 @@ export const api = {
    */
   getMyPaymentStatus: (tripId: string, participantId: string) =>
     get<{
-      paid: boolean; amount: number | null; paidAt: number | null; hasEmail: boolean;
+      paid: boolean; amount: number | null; paidAt: number | null; hasEmail: boolean; hasPhone?: boolean;
       paymentPlan: "full" | "installment"; installmentMonths: number | null;
       paidAmount: number | null; remaining: number | null; nextDueAt: number | null;
     }>(
@@ -902,7 +907,7 @@ export const api = {
   resolveBank: (payload: { bankCode: string; accountNumber: string }, token: string) =>
     post<{ accountName: string; accountNumber: string }>('/api/banks/resolve', payload, bearer(token)),
   /** Open (or reuse) this traveller's escrow. `fresh` asks for a new transfer account. */
-  openEscrow: (tripId: string, payload: { participantId: string; email?: string; gateway?: 'virtual_account' | 'payment_link'; fresh?: boolean }) =>
+  openEscrow: (tripId: string, payload: { participantId: string; email?: string; phone?: string; gateway?: 'virtual_account' | 'payment_link'; fresh?: boolean }) =>
     post<{ escrow: Escrow }>(`/api/public/plan/${tripId}/escrow`, payload),
   getEscrowStatus: (tripId: string, participantId: string) =>
     get<{ paid: boolean; escrow: Escrow | null }>(`/api/public/plan/${tripId}/escrow/${participantId}`),
@@ -910,7 +915,7 @@ export const api = {
     get<TripCollection>(`/api/auth/plans/${tripId}/collection`, bearer(token)),
   setTripCollection: (tripId: string, tier: CollectionTier, token: string) =>
     post<TripCollection>(`/api/auth/plans/${tripId}/collection`, { tier }, bearer(token)),
-  setTripPayout: (tripId: string, payload: { bankCode: string; bankName: string; accountNumber: string }, token: string) =>
+  setTripPayout: (tripId: string, payload: { bankCode: string; bankName: string; accountNumber: string; phone?: string }, token: string) =>
     put<TripCollection>(`/api/auth/plans/${tripId}/payout`, payload, bearer(token)),
 
   /** Verified agencies with at least one listed trip — the home page's

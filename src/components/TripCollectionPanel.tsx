@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Bell, Check, Copy, ShieldCheck, Share2 } from "lucide-react";
 import { api, session, type CollectionTier, type PaymentsConfig, type TripCollection } from "@/lib/api";
 import { BankAccountForm } from "@/components/BankAccountForm";
+import { normalisePhone } from "@/lib/phone";
 
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
@@ -24,12 +25,14 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
   const [error, setError]   = useState("");
   const [waiting, setWaiting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [phone, setPhone]   = useState("");
 
   const load = useCallback(async () => {
     const token = session.get();
     if (!token) return null;
     const s = await api.getTripCollection(tripId, token);
     setState(s);
+    setPhone((p) => p || s.phone || "");
     return s;
   }, [tripId]);
 
@@ -69,6 +72,7 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
   }
 
   const fee = state.pendingFee;
+  const cleanPhone = normalisePhone(phone);
   const price = (tier: CollectionTier) => config?.tiers[tier]?.listAmount ?? { none: 0, notify: 1000, escrow: 3000 }[tier];
 
   return (
@@ -142,16 +146,34 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
             <p className="text-sm text-muted-foreground">
               {state.payout
                 ? "Escrow releases each friend's share to this account."
-                : "Add your bank account — friends can't pay until there's somewhere for the money to go."}
+                : "Add your bank account and phone number — friends can't pay until there's somewhere for the money to go."}
             </p>
           </div>
           <BankAccountForm
             initial={state.payout ? { bankCode: state.payout.bankCode, accountNumber: state.payout.accountNumber, accountName: state.payout.accountName } : null}
             saveLabel="Save my account"
+            extraChanged={!!cleanPhone && cleanPhone !== state.phone}
+            extraReady={!!cleanPhone}
+            extra={
+              <div>
+                <label htmlFor="payout-phone" className="text-xs text-muted-foreground block mb-1.5">Your phone number</label>
+                <input
+                  id="payout-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="0803 123 4567"
+                  className="w-full bg-card border border-line-strong px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-signal"
+                />
+                <p className="text-xs text-muted-foreground mt-1.5">Escrow needs a phone number for whoever is paid.</p>
+              </div>
+            }
             onSave={async (payload) => {
               const token = session.get();
               if (!token) throw new Error("Please sign in again.");
-              setState(await api.setTripPayout(tripId, payload, token));
+              setState(await api.setTripPayout(tripId, { ...payload, phone: cleanPhone || undefined }, token));
             }}
           />
         </div>
