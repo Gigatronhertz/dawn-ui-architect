@@ -87,6 +87,34 @@ services:
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
 
+      # ── Payments (Pandascrow escrow) ───────────────────────────────────────
+      # Trip payments move to escrow once the API key and UUID are set.
+      # Webhook: https://<backend>/pandascrow/webhook
+      - key: PANDASCROW_ENV
+        value: sandbox
+      - key: PANDASCROW_API_KEY
+        sync: false
+      - key: PANDASCROW_SECRET_KEY
+        sync: false
+      - key: PANDASCROW_UUID
+        sync: false
+      - key: PANDASCROW_FEES_PAID_BY
+        value: buyer
+      # Karije's own trips pay out here. The bank code may be left out — it's
+      # looked up from the bank name in Pandascrow's list.
+      - key: KARIJE_PAYOUT_BANK_NAME
+        sync: false
+      - key: KARIJE_PAYOUT_BANK_CODE
+        sync: false
+      - key: KARIJE_PAYOUT_ACCOUNT_NO
+        sync: false
+      - key: KARIJE_PAYOUT_ACCOUNT_NAME
+        sync: false
+      - key: KARIJE_SELLER_EMAIL
+        value: hello@karije.com
+      - key: KARIJE_SELLER_PHONE
+        sync: false
+
       # ── Scrapers ───────────────────────────────────────────────────────────
       - key: GOOGLE_API_KEY
         sync: false

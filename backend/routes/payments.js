@@ -38,15 +38,36 @@ const { TIERS, tripKind, collects, parseJson } = require('../services/collection
  * Karije itself on its own curated trips. Null when that seller has no
  * checked bank account yet — the traveller cannot pay until there is one.
  */
+/**
+ * Karije's own bank code: KARIJE_PAYOUT_BANK_CODE if set, otherwise looked up
+ * by KARIJE_PAYOUT_BANK_NAME (e.g. "Kuda") in Pandascrow's bank list, so the
+ * code — which differs between providers — never has to be found by hand.
+ */
+async function karijeBankCode() {
+  const e = process.env;
+  if (e.KARIJE_PAYOUT_BANK_CODE) return e.KARIJE_PAYOUT_BANK_CODE.trim();
+  const want = String(e.KARIJE_PAYOUT_BANK_NAME || '').trim().toLowerCase();
+  if (!want) return null;
+  try {
+    const banks = await pandascrow.listBanks();
+    const hit = banks.find((b) => b.name.toLowerCase() === want)
+      || banks.filter((b) => b.name.toLowerCase().includes(want)).sort((x, y) => x.name.length - y.name.length)[0];
+    return hit ? hit.code : null;
+  } catch {
+    return null;
+  }
+}
+
 async function sellerFor(trip) {
   const kind = tripKind(trip);
   if (kind === 'curated') {
     const e = process.env;
-    if (!e.KARIJE_PAYOUT_BANK_CODE || !e.KARIJE_PAYOUT_ACCOUNT_NO) return null;
+    const bankCode = await karijeBankCode();
+    if (!bankCode || !e.KARIJE_PAYOUT_ACCOUNT_NO) return null;
     return {
       seller: { name: 'Karije', email: e.KARIJE_SELLER_EMAIL || 'hello@karije.com', phone: normalisePhone(e.KARIJE_SELLER_PHONE) || '' },
       payout: {
-        bankCode: e.KARIJE_PAYOUT_BANK_CODE, bankName: e.KARIJE_PAYOUT_BANK_NAME || '',
+        bankCode, bankName: e.KARIJE_PAYOUT_BANK_NAME || '',
         accountNumber: e.KARIJE_PAYOUT_ACCOUNT_NO, accountName: e.KARIJE_PAYOUT_ACCOUNT_NAME || 'Karije',
       },
     };
