@@ -1264,16 +1264,16 @@ function PaymentsCheckSection({ adminKey }: { adminKey: string }) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 space-y-5">
       <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900">Pandascrow sandbox check</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Pandascrow check</h2>
         <p className="text-sm text-gray-600">
-          Checks the keys on the server, finds Karije's payout bank and account, opens a test ₦1,000 escrow by
-          transfer and by card, reads it back, makes a fee account and checks webhook signatures. It only runs while
-          <code className="mx-1 text-xs bg-gray-100 px-1 py-0.5 rounded">PANDASCROW_ENV</code>is
-          <code className="mx-1 text-xs bg-gray-100 px-1 py-0.5 rounded">sandbox</code>, so no real money moves. Takes up to a minute.
+          Checks the keys on the server, finds Karije's payout bank and account, and checks webhook signatures. In the
+          sandbox it also opens a test ₦1,000 escrow by transfer and by card and a fee account. With live keys
+          (<code className="mx-1 text-xs bg-gray-100 px-1 py-0.5 rounded">PANDASCROW_ENV=live</code>) it only reads —
+          nothing is opened or paid. Takes up to a minute.
         </p>
         <button onClick={run} disabled={running}
           className="rounded-lg bg-gray-900 text-white text-sm font-medium px-4 py-2.5 disabled:opacity-60">
-          {running ? "Running…" : results ? "Run again" : "Run sandbox check"}
+          {running ? "Running…" : results ? "Run again" : "Run check"}
         </button>
       </div>
 

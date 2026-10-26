@@ -4,8 +4,8 @@
  * card, reading it back, a fee account and the webhook signature.
  *
  * Run from the admin page (Payments check) or `node backend/scripts/pandascrowSandboxCheck.js`.
- * Refuses unless PANDASCROW_ENV is "sandbox", so it can never open a real
- * escrow. Results carry shapes and statuses, never keys.
+ * With PANDASCROW_ENV=live it only reads (keys, bank list, account name) and
+ * never opens an escrow or account. Results carry shapes and statuses, never keys.
  */
 const crypto = require('crypto');
 const pandascrow = require('./pandascrow');
@@ -17,10 +17,10 @@ async function runSandboxCheck() {
   const results = [];
   const report = (step, ok, detail = '') => { results.push({ step, ok: !!ok, detail }); };
   const c = pandascrow.config();
-  // A local stand-in (localhost) is allowed too, for testing this script.
-  if (c.env !== 'sandbox' || !(/sandbox/.test(c.base) || /^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(c.base))) {
-    return { refused: `PANDASCROW_ENV is "${c.env}" (${c.base}). This check only runs against the sandbox.`, results };
-  }
+  // Against live, only read: nothing is opened, created or paid.
+  const readOnly = c.env === 'live';
+  report(readOnly ? 'Live mode — read-only check' : 'Sandbox mode', true,
+    `${c.base}; trip payments ${pandascrow.available() ? 'ARE switched on (PANDASCROW_ENABLED=true)' : 'are off until PANDASCROW_ENABLED=true'}`);
   const missing = [
     ...(c.keys.length ? [] : ['PANDASCROW_SECRET_KEY or PANDASCROW_PUBLIC_KEY']),
     ...(process.env.PANDASCROW_UUID ? [] : ['PANDASCROW_UUID']),
@@ -39,7 +39,12 @@ async function runSandboxCheck() {
   } catch (e) {
     report('Pandascrow accepts a key (bank list)', false, `${e.status || ''} ${e.message} ${shape(e.body)}`);
     if (pandascrow.refusedKey(e)) {
-      report('Hint', false, `Pandascrow refused every key tried (${have.join(', ')}). Check they're the sandbox keys (sktest…/pktest…) and copied in full.`);
+      // Ask the other environment, read-only, whether the keys belong there.
+      const other = readOnly ? 'sandbox' : 'live';
+      const works = await pandascrow.probeKeys(pandascrow.BASE_URLS[other]);
+      report('Hint', false, works
+        ? `These are ${other} keys: the ${other} server accepts the ${works} key. Set PANDASCROW_ENV=${other}${other === 'live' ? ' — the check stays read-only there, and payments stay off until PANDASCROW_ENABLED=true' : ''}.`
+        : `Neither the sandbox nor the live server accepted the keys (${have.join(', ')}). Check they're copied in full, with no spaces.`);
     }
     return { results };
   }
@@ -70,6 +75,11 @@ async function runSandboxCheck() {
   // 4. A test escrow paid by bank transfer, then by card
   const sellerPhone = normalisePhone(process.env.KARIJE_SELLER_PHONE);
   report('Karije seller phone set', !!sellerPhone, sellerPhone ? '' : 'KARIJE_SELLER_PHONE missing or not a valid number');
+  if (readOnly) {
+    signatureCheck(report, c);
+    report('Escrow, card link and fee account', true, 'skipped on live — these open real accounts. Run them with sandbox keys from demo.pandascrow.io.');
+    return { results };
+  }
   const run = `sandbox-check-${Date.now()}`;
   const base = {
     tripId: run, participantId: 'tester', amount: 1000,
@@ -121,13 +131,16 @@ async function runSandboxCheck() {
   }
 
   // 7. Webhook signature check, done locally with the configured secret
+  signatureCheck(report, c, escrowId);
+  return { results };
+}
+
+function signatureCheck(report, c, escrowId = 1) {
   const body = JSON.stringify({ event: 'escrow.paid', data: { escrow_id: escrowId || 1 } });
   const ts = String(Math.floor(Date.now() / 1000));
   const sig = crypto.createHmac('sha256', c.secret).update(body).digest('hex');
   report('Webhook signature: genuine accepted, forged refused',
     pandascrow.verifyWebhook(body, sig, ts) && !pandascrow.verifyWebhook(body, sig.replace(/.$/, (x) => (x === '0' ? '1' : '0')), ts));
-
-  return { results };
 }
 
 module.exports = { runSandboxCheck };

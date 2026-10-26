@@ -1,9 +1,10 @@
 # Payments plan: moving Karije to Pandascrow escrow
 
 Status: steps 1, 2, 5 and 6 are built and tested against a stand-in for the
-Pandascrow sandbox. They switch on when `PANDASCROW_API_KEY` and
-`PANDASCROW_UUID` are set (see `backend/.env.example`); until then Paystack
-works exactly as before.
+Pandascrow sandbox. They switch on only when the keys and `PANDASCROW_UUID`
+are set AND `PANDASCROW_ENABLED=true` (see `backend/.env.example`); until then
+Paystack works exactly as before. Admin → Payments check tests the setup
+(read-only with live keys).
 
 ## Principles
 

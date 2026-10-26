@@ -19,6 +19,7 @@
  * The docs don't say which dashboard key the `Token` header takes, so the
  * client tries the secret key, then the public key, and keeps the first one
  * Pandascrow accepts (PANDASCROW_API_KEY, if set, is tried first).
+ *   PANDASCROW_ENABLED     — "true" to move trip payments to Pandascrow; keys alone don't
  *   PANDASCROW_ENV         — "sandbox" (default) or "live"
  *   PANDASCROW_BASE_URL    — optional override (used by the local tests)
  *   PANDASCROW_FEES_PAID_BY — "buyer" (default), "seller" or "both"
@@ -45,10 +46,37 @@ function config() {
   };
 }
 
-/** Pandascrow takes over trip payments only once it is fully configured. */
-function available() {
+/** Keys and account are in place (enough to run the admin check). */
+function configured() {
   const c = config();
   return !!(c.keys.length && c.uuid);
+}
+
+/**
+ * Pandascrow takes over trip payments only when configured AND switched on.
+ * Keys alone never move real money: PANDASCROW_ENABLED=true is a separate,
+ * deliberate step once the check has passed.
+ */
+function available() {
+  return configured() && String(process.env.PANDASCROW_ENABLED || '').toLowerCase() === 'true';
+}
+
+/**
+ * Which configured key, if any, the given Pandascrow server accepts — asked
+ * with the read-only bank list. Used by the admin check to tell sandbox keys
+ * from live ones.
+ */
+async function probeKeys(base) {
+  const e = process.env;
+  const named = [['secret', e.PANDASCROW_SECRET_KEY], ['public', e.PANDASCROW_PUBLIC_KEY], ['api', e.PANDASCROW_API_KEY]]
+    .map(([n, k]) => [n, String(k || '').trim()]).filter(([, k]) => k);
+  for (const [name, key] of named) {
+    try {
+      const res = await axios.get(`${base}/bank/lists`, { headers: { Token: key, Accept: 'application/json' }, timeout: 20000 });
+      if (res.data?.status !== false) return name;
+    } catch { /* refused or unreachable — try the next */ }
+  }
+  return null;
 }
 
 class PandascrowError extends Error {
@@ -268,7 +296,7 @@ function verifyWebhook(rawBody, signature, timestamp) {
 }
 
 module.exports = {
-  available, config, PandascrowError, tokenKeyName, refusedKey,
+  available, configured, config, probeKeys, BASE_URLS, PandascrowError, tokenKeyName, refusedKey,
   listBanks, resolveAccount,
   createTravellerEscrow, getEscrow, FUNDED_STATES,
   createFeeAccount,
