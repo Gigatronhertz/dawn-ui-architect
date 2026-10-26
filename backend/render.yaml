@@ -88,13 +88,13 @@ services:
         sync: false
 
       # ── Payments (Pandascrow escrow) ───────────────────────────────────────
-      # Trip payments move to escrow once the API key and UUID are set.
+      # Trip payments move to escrow once a key and the UUID are set.
       # Webhook: https://<backend>/pandascrow/webhook
       - key: PANDASCROW_ENV
         value: sandbox
-      - key: PANDASCROW_API_KEY
-        sync: false
       - key: PANDASCROW_SECRET_KEY
+        sync: false
+      - key: PANDASCROW_PUBLIC_KEY
         sync: false
       - key: PANDASCROW_UUID
         sync: false

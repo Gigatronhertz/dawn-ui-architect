@@ -21,8 +21,12 @@ async function runSandboxCheck() {
   if (c.env !== 'sandbox' || !(/sandbox/.test(c.base) || /^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(c.base))) {
     return { refused: `PANDASCROW_ENV is "${c.env}" (${c.base}). This check only runs against the sandbox.`, results };
   }
-  const missing = ['PANDASCROW_API_KEY', 'PANDASCROW_UUID'].filter((k) => !process.env[k]);
-  report('API key and UUID are set', !missing.length, missing.length ? `missing: ${missing.join(', ')}` : '');
+  const missing = [
+    ...(c.keys.length ? [] : ['PANDASCROW_SECRET_KEY or PANDASCROW_PUBLIC_KEY']),
+    ...(process.env.PANDASCROW_UUID ? [] : ['PANDASCROW_UUID']),
+  ];
+  const have = ['SECRET', 'PUBLIC', 'API'].filter((k) => process.env[`PANDASCROW_${k}_KEY`]).map((k) => k.toLowerCase());
+  report('Keys and UUID are set', !missing.length, missing.length ? `missing: ${missing.join(', ')}` : `keys found: ${have.join(', ')}`);
   if (missing.length) return { results };
   report('Webhook secret is set', !!process.env.PANDASCROW_SECRET_KEY,
     process.env.PANDASCROW_SECRET_KEY ? '' : 'PANDASCROW_SECRET_KEY missing — webhooks would be checked with the API key instead');
@@ -31,11 +35,11 @@ async function runSandboxCheck() {
   let banks = [];
   try {
     banks = await pandascrow.listBanks();
-    report('Bank list (key accepted in the Token header)', banks.length > 0, `${banks.length} banks`);
+    report('Pandascrow accepts a key (bank list)', banks.length > 0, `${banks.length} banks; the ${pandascrow.tokenKeyName()} key works in the Token header`);
   } catch (e) {
-    report('Bank list (key accepted in the Token header)', false, `${e.status || ''} ${e.message} ${shape(e.body)}`);
-    if (e.status === 401 || e.status === 403) {
-      report('Hint', false, 'The key was refused. If PANDASCROW_API_KEY holds the secret key, try the public key there (or the other way round).');
+    report('Pandascrow accepts a key (bank list)', false, `${e.status || ''} ${e.message} ${shape(e.body)}`);
+    if (pandascrow.refusedKey(e)) {
+      report('Hint', false, `Pandascrow refused every key tried (${have.join(', ')}). Check they're the sandbox keys (sktest…/pktest…) and copied in full.`);
     }
     return { results };
   }

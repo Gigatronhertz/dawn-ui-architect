@@ -11,9 +11,14 @@
  * Karije's own Pandascrow wallet through a dynamic virtual account.
  *
  * Configuration (backend/.env):
- *   PANDASCROW_API_KEY     — sent as the `Token` header on every request
- *   PANDASCROW_SECRET_KEY  — signs webhooks (sktest… / sklive…); defaults to the API key
+ *   PANDASCROW_SECRET_KEY  — the dashboard's secret key (sktest… / sklive…); signs webhooks
+ *   PANDASCROW_PUBLIC_KEY  — the dashboard's public key
+ *   PANDASCROW_API_KEY     — optional: force the key sent as the `Token` header
  *   PANDASCROW_UUID        — Karije's own Pandascrow account uuid
+ *
+ * The docs don't say which dashboard key the `Token` header takes, so the
+ * client tries the secret key, then the public key, and keeps the first one
+ * Pandascrow accepts (PANDASCROW_API_KEY, if set, is tried first).
  *   PANDASCROW_ENV         — "sandbox" (default) or "live"
  *   PANDASCROW_BASE_URL    — optional override (used by the local tests)
  *   PANDASCROW_FEES_PAID_BY — "buyer" (default), "seller" or "both"
@@ -30,7 +35,9 @@ function config() {
   return {
     env,
     base:   (process.env.PANDASCROW_BASE_URL || BASE_URLS[env]).replace(/\/$/, ''),
-    key:    process.env.PANDASCROW_API_KEY || '',
+    // Keys to try in the Token header, in order, without repeats.
+    keys:   [...new Set([process.env.PANDASCROW_API_KEY, process.env.PANDASCROW_SECRET_KEY, process.env.PANDASCROW_PUBLIC_KEY]
+      .map((k) => String(k || '').trim()).filter(Boolean))],
     secret: process.env.PANDASCROW_SECRET_KEY || process.env.PANDASCROW_API_KEY || '',
     uuid:   process.env.PANDASCROW_UUID || '',
     feesBy: ['buyer', 'seller', 'both'].includes(process.env.PANDASCROW_FEES_PAID_BY)
@@ -41,7 +48,7 @@ function config() {
 /** Pandascrow takes over trip payments only once it is fully configured. */
 function available() {
   const c = config();
-  return !!(c.key && c.uuid);
+  return !!(c.keys.length && c.uuid);
 }
 
 class PandascrowError extends Error {
@@ -53,7 +60,43 @@ class PandascrowError extends Error {
   }
 }
 
-async function call(method, path, { body, query } = {}) {
+// The key Pandascrow last accepted in the Token header.
+let acceptedKey = null;
+
+/** Which configured key the Token header uses: "api", "secret", "public", or null before any call. */
+function tokenKeyName() {
+  if (!acceptedKey) return null;
+  const e = process.env;
+  if (acceptedKey === String(e.PANDASCROW_API_KEY || '').trim()) return 'api';
+  if (acceptedKey === String(e.PANDASCROW_SECRET_KEY || '').trim()) return 'secret';
+  return 'public';
+}
+
+async function call(method, path, opts = {}) {
+  const { keys } = config();
+  const order = acceptedKey && keys.includes(acceptedKey) ? [acceptedKey, ...keys.filter((k) => k !== acceptedKey)] : keys;
+  let lastErr;
+  for (const key of order) {
+    try {
+      const data = await callWith(key, method, path, opts);
+      acceptedKey = key;
+      return data;
+    } catch (err) {
+      lastErr = err;
+      // Only a refused key is worth retrying with the other one.
+      if (!refusedKey(err)) throw err;
+    }
+  }
+  throw lastErr || new PandascrowError('Pandascrow is not configured.');
+}
+
+/** Pandascrow said no to the key itself (a 401/403, or a 200 whose message says so). */
+function refusedKey(err) {
+  if (err.status === 401 || err.status === 403) return true;
+  return /invalid (api )?(token|key)|unauthori[sz]ed|token (is )?(missing|required|invalid)/i.test(err.message || '');
+}
+
+async function callWith(key, method, path, { body, query } = {}) {
   const c = config();
   try {
     const res = await axios({
@@ -61,7 +104,7 @@ async function call(method, path, { body, query } = {}) {
       url: `${c.base}${path}`,
       params: query,
       data: body,
-      headers: { Token: c.key, 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: { Token: key, 'Content-Type': 'application/json', Accept: 'application/json' },
       timeout: 30000,
     });
     if (res.data && res.data.status === false) {
@@ -225,7 +268,7 @@ function verifyWebhook(rawBody, signature, timestamp) {
 }
 
 module.exports = {
-  available, config, PandascrowError,
+  available, config, PandascrowError, tokenKeyName, refusedKey,
   listBanks, resolveAccount,
   createTravellerEscrow, getEscrow, FUNDED_STATES,
   createFeeAccount,
