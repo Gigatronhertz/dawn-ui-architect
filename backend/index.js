@@ -22,6 +22,10 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Render sits one proxy in front of us; trust it so req.ip is the caller's
+// address (used by the rate limits), not the proxy's.
+app.set('trust proxy', 1);
+
 // CORS — open to all origins by default (public API); lock down via FRONTEND_ORIGIN if needed
 app.use((req, res, next) => {
   const origin = req.headers.origin || '*';

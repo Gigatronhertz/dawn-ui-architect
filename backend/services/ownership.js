@@ -8,14 +8,14 @@
  */
 const crypto = require('crypto');
 const db = require('../db/client');
+const { safeEqual } = require('./rateLimit');
 
 function newOwnerKey() {
   return crypto.randomBytes(24).toString('hex');
 }
 
 function keyMatches(trip, ownerKey) {
-  if (!trip?.owner_key || typeof ownerKey !== 'string' || ownerKey.length !== trip.owner_key.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(ownerKey), Buffer.from(trip.owner_key));
+  return !!trip?.owner_key && safeEqual(ownerKey, trip.owner_key);
 }
 
 /** The trip's creator: its signed-in owner, or whoever holds its owner key. */

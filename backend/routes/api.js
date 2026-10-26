@@ -15,6 +15,7 @@ const paystack               = require('../services/paystack');
 const pandascrow             = require('../services/pandascrow');
 const collection             = require('../services/collection');
 const ownership              = require('../services/ownership');
+const { limit }              = require('../services/rateLimit');
 // Crediting a payment lives with the webhook that normally does it; the
 // payment-status endpoint reuses it so a payer is never stranded waiting.
 const { processPayment }     = require('../webhook');
@@ -35,7 +36,10 @@ const router = Router();
 // POST /api/plan
 // Creates a trip job and returns tripId immediately.
 // Actual AI + scraping runs in the background — client polls GET /api/plan/:tripId.
-router.post('/plan', optionalAuth, async (req, res) => {
+// Every plan is an AI call plus scraping — cap how many one address can start.
+const planLimit = limit({ name: 'plan', max: 20, windowMs: 60 * 60 * 1000, message: 'You’ve started a lot of plans in a short time. Please try again in a little while.' });
+
+router.post('/plan', planLimit, optionalAuth, async (req, res) => {
   const { origin, destination, budget, hotelBudgetPerNight, days, squadSize, accommodationType, dateFlexibility, dealbreakers, transport, vibe, specificDates, email, waNumber } = req.body;
 
   // The web intake sends hotelBudgetPerNight; the WhatsApp bot sends budget.
@@ -470,7 +474,7 @@ router.get('/public/plan/:tripId', async (req, res) => {
 
 // POST /api/public/plan/:tripId/join
 // Squad member taps "I'm in!" — no auth required.
-router.post('/public/plan/:tripId/join', async (req, res) => {
+router.post('/public/plan/:tripId/join', limit({ name: 'join', max: 30, windowMs: 15 * 60 * 1000 }), async (req, res) => {
   const trip = await db.trips.get(req.params.tripId);
   if (!trip) return res.status(404).json({ error: 'Plan not found.' });
   if (!SHAREABLE.includes(trip.status)) {

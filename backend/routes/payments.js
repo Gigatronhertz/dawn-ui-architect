@@ -21,6 +21,7 @@ const db = require('../db/client');
 const pandascrow = require('../services/pandascrow');
 const premium = require('../services/premium');
 const { requireAuth } = require('../middleware/auth');
+const { limit } = require('../services/rateLimit');
 const { sendPaymentReceiptEmail } = require('../services/email');
 
 const api = Router();      // mounted at /api
@@ -165,7 +166,7 @@ api.get('/banks', async (_req, res) => {
   }
 });
 
-api.post('/banks/resolve', requireAuth, async (req, res) => {
+api.post('/banks/resolve', limit({ name: 'bank-resolve', max: 30, windowMs: 15 * 60 * 1000 }), requireAuth, async (req, res) => {
   if (!pandascrow.available()) return res.status(503).json({ error: 'Bank lookup is not available yet.' });
   const bankCode = String(req.body?.bankCode || '').trim();
   const accountNumber = String(req.body?.accountNumber || '').replace(/\D/g, '');
@@ -186,7 +187,7 @@ api.post('/banks/resolve', requireAuth, async (req, res) => {
  * Body: { participantId, email?, gateway?: "virtual_account" | "payment_link", fresh?: boolean }
  * `fresh` asks for a new transfer account even if the current one is live.
  */
-api.post('/public/plan/:tripId/escrow', async (req, res) => {
+api.post('/public/plan/:tripId/escrow', limit({ name: 'escrow', max: 20, windowMs: 15 * 60 * 1000 }), async (req, res) => {
   if (!pandascrow.available()) return res.status(503).json({ error: 'Payments are not enabled yet.' });
   try {
     const trip = await db.trips.get(req.params.tripId);

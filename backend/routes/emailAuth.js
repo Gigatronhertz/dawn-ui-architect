@@ -12,6 +12,7 @@ const util       = require('util');
 const { linkTrip } = require('../services/ownership');
 const db         = require('../db/client');
 const jwt        = require('../services/jwt');
+const { limit }  = require('../services/rateLimit');
 
 const scryptAsync = util.promisify(crypto.scrypt);
 const router      = Router();
@@ -41,7 +42,11 @@ async function checkPassword(password, stored) {
 }
 
 // ── POST /auth/signup ──────────────────────────────────────────────────────
-router.post('/signup', async (req, res) => {
+const signupLimit = limit({ name: 'signup', max: 10, windowMs: 60 * 60 * 1000 });
+// Per address and per account, so a password can't be guessed by spreading tries.
+const loginLimit  = limit({ name: 'login', max: 10, windowMs: 15 * 60 * 1000, by: (req) => typeof req.body?.email === 'string' ? req.body.email.trim() : null });
+
+router.post('/signup', signupLimit, async (req, res) => {
   const { email, password, tripId, ownerKey } = req.body || {};
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -124,7 +129,7 @@ router.post('/signup', async (req, res) => {
 });
 
 // ── POST /auth/login ───────────────────────────────────────────────────────
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimit, async (req, res) => {
   const { email, password } = req.body || {};
 
   if (!email || !password) {

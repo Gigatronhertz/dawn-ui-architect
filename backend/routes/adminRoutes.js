@@ -25,6 +25,7 @@ const crypto     = require('crypto');
 const db         = require('../db/client');
 const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
 const ledger = require('../services/ledger');
+const { failures, safeEqual } = require('../services/rateLimit');
 const revenue = require('../services/revenue');
 const { hashPassword } = require('./emailAuth');
 const { sendPayoutReleasedEmail } = require('../services/email');
@@ -52,14 +53,19 @@ function checkAdminKey(key) {
     console.error('[admin] ADMIN_KEY is not set in production — admin panel is disabled.');
     return false;
   }
-  if (!key || key.length !== expected.length) return false;
-  // Constant-time compare so a wrong key can't be recovered by timing the response.
-  return crypto.timingSafeEqual(Buffer.from(key), Buffer.from(expected));
+  // Constant-time, and safe for any input — a wrong key can't be recovered
+  // by timing the response, and odd characters can't crash the check.
+  return safeEqual(key, expected);
 }
 
+// Ten wrong keys from one address locks it out for 15 minutes.
+const adminGuesses = failures({ name: 'admin', max: 10, windowMs: 15 * 60 * 1000 });
+
+// Header only: a key in the URL ends up in logs and browser history.
 function requireAdmin(req, res, next) {
-  const key = req.headers['x-admin-key'] || req.query.adminKey;
-  if (!checkAdminKey(key)) {
+  if (adminGuesses.blocked(req, res)) return;
+  if (!checkAdminKey(req.headers['x-admin-key'])) {
+    adminGuesses.fail(req);
     return res.status(401).json({ error: 'Invalid or missing admin key.' });
   }
   next();
@@ -67,8 +73,10 @@ function requireAdmin(req, res, next) {
 
 // ── POST /admin/auth/verify ────────────────────────────────────────────────────
 router.post('/auth/verify', (req, res) => {
+  if (adminGuesses.blocked(req, res)) return;
   const { key } = req.body || {};
   if (checkAdminKey(key)) return res.json({ ok: true });
+  adminGuesses.fail(req);
   return res.status(401).json({ error: 'Invalid admin key.' });
 });
 

@@ -16,6 +16,7 @@ const { Resend } = require('resend');
 const { linkTrip, safeRedirect } = require('../services/ownership');
 const db         = require('../db/client');
 const jwt        = require('../services/jwt');
+const { limit }  = require('../services/rateLimit');
 
 const router = Router();
 
@@ -25,7 +26,10 @@ const FROM     = () =>  process.env.EMAIL_FROM   || 'Karije <hello@karije.com>';
 const TTL_MS   = 15 * 60 * 1000; // 15 minutes
 
 // ── POST /auth/magic ───────────────────────────────────────────────────────
-router.post('/magic', async (req, res) => {
+// Each request sends an email — keep it from being used to flood an inbox.
+const magicLimit = limit({ name: 'magic', max: 10, windowMs: 15 * 60 * 1000, by: (req) => typeof req.body?.email === 'string' ? req.body.email.trim() : null });
+
+router.post('/magic', magicLimit, async (req, res) => {
   const { email, tripId, redirect, ownerKey } = req.body || {};
   if (!email || !email.includes('@')) {
     return res.status(400).json({ error: 'A valid email address is required.' });
@@ -73,7 +77,7 @@ router.post('/magic', async (req, res) => {
 });
 
 // ── GET /auth/verify ───────────────────────────────────────────────────────
-router.get('/verify', async (req, res) => {
+router.get('/verify', limit({ name: 'magic-verify', max: 30, windowMs: 15 * 60 * 1000 }), async (req, res) => {
   const { token } = req.query;
   const fe = FRONTEND();
 
