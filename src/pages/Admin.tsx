@@ -25,7 +25,7 @@ import {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "agents" | "revenue";
+type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "agents" | "revenue" | "payments";
 
 type MoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
@@ -1235,6 +1235,71 @@ function RevenueCard({ title, children, right }: { title: string; children: Reac
   );
 }
 
+// ── Payments check ───────────────────────────────────────────────────────────
+
+type CheckResult = { step: string; ok: boolean; detail: string };
+
+/** Runs the Pandascrow sandbox check on the server, with the keys it holds. */
+function PaymentsCheckSection({ adminKey }: { adminKey: string }) {
+  const [running, setRunning] = useState(false);
+  const [err, setErr]         = useState("");
+  const [refused, setRefused] = useState("");
+  const [results, setResults] = useState<CheckResult[] | null>(null);
+
+  async function run() {
+    setRunning(true); setErr(""); setRefused(""); setResults(null);
+    try {
+      const r = await apiFetch<{ refused?: string; results: CheckResult[] }>("/admin/pandascrow/check", adminKey, { method: "POST" });
+      setRefused(r.refused || "");
+      setResults(r.results);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "The check didn't run.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  const passed = results?.filter(r => r.ok).length ?? 0;
+
+  return (
+    <div className="mx-auto max-w-3xl px-6 py-8 space-y-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-gray-900">Pandascrow sandbox check</h2>
+        <p className="text-sm text-gray-600">
+          Checks the keys on the server, finds Karije's payout bank and account, opens a test ₦1,000 escrow by
+          transfer and by card, reads it back, makes a fee account and checks webhook signatures. It only runs while
+          <code className="mx-1 text-xs bg-gray-100 px-1 py-0.5 rounded">PANDASCROW_ENV</code>is
+          <code className="mx-1 text-xs bg-gray-100 px-1 py-0.5 rounded">sandbox</code>, so no real money moves. Takes up to a minute.
+        </p>
+        <button onClick={run} disabled={running}
+          className="rounded-lg bg-gray-900 text-white text-sm font-medium px-4 py-2.5 disabled:opacity-60">
+          {running ? "Running…" : results ? "Run again" : "Run sandbox check"}
+        </button>
+      </div>
+
+      {err && <div className="text-sm text-red-600">{err}</div>}
+      {refused && <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-4">Didn't run: {refused}</div>}
+
+      {results && !refused && (
+        <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+          <div className="px-5 py-3 text-sm font-medium text-gray-900">{passed}/{results.length} passed</div>
+          {results.map((r, i) => (
+            <div key={i} className="px-5 py-3 flex gap-3">
+              <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded h-fit ${r.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                {r.ok ? "PASS" : "FAIL"}
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm text-gray-900">{r.step}</div>
+                {r.detail && <div className="text-xs text-gray-500 mt-0.5 break-words font-mono">{r.detail}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RevenueSection({ adminKey }: { adminKey: string }) {
   const [data, setData]    = useState<RevenueReport | null>(null);
   const [err, setErr]      = useState("");
@@ -2289,6 +2354,7 @@ export default function Admin() {
     { id: "money",       label: "Money",       hint: "Collected, owed, and paid out" },
     { id: "attractions", label: "Attractions", hint: "Prices the planner quotes" },
     { id: "agents",      label: "Agencies",    hint: "Create logins, verify KYC documents" },
+    { id: "payments",    label: "Payments check", hint: "Test Pandascrow in the sandbox" },
   ];
 
   return (
@@ -2323,6 +2389,7 @@ export default function Admin() {
       {tab === "nightlife"   && <NightlifeSection   adminKey={adminKey} />}
       {tab === "events"      && <EventsSection      adminKey={adminKey} />}
       {tab === "revenue"     && <RevenueSection     adminKey={adminKey} />}
+      {tab === "payments"    && <PaymentsCheckSection adminKey={adminKey} />}
       {tab === "money"       && <MoneySection       adminKey={adminKey} />}
       {tab === "attractions" && <AttractionsSection adminKey={adminKey} />}
       {tab === "agents"      && <AgentsSection      adminKey={adminKey} />}

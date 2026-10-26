@@ -27,6 +27,7 @@ const { LAGOS_EXPERIENCES_SEED } = require('../services/experiencesSeed');
 const ledger = require('../services/ledger');
 const { failures, safeEqual } = require('../services/rateLimit');
 const revenue = require('../services/revenue');
+const { runSandboxCheck } = require('../services/sandboxCheck');
 const { hashPassword } = require('./emailAuth');
 const { sendPayoutReleasedEmail } = require('../services/email');
 
@@ -124,6 +125,18 @@ router.get('/revenue', requireAdmin, async (req, res) => {
     res.json(await revenue.report());
   } catch (err) {
     console.error('[admin] GET revenue failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /admin/pandascrow/check ───────────────────────────────────────────────
+// Runs the Pandascrow sandbox check on the server, with the keys it holds.
+// Sandbox only — it refuses when PANDASCROW_ENV is live.
+router.post('/pandascrow/check', requireAdmin, async (req, res) => {
+  try {
+    res.json(await runSandboxCheck());
+  } catch (err) {
+    console.error('[admin] pandascrow check failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
