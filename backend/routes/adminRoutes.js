@@ -28,6 +28,7 @@ const ledger = require('../services/ledger');
 const { failures, safeEqual } = require('../services/rateLimit');
 const revenue = require('../services/revenue');
 const { runSandboxCheck } = require('../services/sandboxCheck');
+const risk = require('../services/risk');
 const { hashPassword } = require('./emailAuth');
 const { sendPayoutReleasedEmail } = require('../services/email');
 
@@ -126,6 +127,26 @@ router.get('/revenue', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[admin] GET revenue failed:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Risk flags (docs/AML_RISK_POLICY.md) ───────────────────────────────────────
+router.get('/risk/flags', requireAdmin, async (req, res) => {
+  try {
+    res.json(await risk.computeFlags());
+  } catch (err) {
+    console.error('[admin] risk flags failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** Body: { status: "cleared" | "escalated" | "reported", note, reviewer? } */
+router.post('/risk/flags/:flagId/review', requireAdmin, async (req, res) => {
+  try {
+    await risk.review({ flagId: req.params.flagId, ...(req.body || {}) });
+    res.json(await risk.computeFlags());
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

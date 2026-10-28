@@ -489,6 +489,24 @@ const MIGRATIONS = [
   // can attach the trip to an account or change it.
   `ALTER TABLE trips ADD COLUMN owner_key TEXT`,
   `ALTER TABLE magic_links ADD COLUMN owner_key TEXT`,
+  // Risk flags (services/risk.js): payout account changes, and the review
+  // recorded against each flag.
+  `CREATE TABLE IF NOT EXISTS payout_changes (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject          TEXT NOT NULL,
+    subject_id       TEXT NOT NULL,
+    old_account      TEXT,
+    new_account      TEXT,
+    new_account_name TEXT,
+    created_at       INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  `CREATE TABLE IF NOT EXISTS risk_reviews (
+    flag_id     TEXT PRIMARY KEY,
+    status      TEXT NOT NULL,
+    note        TEXT NOT NULL,
+    reviewer    TEXT,
+    reviewed_at INTEGER NOT NULL
+  )`,
   // Existing agency trips keep the price they were already collecting at.
   `UPDATE trips SET price_per_person = CAST(json_extract(plan, '$.cost_breakdown.per_person') AS INTEGER)
      WHERE agent_id IS NOT NULL AND price_per_person IS NULL AND json_valid(plan)`,

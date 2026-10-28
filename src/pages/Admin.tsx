@@ -25,7 +25,7 @@ import {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "agents" | "revenue" | "payments";
+type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "agents" | "revenue" | "payments" | "risk";
 
 type MoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
@@ -1235,6 +1235,131 @@ function RevenueCard({ title, children, right }: { title: string; children: Reac
   );
 }
 
+// ── Risk flags ───────────────────────────────────────────────────────────────
+
+type RiskFlag = {
+  id: string; type: string; level: "high" | "medium"; tripId: string | null; at: number | null;
+  summary: string; detail: string;
+  review: { status: "cleared" | "escalated" | "reported"; note: string; reviewer: string | null; at: number } | null;
+};
+
+const RISK_LABEL: Record<string, string> = {
+  large_payment: "Large payment",
+  rapid_bookings: "Many bookings, short time",
+  many_places_one_payer: "Many places, one contact",
+  payout_change_after_paid: "Payout account changed",
+  unverified_supplier_paid: "Unverified supplier paid",
+};
+
+/** Flags from docs/AML_RISK_POLICY.md: high before any payout, medium within 2 business days. */
+function RiskSection({ adminKey }: { adminKey: string }) {
+  const [flags, setFlags]   = useState<RiskFlag[] | null>(null);
+  const [limit, setLimit]   = useState(0);
+  const [err, setErr]       = useState("");
+  const [show, setShow]     = useState<"open" | "all">("open");
+  const [open, setOpen]     = useState<string | null>(null);
+  const [status, setStatus] = useState<"cleared" | "escalated" | "reported">("cleared");
+  const [note, setNote]     = useState("");
+  const [reviewer, setReviewer] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => {
+    apiFetch<{ flags: RiskFlag[]; thresholds: { largePayment: number } }>("/admin/risk/flags", adminKey)
+      .then(d => { setFlags(d.flags); setLimit(d.thresholds.largePayment); })
+      .catch(e => setErr(e.message));
+  }, [adminKey]);
+  useEffect(load, [load]);
+
+  async function save(id: string) {
+    setSaving(true); setErr("");
+    try {
+      const d = await apiFetch<{ flags: RiskFlag[] }>(`/admin/risk/flags/${encodeURIComponent(id)}/review`, adminKey, {
+        method: "POST", body: JSON.stringify({ status, note, reviewer }),
+      });
+      setFlags(d.flags); setOpen(null); setNote("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save the review.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!flags) return <div className="mx-auto max-w-4xl px-6 py-8 text-sm text-gray-400">{err || "Loading…"}</div>;
+  const openFlags = flags.filter(f => !f.review);
+  const list = show === "open" ? openFlags : flags;
+  const date = (t: number | null) => t ? new Date(t * 1000).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : "";
+
+  return (
+    <div className="mx-auto max-w-4xl px-6 py-8 space-y-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-2">
+        <h2 className="text-lg font-semibold text-gray-900">Risk flags</h2>
+        <p className="text-sm text-gray-600">
+          Activity the AML risk policy says someone must look at. <strong>High</strong>: review before paying anything out on that trip.
+          <strong> Medium</strong>: review within 2 business days. Large-payment threshold: {naira(limit)}.
+        </p>
+        <div className="flex gap-2 pt-1">
+          {(["open", "all"] as const).map(s => (
+            <button key={s} onClick={() => setShow(s)}
+              className={`text-xs font-medium px-3 py-1.5 rounded-full border ${show === s ? "bg-gray-900 text-white border-gray-900" : "border-gray-300 text-gray-700"}`}>
+              {s === "open" ? `To review (${openFlags.length})` : `All (${flags.length})`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {err && <div className="text-sm text-red-600">{err}</div>}
+      {list.length === 0 && <div className="text-sm text-gray-500 px-1">Nothing to review.</div>}
+
+      <div className="space-y-3">
+        {list.map(f => (
+          <div key={f.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+            <div className="flex items-start gap-3">
+              <span className={`shrink-0 text-[11px] font-semibold uppercase px-2 py-0.5 rounded ${f.level === "high" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}>{f.level}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-gray-500">{RISK_LABEL[f.type] || f.type}{f.at ? ` · ${date(f.at)}` : ""}{f.tripId ? ` · trip ${f.tripId.slice(0, 8)}` : ""}</div>
+                <div className="text-sm font-medium text-gray-900">{f.summary}</div>
+                <div className="text-xs text-gray-600 mt-0.5 break-words">{f.detail}</div>
+              </div>
+              {!f.review && open !== f.id && (
+                <button onClick={() => { setOpen(f.id); setStatus("cleared"); setNote(""); }}
+                  className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-300 hover:border-gray-500">Review</button>
+              )}
+            </div>
+            {f.review && (
+              <div className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+                <span className="font-semibold capitalize">{f.review.status}</span>
+                {f.review.reviewer ? ` by ${f.review.reviewer}` : ""} · {date(f.review.at)} — {f.review.note}
+              </div>
+            )}
+            {open === f.id && (
+              <div className="space-y-2 pt-1">
+                <div className="flex flex-wrap gap-2">
+                  {(["cleared", "escalated", "reported"] as const).map(s => (
+                    <button key={s} onClick={() => setStatus(s)}
+                      className={`text-xs px-3 py-1.5 rounded-full border capitalize ${status === s ? "bg-gray-900 text-white border-gray-900" : "border-gray-300 text-gray-700"}`}>
+                      {s === "reported" ? "Reported to NFIU" : s}
+                    </button>
+                  ))}
+                </div>
+                <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
+                  placeholder="What you checked and why you decided this"
+                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2" />
+                <div className="flex gap-2">
+                  <input value={reviewer} onChange={e => setReviewer(e.target.value)} placeholder="Your name"
+                    className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2" />
+                  <button onClick={() => save(f.id)} disabled={saving || !note.trim()}
+                    className="text-sm font-medium px-4 py-2 rounded-lg bg-gray-900 text-white disabled:opacity-50">{saving ? "Saving…" : "Save review"}</button>
+                  <button onClick={() => setOpen(null)} className="text-sm px-3 py-2 text-gray-600">Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Payments check ───────────────────────────────────────────────────────────
 
 type CheckResult = { step: string; ok: boolean; detail: string };
@@ -2354,6 +2479,7 @@ export default function Admin() {
     { id: "money",       label: "Money",       hint: "Collected, owed, and paid out" },
     { id: "attractions", label: "Attractions", hint: "Prices the planner quotes" },
     { id: "agents",      label: "Agencies",    hint: "Create logins, verify KYC documents" },
+    { id: "risk",        label: "Risk",        hint: "Flags to review under the AML risk policy" },
     { id: "payments",    label: "Payments check", hint: "Test Pandascrow in the sandbox" },
   ];
 
@@ -2390,6 +2516,7 @@ export default function Admin() {
       {tab === "events"      && <EventsSection      adminKey={adminKey} />}
       {tab === "revenue"     && <RevenueSection     adminKey={adminKey} />}
       {tab === "payments"    && <PaymentsCheckSection adminKey={adminKey} />}
+      {tab === "risk"        && <RiskSection adminKey={adminKey} />}
       {tab === "money"       && <MoneySection       adminKey={adminKey} />}
       {tab === "attractions" && <AttractionsSection adminKey={adminKey} />}
       {tab === "agents"      && <AgentsSection      adminKey={adminKey} />}

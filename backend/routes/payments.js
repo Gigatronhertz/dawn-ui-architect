@@ -23,6 +23,7 @@ const premium = require('../services/premium');
 const { requireAuth } = require('../middleware/auth');
 const { limit } = require('../services/rateLimit');
 const { normalisePhone } = require('../services/phone');
+const risk = require('../services/risk');
 const { sendPaymentReceiptEmail } = require('../services/email');
 
 const api = Router();      // mounted at /api
@@ -404,6 +405,11 @@ api.put('/auth/plans/:tripId/payout', requireAuth, async (req, res) => {
       'UPDATE trips SET payout_bank_code = ?, payout_bank_name = ?, payout_account_no = ?, payout_account_name = ?, notify_wa = ? WHERE id = ?',
       [bankCode, bankName || null, accountNumber, accountName, phone, trip.id]
     );
+    await risk.logPayoutChange({
+      subject: 'trip', subjectId: trip.id,
+      before: { bankCode: trip.payout_bank_code, accountNo: trip.payout_account_no },
+      after:  { bankCode, accountNo: accountNumber, accountName },
+    });
     res.json(await collectionState(await db.trips.get(trip.id)));
   } catch (err) {
     res.status(400).json({ error: 'We could not find that account. Check the bank and number.' });

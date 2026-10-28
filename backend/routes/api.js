@@ -17,6 +17,7 @@ const collection             = require('../services/collection');
 const { normalisePhone }     = require('../services/phone');
 const ownership              = require('../services/ownership');
 const { limit }              = require('../services/rateLimit');
+const risk                   = require('../services/risk');
 // Crediting a payment lives with the webhook that normally does it; the
 // payment-status endpoint reuses it so a payer is never stranded waiting.
 const { processPayment }     = require('../webhook');
@@ -1108,6 +1109,11 @@ router.patch('/pro/payout', requireAuth, requireAgent, async (req, res) => {
         id: req.agent.id, bankCode: code, bankName: typeof bankName === 'string' ? bankName.trim() : null,
         accountNo: number, accountName: resolved.accountName,
       });
+      await risk.logPayoutChange({
+        subject: 'agent', subjectId: req.agent.id,
+        before: { bankCode: req.agent.payout_bank_code, accountNo: req.agent.payout_account_no },
+        after:  { bankCode: code, accountNo: number, accountName: resolved.accountName },
+      });
       return res.json({ ok: true, agent: await db.agents.getById(req.agent.id) });
     }
     if (!accountNo || !accountName) {
@@ -1119,6 +1125,11 @@ router.patch('/pro/payout', requireAuth, requireAgent, async (req, res) => {
       bankName:    typeof bankName === 'string' ? bankName.trim() : null,
       accountNo:   String(accountNo).trim(),
       accountName: String(accountName).trim(),
+    });
+    await risk.logPayoutChange({
+      subject: 'agent', subjectId: req.agent.id,
+      before: { bankCode: req.agent.payout_bank_code, accountNo: req.agent.payout_account_no },
+      after:  { bankCode: typeof bankCode === 'string' ? bankCode.trim() : null, accountNo: String(accountNo).trim(), accountName: String(accountName).trim() },
     });
     res.json({ ok: true, agent: await db.agents.getById(req.agent.id) });
   } catch (err) {
