@@ -32,7 +32,7 @@ const hooks = Router();    // mounted at /
 const SHAREABLE = ['awaiting_group', 'curated', 'custom'];
 const frontend = () => (process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '');
 
-const { TIERS, tripKind, collects, parseJson } = require('../services/collection');
+const { FRIEND_ESCROW, TIERS, tripKind, collects, parseJson } = require('../services/collection');
 
 /**
  * Who the escrow pays out to: the agency, the friend-trip organiser, or
@@ -356,7 +356,8 @@ api.post('/auth/plans/:tripId/collection', requireAuth, async (req, res) => {
     const trip = await ownTripOr(res, req);
     if (!trip) return;
     const tier = String(req.body?.tier || '');
-    if (!TIERS[tier]) return res.status(400).json({ error: 'Choose free, reminders or escrow.' });
+    if (!TIERS[tier]) return res.status(400).json({ error: 'Choose free or reminders.' });
+    if (tier === 'escrow' && !FRIEND_ESCROW) return res.status(400).json({ error: 'Escrow collection isn’t available for friend trips.' });
 
     const order = ['none', 'notify', 'escrow'];
     // Stepping down, or anything while the beta waives fees, needs no payment.

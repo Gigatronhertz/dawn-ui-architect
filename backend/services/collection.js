@@ -25,10 +25,17 @@ function tripKind(trip) {
   return 'friend';
 }
 
+/**
+ * Friend-trip escrow is switched off: Karije sells agency and curated trips
+ * as the merchant of record, but doesn't collect friends' shares for each
+ * other (see the Terms, section 8). Flip this to bring the option back.
+ */
+const FRIEND_ESCROW = false;
+
 /** Does this trip take payments through Karije at all? */
 function collects(trip) {
   if (!pandascrow.available()) return true;
-  return tripKind(trip) !== 'friend' || trip.collection_tier === 'escrow';
+  return tripKind(trip) !== 'friend' || (FRIEND_ESCROW && trip.collection_tier === 'escrow');
 }
 
 /**
@@ -45,4 +52,4 @@ function remindersOn(trip) {
   return trip.collection_tier === 'notify' || trip.collection_tier === 'escrow';
 }
 
-module.exports = { TIERS, tripKind, collects, escrowed, remindersOn, parseJson };
+module.exports = { FRIEND_ESCROW, TIERS, tripKind, collects, escrowed, remindersOn, parseJson };

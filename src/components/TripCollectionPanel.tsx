@@ -7,11 +7,16 @@ import { normalisePhone } from "@/lib/phone";
 const fmtNGN = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
 
-const OPTIONS: { tier: CollectionTier; title: string; desc: string; icon: typeof Bell }[] = [
+// Friend-trip escrow is hidden: Karije doesn't collect friends' shares for
+// each other (Terms, section 8). The server refuses it too.
+const FRIEND_ESCROW = false;
+
+const ALL_OPTIONS: { tier: CollectionTier; title: string; desc: string; icon: typeof Bell }[] = [
   { tier: "none",   title: "Free",              desc: "Share the plan and see who's in. You chase friends for their share yourself.", icon: Share2 },
   { tier: "notify", title: "Reminders",         desc: "We remind your friends to pay, by email and WhatsApp, so you don't have to.", icon: Bell },
   { tier: "escrow", title: "Escrow collection", desc: "Friends pay their own share into escrow. We hold it and release it to you. Reminders included.", icon: ShieldCheck },
 ];
+const OPTIONS = ALL_OPTIONS.filter((o) => FRIEND_ESCROW || o.tier !== "escrow");
 
 /**
  * The organiser's controls on their own friend trip: which option is on,
@@ -79,13 +84,15 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
     <div className="kj-card p-5 space-y-4 print:hidden">
       <div>
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your trip · organiser only</div>
-        <h2 className="text-2xl mt-1">How do you want to collect?</h2>
+        <h2 className="text-2xl mt-1">{FRIEND_ESCROW ? "How do you want to collect?" : "Who chases your friends?"}</h2>
         {state.feesWaived && <p className="text-sm text-muted-foreground mt-1">Every option is free while Karije is in beta.</p>}
       </div>
 
       <div className="space-y-2" role="radiogroup" aria-label="Collection option">
         {OPTIONS.map(({ tier, title, desc, icon: Icon }) => {
-          const on = state.tier === tier;
+          // A trip switched to escrow before it was hidden still has reminders.
+          const current = !FRIEND_ESCROW && state.tier === "escrow" ? "notify" : state.tier;
+          const on = current === tier;
           const cost = price(tier);
           return (
             <button
@@ -117,7 +124,7 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
       {fee && (
         <div className="rounded-xl bg-secondary/60 p-4 space-y-3">
           <p className="text-sm">
-            To switch on <strong>{OPTIONS.find((o) => o.tier === fee.tier)?.title.toLowerCase()}</strong>, transfer
+            To switch on <strong>{ALL_OPTIONS.find((o) => o.tier === fee.tier)?.title.toLowerCase()}</strong>, transfer
             exactly <strong>{fmtNGN(fee.amount)}</strong> to:
           </p>
           <div className="flex items-center justify-between gap-3">
@@ -139,7 +146,7 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
         </div>
       )}
 
-      {state.tier === "escrow" && (
+      {FRIEND_ESCROW && state.tier === "escrow" && (
         <div className="space-y-3 pt-1">
           <div>
             <div className="font-semibold">Where your friends' money goes</div>
