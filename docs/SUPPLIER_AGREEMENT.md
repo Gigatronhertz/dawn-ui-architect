@@ -4,7 +4,7 @@ This agreement is made on [TO COMPLETE: date]
 
 **Between:**
 
-**[TO COMPLETE: Karije's registered company name]**, a company registered in Nigeria with RC number [TO COMPLETE], whose registered office is at [TO COMPLETE] (trading as **Karije**, "Karije"); and
+**KARIJE TRIPS & TOURS SERVICES**, a business name registered in Nigeria under the Companies and Allied Matters Act 2020 with registration number BN 9932623, owned by [TO COMPLETE: proprietor's name] as sole proprietor, whose principal place of business is at [TO COMPLETE: address] (trading as **Karije**, "Karije"); and
 
 **[TO COMPLETE: supplier's registered name]**, a [TO COMPLETE: company / business name] registered in Nigeria with number [TO COMPLETE], whose address is at [TO COMPLETE] (the "Supplier").
 

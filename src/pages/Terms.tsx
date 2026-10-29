@@ -42,8 +42,9 @@ export default function Terms() {
 
           <Section title="1. Who we are">
             <P>
-              Karije is an online travel company. These terms are an agreement between you and Karije about using karije.com and
-              about any trip you buy from us. By booking a trip or creating an account, you agree to them.
+              Karije is an online travel company, operated by Karije Trips &amp; Tours Services, a business registered in Nigeria with
+              the Corporate Affairs Commission (business name no. BN 9932623). These terms are an agreement between you and Karije
+              about using karije.com and about any trip you buy from us. By booking a trip or creating an account, you agree to them.
             </P>
           </Section>
 

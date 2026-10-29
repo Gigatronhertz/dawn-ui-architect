@@ -1,6 +1,6 @@
 # Anti-Money Laundering and Customer Risk Policy
 
-[TO COMPLETE: registered company name] (trading as Karije)
+KARIJE TRIPS & TOURS SERVICES (trading as Karije), business name registration no. BN 9932623
 
 Version 1.0 · Effective date: [TO COMPLETE: date approved] · Next review: 12 months after approval
 
@@ -27,7 +27,7 @@ The main risks we watch for are: unusually large or repeated bookings used to mo
 
 ## 3. Responsibilities
 
-- **Board / directors:** approve this policy and any change to it, and receive a report from the Compliance Officer at least once a year.
+- **Proprietor:** approves this policy and any change to it, and receives a report from the Compliance Officer at least once a year. (Karije is a sole proprietorship; if it becomes a company, its board takes on this role.)
 - **Compliance Officer:** [TO COMPLETE: name, role, email]. Owns this policy; reviews high-risk flags; decides whether to report suspicious activity; keeps the records described below; arranges staff training.
 - **Staff who handle customers, suppliers or payments:** follow this policy, and raise anything suspicious with the Compliance Officer straight away.
 
@@ -150,7 +150,7 @@ This policy is reviewed at least once a year, and whenever our business, the law
 
 ## 14. Approval
 
-Approved by: [TO COMPLETE: name and position of director]
+Approved by: [TO COMPLETE: name], Proprietor
 
 Signature: [TO COMPLETE]
 
