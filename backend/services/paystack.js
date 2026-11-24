@@ -1,6 +1,7 @@
 const axios = require('axios');
 
-const BASE = 'https://api.paystack.co';
+// PAYSTACK_BASE_URL is only for the local tests' stand-in.
+const BASE = (process.env.PAYSTACK_BASE_URL || 'https://api.paystack.co').replace(/\/$/, '');
 
 /** True when PAYSTACK_SECRET_KEY is configured. Use to gate the /pay endpoint gracefully. */
 const available = () => !!process.env.PAYSTACK_SECRET_KEY;
@@ -30,6 +31,14 @@ async function verifyPayment(reference) {
     // reusable — this is what recurring subscription billing charges again
     // later. A bank-transfer/USSD payment never carries one.
     authorizationCode: authorization?.reusable ? authorization.authorization_code : null,
+    // What instalment auto-pay keeps: a reusable card, and how to name it to
+    // the traveller ("Visa ••••4081").
+    authorization: authorization?.reusable ? {
+      code:    authorization.authorization_code,
+      channel: authorization.channel || null,
+      label:   [authorization.brand ? authorization.brand.charAt(0).toUpperCase() + authorization.brand.slice(1) : 'Card',
+                authorization.last4 ? `••••${authorization.last4}` : ''].filter(Boolean).join(' '),
+    } : null,
   };
 }
 
@@ -40,7 +49,7 @@ const fmtNGN = (n) =>
  * Initialize a payment for a web squad member (participants table).
  * Uses a reference prefixed WEBSQ- so the webhook can identify it.
  */
-async function initializeWebPayment({ tripId, participantId, email, name, amountNGN, callbackUrl }) {
+async function initializeWebPayment({ tripId, participantId, email, name, amountNGN, callbackUrl, channels }) {
   const amountKobo = Math.round(amountNGN * 100);
   const reference  = `WEBSQ-${tripId.slice(0, 8)}-${participantId.slice(0, 8)}-${Date.now()}`;
 
@@ -52,6 +61,9 @@ async function initializeWebPayment({ tripId, participantId, email, name, amount
       reference,
       callback_url: callbackUrl,
       currency:     'NGN',
+      // Card only when this payment is meant to set up auto-pay: a transfer or
+      // USSD payment leaves nothing to charge next month.
+      ...(channels ? { channels } : {}),
       metadata: {
         payment_type:   'web_squad',
         participant_id: participantId,
@@ -127,6 +139,31 @@ async function chargeAuthorization({ agentId, authorizationCode, email, amountNG
 }
 
 /**
+ * Charges a traveller's saved card for their next instalment (auto-pay).
+ * WEBSQ- reference, so the webhook and processPayment credit it exactly like
+ * a checkout payment; processPayment is idempotent on the reference.
+ * Returns the reference and Paystack's status ("success", "failed", or a
+ * pending state for an asynchronous debit).
+ */
+async function chargeInstalment({ tripId, participantId, authorizationCode, email, amountNGN }) {
+  const reference = `WEBSQ-${tripId.slice(0, 8)}-${participantId.slice(0, 8)}-AP${Date.now()}`;
+  const res = await axios.post(
+    `${BASE}/transaction/charge_authorization`,
+    {
+      authorization_code: authorizationCode,
+      email,
+      amount:   Math.round(amountNGN * 100),
+      reference,
+      currency: 'NGN',
+      metadata: { payment_type: 'web_squad', participant_id: participantId, trip_id: tripId, autopay: true },
+    },
+    { headers: headers() }
+  );
+  const { status, gateway_response } = res.data.data || {};
+  return { reference, status: status || 'failed', gatewayResponse: gateway_response || null };
+}
+
+/**
  * Checkout for a one-off pack of AI trip plans. Reference prefixed AIPLAN- so
  * the shared webhook can route it.
  */
@@ -149,5 +186,5 @@ async function initializeAiCreditsPayment({ userId, email, amountNGN, credits, c
 
 module.exports = {
   available, initializeAiCreditsPayment, initializeWebPayment, verifyPayment, fmtNGN,
-  initializeSubscriptionSetup, chargeAuthorization,
+  initializeSubscriptionSetup, chargeAuthorization, chargeInstalment,
 };

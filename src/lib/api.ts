@@ -105,6 +105,8 @@ export type PublicPlanResponse = {
   paymentProvider?: 'pandascrow' | 'paystack';
   /** Escrow trips need every traveller's phone number. */
   phoneRequired?:   boolean;
+  /** Present when Karije is booking this friend trip: its price and pay-by date. */
+  managed?:         { price: number; payBy: string | null } | null;
   participants:     { name: string | null; paid: boolean; createdAt: number }[];
   /** Present only on curated trips — the Karije-run ones. */
   curated: {
@@ -406,7 +408,8 @@ export type Escrow = {
 
 export type Bank = { name: string; code: string };
 
-export type CollectionTier = 'none' | 'notify' | 'escrow';
+export type CollectionTier = 'none' | 'notify' | 'escrow' | 'managed';
+export type ManagedStatus = 'requested' | 'quoted' | 'accepted' | 'declined';
 
 /** A friend trip's chosen option, its pending fee and its payout account. */
 export type TripCollection = {
@@ -420,6 +423,8 @@ export type TripCollection = {
     tier: CollectionTier; amount: number; reference: string;
     accountNumber: string; accountName: string | null; bankName: string | null; expiresAt: string | null;
   } | null;
+  /** "Karije books it": the request and Karije's quote. */
+  managed: { status: ManagedStatus | null; price: number | null; payBy: string | null; note: string | null } | null;
 };
 
 export type PaymentsConfig = {
@@ -686,6 +691,7 @@ export const api = {
       paid: boolean; amount: number | null; paidAt: number | null; hasEmail: boolean; hasPhone?: boolean;
       paymentPlan: "full" | "installment"; installmentMonths: number | null;
       paidAmount: number | null; remaining: number | null; nextDueAt: number | null;
+      autopay?: boolean; autopayCard?: string | null; autopayStopped?: boolean;
     }>(
       `/api/public/plan/${tripId}/participant/${participantId}`
     ),
@@ -715,9 +721,14 @@ export const api = {
    *  full — pro-agency trips only. First installment is due immediately;
    *  payLink()/initPayment() already know to charge the next slice once this
    *  has been called. */
-  subscribeInstallment: (tripId: string, opts: { participantId: string; months: number }) =>
-    post<{ ok: boolean; amount: number; months: number; installmentAmount: number }>(
+  subscribeInstallment: (tripId: string, opts: { participantId: string; months: number; autopay?: boolean }) =>
+    post<{ ok: boolean; amount: number; months: number; installmentAmount: number; autopay: boolean }>(
       `/api/public/plan/${tripId}/subscribe`, opts
+    ),
+  /** Turn instalment auto-pay on or off. Off also forgets the saved card. */
+  setAutopay: (tripId: string, participantId: string, enabled: boolean) =>
+    post<{ ok: boolean; autopay: boolean }>(
+      `/api/public/plan/${tripId}/participant/${participantId}/autopay`, { enabled }
     ),
 
   /** Send a magic sign-in link to the given email. Returns preview URL if Resend not configured. */
@@ -917,6 +928,9 @@ export const api = {
     post<TripCollection>(`/api/auth/plans/${tripId}/collection`, { tier }, bearer(token)),
   setTripPayout: (tripId: string, payload: { bankCode: string; bankName: string; accountNumber: string; phone?: string }, token: string) =>
     put<TripCollection>(`/api/auth/plans/${tripId}/payout`, payload, bearer(token)),
+  /** The organiser accepts or declines Karije's price for booking their trip. */
+  answerManagedQuote: (tripId: string, accept: boolean, token: string) =>
+    post<TripCollection>(`/api/auth/plans/${tripId}/managed`, { accept }, bearer(token)),
 
   /** Verified agencies with at least one listed trip — the home page's
    *  "agencies we work with" showcase. */

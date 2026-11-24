@@ -29,6 +29,7 @@ const { failures, safeEqual } = require('../services/rateLimit');
 const revenue = require('../services/revenue');
 const { runSandboxCheck } = require('../services/sandboxCheck');
 const risk = require('../services/risk');
+const { sendManagedQuoteEmail } = require('../services/email');
 const { hashPassword } = require('./emailAuth');
 const { sendPayoutReleasedEmail } = require('../services/email');
 
@@ -128,6 +129,80 @@ router.get('/revenue', requireAdmin, async (req, res) => {
     console.error('[admin] GET revenue failed:', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── "Karije books it" requests ─────────────────────────────────────────────────
+// Friend trips whose organiser asked Karije to book and sell the trip. Admin
+// quotes a price per person (Karije's margin included) and a pay-by date; the
+// organiser accepts, then friends pay Karije.
+router.get('/managed', requireAdmin, async (req, res) => {
+  try {
+    const rows = await db.rawAll(
+      `SELECT t.id, t.destination, t.origin, t.days, t.squad_size, t.selected_date, t.plan, t.notify_email, t.notify_wa,
+              t.managed_status, t.managed_price, t.managed_pay_by, t.managed_note, t.managed_requested_at, t.managed_quoted_at,
+              u.email AS organiser_email, u.name AS organiser_name,
+              (SELECT COUNT(*) FROM participants p WHERE p.trip_id = t.id) AS joined,
+              (SELECT COALESCE(SUM(pp.amount), 0) FROM participant_payments pp WHERE pp.trip_id = t.id) AS collected
+         FROM trips t LEFT JOIN users u ON u.id = t.user_id
+        WHERE t.collection_tier = 'managed' OR t.managed_status IS NOT NULL
+        ORDER BY CASE t.managed_status WHEN 'requested' THEN 0 WHEN 'quoted' THEN 1 WHEN 'accepted' THEN 2 ELSE 3 END,
+                 t.managed_requested_at DESC`);
+    res.json({ trips: rows.map((r) => {
+      let plan = null; try { plan = r.plan ? JSON.parse(r.plan) : null; } catch (_) { /* bad plan JSON */ }
+      return {
+        tripId: r.id, destination: r.destination, origin: r.origin, days: Number(r.days) || null,
+        squadSize: Number(r.squad_size) || null, date: r.selected_date || null,
+        planEstimate: Number(plan?.cost_breakdown?.per_person) || null,
+        hotel: plan?.hotel?.name || null, transport: plan?.transport?.summary || plan?.transport?.mode || null,
+        organiser: { name: r.organiser_name || null, email: r.organiser_email || r.notify_email || null, phone: r.notify_wa || null },
+        status: r.managed_status, price: r.managed_price ? Number(r.managed_price) : null,
+        payBy: r.managed_pay_by || null, note: r.managed_note || null,
+        requestedAt: Number(r.managed_requested_at) || null, joined: Number(r.joined), collected: Number(r.collected),
+      };
+    }) });
+  } catch (err) {
+    console.error('[admin] managed list failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** Body: { pricePerPerson, payBy: "YYYY-MM-DD", note? } */
+router.post('/managed/:tripId/quote', requireAdmin, async (req, res) => {
+  const trip = await db.trips.get(req.params.tripId);
+  if (!trip || trip.collection_tier !== 'managed') return res.status(404).json({ error: 'No booking request for that trip.' });
+  const price = Math.round(Number(req.body?.pricePerPerson));
+  const payBy = String(req.body?.payBy || '');
+  if (!(price > 0)) return res.status(400).json({ error: 'Enter the price per person.' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(payBy)) return res.status(400).json({ error: 'Enter the pay-by date.' });
+  const paid = await db.raw('SELECT COUNT(*) AS n FROM participant_payments WHERE trip_id = ?', [trip.id]);
+  if (Number(paid?.n || 0) > 0) return res.status(409).json({ error: 'Friends have already paid at the current price, so it can’t change.' });
+  // A new or changed price goes back to the organiser to accept.
+  await db.raw(
+    `UPDATE trips SET managed_status = 'quoted', managed_price = ?, managed_pay_by = ?, managed_note = ?, managed_quoted_at = unixepoch(), managed_decided_at = NULL
+      WHERE id = ?`, [price, payBy, String(req.body?.note || '').trim().slice(0, 1000) || null, trip.id]);
+  // Tell the organiser; a mail failure doesn't undo the quote.
+  try {
+    const user = trip.user_id ? await db.users.get(trip.user_id) : null;
+    const fe = (process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '');
+    await sendManagedQuoteEmail({
+      to: user?.email || trip.notify_email, name: user?.name || null, tripName: trip.destination || 'your trip',
+      price, payBy, note: req.body?.note || null, link: `${fe}/plan/${trip.id}`,
+    });
+  } catch (err) {
+    console.warn('[admin] quote email failed:', err.message);
+  }
+  res.json({ ok: true });
+});
+
+/** Body: { note? } — Karije can't book this one. */
+router.post('/managed/:tripId/decline', requireAdmin, async (req, res) => {
+  const trip = await db.trips.get(req.params.tripId);
+  if (!trip || trip.collection_tier !== 'managed') return res.status(404).json({ error: 'No booking request for that trip.' });
+  const paid = await db.raw('SELECT COUNT(*) AS n FROM participant_payments WHERE trip_id = ?', [trip.id]);
+  if (Number(paid?.n || 0) > 0) return res.status(409).json({ error: 'Friends have already paid; refund them before declining.' });
+  await db.raw(`UPDATE trips SET managed_status = 'declined', collection_tier = 'none', managed_note = ?, managed_decided_at = unixepoch() WHERE id = ?`,
+    [String(req.body?.note || '').trim().slice(0, 1000) || null, trip.id]);
+  res.json({ ok: true });
 });
 
 // ── Risk flags (docs/AML_RISK_POLICY.md) ───────────────────────────────────────

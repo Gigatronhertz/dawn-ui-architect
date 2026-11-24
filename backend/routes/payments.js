@@ -32,7 +32,7 @@ const hooks = Router();    // mounted at /
 const SHAREABLE = ['awaiting_group', 'curated', 'custom'];
 const frontend = () => (process.env.FRONTEND_URL || 'https://karije.com').replace(/\/$/, '');
 
-const { FRIEND_ESCROW, TIERS, tripKind, collects, parseJson } = require('../services/collection');
+const { FRIEND_ESCROW, TIERS, tripKind, collects, perPersonPrice, parseJson } = require('../services/collection');
 
 /**
  * Who the escrow pays out to: the agency, the friend-trip organiser, or
@@ -248,7 +248,7 @@ api.post('/public/plan/:tripId/escrow', limit({ name: 'escrow', max: 20, windowM
     }
 
     const plan = parseJson(trip.plan);
-    const { targetAmount } = await db.participants.computeCharge(participant, plan?.cost_breakdown?.per_person);
+    const { targetAmount } = await db.participants.computeCharge(participant, perPersonPrice(trip, plan));
     if (!targetAmount || targetAmount <= 0) return res.status(400).json({ error: 'Could not work out the price for this trip.' });
 
     const attempt = (existing ? Number(existing.attempt) : 0) + 1;
@@ -331,6 +331,13 @@ async function collectionState(trip) {
   return {
     tier: trip.collection_tier || 'none',
     phone: trip.notify_wa || null,
+    // "Karije books it": requested → quoted → accepted (or declined).
+    managed: trip.collection_tier === 'managed' || trip.managed_status ? {
+      status: trip.managed_status || null,
+      price:  trip.managed_price ? Number(trip.managed_price) : null,
+      payBy:  trip.managed_pay_by || null,
+      note:   trip.managed_note || null,
+    } : null,
     feesWaived: premium.LOCKED,
     provider: pandascrow.available() ? 'pandascrow' : 'paystack',
     payout: trip.payout_account_no ? {
@@ -350,14 +357,38 @@ api.get('/auth/plans/:tripId/collection', requireAuth, async (req, res) => {
   res.json(await collectionState(trip));
 });
 
-/** Body: { tier: "none" | "notify" | "escrow" } */
+async function paymentsOn(tripId) {
+  const row = await db.raw('SELECT COUNT(*) AS n FROM participant_payments WHERE trip_id = ?', [tripId]);
+  return Number(row?.n || 0) > 0;
+}
+
+/** Body: { tier: "none" | "notify" | "managed" } ("escrow" only while FRIEND_ESCROW is on) */
 api.post('/auth/plans/:tripId/collection', requireAuth, async (req, res) => {
   try {
     const trip = await ownTripOr(res, req);
     if (!trip) return;
     const tier = String(req.body?.tier || '');
-    if (!TIERS[tier]) return res.status(400).json({ error: 'Choose free or reminders.' });
+    if (!TIERS[tier]) return res.status(400).json({ error: 'Choose free, reminders or Karije books it.' });
     if (tier === 'escrow' && !FRIEND_ESCROW) return res.status(400).json({ error: 'Escrow collection isn’t available for friend trips.' });
+
+    // Asking Karije to book the trip: free to ask; Karije replies with a price.
+    if (tier === 'managed') {
+      if (trip.collection_tier !== 'managed' || trip.managed_status === 'declined') {
+        await db.raw(
+          `UPDATE trips SET collection_tier = 'managed', managed_status = 'requested', managed_requested_at = unixepoch(),
+                  managed_price = NULL, managed_pay_by = NULL, managed_note = NULL, managed_quoted_at = NULL, managed_decided_at = NULL
+            WHERE id = ?`, [trip.id]);
+      }
+      return res.json(await collectionState(await db.trips.get(trip.id)));
+    }
+    // Leaving a Karije-booked trip is only possible before anyone has paid.
+    if (trip.collection_tier === 'managed') {
+      if (await paymentsOn(trip.id)) {
+        return res.status(409).json({ error: 'Friends have already paid Karije for this trip. Email hello@karije.com to change it.' });
+      }
+      await db.raw(`UPDATE trips SET managed_status = NULL WHERE id = ?`, [trip.id]);
+      trip.collection_tier = 'none';
+    }
 
     const order = ['none', 'notify', 'escrow'];
     // Stepping down, or anything while the beta waives fees, needs no payment.
@@ -415,6 +446,21 @@ api.put('/auth/plans/:tripId/payout', requireAuth, async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: 'We could not find that account. Check the bank and number.' });
   }
+});
+
+/** Body: { accept: boolean } — the organiser's answer to Karije's quote. */
+api.post('/auth/plans/:tripId/managed', requireAuth, async (req, res) => {
+  const trip = await ownTripOr(res, req);
+  if (!trip) return;
+  if (trip.collection_tier !== 'managed' || trip.managed_status !== 'quoted') {
+    return res.status(409).json({ error: 'There’s no price waiting for your answer.' });
+  }
+  if (req.body?.accept === true) {
+    await db.raw(`UPDATE trips SET managed_status = 'accepted', managed_decided_at = unixepoch() WHERE id = ?`, [trip.id]);
+  } else {
+    await db.raw(`UPDATE trips SET managed_status = 'declined', collection_tier = 'none', managed_decided_at = unixepoch() WHERE id = ?`, [trip.id]);
+  }
+  res.json(await collectionState(await db.trips.get(trip.id)));
 });
 
 // ── Webhook ─────────────────────────────────────────────────────────────────

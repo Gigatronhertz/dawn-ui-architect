@@ -25,7 +25,7 @@ import {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "agents" | "revenue" | "payments" | "risk";
+type Tab = "experiences" | "nightlife" | "events" | "attractions" | "money" | "agents" | "revenue" | "payments" | "risk" | "bookings";
 
 type MoneyTrip = {
   tripId: string; name: string; destination: string | null; tripDate: string | null;
@@ -1232,6 +1232,118 @@ function RevenueCard({ title, children, right }: { title: string; children: Reac
       </div>
       {children}
     </section>
+  );
+}
+
+// ── "Karije books it" requests ───────────────────────────────────────────────
+
+type BookingRequest = {
+  tripId: string; destination: string | null; origin: string | null; days: number | null; squadSize: number | null;
+  date: string | null; planEstimate: number | null; hotel: string | null; transport: string | null;
+  organiser: { name: string | null; email: string | null; phone: string | null };
+  status: "requested" | "quoted" | "accepted" | "declined" | null; price: number | null; payBy: string | null;
+  note: string | null; requestedAt: number | null; joined: number; collected: number;
+};
+
+/** Friend trips whose organiser asked Karije to book them: quote a price, or decline. */
+function BookingsSection({ adminKey }: { adminKey: string }) {
+  const [trips, setTrips] = useState<BookingRequest[] | null>(null);
+  const [err, setErr]     = useState("");
+  const [open, setOpen]   = useState<string | null>(null);
+  const [price, setPrice] = useState("");
+  const [payBy, setPayBy] = useState("");
+  const [note, setNote]   = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => {
+    apiFetch<{ trips: BookingRequest[] }>("/admin/managed", adminKey)
+      .then(d => setTrips(d.trips))
+      .catch(e => setErr(e.message));
+  }, [adminKey]);
+  useEffect(load, [load]);
+
+  async function act(tripId: string, kind: "quote" | "decline") {
+    setSaving(true); setErr("");
+    try {
+      await apiFetch(`/admin/managed/${tripId}/${kind}`, adminKey, {
+        method: "POST",
+        body: JSON.stringify(kind === "quote" ? { pricePerPerson: Number(price.replace(/[^\d]/g, "")), payBy, note } : { note }),
+      });
+      setOpen(null); setPrice(""); setPayBy(""); setNote("");
+      load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save that.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!trips) return <div className="mx-auto max-w-4xl px-6 py-8 text-sm text-gray-400">{err || "Loading…"}</div>;
+  const badge: Record<string, string> = {
+    requested: "bg-amber-100 text-amber-800", quoted: "bg-blue-100 text-blue-800",
+    accepted: "bg-green-100 text-green-800", declined: "bg-gray-100 text-gray-600",
+  };
+
+  return (
+    <div className="mx-auto max-w-4xl px-6 py-8 space-y-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <h2 className="text-lg font-semibold text-gray-900">Karije books it</h2>
+        <p className="text-sm text-gray-600 mt-1">
+          Friend trips whose organiser asked Karije to book and run them. Quote a price per person (your margin included)
+          and a pay-by date; the organiser accepts, then friends pay Karije. Book the suppliers yourself and record
+          payouts to them in Money.
+        </p>
+      </div>
+      {err && <div className="text-sm text-red-600">{err}</div>}
+      {trips.length === 0 && <div className="text-sm text-gray-500 px-1">No requests yet.</div>}
+      {trips.map(t => (
+        <div key={t.tripId} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+          <div className="flex items-start gap-3">
+            <span className={`shrink-0 text-[11px] font-semibold uppercase px-2 py-0.5 rounded ${badge[t.status || "declined"]}`}>{t.status}</span>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-gray-900">
+                {t.origin ? `${t.origin} → ` : ""}{t.destination || "Trip"} · {t.days ?? "?"} days · {t.squadSize ?? "?"} people{t.date ? ` · ${t.date}` : ""}
+              </div>
+              <div className="text-xs text-gray-600 mt-0.5">
+                Organiser: {[t.organiser.name, t.organiser.email, t.organiser.phone].filter(Boolean).join(" · ") || "—"}
+              </div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                Plan estimate {t.planEstimate ? naira(t.planEstimate) : "—"} per person{t.hotel ? ` · ${t.hotel}` : ""}{t.transport ? ` · ${t.transport}` : ""}
+                {" · "}<a href={`/plan/${t.tripId}`} target="_blank" rel="noreferrer" className="underline">open plan</a>
+              </div>
+              {t.price != null && (
+                <div className="text-xs text-gray-700 mt-1">
+                  Quoted {naira(t.price)} per person, pay by {t.payBy}{t.note ? ` — ${t.note}` : ""} · {t.joined} joined · {naira(t.collected)} collected
+                </div>
+              )}
+            </div>
+            {(t.status === "requested" || t.status === "quoted") && open !== t.tripId && (
+              <button onClick={() => { setOpen(t.tripId); setPrice(t.price ? String(t.price) : ""); setPayBy(t.payBy || ""); setNote(t.note || ""); }}
+                className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-300 hover:border-gray-500">
+                {t.status === "quoted" ? "Change quote" : "Quote"}
+              </button>
+            )}
+          </div>
+          {open === t.tripId && (
+            <div className="grid sm:grid-cols-3 gap-2 pt-1">
+              <input value={price} onChange={e => setPrice(e.target.value)} inputMode="numeric" placeholder="Price per person (₦)"
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2" />
+              <input type="date" value={payBy} onChange={e => setPayBy(e.target.value)}
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2" />
+              <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note to organiser (optional)"
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2" />
+              <div className="sm:col-span-3 flex flex-wrap gap-2">
+                <button onClick={() => act(t.tripId, "quote")} disabled={saving || !price || !payBy}
+                  className="text-sm font-medium px-4 py-2 rounded-lg bg-gray-900 text-white disabled:opacity-50">{saving ? "Saving…" : "Send quote"}</button>
+                <button onClick={() => act(t.tripId, "decline")} disabled={saving}
+                  className="text-sm px-4 py-2 rounded-lg border border-gray-300">Decline</button>
+                <button onClick={() => setOpen(null)} className="text-sm px-3 py-2 text-gray-600">Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -2479,6 +2591,7 @@ export default function Admin() {
     { id: "money",       label: "Money",       hint: "Collected, owed, and paid out" },
     { id: "attractions", label: "Attractions", hint: "Prices the planner quotes" },
     { id: "agents",      label: "Agencies",    hint: "Create logins, verify KYC documents" },
+    { id: "bookings",    label: "Bookings",    hint: "Friend trips asking Karije to book them" },
     { id: "risk",        label: "Risk",        hint: "Flags to review under the AML risk policy" },
     { id: "payments",    label: "Payments check", hint: "Test Pandascrow in the sandbox" },
   ];
@@ -2517,6 +2630,7 @@ export default function Admin() {
       {tab === "revenue"     && <RevenueSection     adminKey={adminKey} />}
       {tab === "payments"    && <PaymentsCheckSection adminKey={adminKey} />}
       {tab === "risk"        && <RiskSection adminKey={adminKey} />}
+      {tab === "bookings"    && <BookingsSection adminKey={adminKey} />}
       {tab === "money"       && <MoneySection       adminKey={adminKey} />}
       {tab === "attractions" && <AttractionsSection adminKey={adminKey} />}
       {tab === "agents"      && <AgentsSection      adminKey={adminKey} />}

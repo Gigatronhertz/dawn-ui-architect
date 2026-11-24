@@ -206,6 +206,9 @@ async function sendInstallmentDigests() {
 }
 
 async function tick() {
+  // Auto-pay first: a successful charge moves the due date on, so nobody gets
+  // a "please pay" reminder for an instalment their card just paid.
+  try { await require('./autopay').runOnce(); } catch (err) { console.error('[autopay]', err.message); }
   try { await runOnce(); } catch (err) { console.error('[installmentReminders]', err.message); }
   try { await sendInstallmentDigests(); } catch (err) { console.error('[installmentReminders digest]', err.message); }
 }

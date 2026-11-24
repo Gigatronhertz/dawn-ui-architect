@@ -444,22 +444,27 @@ router.get('/public/plan/:tripId', async (req, res) => {
     highlights:       plan.highlights || [],
     // On an agency trip the stop costs are the agency's own notes; travellers
     // see the trip's price, not what each part costs the agency.
-    days_plan:        trip.agent_id
+    // Same on a trip Karije books: Karije's price replaces the organiser's estimates.
+    days_plan:        trip.agent_id || collection.managedAccepted(trip)
       ? (plan.days || []).map(d => ({ ...d, activities: (d.activities || []).map(a => ({ ...a, cost_per_person: 0 })) }))
       : (plan.days || []),
     included:         trip.agent_id
       ? (() => { try { return JSON.parse(trip.included_json || '[]'); } catch (_) { return []; } })()
       : (plan.curated?.included || []),
-    payBy:            trip.pay_by || null,
-    cost_breakdown:   plan.cost_breakdown,
+    payBy:            collection.managedAccepted(trip) ? (trip.managed_pay_by || null) : (trip.pay_by || null),
+    // On a trip Karije books, every friend pays Karije's quoted price.
+    cost_breakdown:   collection.managedAccepted(trip)
+      ? { ...(plan.cost_breakdown || {}), per_person: Number(trip.managed_price) }
+      : plan.cost_breakdown,
+    managed:          collection.managedAccepted(trip) ? { price: Number(trip.managed_price), payBy: trip.managed_pay_by || null } : null,
     selectedDate:     trip.selected_date || null,
     participantCount: participants.length,
     paidCount:        stats.paidCount,
     totalCollected:   stats.totalCollected,
     participants:     participants.map(p => ({ name: p.name, paid: !!p.paid, createdAt: p.created_at })),
-    // Pandascrow, once configured, takes over from Paystack; a friend trip
-    // only collects through Karije on its escrow option.
-    paymentsEnabled:  pandascrow.available() ? collection.collects(trip) : paystack.available(),
+    // Karije collects only for trips it sells: agency and Karije trips, and
+    // friend trips Karije is booking. Pandascrow, once on, replaces Paystack.
+    paymentsEnabled:  collection.collects(trip) && (pandascrow.available() || paystack.available()),
     // Escrow needs a phone number from every traveller.
     phoneRequired:    collection.escrowed(trip),
     paymentProvider:  pandascrow.available() ? 'pandascrow' : 'paystack',
@@ -533,7 +538,7 @@ router.post('/public/plan/:tripId/subscribe', premium.premiumOnly, async (req, r
     return res.status(403).json({ error: 'Plan is not yet confirmed.' });
   }
 
-  const { participantId, months } = req.body || {};
+  const { participantId, months, autopay } = req.body || {};
   const participant = await db.participants.getById(participantId);
   if (!participant || participant.trip_id !== trip.id) {
     return res.status(404).json({ error: 'Participant not found.' });
@@ -582,8 +587,13 @@ router.post('/public/plan/:tripId/subscribe', premium.premiumOnly, async (req, r
   }
 
   await db.participants.subscribeInstallment({ id: participant.id, amount, months: requestedMonths });
+  // Auto-pay is the traveller's explicit choice, recorded with the time they
+  // agreed. Their card is saved from the first instalment.
+  if (autopay === true) {
+    await db.raw(`UPDATE participants SET autopay = 1, autopay_consented_at = unixepoch(), autopay_failures = 0 WHERE id = ?`, [participant.id]);
+  }
 
-  res.json({ ok: true, amount, months: requestedMonths, installmentAmount });
+  res.json({ ok: true, amount, months: requestedMonths, installmentAmount, autopay: autopay === true });
 });
 
 // GET /api/public/plan/:tripId/participant/:participantId
@@ -591,10 +601,26 @@ router.post('/public/plan/:tripId/subscribe', premium.premiumOnly, async (req, r
 // comes back from Paystack with ?paid=1 whether the payment went through, was
 // cancelled, or the URL was typed by hand. Only the row we marked from a
 // verified webhook counts.
+// POST /api/public/plan/:tripId/participant/:participantId/autopay
+// Body: { enabled: boolean }. Turning auto-pay off also forgets the saved card
+// authorization; turning it back on saves a card from the next instalment.
+router.post('/public/plan/:tripId/participant/:participantId/autopay', limit({ name: 'autopay', max: 20, windowMs: 15 * 60 * 1000 }), async (req, res) => {
+  const p = await db.participants.getById(req.params.participantId);
+  if (!p || p.trip_id !== req.params.tripId) return res.status(404).json({ error: 'Not found.' });
+  if (p.payment_plan !== 'installment' || p.paid) return res.status(400).json({ error: 'Auto-pay is only for monthly plans still being paid.' });
+  if (req.body?.enabled === true) {
+    await db.raw(`UPDATE participants SET autopay = 1, autopay_consented_at = unixepoch(), autopay_failures = 0 WHERE id = ?`, [p.id]);
+  } else {
+    await db.raw(`UPDATE participants SET autopay = 0, paystack_auth_code = NULL, paystack_auth_email = NULL, autopay_card = NULL WHERE id = ?`, [p.id]);
+  }
+  res.json({ ok: true, autopay: req.body?.enabled === true });
+});
+
 router.get('/public/plan/:tripId/participant/:participantId', async (req, res) => {
   try {
     const rows = await db.rawAll(
-      `SELECT id, paid, amount, paid_at, paystack_ref, email, wa_number, payment_plan, installment_months, next_due_at
+      `SELECT id, paid, amount, paid_at, paystack_ref, email, wa_number, payment_plan, installment_months, next_due_at,
+              autopay, autopay_card, autopay_failures
          FROM participants WHERE id = ? AND trip_id = ?`,
       [req.params.participantId, req.params.tripId]
     );
@@ -612,9 +638,9 @@ router.get('/public/plan/:tripId/participant/:participantId', async (req, res) =
     if (!row.paid && row.paystack_ref && paystack.available()) {
       try {
         if (await processPayment(row.paystack_ref)) {
-          const fresh = await db.rawAll(
-            `SELECT paid, amount, paid_at FROM participants WHERE id = ?`, [row.id]
-          );
+          // Reload everything this response reads — the payment just moved
+          // the due date and may have saved an auto-pay card.
+          const fresh = await db.rawAll(`SELECT * FROM participants WHERE id = ?`, [row.id]);
           if (fresh.length) row = fresh[0];
         }
       } catch (err) {
@@ -643,6 +669,11 @@ router.get('/public/plan/:tripId/participant/:participantId', async (req, res) =
       paidAmount:        paidTotal,
       remaining:         paidTotal !== null && row.amount ? Math.max(0, Number(row.amount) - paidTotal) : null,
       nextDueAt:         row.next_due_at ? Number(row.next_due_at) : null,
+      // Instalment auto-pay: on, the card it charges (once the first
+      // instalment has saved one), and whether it has stopped after failures.
+      autopay:           !!row.autopay,
+      autopayCard:       row.autopay ? (row.autopay_card || null) : null,
+      autopayStopped:    !!row.autopay && Number(row.autopay_failures) >= 3,
     });
   } catch (err) {
     console.error('[api/participant-status]', err.message);
@@ -697,10 +728,13 @@ router.post('/public/plan/:tripId/pay', async (req, res) => {
   if (!participant || participant.trip_id !== trip.id) {
     return res.status(404).json({ error: 'Participant not found.' });
   }
+  // Karije only takes payment for trips it sells (Terms, section 8).
+  if (!collection.collects(trip)) {
+    return res.status(403).json({ error: "This trip isn't paid through Karije — the organiser will tell you how to pay." });
+  }
 
-  const plan = trip.plan ? JSON.parse(trip.plan) : null;
   const { targetAmount, chargeAmount } = await db.participants.computeCharge(
-    participant, plan?.cost_breakdown?.per_person, { payInFull: !!req.body.payInFull }
+    participant, collection.perPersonPrice(trip), { payInFull: !!req.body.payInFull }
   );
   if (!chargeAmount || chargeAmount <= 0) {
     return res.status(400).json({ error: 'Could not determine payment amount from this plan.' });
@@ -717,6 +751,7 @@ router.post('/public/plan/:tripId/pay', async (req, res) => {
       name:          name?.trim() || null,
       amountNGN:     chargeAmount,
       callbackUrl,
+      channels:      participant.autopay && !participant.paystack_auth_code ? ['card'] : undefined,
     });
 
     await db.participants.updatePayment({

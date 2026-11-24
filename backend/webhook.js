@@ -4,6 +4,7 @@ const { verifyPayment, initializeWebPayment } = require('./services/paystack');
 const { sendPaymentReceiptEmail } = require('./services/email');
 const db = require('./db/client');
 const pandascrow = require('./services/pandascrow');
+const { collects, perPersonPrice } = require('./services/collection');
 
 const router = Router();
 
@@ -36,9 +37,10 @@ router.get('/pay/:participantId', async (req, res) => {
     // next-due slice). Missing either, the plan page handles it — that's the
     // form that asks.
     const trip = await db.trips.get(participant.trip_id);
-    const plan = trip?.plan ? JSON.parse(trip.plan) : null;
+    // A friend trip Karije isn't booking doesn't take payments through Karije.
+    if (!trip || !collects(trip)) return res.redirect(planUrl);
     const { targetAmount, chargeAmount } = await db.participants.computeCharge(
-      participant, plan?.cost_breakdown?.per_person, { payInFull: req.query.full === '1' }
+      participant, perPersonPrice(trip), { payInFull: req.query.full === '1' }
     );
     if (!participant.email || !chargeAmount || chargeAmount <= 0) return res.redirect(planUrl);
 
@@ -49,6 +51,8 @@ router.get('/pay/:participantId', async (req, res) => {
       name:          participant.name,
       amountNGN:     chargeAmount,
       callbackUrl:   `${planUrl}?paid=1`,
+      // Setting up auto-pay needs a card to charge next month.
+      channels:      participant.autopay && !participant.paystack_auth_code ? ['card'] : undefined,
     });
 
     await db.participants.updatePayment({
@@ -95,6 +99,17 @@ async function processPayment(reference) {
       reference,
     });
     if (!credited) return false; // this reference was already recorded
+
+    // Auto-pay: keep the card from this instalment, only if the traveller
+    // opted in and Paystack marked the card reusable.
+    if (!paid && participant.payment_plan === 'installment' && participant.autopay
+        && result.authorization && result.authorization.channel === 'card') {
+      await db.raw(
+        `UPDATE participants SET paystack_auth_code = ?, paystack_auth_email = ?, autopay_card = ?, autopay_failures = 0
+          WHERE id = ?`,
+        [result.authorization.code, result.customerEmail || participant.email, result.authorization.label, participant.id]
+      );
+    }
     console.log(`[processPayment] web participant ${participant.id} paid ${result.amountNGN} for trip ${participant.trip_id}${paid ? ' — fully paid' : ' — installment recorded'}`);
 
     // Receipt. Non-blocking — a mail failure must never make a paid person

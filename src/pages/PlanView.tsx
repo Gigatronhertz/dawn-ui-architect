@@ -175,6 +175,12 @@ function PaymentSection({
   const [paidAmount, setPaidAmount]     = useState<number | null>(null);
   const [remaining, setRemaining]       = useState<number | null>(null);
   const [installmentMonths, setInstallmentMonths] = useState<number | null>(null);
+  // Auto-pay: charge the saved card each month (opt-in, with notice before each charge).
+  const [autopay, setAutopay]               = useState(false);
+  const [autopayCard, setAutopayCard]       = useState<string | null>(null);
+  const [autopayStopped, setAutopayStopped] = useState(false);
+  const [autopayChoice, setAutopayChoice]   = useState(false);
+  const [autopayBusy, setAutopayBusy]       = useState(false);
   const [showChooser, setShowChooser]   = useState(false);
   const [chooseMonths, setChooseMonths] = useState(installmentMinMonths);
   const [subscribeErr, setSubscribeErr] = useState("");
@@ -204,6 +210,9 @@ function PaymentSection({
         setPaidAmount(s.paidAmount);
         setRemaining(s.remaining);
         setInstallmentMonths(s.installmentMonths);
+        setAutopay(!!s.autopay);
+        setAutopayCard(s.autopayCard ?? null);
+        setAutopayStopped(!!s.autopayStopped);
         if (s.paid) setPayState("paid");
       })
       .catch(() => { /* leave it to the pay flow to surface problems */ });
@@ -265,7 +274,9 @@ function PaymentSection({
           <div className="w-10 h-10 rounded-2xl bg-google-green/15 grid place-items-center shrink-0"><CheckCircle2 className="w-5 h-5 text-google-green" /></div>
           <div>
             <div className="font-display font-semibold text-google-green">This month's payment is in!</div>
-            <p className="text-sm text-muted-foreground mt-0.5">We'll remind you again next month.</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {autopay ? "Auto-pay will charge your card next month — we'll email you 3 days before." : "We'll remind you again next month."}
+            </p>
           </div>
         </div>
         {paidAmount !== null && (
@@ -375,9 +386,10 @@ function PaymentSection({
     setSubscribing(true);
     setSubscribeErr("");
     try {
-      await api.subscribeInstallment(tripId, { participantId, months: chooseMonths });
+      await api.subscribeInstallment(tripId, { participantId, months: chooseMonths, autopay: autopayChoice });
       setPaymentPlan("installment");
       setInstallmentMonths(chooseMonths);
+      setAutopay(autopayChoice);
       setPaidAmount(0);
       setRemaining(perPerson);
       setShowChooser(false);
@@ -385,6 +397,20 @@ function PaymentSection({
       setSubscribeErr(err instanceof Error ? err.message : "Could not start the plan. Please try again.");
     } finally {
       setSubscribing(false);
+    }
+  }
+
+  async function toggleAutopay(enabled: boolean) {
+    setAutopayBusy(true);
+    try {
+      await api.setAutopay(tripId, participantId, enabled);
+      setAutopay(enabled);
+      setAutopayStopped(false);
+      if (!enabled) setAutopayCard(null);
+    } catch {
+      /* leave it as it was; the button stays */
+    } finally {
+      setAutopayBusy(false);
     }
   }
 
@@ -422,6 +448,21 @@ function PaymentSection({
             {installmentMonths && (
               <span className="text-muted-foreground"> · {installmentMonths} month plan</span>
             )}
+          </div>
+          <div className="rounded-xl bg-background/60 px-4 py-3 text-xs text-muted-foreground flex items-center justify-between gap-3">
+            <span>
+              {!autopay
+                ? "Auto-pay is off — we'll remind you each month."
+                : autopayStopped
+                  ? "Auto-pay stopped after your card was declined. Pay this month below, or turn it back on."
+                  : autopayCard
+                    ? <>Auto-pay is on · <span className="text-foreground font-medium">{autopayCard}</span> is charged each month.</>
+                    : "Auto-pay is on — pay this month by card and we'll use that card from next month."}
+            </span>
+            <button type="button" onClick={() => toggleAutopay(!autopay || autopayStopped)} disabled={autopayBusy}
+              className="shrink-0 underline underline-offset-4 hover:text-foreground">
+              {autopayBusy ? "Saving…" : !autopay || autopayStopped ? "Turn on" : "Turn off"}
+            </button>
           </div>
           <button
             onClick={() => handlePayNow(false)}
@@ -462,6 +503,14 @@ function PaymentSection({
               That's below the {fmtNGN(installmentMinAmount!)}/month minimum for this trip — choose fewer months.
             </p>
           )}
+          <label className="flex items-start gap-2.5 rounded-xl bg-background/60 px-3 py-2.5 text-xs text-muted-foreground cursor-pointer">
+            <input type="checkbox" checked={autopayChoice} onChange={e => setAutopayChoice(e.target.checked)} className="mt-0.5 accent-current" />
+            <span>
+              <span className="text-foreground font-medium">Pay automatically each month.</span> I authorise Karije to charge{" "}
+              {fmtNGN(installmentAmountPreview)} to the card I pay with today, once a month, until my place is paid for.
+              I'll get an email 3 days before each charge and can turn this off any time.
+            </span>
+          </label>
           {subscribeErr && <p className="text-xs text-destructive text-center">{subscribeErr}</p>}
           <div className="flex gap-2">
             <button
@@ -1141,6 +1190,18 @@ export default function PlanView() {
             <aside className="space-y-4 mt-4 lg:mt-0 lg:sticky lg:top-6 print:mt-0">
             {/* The organiser's own controls — renders nothing for anyone else */}
             {tripId && user && <TripCollectionPanel tripId={tripId} />}
+
+            {/* A friend trip Karije is booking: friends buy their places from Karije. */}
+            {data.managed && (
+              <div className="kj-card p-5 print:hidden">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Booked and run by Karije</div>
+                <p className="text-sm mt-1.5">
+                  Karije is booking this trip. Your place is <strong>{fmtNGN(data.managed.price)}</strong>, paid to Karije
+                  {data.managed.payBy ? <> by <strong>{fmtDate(data.managed.payBy)}</strong></> : null}.
+                  You're buying it from Karije under our <Link to="/terms" className="underline underline-offset-4">terms</Link>, so refunds and changes come to us.
+                </p>
+              </div>
+            )}
 
             {/* Squad participation + payment */}
             {tripId && cb && (

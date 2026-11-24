@@ -348,7 +348,49 @@ async function sendSubscriptionPaymentFailedEmail({ to, agencyName, attempts, su
   });
 }
 
+/** Three days before an instalment auto-pay charge — no charge without notice. */
+async function sendAutopayNoticeEmail({ to, name, tripName, amount, card, dueDate, link }) {
+  const resend = getResend();
+  if (!resend || !to) return;
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `${fmtNGN(amount)} for ${tripName} will be charged on ${dueDate}`,
+    html: shell({
+      heading: 'Your next instalment',
+      body: `<p style="margin:0 0 12px;">${name ? name + ', w' : 'W'}e'll charge <strong style="color:#22321f;">${fmtNGN(amount)}</strong>
+             to your ${card || 'saved card'} on <strong style="color:#22321f;">${dueDate}</strong> for your place on
+             <strong style="color:#22321f;">${tripName}</strong>.</p>
+             <p style="margin:0;">Nothing to do if that's fine. To turn auto-pay off, or pay another way, open your trip.</p>`,
+      ctaLabel: 'Open my trip',
+      ctaUrl: link,
+    }),
+  });
+}
+
+/** Karije's price for a friend trip it has been asked to book. */
+async function sendManagedQuoteEmail({ to, name, tripName, price, payBy, note, link }) {
+  const resend = getResend();
+  if (!resend || !to) return;
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Karije can book ${tripName}: ${fmtNGN(price)} per person`,
+    html: shell({
+      heading: 'Your trip, booked by Karije',
+      body: `<p style="margin:0 0 12px;">${name ? name + ', w' : 'W'}e can book and run <strong style="color:#22321f;">${tripName}</strong>
+             for <strong style="color:#22321f;">${fmtNGN(price)} per person</strong>. Everyone pays Karije by <strong style="color:#22321f;">${payBy}</strong>.</p>
+             ${note ? `<p style="margin:0 0 12px;">${String(note).replace(/[<>&]/g, '')}</p>` : ''}
+             <p style="margin:0;">Accept on your trip page and your friends can start paying.</p>`,
+      ctaLabel: 'See the price',
+      ctaUrl: link,
+    }),
+  });
+}
+
 module.exports = {
+  sendAutopayNoticeEmail,
+  sendManagedQuoteEmail,
   sendPlanReadyEmail,
   sendPlanConfirmedEmail,
   sendPaymentReminderEmail,

@@ -135,3 +135,22 @@ for any webhook that goes missing.
 - Stopped writing the unused agency `plan_type` and `service_fee` columns.
 - Deleted unused frontend components and the agency-leads endpoint whose form
   was no longer rendered.
+
+## Paystack (Nov 2026)
+
+Kuda's API needs a banking licence and Pandascrow hasn't responded, so trip
+payments run on Paystack, settling into Karije's own account. Karije is the
+merchant of record: it collects only for trips it sells.
+
+- **Who collects:** agency trips, Karije's curated trips, and friend trips
+  Karije books ("Karije books it"). Other friend trips no longer take payments
+  through Karije (`collection.collects`).
+- **Karije books it:** the organiser asks on their plan page; admin quotes a
+  price per person and pay-by date (Admin → Bookings); the organiser accepts;
+  friends pay Karije that price. Karije books and pays the suppliers itself.
+  The price locks once anyone pays.
+- **Instalment auto-pay:** optional on monthly plans. The traveller agrees
+  when choosing the plan; the first instalment (card-only) saves a reusable
+  Paystack authorization; `services/autopay.js` emails 3 days before each
+  charge and charges on the due date, once a day, up to 3 failed attempts.
+  Pay-link reminders carry on regardless. Turning it off forgets the card.

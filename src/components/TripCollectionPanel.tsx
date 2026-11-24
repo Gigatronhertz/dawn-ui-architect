@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bell, Check, Copy, ShieldCheck, Share2 } from "lucide-react";
+import { Bell, Check, Copy, Plane, ShieldCheck, Share2 } from "lucide-react";
 import { api, session, type CollectionTier, type PaymentsConfig, type TripCollection } from "@/lib/api";
 import { BankAccountForm } from "@/components/BankAccountForm";
 import { normalisePhone } from "@/lib/phone";
@@ -15,6 +15,7 @@ const ALL_OPTIONS: { tier: CollectionTier; title: string; desc: string; icon: ty
   { tier: "none",   title: "Free",              desc: "Share the plan and see who's in. You chase friends for their share yourself.", icon: Share2 },
   { tier: "notify", title: "Reminders",         desc: "We remind your friends to pay, by email and WhatsApp, so you don't have to.", icon: Bell },
   { tier: "escrow", title: "Escrow collection", desc: "Friends pay their own share into escrow. We hold it and release it to you. Reminders included.", icon: ShieldCheck },
+  { tier: "managed", title: "Karije books it", desc: "We book the stay and transport and run the trip. Each friend pays Karije their share, and we handle refunds. We'll send you a price first.", icon: Plane },
 ];
 const OPTIONS = ALL_OPTIONS.filter((o) => FRIEND_ESCROW || o.tier !== "escrow");
 
@@ -46,7 +47,21 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
     api.getPaymentsConfig().then(setConfig).catch(() => {});
   }, [load]);
 
-  if (!state || state.provider !== "pandascrow") return null;
+  if (!state) return null;
+
+  async function answer(accept: boolean) {
+    const token = session.get();
+    if (!token) return;
+    setBusy("managed");
+    setError("");
+    try {
+      setState(await api.answerManagedQuote(tripId, accept, token));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save your answer.");
+    } finally {
+      setBusy("");
+    }
+  }
 
   async function choose(tier: CollectionTier) {
     const token = session.get();
@@ -78,13 +93,15 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
 
   const fee = state.pendingFee;
   const cleanPhone = normalisePhone(phone);
-  const price = (tier: CollectionTier) => config?.tiers[tier]?.listAmount ?? { none: 0, notify: 1000, escrow: 3000 }[tier];
+  const price = (tier: CollectionTier) => config?.tiers[tier]?.listAmount ?? { none: 0, notify: 1000, escrow: 3000, managed: 0 }[tier];
+  const managed = state.managed;
+  const payBy = managed?.payBy ? new Date(managed.payBy).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) : null;
 
   return (
     <div className="kj-card p-5 space-y-4 print:hidden">
       <div>
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your trip · organiser only</div>
-        <h2 className="text-2xl mt-1">{FRIEND_ESCROW ? "How do you want to collect?" : "Who chases your friends?"}</h2>
+        <h2 className="text-2xl mt-1">How should this trip work?</h2>
         {state.feesWaived && <p className="text-sm text-muted-foreground mt-1">Every option is free while Karije is in beta.</p>}
       </div>
 
@@ -111,7 +128,7 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
                 <span className="flex items-center justify-between gap-2">
                   <span className="font-semibold">{title}</span>
                   <span className="text-sm font-semibold tabular-nums">
-                    {cost === 0 ? "Free" : state.feesWaived ? <><s className="text-muted-foreground font-normal">{fmtNGN(cost)}</s> Free</> : `${fmtNGN(cost)}/trip`}
+                    {tier === "managed" ? "Free to ask" : cost === 0 ? "Free" : state.feesWaived ? <><s className="text-muted-foreground font-normal">{fmtNGN(cost)}</s> Free</> : `${fmtNGN(cost)}/trip`}
                   </span>
                 </span>
                 <span className="block text-sm text-muted-foreground mt-0.5">{busy === tier ? "Switching…" : desc}</span>
@@ -120,6 +137,48 @@ export function TripCollectionPanel({ tripId }: { tripId: string }) {
           );
         })}
       </div>
+
+      {state.tier === "managed" && managed?.status === "requested" && (
+        <div className="rounded-xl bg-secondary/60 p-4 text-sm">
+          <div className="font-semibold">Request sent</div>
+          <p className="text-muted-foreground mt-0.5">We'll look at your plan and email you a price per person, usually within 2 business days.</p>
+        </div>
+      )}
+
+      {state.tier === "managed" && managed?.status === "quoted" && managed.price && (
+        <div className="rounded-xl bg-secondary/60 p-4 space-y-3 text-sm">
+          <p>
+            Karije can book and run this trip for <strong>{fmtNGN(managed.price)} per person</strong>
+            {payBy ? <> — everyone pays Karije by <strong>{payBy}</strong></> : null}.
+          </p>
+          {managed.note && <p className="text-muted-foreground">{managed.note}</p>}
+          <p className="text-xs text-muted-foreground">
+            Your friends buy their places from Karije, under Karije's terms, and Karije handles refunds. You don't collect or hold anyone's money.
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => answer(true)} disabled={!!busy} className="kj-btn flex-1 py-2.5">
+              {busy === "managed" ? "Saving…" : "Accept — let friends pay"}
+            </button>
+            <button type="button" onClick={() => answer(false)} disabled={!!busy}
+              className="border border-line-strong px-4 py-2.5 text-sm font-semibold hover:border-foreground/50">
+              No thanks
+            </button>
+          </div>
+        </div>
+      )}
+
+      {state.tier === "managed" && managed?.status === "accepted" && managed.price && (
+        <div className="rounded-xl bg-secondary/60 p-4 text-sm">
+          <div className="font-semibold">Karije is booking this trip</div>
+          <p className="text-muted-foreground mt-0.5">
+            Each friend pays Karije {fmtNGN(managed.price)} on this page{payBy ? ` by ${payBy}` : ""}. We'll remind anyone who hasn't paid.
+          </p>
+        </div>
+      )}
+
+      {state.tier !== "managed" && managed?.status === "declined" && managed.note && (
+        <p className="text-sm text-muted-foreground">We couldn't book this one: {managed.note}</p>
+      )}
 
       {fee && (
         <div className="rounded-xl bg-secondary/60 p-4 space-y-3">

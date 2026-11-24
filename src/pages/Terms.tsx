@@ -36,7 +36,7 @@ export default function Terms() {
         </div>
 
         <h1 className="font-marcellus text-4xl text-foreground mb-3">Terms of Service</h1>
-        <p className="font-jost font-light text-sm text-muted-foreground mb-12">Last updated: October 2026</p>
+        <p className="font-jost font-light text-sm text-muted-foreground mb-12">Last updated: November 2026</p>
 
         <div className="space-y-10 font-jost font-light text-foreground leading-relaxed">
 
@@ -68,6 +68,7 @@ export default function Terms() {
               "Your place is confirmed when we receive your payment and send you a confirmation email. Until then, places aren't held.",
               "Each place is for one named traveller. Give accurate names, email addresses and phone numbers — we use them to confirm your booking and to reach you about the trip.",
               "Some trips let you pay in monthly instalments. If you choose that, the full price must be paid by the date shown on the trip page, or we may cancel the booking under section 4.",
+              "On a monthly plan you can choose auto-pay: we charge the card you paid your first instalment with, once a month, until your place is paid for. We email you 3 days before each charge, and you can turn auto-pay off on your trip page at any time.",
             ]} />
           </Section>
 
@@ -118,6 +119,13 @@ export default function Terms() {
               not collect the friends&apos; shares and is not responsible for arrangements the group makes with each other or with
               hotels, transport or venues.
             </P>
+            <P>
+              An organiser can instead ask Karije to book the trip. If they accept the price we quote, the trip page says the trip
+              is booked by Karije, and each friend buys their own place from Karije under these terms (sections 2 to 7). Karije then
+              books and pays the hotels, transport and other suppliers itself; the organiser doesn&apos;t collect or hold anyone&apos;s
+              money.
+            </P>
+
             <P>
               Fees for planning tools and organiser features are shown before you pay. Once a paid feature has been used, its fee is
               not refundable.

@@ -500,6 +500,25 @@ const MIGRATIONS = [
     new_account_name TEXT,
     created_at       INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // "Karije books it" friend trips: the organiser asks, Karije quotes a price
+  // per person and books the trip itself, as the seller (merchant of record).
+  `ALTER TABLE trips ADD COLUMN managed_status       TEXT`,
+  `ALTER TABLE trips ADD COLUMN managed_price        INTEGER`,
+  `ALTER TABLE trips ADD COLUMN managed_pay_by       TEXT`,
+  `ALTER TABLE trips ADD COLUMN managed_note         TEXT`,
+  `ALTER TABLE trips ADD COLUMN managed_requested_at INTEGER`,
+  `ALTER TABLE trips ADD COLUMN managed_quoted_at    INTEGER`,
+  `ALTER TABLE trips ADD COLUMN managed_decided_at   INTEGER`,
+  // Instalment auto-pay: the traveller's consent, the reusable Paystack card
+  // authorization from their first instalment, and the charge attempts.
+  `ALTER TABLE participants ADD COLUMN autopay                 INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE participants ADD COLUMN autopay_consented_at    INTEGER`,
+  `ALTER TABLE participants ADD COLUMN paystack_auth_code      TEXT`,
+  `ALTER TABLE participants ADD COLUMN paystack_auth_email     TEXT`,
+  `ALTER TABLE participants ADD COLUMN autopay_card            TEXT`,
+  `ALTER TABLE participants ADD COLUMN autopay_failures        INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE participants ADD COLUMN autopay_last_attempt_at INTEGER`,
+  `ALTER TABLE participants ADD COLUMN autopay_notice_for      INTEGER`,
   `CREATE TABLE IF NOT EXISTS risk_reviews (
     flag_id     TEXT PRIMARY KEY,
     status      TEXT NOT NULL,
